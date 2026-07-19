@@ -6,11 +6,25 @@
 //! no `compatible_surface`, so there is no window/swapchain here yet;
 //! that's windowing's own concrete decision (`platform-core::Window` is
 //! still a stub) and a separate follow-up, not blocked on anything in
-//! this module. `wgpu`'s device/adapter acquisition is `async`;
-//! [`pollster::block_on`] bridges that to this crate's otherwise-sync API
-//! at the one point it's unavoidable, rather than making every caller in
-//! the workspace `async` for a single GPU handshake (see roadmap.md's
-//! `wgpu` decision for the same reasoning).
+//! this module.
+//!
+//! **Async on genuine I/O, not on everything.** This workspace's engine
+//! runs on `tokio`; every operation here whose completion time is
+//! actually unbounded/externally-determined — [`Device::new`] (an OS/
+//! driver handshake to find and open a GPU) and [`Device::read_buffer`]
+//! (waiting for in-flight GPU work to finish) — is a real `async fn`, not
+//! a blocking call hidden behind `pollster`. Recording/allocation calls
+//! (`create_buffer`, `create_texture`, `create_shader`,
+//! `create_compute_pipeline`, `write_buffer`, `CommandBuffer::submit`,
+//! ...) stay plain synchronous functions: they're local
+//! validation-and-enqueue work with bounded, effectively-instant cost —
+//! the same reason `Vec::push` isn't `async` — so making them `async`
+//! would add executor overhead for no benefit, not more correctness.
+//! [`Device::read_buffer`] still has to manually pump `wgpu::Device::poll`
+//! to drive its `map_async` callback (`wgpu` has no built-in reactor
+//! integration), which is itself a blocking call — done via
+//! `tokio::task::spawn_blocking` so it can't stall the async runtime's
+//! worker threads while it waits.
 //!
 //! [`Pipeline`] is compute-only so far: a render pipeline needs a vertex
 //! layout and color-target formats, which need either a real swapchain
@@ -20,8 +34,6 @@
 //! `Shader`) is fully real and exercised end-to-end by this module's own
 //! tests: write a buffer, run a compute shader over it, read the result
 //! back.
-
-use std::sync::mpsc;
 
 use meridian_platform_core::{BackendCapabilities, CpuCapabilities, GpuCapabilities};
 
@@ -62,14 +74,11 @@ impl Device {
     /// every backend `wgpu` supports on this platform enabled, the
     /// adapter it picks (`compatible_surface: None` — this is the
     /// headless path, see the module doc), then the logical device off
-    /// that adapter. Blocking, via [`pollster::block_on`] — see the
-    /// module doc for why that's the deliberate bridge point rather than
-    /// this crate's API being `async`.
-    pub fn new() -> Result<Self, DeviceError> {
-        pollster::block_on(Self::new_async())
-    }
-
-    async fn new_async() -> Result<Self, DeviceError> {
+    /// that adapter. A real `async fn` — adapter/device acquisition is an
+    /// OS/driver handshake with genuinely unbounded latency, exactly the
+    /// kind of operation this workspace's `tokio`-based engine keeps
+    /// `async` rather than blocking a worker thread on.
+    pub async fn new() -> Result<Self, DeviceError> {
         let instance =
             wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle_from_env());
         let adapter = instance
@@ -128,12 +137,22 @@ impl Device {
         self.queue.write_buffer(&buffer.raw, 0, data);
     }
 
-    /// Reads `buffer`'s entire contents back to the CPU. Blocking: copies
-    /// into a `MAP_READ`-capable staging buffer (most `buffer` usages,
-    /// e.g. `STORAGE`, aren't directly mappable on discrete GPUs), submits
-    /// that copy, then waits on the map — the standard `wgpu` readback
-    /// pattern, not a `Buffer`-type-specific hack.
-    pub fn read_buffer(&self, buffer: &Buffer) -> Vec<u8> {
+    /// Reads `buffer`'s entire contents back to the CPU. A real `async
+    /// fn`: waiting for in-flight GPU work to finish (the copy below, and
+    /// whatever else was already queued ahead of it) has genuinely
+    /// unbounded latency, the same class of operation as
+    /// [`Device::new`] — not local, bounded-cost work like
+    /// `create_buffer`/`write_buffer`. Copies into a `MAP_READ`-capable
+    /// staging buffer first (most `buffer` usages, e.g. `STORAGE`, aren't
+    /// directly mappable on discrete GPUs) — the standard `wgpu` readback
+    /// pattern, not a `Buffer`-type-specific hack. `wgpu` has no reactor
+    /// of its own to drive `map_async`'s completion callback — something
+    /// has to call `wgpu::Device::poll`, which itself blocks the calling
+    /// thread until the GPU catches up — so that poll runs inside
+    /// [`tokio::task::spawn_blocking`] rather than on this `async fn`'s
+    /// own task, so it can't stall other work sharing the runtime's
+    /// worker threads while it waits.
+    pub async fn read_buffer(&self, buffer: &Buffer) -> Vec<u8> {
         let staging = self.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("meridian-graphics-driver readback staging buffer"),
             size: buffer.byte_len as u64,
@@ -148,14 +167,17 @@ impl Device {
         self.queue.submit(Some(encoder.finish()));
 
         let slice = staging.slice(..);
-        let (tx, rx) = mpsc::channel();
+        let (tx, rx) = tokio::sync::oneshot::channel();
         slice.map_async(wgpu::MapMode::Read, move |result| {
             let _ = tx.send(result);
         });
-        self.device
-            .poll(wgpu::PollType::wait_indefinitely())
+
+        let device = self.device.clone();
+        tokio::task::spawn_blocking(move || device.poll(wgpu::PollType::wait_indefinitely()))
+            .await
+            .expect("device poll task panicked")
             .expect("device poll failed");
-        rx.recv()
+        rx.await
             .expect("map_async callback dropped without a response")
             .expect("failed to map staging buffer for readback");
 
@@ -365,8 +387,8 @@ mod tests {
     /// installed). Skip rather than fail in that case — this validates
     /// the driver's own plumbing, not that a GPU is present, and a
     /// missing GPU isn't this crate's bug.
-    fn device_or_skip() -> Option<Device> {
-        match Device::new() {
+    async fn device_or_skip() -> Option<Device> {
+        match Device::new().await {
             Ok(device) => Some(device),
             Err(err) => {
                 eprintln!("skipping: no GPU device available ({err})");
@@ -375,17 +397,17 @@ mod tests {
         }
     }
 
-    #[test]
-    fn device_reports_a_nonempty_adapter_name() {
-        let Some(device) = device_or_skip() else {
+    #[tokio::test]
+    async fn device_reports_a_nonempty_adapter_name() {
+        let Some(device) = device_or_skip().await else {
             return;
         };
         assert!(!device.adapter_name().is_empty());
     }
 
-    #[test]
-    fn device_reports_gpu_capabilities_matching_adapter_name() {
-        let Some(device) = device_or_skip() else {
+    #[tokio::test]
+    async fn device_reports_gpu_capabilities_matching_adapter_name() {
+        let Some(device) = device_or_skip().await else {
             return;
         };
         let gpu = device
@@ -395,21 +417,21 @@ mod tests {
         assert!(device.gpu_available());
     }
 
-    #[test]
-    fn buffer_write_then_read_round_trips() {
-        let Some(device) = device_or_skip() else {
+    #[tokio::test]
+    async fn buffer_write_then_read_round_trips() {
+        let Some(device) = device_or_skip().await else {
             return;
         };
         let data: [u8; 8] = [1, 2, 3, 4, 5, 6, 7, 8];
         let buffer = device.create_buffer(data.len(), BufferUsage::Storage);
         device.write_buffer(&buffer, &data);
-        let read_back = device.read_buffer(&buffer);
+        let read_back = device.read_buffer(&buffer).await;
         assert_eq!(read_back, data);
     }
 
-    #[test]
-    fn texture_reports_requested_dimensions() {
-        let Some(device) = device_or_skip() else {
+    #[tokio::test]
+    async fn texture_reports_requested_dimensions() {
+        let Some(device) = device_or_skip().await else {
             return;
         };
         let texture = device.create_texture(64, 32);
@@ -421,9 +443,9 @@ mod tests {
     /// data to a buffer, run a real compute shader over it on the GPU,
     /// read the result back, and check it matches what the shader says
     /// it does — not just "didn't panic".
-    #[test]
-    fn compute_dispatch_doubles_every_element() {
-        let Some(device) = device_or_skip() else {
+    #[tokio::test]
+    async fn compute_dispatch_doubles_every_element() {
+        let Some(device) = device_or_skip().await else {
             return;
         };
 
@@ -450,7 +472,7 @@ mod tests {
         commands.dispatch_compute(&pipeline, &buffer, 1);
         commands.submit();
 
-        let result_bytes = device.read_buffer(&buffer);
+        let result_bytes = device.read_buffer(&buffer).await;
         let result: Vec<u32> = result_bytes
             .chunks_exact(4)
             .map(|c| u32::from_le_bytes(c.try_into().unwrap()))

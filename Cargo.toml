@@ -35,10 +35,16 @@ meridian-engine-core = { path = "crates/meridian-engine-core", version = "0.15" 
 
 # External dependencies shared by more than one crate go here too, same
 # reasoning: one place to bump a version instead of drifting per-crate
-# copies. `wgpu`/`pollster` are `graphics-driver`'s GPU backend — see
-# docs/roadmap.md's "Not yet decided" wgpu entry.
+# copies. `wgpu` is `graphics-driver`'s GPU backend — see docs/roadmap.md's
+# "Not yet decided" wgpu entry. `tokio` is this workspace's async runtime:
+# used wherever a crate has a genuine I/O operation (unbounded/externally-
+# determined completion time — an OS/driver handshake, waiting on
+# in-flight GPU work, eventually file/network I/O), not layered onto
+# bounded-cost local work (allocation, validation, recording) that would
+# gain nothing from being `async` — see `meridian-graphics-driver`'s
+# module doc for the concrete first case (`Device::new`/`read_buffer`).
 wgpu = "30.0.0"
-pollster = "1.0.1"
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros", "sync"] }
 
 [profile.release]
 lto = true

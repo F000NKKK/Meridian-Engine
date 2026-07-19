@@ -9,5 +9,5 @@ description = "Low-level GPU abstraction (device, command queues, buffers, textu
 
 [dependencies]
 meridian-platform-core = { workspace = true }
-pollster = { workspace = true }
+tokio = { workspace = true }
 wgpu = { workspace = true }
