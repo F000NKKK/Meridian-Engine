@@ -183,6 +183,24 @@ priority before writing implementations is keeping that document and the
   decision (below) and keep their own hand-written-FFI answer; GPU is the
   one deliberate exception to zero-deps, not a reversal of the policy in
   general.
+- **`meridian-audio-effects` (heavier DSP effects as a separate crate)** —
+  decided: not yet, and only split it out when a concrete effect actually
+  needs an external dependency. `meridian-audio-core` already owns basic,
+  zero-dependency DSP (`DspNode`/`DspGraph`, `Gain`, `LowPassFilter`) and
+  should keep owning simple effects that need nothing beyond
+  `numeric-core`/`gac-core` — there's no architectural reason to move those
+  out. The trigger for a separate crate is the same class of decision as
+  `wgpu` below: something like a real convolution reverb, multiband EQ, or
+  resampling needs an FFT crate (e.g. `rustfft`), and pulling that into
+  `audio-core` would force every consumer of basic spatial audio (including
+  `engine-core` and every example) to compile it too. When that concrete
+  need exists, `meridian-audio-effects` depends on `meridian-audio-core`
+  only (implements its `DspNode` trait, one edge, no new adapter pattern —
+  unlike `gac-compute` this isn't avoiding a forbidden edge, just isolating
+  an optional heavy dependency) and ships the heavy effects there, keeping
+  `audio-core`'s own dependency footprint minimal. Creating the crate before
+  that concrete need exists would be exactly the speculative split
+  `roadmap.md` already rejects elsewhere (see "Explicitly out of scope").
 - **`meridian-platform-core`'s `Window` and `DynamicLibrary`** — decided:
   hand-written unsafe FFI (`dlopen`/`LoadLibrary` for `DynamicLibrary`,
   per-platform window creation for `Window`), not an external crate —
