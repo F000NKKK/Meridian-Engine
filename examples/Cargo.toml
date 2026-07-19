@@ -17,8 +17,10 @@ meridian-task-core = { workspace = true }
 meridian-platform-core = { workspace = true }
 meridian-audio-core = { workspace = true }
 meridian-graphics-core = { workspace = true }
+meridian-graphics-driver = { workspace = true }
 meridian-physics-core = { workspace = true }
 meridian-numeric-core = { workspace = true }
+tokio = { workspace = true }
 
 [[example]]
 name = "hello_engine"
@@ -47,3 +49,7 @@ path = "examples/runtime_loop.rs"
 [[example]]
 name = "determinism_validation"
 path = "examples/determinism_validation.rs"
+
+[[example]]
+name = "spinning_cube"
+path = "examples/spinning_cube.rs"
