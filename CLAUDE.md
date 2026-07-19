@@ -149,3 +149,51 @@ Run changed examples through `./build.sh run <example>`.
 Keep changes coherent. If code and docs both need updates, commit them together.
 Use commit messages that name the affected boundary or subsystem. Do not leave
 workspace status dirty unless explicitly asked.
+
+## Float/Fixed branching: always 3 files
+
+Whenever a crate's code branches for a float (`f32`/`Scalar`) flavor and a
+`Fixed` (deterministic) flavor, split it into exactly three files:
+`lib.rs` (shared/generic logic, or module wiring + re-exports), `float.rs`
+(or a domain-suffixed name like `float_ga.rs` for an existing convention),
+`fixed.rs`/`fixed_ga.rs`. Never leave float-flavored code loose in `lib.rs`
+next to a separate `fixed`/`deterministic.rs` module — the split must be
+symmetric on both sides. See `meridian-numeric-core` (`lib.rs`/`float.rs`/
+`fixed.rs`) and `meridian-gac-core` (`lib.rs`/`float_ga.rs`/`fixed_ga.rs`)
+for the pattern.
+
+**Default to generic (or thin wrappers over one generic implementation),
+not disclosed duplication.** Full duplication (writing the float and fixed
+versions of a type/algorithm twice, even if "disclosed" with matching doc
+comments) is justified *only* when a genuine external constraint makes
+genericity impossible or unsafe — the one known case in this workspace is
+`gac-core::Motor3`/`Vec3`/`Bivector3`/`Rotor`: `meridian-gac-compute`
+dispatches them to GPU, GPUs have no real `i64` support and are
+`f32`-native, so a GPU-dispatchable type has to stay concretely `f32`
+regardless of how the CPU-side type is parameterized (see
+[ADR 008](docs/adr/008-fixed-point-determinism.md)). Absent a constraint
+like that, write the algorithm/type once, generic over a trait describing
+what it needs from "a GA flavor" (see `meridian_gac_core::GaFlavor` and
+its component traits), and make `float.rs`/`fixed.rs` thin — type aliases
+and flavor-marker impls, not a second copy of the logic. Before
+duplicating float/fixed code, check whether the thing being duplicated
+actually has a GPU-dispatch (or similarly hard) constraint forcing it;
+if not, genericize instead. `physics-core`'s `Integrator`/
+`ConstraintSolver`/`BroadPhase`/`NarrowPhase`/`RigidBody` and
+`gac-core`'s `Aabb`/`Sphere`/`Obb`/`Cone`/`Plane`/`ConvexVolume`/`Shape`
+are generic over `GaFlavor` for exactly this reason — none of them are
+GPU-dispatched.
+
+## Do not drag another crate's logic into your own
+
+If a piece of logic conceptually belongs to another crate (geometry
+belongs to `gac-core`, not to whichever crate needed it first; dispatch
+mechanics belong to `compute-runtime`, not to a domain crate), depend on
+that crate and reuse its implementation — do not hand-roll a local copy
+inside the crate that merely *consumes* it. This applies even under time
+pressure or when the "local copy" looks small: `physics-core` reinventing
+sphere-overlap math or bounding-box structs instead of using
+`gac-core::Aabb`/`Shape` is the concrete case this rule was written after
+catching. When in doubt about which crate owns a piece of logic, check
+[dependency-rules.md](docs/dependency-rules.md) and the crate's own
+top-of-file doc comment before writing new code, not after.
