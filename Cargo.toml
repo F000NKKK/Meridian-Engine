@@ -20,18 +20,18 @@ meridian-memory-core = { path = "crates/meridian-memory-core", version = "0.4" }
 meridian-resource-core = { path = "crates/meridian-resource-core", version = "0.4" }
 meridian-task-core = { path = "crates/meridian-task-core", version = "0.3" }
 meridian-platform-core = { path = "crates/meridian-platform-core", version = "0.5" }
-meridian-compute-driver = { path = "crates/meridian-compute-driver", version = "0.4" }
-meridian-compute-runtime = { path = "crates/meridian-compute-runtime", version = "0.5" }
-meridian-gac-compute = { path = "crates/meridian-gac-compute", version = "0.5" }
+meridian-compute-driver = { path = "crates/meridian-compute-driver", version = "0.5" }
+meridian-compute-runtime = { path = "crates/meridian-compute-runtime", version = "0.6" }
+meridian-gac-compute = { path = "crates/meridian-gac-compute", version = "0.6" }
 meridian-asset-core = { path = "crates/meridian-asset-core", version = "0.4" }
 meridian-ecs-core = { path = "crates/meridian-ecs-core", version = "0.5" }
 meridian-graphics-driver = { path = "crates/meridian-graphics-driver", version = "0.3" }
 meridian-audio-driver = { path = "crates/meridian-audio-driver", version = "0.4" }
-meridian-graphics-core = { path = "crates/meridian-graphics-core", version = "0.6" }
+meridian-graphics-core = { path = "crates/meridian-graphics-core", version = "0.7" }
 meridian-physics-driver = { path = "crates/meridian-physics-driver", version = "0.3" }
-meridian-physics-core = { path = "crates/meridian-physics-core", version = "0.7" }
+meridian-physics-core = { path = "crates/meridian-physics-core", version = "0.8" }
 meridian-audio-core = { path = "crates/meridian-audio-core", version = "0.4" }
-meridian-engine-core = { path = "crates/meridian-engine-core", version = "0.6" }
+meridian-engine-core = { path = "crates/meridian-engine-core", version = "0.7" }
 
 [profile.release]
 lto = true
