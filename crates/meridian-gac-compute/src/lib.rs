@@ -14,17 +14,17 @@
 
 //! [`FixedMotorTransformKernel`]/[`FixedMotorComposeKernel`] are the same
 //! two kernels built on `gac-core::fixed_ga::FixedMotor3` instead —
-//! deterministic, for `physics-core::deterministic`-style consumers that
-//! need a batch path too. **CPU dispatch only, deliberately**: GPUs are
-//! `f32`-native with no real `i64` support (`Fixed`'s multiply/divide need
-//! one), and GPU execution order has its own nondeterminism independent of
-//! the arithmetic type, so a GPU backend wouldn't preserve the
-//! determinism guarantee even if it could run `Fixed` math — see
-//! docs/adr/008-fixed-point-determinism.md. `compute-runtime` has no GPU
-//! backend implemented yet (see docs/roadmap.md), so this restriction
-//! isn't enforced by a type/API distinction today; it's a documented
-//! constraint on which `compute-driver` backend a caller may configure
-//! once one exists, not a limitation of these kernels' own code.
+//! deterministic, for `physics-core::fixed`-style consumers that need a
+//! batch path too. CPU vs. GPU dispatch is a *setting* a caller picks,
+//! not a type-level restriction this crate imposes (see
+//! `gac-core`'s crate-root doc comment): `compute-runtime` has no GPU
+//! backend implemented yet (see docs/roadmap.md), so both kernels here
+//! only exercise the CPU dispatch path today. A future GPU backend could
+//! in principle run `Fixed` kernels too, at the cost of `i64` emulation
+//! and losing the bit-exact determinism guarantee to GPU execution-order
+//! nondeterminism (see docs/adr/008-fixed-point-determinism.md) — a
+//! tradeoff for that caller to accept knowingly when it configures a GPU
+//! `compute-driver` backend, not something forbidden by these kernels.
 
 use std::sync::Mutex;
 
