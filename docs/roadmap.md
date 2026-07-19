@@ -113,6 +113,25 @@ center comes from `RigidBody::frame` — see docs/physics-design.md) since
 there's only one collider shape to test against itself today; that's the
 natural point to revisit once a second collider shape exists.
 
+Step 9 (`meridian-engine-core`) is real: `SubsystemManager` owns real
+`ecs-core`/`physics-core`/`audio-core` instances (the one place in the
+workspace allowed to know about every `*-core` at once, per
+dependency-rules.md rule 7), `EventSystem` is a type-erased pub/sub
+mailbox (`publish`/`drain`, frame-scoped — not a persistent log) that's
+the actual mechanism rule 7 exists to enable (subsystems communicating
+without depending on each other), and `Runtime::tick` advances physics
+then recomputes audio from the physics-updated emitter frames, publishing
+a `FrameCompleted` event each frame (`cargo test -p meridian-engine-core`;
+human-readable version via `./build.sh run runtime_loop`).
+`FrameScheduler` (task-core's `Scheduler` at the engine layer) is real and
+tested but not used by `Runtime::tick` itself — physics and audio are
+sequentially data-dependent today, not independent branches, so running
+them through a job graph would be decorative; see
+docs/threading-model.md's `FrameScheduler` section for why, and what makes
+it load-bearing later. `graphics-core` isn't wired into `Runtime::tick`
+either — rendering has nothing to submit to without a real
+`graphics-driver` backend.
+
 Every other crate is still a scaffold: correct name, correct dependency
 edges, a one-line doc comment, no implementation. This staged order is
 intentional — see "Why implementation is deliberately last" below.
@@ -178,8 +197,11 @@ priority before writing implementations is keeping that document and the
    GA/`Vec3` terms throughout. Scene extraction, lighting, materials, and
    post-processing are the parts of `graphics-core` still blocked on a
    concrete GPU resource existing (`graphics-driver`/`wgpu`).
-9. `meridian-engine-core` — wires everything into the main loop last, once
-   there's something real to schedule.
+9. `meridian-engine-core` — **done** for the driver-independent
+   subsystems: `Runtime`/`SubsystemManager`/`EventSystem` wire
+   `ecs-core`/`physics-core`/`audio-core` into a real per-frame loop (see
+   "Current state" above). `graphics-core` joins once `graphics-driver`
+   has a real backend to submit to.
 
 ## Explicitly out of scope for now
 
