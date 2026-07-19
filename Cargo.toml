@@ -17,7 +17,7 @@ meridian-foundation = { path = "crates/meridian-foundation", version = "0.3" }
 meridian-numeric-core = { path = "crates/meridian-numeric-core", version = "0.3" }
 meridian-gac-core = { path = "crates/meridian-gac-core", version = "0.3" }
 meridian-memory-core = { path = "crates/meridian-memory-core", version = "0.4" }
-meridian-resource-core = { path = "crates/meridian-resource-core", version = "0.3" }
+meridian-resource-core = { path = "crates/meridian-resource-core", version = "0.4" }
 meridian-task-core = { path = "crates/meridian-task-core", version = "0.3" }
 meridian-platform-core = { path = "crates/meridian-platform-core", version = "0.5" }
 meridian-compute-driver = { path = "crates/meridian-compute-driver", version = "0.4" }
