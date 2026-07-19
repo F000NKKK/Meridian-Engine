@@ -16,6 +16,7 @@ Commands:
   build [crate]         Compile the workspace, or a single crate (-p <crate>)
   test [crate]          Run tests (cargo test), or a single crate
   check                 cargo check --workspace
+  check-deps            Verify the crate graph matches docs/dependency-rules.md
   clippy                cargo clippy --workspace --all-targets
   fmt                   cargo fmt --all
   run <example> [-- args...]
@@ -60,6 +61,10 @@ cmd_test() {
 
 cmd_check() {
     cargo check --manifest-path "$ROOT/Cargo.toml" --workspace
+}
+
+cmd_check_deps() {
+    python3 "$ROOT/scripts/check_dependency_rules.py"
 }
 
 cmd_clippy() {
@@ -109,6 +114,7 @@ case "$cmd" in
     build)          cmd_build "${args[@]:-}" ;;
     test)           cmd_test "${args[@]:-}" ;;
     check)          cmd_check ;;
+    check-deps)     cmd_check_deps ;;
     clippy)         cmd_clippy ;;
     fmt)            cmd_fmt ;;
     run)            cmd_run "${args[@]}" ;;
