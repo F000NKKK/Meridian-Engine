@@ -5,10 +5,15 @@
 `graphics-driver` is the hardware abstraction — the engine's equivalent of a
 thin Vulkan/DX12/Metal wrapper: devices, command queues, buffers, textures,
 shaders, pipelines, synchronization. It has no concept of a scene, a
-material, or a camera. Later, concrete backends (`vulkan-driver`,
-`dx12-driver`, `metal-driver`) plug in underneath it without
+material, or a camera. In other engines this role is sometimes called an
+RHI (Render Hardware Interface); `graphics-driver` *is* that layer under a
+different name — not a separate crate to add later. Concrete backends
+(`vulkan-driver`, `dx12-driver`, `metal-driver`) are expected to become
+their own crates implementing `graphics-driver`'s abstraction, without
 `graphics-core` ever changing — see
-[ADR 005](adr/005-driver-core-separation.md).
+[ADR 005](adr/005-driver-core-separation.md). No backend crate exists yet;
+adding one is out of scope until there's a concrete backend to build (see
+[roadmap.md](roadmap.md)).
 
 `graphics-core` is everything that *does* know about scenes:
 
