@@ -1,6 +1,6 @@
 [package]
 name = "meridian-gac-compute"
-version = "0.9.0"
+version = "0.10.0"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
@@ -10,3 +10,9 @@ description = "Batch execution kernels for GAC transforms (Motor3) on CPU-SIMD /
 [dependencies]
 meridian-gac-core = { workspace = true }
 meridian-compute-runtime = { workspace = true }
+
+[dev-dependencies]
+# Test-only: constructs Fixed values for FixedMotor3 test fixtures. Not a
+# real dependency edge — see scripts/check_dependency_rules.py's
+# [dependencies]-only scan.
+meridian-numeric-core = { workspace = true }
