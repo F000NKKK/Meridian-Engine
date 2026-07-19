@@ -1,32 +1,33 @@
 //! Low-level compute dispatch abstraction (CPU SIMD backends, GPU compute queues/buffers). Knows nothing about physics, animation or rendering.
 //!
-//! Only a CPU backend exists so far — no GPU backend, since that needs
-//! either an external crate (wgpu/vulkan bindings) or hand-written unsafe
-//! FFI neither of which the workspace has taken on yet (see
-//! docs/roadmap.md, same call as `platform-core`'s `Window`). The CPU
-//! backend is real, not a stub: [`ComputeDevice::dispatch_parallel`] runs
-//! work across real OS threads via `std::thread::scope`, safe, no
-//! `unsafe`.
+//! Only a CPU backend exists so far — no GPU backend yet. Planned: `wgpu`
+//! (Vulkan/DX12/Metal in one safe API) rather than hand-written
+//! multi-backend FFI, once `graphics-driver` needs it — see
+//! docs/roadmap.md. The CPU backend is real, not a stub:
+//! [`ComputeDevice::dispatch_parallel`] runs work across real OS threads
+//! via `std::thread::scope`, safe, no `unsafe`.
 
-use meridian_platform_core::{BackendCapabilities, DeviceCapabilities};
+use meridian_platform_core::{BackendCapabilities, CpuCapabilities, GpuCapabilities};
 
-/// Backend capability flags. Embeds `platform-core`'s [`DeviceCapabilities`]
-/// (the fields shared with `physics-driver::PhysicsBackend` and future
+/// Backend capability flags. Embeds `platform-core`'s [`CpuCapabilities`]
+/// (the shape shared with `physics-driver::PhysicsBackend` and future
 /// `graphics-driver`/`audio-driver` equivalents) rather than redeclaring
-/// `gpu`/`cpu_threads`; add compute-specific fields (SIMD width, ...)
-/// alongside `cpu`, not by duplicating it.
+/// `threads`; `gpu` is `None` until a real GPU backend exists — see the
+/// module doc — at which point it becomes `Some(GpuCapabilities { .. })`
+/// with real detected fields, no restructuring needed here.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct ComputeCapabilities {
-    pub cpu: DeviceCapabilities,
+    pub cpu: CpuCapabilities,
+    pub gpu: Option<GpuCapabilities>,
 }
 
 impl BackendCapabilities for ComputeCapabilities {
-    fn gpu_available(&self) -> bool {
-        self.cpu.gpu_available()
+    fn cpu(&self) -> CpuCapabilities {
+        self.cpu
     }
 
-    fn cpu_threads(&self) -> usize {
-        self.cpu.cpu_threads()
+    fn gpu(&self) -> Option<GpuCapabilities> {
+        self.gpu
     }
 }
 
@@ -81,11 +82,7 @@ impl Default for ComputeDevice {
 
 impl ComputeDevice {
     pub fn new() -> Self {
-        Self {
-            capabilities: ComputeCapabilities {
-                cpu: DeviceCapabilities::detect(),
-            },
-        }
+        Self { capabilities: ComputeCapabilities { cpu: CpuCapabilities::detect(), gpu: None } }
     }
 
     pub fn capabilities(&self) -> ComputeCapabilities {
@@ -107,7 +104,7 @@ impl ComputeDevice {
         if count == 0 {
             return;
         }
-        let threads = self.capabilities.cpu.cpu_threads.max(1).min(count);
+        let threads = self.capabilities.cpu.threads.max(1).min(count);
         let chunk = count.div_ceil(threads);
         let work = &work;
         std::thread::scope(|scope| {
@@ -137,8 +134,8 @@ mod tests {
     fn capabilities_report_at_least_one_cpu_thread_and_no_gpu() {
         let device = ComputeDevice::new();
         let caps = device.capabilities();
-        assert!(caps.cpu.cpu_threads >= 1);
-        assert!(!caps.cpu.gpu_available);
+        assert!(caps.cpu.threads >= 1);
+        assert!(caps.gpu.is_none());
     }
 
     #[test]

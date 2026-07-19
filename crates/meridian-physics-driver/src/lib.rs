@@ -1,28 +1,27 @@
 //! Execution backend for physics: memory backend, SIMD/GPU dispatch and synchronization. Owns no collision algorithms, BVH, or broad-phase structures — those belong to physics-core.
 //!
-//! No GPU backend yet — same call as `compute-driver`/`platform-core`'s
-//! `Window`: needs an external crate or unsafe FFI, not taken on
-//! speculatively. `PhysicsBackend` reports real CPU capability via
-//! `platform-core::detect_cpu_threads` so `physics-core` can decide
-//! batch-size cutoffs the same way `compute-runtime` does.
+//! No GPU backend yet. Planned: `wgpu`, once `graphics-driver` needs it —
+//! see docs/roadmap.md. `PhysicsBackend` reports real CPU capability so
+//! `physics-core` can decide batch-size cutoffs the same way
+//! `compute-runtime` does.
 
-use meridian_platform_core::{BackendCapabilities, DeviceCapabilities};
+use meridian_platform_core::{BackendCapabilities, CpuCapabilities, GpuCapabilities};
 
 /// Selects/reports the execution backend for a physics step. Embeds
-/// `platform-core`'s [`DeviceCapabilities`] (the fields shared with
+/// `platform-core`'s [`CpuCapabilities`] (the shape shared with
 /// `compute-driver::ComputeCapabilities` and future `graphics-driver`/
-/// `audio-driver` equivalents) rather than redeclaring `gpu`/
-/// `cpu_threads`; add physics-specific fields alongside `cpu`, not by
-/// duplicating it.
+/// `audio-driver` equivalents) rather than redeclaring `threads`; `gpu`
+/// is `None` until a real GPU backend exists.
 #[derive(Debug, Clone, Copy)]
 pub struct PhysicsBackend {
-    pub cpu: DeviceCapabilities,
+    pub cpu: CpuCapabilities,
+    pub gpu: Option<GpuCapabilities>,
 }
 
 impl Default for PhysicsBackend {
-    /// Real detection via [`DeviceCapabilities::detect`], not zeroed
+    /// Real detection via [`CpuCapabilities::detect`], not zeroed
     /// placeholder data — deriving `Default` here would silently give
-    /// `cpu_threads: 0` instead.
+    /// `threads: 0` instead.
     fn default() -> Self {
         Self::new()
     }
@@ -30,19 +29,17 @@ impl Default for PhysicsBackend {
 
 impl PhysicsBackend {
     pub fn new() -> Self {
-        Self {
-            cpu: DeviceCapabilities::detect(),
-        }
+        Self { cpu: CpuCapabilities::detect(), gpu: None }
     }
 }
 
 impl BackendCapabilities for PhysicsBackend {
-    fn gpu_available(&self) -> bool {
-        self.cpu.gpu_available()
+    fn cpu(&self) -> CpuCapabilities {
+        self.cpu
     }
 
-    fn cpu_threads(&self) -> usize {
-        self.cpu.cpu_threads()
+    fn gpu(&self) -> Option<GpuCapabilities> {
+        self.gpu
     }
 }
 
@@ -84,8 +81,8 @@ mod tests {
     #[test]
     fn backend_reports_no_gpu_and_at_least_one_thread() {
         let backend = PhysicsBackend::new();
-        assert!(!backend.cpu.gpu_available);
-        assert!(backend.cpu.cpu_threads >= 1);
+        assert!(backend.gpu.is_none());
+        assert!(backend.cpu.threads >= 1);
     }
 
     #[test]

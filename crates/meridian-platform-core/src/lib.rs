@@ -15,53 +15,56 @@ use std::time::Instant;
 /// Backend capability reporting shared by every `*-driver` crate's own
 /// capability type (`compute-driver::ComputeCapabilities`,
 /// `physics-driver::PhysicsBackend`, and future `graphics-driver`/
-/// `audio-driver` equivalents): whether a GPU backend is available, and
-/// how many CPU worker threads a parallel dispatch can use.
+/// `audio-driver` equivalents). CPU and GPU are deliberately separate
+/// capability shapes, not one bag of fields with a `gpu: bool` flag: CPU
+/// capability is "how many threads" (a number, always present); GPU
+/// capability is a completely different shape (device name, VRAM,
+/// workgroup limits, ...) that either doesn't exist yet (no backend) or
+/// exists with real detected fields (once one does) — `Option<GpuCapabilities>`
+/// models that directly instead of a bool that would need a parallel
+/// struct bolted on later. When a real GPU backend lands (planned:
+/// `wgpu`, not hand-written FFI, unlike `Window`/`DynamicLibrary` — see
+/// docs/roadmap.md), it fills in [`GpuCapabilities`]'s fields; no
+/// restructuring of this trait or [`CpuCapabilities`] is needed.
 pub trait BackendCapabilities {
-    fn gpu_available(&self) -> bool;
-    fn cpu_threads(&self) -> usize;
-}
+    fn cpu(&self) -> CpuCapabilities;
+    fn gpu(&self) -> Option<GpuCapabilities>;
 
-/// The shared fields themselves. Rust has no struct inheritance, so each
-/// driver's capability type embeds this (`pub cpu: DeviceCapabilities`)
-/// instead of redeclaring `gpu_available`/`cpu_threads` itself, and adds
-/// its own domain-specific fields (SIMD width, audio latency, ...)
-/// alongside it, not by duplicating these two.
-#[derive(Debug, Clone, Copy, Default)]
-pub struct DeviceCapabilities {
-    pub gpu_available: bool,
-    pub cpu_threads: usize,
-}
-
-impl DeviceCapabilities {
-    /// No GPU backend exists anywhere in the workspace yet (see
-    /// `compute-driver`'s module doc), so `gpu_available` is always
-    /// `false` here — real detection lands once a first GPU backend does.
-    pub fn detect() -> Self {
-        Self {
-            gpu_available: false,
-            cpu_threads: detect_cpu_threads(),
-        }
-    }
-}
-
-impl BackendCapabilities for DeviceCapabilities {
     fn gpu_available(&self) -> bool {
-        self.gpu_available
-    }
-
-    fn cpu_threads(&self) -> usize {
-        self.cpu_threads
+        self.gpu().is_some()
     }
 }
+
+/// CPU-side capability info every `*-driver` backend reports. Each
+/// driver's own capability type embeds this (`pub cpu: CpuCapabilities`)
+/// instead of redeclaring `threads` itself, and adds its own
+/// domain-specific fields (SIMD width, audio latency, ...) alongside it.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct CpuCapabilities {
+    pub threads: usize,
+}
+
+impl CpuCapabilities {
+    pub fn detect() -> Self {
+        Self { threads: detect_cpu_threads() }
+    }
+}
+
+/// GPU-side capability info. Empty for now — nothing in the workspace
+/// constructs a `Some(GpuCapabilities { .. })` anywhere yet, since no
+/// `*-driver` crate has a real GPU backend (see `compute-driver`'s module
+/// doc). Real fields (device name, VRAM, max workgroup size, ...) land
+/// here once a backend exists to report them; adding fields to this
+/// struct then is additive, not a redesign of the `Option`-based shape
+/// above it.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct GpuCapabilities {}
 
 /// Detects the current machine's CPU thread count. Called by
-/// [`DeviceCapabilities::detect`]; exposed directly too in case a caller
-/// needs the thread count without a full `DeviceCapabilities`.
+/// [`CpuCapabilities::detect`]; exposed directly too in case a caller
+/// needs the thread count without a full `CpuCapabilities`.
 pub fn detect_cpu_threads() -> usize {
-    std::thread::available_parallelism()
-        .map(|n| n.get())
-        .unwrap_or(1)
+    std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1)
 }
 
 /// An OS window. Not yet implemented — see the module doc.
@@ -294,10 +297,9 @@ mod tests {
     }
 
     #[test]
-    fn cpu_capabilities_detect_reports_no_gpu_and_at_least_one_thread() {
-        let caps = DeviceCapabilities::detect();
-        assert!(!caps.gpu_available());
-        assert!(caps.cpu_threads() >= 1);
+    fn cpu_capabilities_detect_reports_at_least_one_thread() {
+        let caps = CpuCapabilities::detect();
+        assert!(caps.threads >= 1);
     }
 
     #[test]
