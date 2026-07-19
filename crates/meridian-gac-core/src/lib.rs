@@ -872,9 +872,15 @@ mod tests {
         assert!((right_edge[0] / right_edge[3] - 1.0).abs() < 1e-4);
 
         let at_near = project([0.0, 0.0, -near, 1.0]);
-        assert!((at_near[2] / at_near[3]).abs() < 1e-5, "near plane maps to depth 0");
+        assert!(
+            (at_near[2] / at_near[3]).abs() < 1e-5,
+            "near plane maps to depth 0"
+        );
         let at_far = project([0.0, 0.0, -far, 1.0]);
-        assert!((at_far[2] / at_far[3] - 1.0).abs() < 1e-5, "far plane maps to depth 1");
+        assert!(
+            (at_far[2] / at_far[3] - 1.0).abs() < 1e-5,
+            "far plane maps to depth 1"
+        );
     }
 
     #[test]

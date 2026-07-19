@@ -117,11 +117,11 @@ impl RenderGraph {
         let mut dependents: Vec<Vec<usize>> = (0..n).map(|_| Vec::new()).collect();
         for (i, pass) in self.passes.iter().enumerate() {
             for &resource in &pass.reads {
-                if let Some(&producer) = writer.get(&resource) {
-                    if producer != i {
-                        indegree[i] += 1;
-                        dependents[producer].push(i);
-                    }
+                if let Some(&producer) = writer.get(&resource)
+                    && producer != i
+                {
+                    indegree[i] += 1;
+                    dependents[producer].push(i);
                 }
             }
         }
@@ -221,7 +221,11 @@ impl Plane {
     fn normalize(self) -> Self {
         let len = self.normal.length();
         Plane {
-            normal: Vec3::new(self.normal.x / len, self.normal.y / len, self.normal.z / len),
+            normal: Vec3::new(
+                self.normal.x / len,
+                self.normal.y / len,
+                self.normal.z / len,
+            ),
             d: self.d / len,
         }
     }
@@ -283,9 +287,21 @@ impl Frustum {
     pub fn intersects_aabb(&self, aabb: Aabb) -> bool {
         for plane in &self.planes {
             let positive = Vec3::new(
-                if plane.normal.x >= 0.0 { aabb.max.x } else { aabb.min.x },
-                if plane.normal.y >= 0.0 { aabb.max.y } else { aabb.min.y },
-                if plane.normal.z >= 0.0 { aabb.max.z } else { aabb.min.z },
+                if plane.normal.x >= 0.0 {
+                    aabb.max.x
+                } else {
+                    aabb.min.x
+                },
+                if plane.normal.y >= 0.0 {
+                    aabb.max.y
+                } else {
+                    aabb.min.y
+                },
+                if plane.normal.z >= 0.0 {
+                    aabb.max.z
+                } else {
+                    aabb.min.z
+                },
             );
             if plane.distance(positive) < 0.0 {
                 return false;
@@ -455,8 +471,14 @@ mod tests {
         let order = graph.execution_order().unwrap();
         assert_eq!(order.len(), 3);
         let pos = |i: usize| order.iter().position(|&p| p == i).unwrap();
-        assert!(pos(shadow) < pos(lighting), "shadow must run before lighting");
-        assert!(pos(lighting) < pos(tonemap), "lighting must run before tonemap");
+        assert!(
+            pos(shadow) < pos(lighting),
+            "shadow must run before lighting"
+        );
+        assert!(
+            pos(lighting) < pos(tonemap),
+            "lighting must run before tonemap"
+        );
     }
 
     #[test]
@@ -510,6 +532,9 @@ mod tests {
         graph.add_pass(RenderPass::new("a").reading(b_res).writing(a_res));
         graph.add_pass(RenderPass::new("b").reading(a_res).writing(b_res));
 
-        assert_eq!(graph.execution_order().unwrap_err(), RenderGraphError::Cycle);
+        assert_eq!(
+            graph.execution_order().unwrap_err(),
+            RenderGraphError::Cycle
+        );
     }
 }
