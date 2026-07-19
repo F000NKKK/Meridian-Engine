@@ -16,8 +16,8 @@
 use core::ops::{Add, Div, Mul, Neg, Sub};
 
 /// A scalar type usable throughout the generic (non-GPU-dispatch-bound)
-/// half of this crate — implemented for [`crate::float_ga::Scalar`] (`f32`) and
-/// [`crate::fixed_ga::Fixed`]. Every method is a thin forward to that type's own
+/// half of this crate — implemented for [`meridian_numeric_core::Scalar`]
+/// (`f32`) and [`meridian_numeric_core::Fixed`]. Every method is a thin forward to that type's own
 /// inherent method (Rust resolves an inherent method over a
 /// same-named trait method, so `self.sqrt()` inside `impl ScalarLike for
 /// Scalar` calls `f32::sqrt`, not itself) — this trait exists to *name*
