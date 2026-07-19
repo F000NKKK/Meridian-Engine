@@ -64,7 +64,9 @@ pub enum DecodeError {
 impl core::fmt::Display for DecodeError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            DecodeError::TooShort { needed, got } => write!(f, "buffer too short: needed {needed} bytes, got {got}"),
+            DecodeError::TooShort { needed, got } => {
+                write!(f, "buffer too short: needed {needed} bytes, got {got}")
+            }
             DecodeError::BadMagic { expected } => write!(f, "bad magic bytes, expected {expected}"),
             DecodeError::Unsupported(what) => write!(f, "unsupported: {what}"),
             DecodeError::Malformed(what) => write!(f, "malformed: {what}"),
@@ -74,7 +76,10 @@ impl core::fmt::Display for DecodeError {
 
 fn need(bytes: &[u8], len: usize) -> Result<(), DecodeError> {
     if bytes.len() < len {
-        Err(DecodeError::TooShort { needed: len, got: bytes.len() })
+        Err(DecodeError::TooShort {
+            needed: len,
+            got: bytes.len(),
+        })
     } else {
         Ok(())
     }
@@ -85,11 +90,21 @@ fn u16_le(bytes: &[u8], offset: usize) -> u16 {
 }
 
 fn u32_le(bytes: &[u8], offset: usize) -> u32 {
-    u32::from_le_bytes([bytes[offset], bytes[offset + 1], bytes[offset + 2], bytes[offset + 3]])
+    u32::from_le_bytes([
+        bytes[offset],
+        bytes[offset + 1],
+        bytes[offset + 2],
+        bytes[offset + 3],
+    ])
 }
 
 fn i32_le(bytes: &[u8], offset: usize) -> i32 {
-    i32::from_le_bytes([bytes[offset], bytes[offset + 1], bytes[offset + 2], bytes[offset + 3]])
+    i32::from_le_bytes([
+        bytes[offset],
+        bytes[offset + 1],
+        bytes[offset + 2],
+        bytes[offset + 3],
+    ])
 }
 
 /// Decodes uncompressed 24-bit or 32-bit BMP (`BITMAPINFOHEADER`, `BI_RGB`
@@ -108,7 +123,9 @@ impl Decoder<ImageData> for BmpDecoder {
         let pixel_offset = u32_le(bytes, 10) as usize;
         let dib_header_size = u32_le(bytes, 14);
         if dib_header_size < 40 {
-            return Err(DecodeError::Unsupported("DIB header smaller than BITMAPINFOHEADER"));
+            return Err(DecodeError::Unsupported(
+                "DIB header smaller than BITMAPINFOHEADER",
+            ));
         }
         let width = i32_le(bytes, 18);
         let height_raw = i32_le(bytes, 22);
@@ -116,12 +133,18 @@ impl Decoder<ImageData> for BmpDecoder {
         let compression = u32_le(bytes, 30);
 
         if compression != 0 {
-            return Err(DecodeError::Unsupported("BMP compression other than BI_RGB"));
+            return Err(DecodeError::Unsupported(
+                "BMP compression other than BI_RGB",
+            ));
         }
         if width <= 0 {
             return Err(DecodeError::Malformed("non-positive width"));
         }
-        let (height, top_down) = if height_raw < 0 { (-height_raw, true) } else { (height_raw, false) };
+        let (height, top_down) = if height_raw < 0 {
+            (-height_raw, true)
+        } else {
+            (height_raw, false)
+        };
         if height <= 0 {
             return Err(DecodeError::Malformed("zero height"));
         }
@@ -132,7 +155,7 @@ impl Decoder<ImageData> for BmpDecoder {
             _ => return Err(DecodeError::Unsupported("BMP bit depth other than 24/32")),
         };
 
-        let row_stride = ((width as usize * src_bytes_per_pixel + 3) / 4) * 4; // rows padded to 4 bytes
+        let row_stride = (width as usize * src_bytes_per_pixel).div_ceil(4) * 4; // rows padded to 4 bytes
         need(bytes, pixel_offset + row_stride * height as usize)?;
 
         let mut pixels = vec![0u8; width as usize * height as usize * 4];
@@ -147,11 +170,19 @@ impl Decoder<ImageData> for BmpDecoder {
                 pixels[dst] = bytes[src + 2];
                 pixels[dst + 1] = bytes[src + 1];
                 pixels[dst + 2] = bytes[src];
-                pixels[dst + 3] = if src_bytes_per_pixel == 4 { bytes[src + 3] } else { 255 };
+                pixels[dst + 3] = if src_bytes_per_pixel == 4 {
+                    bytes[src + 3]
+                } else {
+                    255
+                };
             }
         }
 
-        Ok(ImageData { width, height, pixels })
+        Ok(ImageData {
+            width,
+            height,
+            pixels,
+        })
     }
 }
 
@@ -211,12 +242,21 @@ impl Decoder<AudioData> for WavDecoder {
             return Err(DecodeError::Unsupported("WAV bit depth other than 16"));
         }
         if data.len() % 2 != 0 {
-            return Err(DecodeError::Malformed("data chunk length not a multiple of sample size"));
+            return Err(DecodeError::Malformed(
+                "data chunk length not a multiple of sample size",
+            ));
         }
 
-        let samples = data.chunks_exact(2).map(|s| i16::from_le_bytes([s[0], s[1]])).collect();
+        let samples = data
+            .chunks_exact(2)
+            .map(|s| i16::from_le_bytes([s[0], s[1]]))
+            .collect();
 
-        Ok(AudioData { sample_rate, channels, samples })
+        Ok(AudioData {
+            sample_rate,
+            channels,
+            samples,
+        })
     }
 }
 
@@ -231,7 +271,8 @@ impl Decoder<MeshData> for ObjDecoder {
     type Error = DecodeError;
 
     fn decode(&self, bytes: &[u8]) -> Result<MeshData, DecodeError> {
-        let text = core::str::from_utf8(bytes).map_err(|_| DecodeError::Malformed("not valid UTF-8"))?;
+        let text =
+            core::str::from_utf8(bytes).map_err(|_| DecodeError::Malformed("not valid UTF-8"))?;
         let mut positions = Vec::new();
         let mut indices = Vec::new();
 
@@ -241,10 +282,16 @@ impl Decoder<MeshData> for ObjDecoder {
             match fields.next() {
                 Some("v") => {
                     let coords: Vec<f32> = fields
-                        .map(|f| f.parse::<f32>().map_err(|_| DecodeError::Malformed("non-numeric vertex coordinate")))
+                        .map(|f| {
+                            f.parse::<f32>().map_err(|_| {
+                                DecodeError::Malformed("non-numeric vertex coordinate")
+                            })
+                        })
                         .collect::<Result<_, _>>()?;
                     if coords.len() != 3 {
-                        return Err(DecodeError::Malformed("vertex line without exactly 3 coordinates"));
+                        return Err(DecodeError::Malformed(
+                            "vertex line without exactly 3 coordinates",
+                        ));
                     }
                     positions.push([coords[0], coords[1], coords[2]]);
                 }
@@ -282,7 +329,9 @@ impl Decoder<ShaderSource> for ShaderSourceDecoder {
     type Error = DecodeError;
 
     fn decode(&self, bytes: &[u8]) -> Result<ShaderSource, DecodeError> {
-        let source = core::str::from_utf8(bytes).map_err(|_| DecodeError::Malformed("not valid UTF-8"))?.to_string();
+        let source = core::str::from_utf8(bytes)
+            .map_err(|_| DecodeError::Malformed("not valid UTF-8"))?
+            .to_string();
         Ok(ShaderSource { source })
     }
 }
@@ -294,7 +343,7 @@ mod tests {
     /// Builds a minimal uncompressed 24-bit BMP: `width`x`height`, every
     /// pixel the given (r,g,b).
     fn make_bmp(width: u32, height: u32, rgb: (u8, u8, u8)) -> Vec<u8> {
-        let row_stride = ((width as usize * 3 + 3) / 4) * 4;
+        let row_stride = (width as usize * 3).div_ceil(4) * 4;
         let pixel_data_len = row_stride * height as usize;
         let file_size = 54 + pixel_data_len;
 
@@ -321,9 +370,7 @@ mod tests {
                 b.push(rgb.1); // G
                 b.push(rgb.0); // R
             }
-            for _ in 0..(row_stride - width as usize * 3) {
-                b.push(0); // row padding
-            }
+            b.extend(std::iter::repeat_n(0u8, row_stride - width as usize * 3)); // row padding
         }
         b
     }
@@ -356,20 +403,34 @@ mod tests {
         let image = BmpDecoder.decode(&b).unwrap();
         let top_row_pixel = &image.pixels[0..4];
         let bottom_row_pixel = &image.pixels[4..8];
-        assert_eq!(top_row_pixel, &[0, 0, 0, 255], "top row must come from the last row in the file");
-        assert_eq!(bottom_row_pixel, &[255, 0, 0, 255], "bottom row must come from the first row in the file");
+        assert_eq!(
+            top_row_pixel,
+            &[0, 0, 0, 255],
+            "top row must come from the last row in the file"
+        );
+        assert_eq!(
+            bottom_row_pixel,
+            &[255, 0, 0, 255],
+            "bottom row must come from the first row in the file"
+        );
     }
 
     #[test]
     fn bmp_rejects_bad_magic() {
         let mut bytes = make_bmp(1, 1, (0, 0, 0));
         bytes[0] = b'X';
-        assert_eq!(BmpDecoder.decode(&bytes), Err(DecodeError::BadMagic { expected: "BM" }));
+        assert_eq!(
+            BmpDecoder.decode(&bytes),
+            Err(DecodeError::BadMagic { expected: "BM" })
+        );
     }
 
     #[test]
     fn bmp_rejects_truncated_buffer() {
-        assert!(matches!(BmpDecoder.decode(&[0u8; 10]), Err(DecodeError::TooShort { .. })));
+        assert!(matches!(
+            BmpDecoder.decode(&[0u8; 10]),
+            Err(DecodeError::TooShort { .. })
+        ));
     }
 
     fn make_wav(sample_rate: u32, channels: u16, samples: &[i16]) -> Vec<u8> {
@@ -414,7 +475,10 @@ mod tests {
     fn wav_rejects_bad_magic() {
         let mut bytes = make_wav(44100, 1, &[0]);
         bytes[0] = b'X';
-        assert_eq!(WavDecoder.decode(&bytes), Err(DecodeError::BadMagic { expected: "RIFF" }));
+        assert_eq!(
+            WavDecoder.decode(&bytes),
+            Err(DecodeError::BadMagic { expected: "RIFF" })
+        );
     }
 
     #[test]
@@ -440,7 +504,10 @@ mod tests {
     fn obj_decodes_a_triangle() {
         let text = "# comment\nv 0.0 0.0 0.0\nv 1.0 0.0 0.0\nv 0.0 1.0 0.0\nf 1 2 3\n";
         let mesh = ObjDecoder.decode(text.as_bytes()).unwrap();
-        assert_eq!(mesh.positions, vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]]);
+        assert_eq!(
+            mesh.positions,
+            vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]]
+        );
         assert_eq!(mesh.indices, vec![0, 1, 2]);
     }
 
@@ -454,13 +521,19 @@ mod tests {
     #[test]
     fn obj_rejects_faces_with_more_than_three_indices() {
         let text = "v 0 0 0\nv 1 0 0\nv 0 1 0\nv 1 1 0\nf 1 2 3 4\n";
-        assert_eq!(ObjDecoder.decode(text.as_bytes()), Err(DecodeError::Unsupported("non-triangular face")));
+        assert_eq!(
+            ObjDecoder.decode(text.as_bytes()),
+            Err(DecodeError::Unsupported("non-triangular face"))
+        );
     }
 
     #[test]
     fn obj_rejects_faces_with_fewer_than_three_indices() {
         let text = "v 0 0 0\nv 1 0 0\nf 1 2\n";
-        assert_eq!(ObjDecoder.decode(text.as_bytes()), Err(DecodeError::Unsupported("non-triangular face")));
+        assert_eq!(
+            ObjDecoder.decode(text.as_bytes()),
+            Err(DecodeError::Unsupported("non-triangular face"))
+        );
     }
 
     #[test]
@@ -473,6 +546,9 @@ mod tests {
     #[test]
     fn shader_source_rejects_invalid_utf8() {
         let bytes = [0xff, 0xfe, 0xfd];
-        assert!(matches!(ShaderSourceDecoder.decode(&bytes), Err(DecodeError::Malformed(_))));
+        assert!(matches!(
+            ShaderSourceDecoder.decode(&bytes),
+            Err(DecodeError::Malformed(_))
+        ));
     }
 }
