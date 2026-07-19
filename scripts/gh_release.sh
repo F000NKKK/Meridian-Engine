@@ -54,6 +54,45 @@ crate_is_published() {
     [[ "$code" == "200" ]]
 }
 
+# ── Changelog: коммиты в диапазоне/пути, сгруппированные по Conventional
+# Commits типу (feat/fix/refactor/perf/docs/test/chore/прочее). Печатает
+# markdown в stdout; пустой диапазон → однострочная заглушка.
+categorize_notes() {
+    local range="$1" path="$2"
+    local feat="" fix="" refactor="" perf="" docs="" tests="" chore="" other=""
+
+    while IFS=$'\t' read -r hash subject; do
+        [[ -z "$hash" ]] && continue
+        local line="- ${subject} (${hash})"$'\n'
+        case "$subject" in
+            feat*)      feat+="$line" ;;
+            fix*)       fix+="$line" ;;
+            refactor*)  refactor+="$line" ;;
+            perf*)      perf+="$line" ;;
+            docs*)      docs+="$line" ;;
+            test*)      tests+="$line" ;;
+            chore*)     chore+="$line" ;;
+            *)          other+="$line" ;;
+        esac
+    done < <(git log --format='%h%x09%s' "$range" -- "$path" 2>/dev/null || true)
+
+    local out=""
+    [[ -n "$feat" ]]     && out+="### Features"$'\n\n'"$feat"$'\n'
+    [[ -n "$fix" ]]      && out+="### Fixes"$'\n\n'"$fix"$'\n'
+    [[ -n "$refactor" ]] && out+="### Refactor"$'\n\n'"$refactor"$'\n'
+    [[ -n "$perf" ]]     && out+="### Performance"$'\n\n'"$perf"$'\n'
+    [[ -n "$docs" ]]     && out+="### Docs"$'\n\n'"$docs"$'\n'
+    [[ -n "$tests" ]]    && out+="### Tests"$'\n\n'"$tests"$'\n'
+    [[ -n "$chore" ]]    && out+="### Chores"$'\n\n'"$chore"$'\n'
+    [[ -n "$other" ]]    && out+="### Other"$'\n\n'"$other"$'\n'
+
+    if [[ -z "$out" ]]; then
+        echo "_Нет коммитов в \`${path}\` с предыдущего релиза этого крейта._"
+    else
+        printf '%s' "$out"
+    fi
+}
+
 CREATED=0
 SKIPPED_TAGGED=0
 SKIPPED_UNPUBLISHED=0
@@ -93,10 +132,7 @@ for toml in "$WS"/crates/*/Cargo.toml; do
     range="$sha"
     [[ -n "$prev_tag" ]] && range="${prev_tag}..${sha}"
 
-    notes="$(git log --format='- %s (%h)' "$range" -- "crates/${crate}/" 2>/dev/null || true)"
-    if [[ -z "$notes" ]]; then
-        notes="_Нет коммитов в crates/${crate}/ с предыдущего релиза этого крейта._"
-    fi
+    notes="$(categorize_notes "$range" "crates/${crate}/")"
 
     full_notes="## ${crate} v${version}
 
