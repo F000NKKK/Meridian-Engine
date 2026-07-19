@@ -31,7 +31,11 @@ impl DispatchSize {
     /// A 1D dispatch of `count` work items (`y = z = 1`) — what every
     /// current `ComputeKernel` (batch `Motor3` work) uses.
     pub fn linear(count: u32) -> Self {
-        Self { x: count, y: 1, z: 1 }
+        Self {
+            x: count,
+            y: 1,
+            z: 1,
+        }
     }
 
     pub fn total(&self) -> usize {
@@ -57,7 +61,10 @@ impl Default for ComputeContext {
 
 impl ComputeContext {
     pub fn new() -> Self {
-        Self { device: ComputeDevice::new(), parallel_threshold: 1024 }
+        Self {
+            device: ComputeDevice::new(),
+            parallel_threshold: 1024,
+        }
     }
 
     fn with_parallel_threshold(mut self, threshold: usize) -> Self {
@@ -113,14 +120,18 @@ impl Default for ComputeScheduler {
 
 impl ComputeScheduler {
     pub fn new() -> Self {
-        Self { context: ComputeContext::new() }
+        Self {
+            context: ComputeContext::new(),
+        }
     }
 
     /// Below `threshold` work items, a dispatch runs sequentially on the
     /// calling thread rather than fanning out across `compute-driver`'s
     /// worker threads.
     pub fn with_parallel_threshold(threshold: usize) -> Self {
-        Self { context: ComputeContext::new().with_parallel_threshold(threshold) }
+        Self {
+            context: ComputeContext::new().with_parallel_threshold(threshold),
+        }
     }
 
     pub fn context(&self) -> &ComputeContext {

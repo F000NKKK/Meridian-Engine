@@ -26,7 +26,9 @@ pub struct ComputeBuffer {
 
 impl ComputeBuffer {
     pub fn zeroed(byte_len: usize) -> Self {
-        Self { data: vec![0u8; byte_len] }
+        Self {
+            data: vec![0u8; byte_len],
+        }
     }
 
     pub fn from_bytes(data: Vec<u8>) -> Self {
@@ -65,8 +67,15 @@ impl Default for ComputeDevice {
 
 impl ComputeDevice {
     pub fn new() -> Self {
-        let cpu_threads = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1);
-        Self { capabilities: ComputeCapabilities { gpu_compute: false, cpu_threads } }
+        let cpu_threads = std::thread::available_parallelism()
+            .map(|n| n.get())
+            .unwrap_or(1);
+        Self {
+            capabilities: ComputeCapabilities {
+                gpu_compute: false,
+                cpu_threads,
+            },
+        }
     }
 
     pub fn capabilities(&self) -> ComputeCapabilities {
@@ -111,8 +120,8 @@ impl ComputeDevice {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::Mutex;
+    use std::sync::atomic::{AtomicUsize, Ordering};
 
     #[test]
     fn capabilities_report_at_least_one_cpu_thread_and_no_gpu() {
@@ -154,7 +163,10 @@ mod tests {
             assert!(!seen[i], "index {i} visited twice");
             seen[i] = true;
         });
-        assert!(seen.lock().unwrap().iter().all(|&v| v), "every index must have been visited");
+        assert!(
+            seen.lock().unwrap().iter().all(|&v| v),
+            "every index must have been visited"
+        );
     }
 
     #[test]
