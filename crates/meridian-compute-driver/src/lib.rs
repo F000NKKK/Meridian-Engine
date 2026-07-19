@@ -83,13 +83,10 @@ impl Default for ComputeDevice {
 
 impl ComputeDevice {
     pub fn new() -> Self {
-        let cpu_threads = std::thread::available_parallelism()
-            .map(|n| n.get())
-            .unwrap_or(1);
         Self {
             capabilities: ComputeCapabilities {
                 gpu_compute: false,
-                cpu_threads,
+                cpu_threads: meridian_platform_core::detect_cpu_threads(),
             },
         }
     }
