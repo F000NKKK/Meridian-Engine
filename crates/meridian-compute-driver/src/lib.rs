@@ -82,7 +82,12 @@ impl Default for ComputeDevice {
 
 impl ComputeDevice {
     pub fn new() -> Self {
-        Self { capabilities: ComputeCapabilities { cpu: CpuCapabilities::detect(), gpu: None } }
+        Self {
+            capabilities: ComputeCapabilities {
+                cpu: CpuCapabilities::detect(),
+                gpu: None,
+            },
+        }
     }
 
     pub fn capabilities(&self) -> ComputeCapabilities {
@@ -94,7 +99,7 @@ impl ComputeDevice {
     }
 
     /// Runs `work(i)` exactly once for every `i` in `0..count`, splitting
-    /// the range into `capabilities().cpu_threads` contiguous chunks
+    /// the range into `capabilities().cpu.threads` contiguous chunks
     /// executed on real worker threads via `std::thread::scope` (borrowed
     /// `work`, no `'static`/`Box` needed). Always parallel — callers that
     /// want a small-batch/sequential cutoff apply that policy themselves

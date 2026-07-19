@@ -29,7 +29,10 @@ impl Default for PhysicsBackend {
 
 impl PhysicsBackend {
     pub fn new() -> Self {
-        Self { cpu: CpuCapabilities::detect(), gpu: None }
+        Self {
+            cpu: CpuCapabilities::detect(),
+            gpu: None,
+        }
     }
 }
 

@@ -171,7 +171,7 @@ mod tests {
 
     #[test]
     fn context_capabilities_report_no_gpu_yet() {
-        assert!(!ComputeContext::new().capabilities().cpu.gpu_available);
+        assert!(ComputeContext::new().capabilities().gpu.is_none());
     }
 
     #[test]

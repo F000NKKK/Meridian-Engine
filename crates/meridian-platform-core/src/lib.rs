@@ -46,7 +46,9 @@ pub struct CpuCapabilities {
 
 impl CpuCapabilities {
     pub fn detect() -> Self {
-        Self { threads: detect_cpu_threads() }
+        Self {
+            threads: detect_cpu_threads(),
+        }
     }
 }
 
@@ -64,7 +66,9 @@ pub struct GpuCapabilities {}
 /// [`CpuCapabilities::detect`]; exposed directly too in case a caller
 /// needs the thread count without a full `CpuCapabilities`.
 pub fn detect_cpu_threads() -> usize {
-    std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1)
+    std::thread::available_parallelism()
+        .map(|n| n.get())
+        .unwrap_or(1)
 }
 
 /// An OS window. Not yet implemented — see the module doc.
