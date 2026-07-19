@@ -6,19 +6,23 @@
 //! `platform-core::detect_cpu_threads` so `physics-core` can decide
 //! batch-size cutoffs the same way `compute-runtime` does.
 
-use meridian_platform_core::BackendCapabilities;
+use meridian_platform_core::{BackendCapabilities, DeviceCapabilities};
 
-/// Selects/reports the execution backend for a physics step. Implements
-/// `platform-core`'s [`BackendCapabilities`] — the shape shared with
+/// Selects/reports the execution backend for a physics step. Embeds
+/// `platform-core`'s [`DeviceCapabilities`] (the fields shared with
 /// `compute-driver::ComputeCapabilities` and future `graphics-driver`/
-/// `audio-driver` equivalents.
+/// `audio-driver` equivalents) rather than redeclaring `gpu`/
+/// `cpu_threads`; add physics-specific fields alongside `cpu`, not by
+/// duplicating it.
 #[derive(Debug, Clone, Copy)]
 pub struct PhysicsBackend {
-    pub gpu: bool,
-    pub cpu_threads: usize,
+    pub cpu: DeviceCapabilities,
 }
 
 impl Default for PhysicsBackend {
+    /// Real detection via [`DeviceCapabilities::detect`], not zeroed
+    /// placeholder data — deriving `Default` here would silently give
+    /// `cpu_threads: 0` instead.
     fn default() -> Self {
         Self::new()
     }
@@ -26,17 +30,17 @@ impl Default for PhysicsBackend {
 
 impl PhysicsBackend {
     pub fn new() -> Self {
-        Self { gpu: false, cpu_threads: meridian_platform_core::detect_cpu_threads() }
+        Self { cpu: DeviceCapabilities::detect() }
     }
 }
 
 impl BackendCapabilities for PhysicsBackend {
     fn gpu_available(&self) -> bool {
-        self.gpu
+        self.cpu.gpu_available()
     }
 
     fn cpu_threads(&self) -> usize {
-        self.cpu_threads
+        self.cpu.cpu_threads()
     }
 }
 
@@ -78,8 +82,8 @@ mod tests {
     #[test]
     fn backend_reports_no_gpu_and_at_least_one_thread() {
         let backend = PhysicsBackend::new();
-        assert!(!backend.gpu);
-        assert!(backend.cpu_threads >= 1);
+        assert!(!backend.cpu.gpu_available);
+        assert!(backend.cpu.cpu_threads >= 1);
     }
 
     #[test]
