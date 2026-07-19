@@ -563,6 +563,10 @@ mod tests {
         }
     }
 
+    fn assert_vec3_approx(a: Vec3, b: Vec3) {
+        assert!((a - b).length() < 1e-4, "expected {b:?}, got {a:?}");
+    }
+
     #[test]
     fn aabb_overlap_basic_cases() {
         let a = Aabb::from_sphere(Vec3::ZERO, 1.0);
@@ -770,6 +774,163 @@ mod tests {
         assert!(
             (resting_height - expected).abs() < 0.5,
             "ball should settle near the floor surface, got y={resting_height}, expected near {expected}"
+        );
+    }
+
+    #[test]
+    fn cuboid_moment_of_inertia_matches_average_of_principal_moments() {
+        let half_extents = Vec3::new(1.0, 2.0, 3.0);
+        let body = cuboid(Motor3::identity(), Vec3::ZERO, 6.0, half_extents);
+        let expected = (2.0 / 9.0)
+            * 6.0
+            * (half_extents.x * half_extents.x
+                + half_extents.y * half_extents.y
+                + half_extents.z * half_extents.z);
+        assert!((body.moment_of_inertia() - expected).abs() < 1e-4);
+    }
+
+    #[test]
+    fn narrow_phase_sphere_vs_cuboid_reports_correct_penetration_and_normal() {
+        // A static box floor (top surface at y=0) with a sphere hovering
+        // just above it, overlapping by 0.2.
+        let floor = cuboid(
+            Motor3::translation(Vec3::new(0.0, -5.0, 0.0)),
+            Vec3::ZERO,
+            0.0,
+            Vec3::new(10.0, 5.0, 10.0),
+        );
+        let ball = sphere(Vec3::new(0.0, 0.3, 0.0), Vec3::ZERO, 1.0, 0.5);
+        let bodies = vec![floor, ball];
+
+        let contact = NarrowPhase::new().test_pair(&bodies, 0, 1).unwrap();
+        assert_vec3_approx(contact.normal, Vec3::new(0.0, 1.0, 0.0));
+        assert!((contact.penetration - 0.2).abs() < 1e-4);
+        assert_vec3_approx(contact.point, Vec3::ZERO);
+    }
+
+    #[test]
+    fn narrow_phase_sphere_vs_cuboid_returns_none_when_separated() {
+        let floor = cuboid(Motor3::identity(), Vec3::ZERO, 0.0, Vec3::new(1.0, 1.0, 1.0));
+        let ball = sphere(Vec3::new(10.0, 0.0, 0.0), Vec3::ZERO, 1.0, 0.5);
+        let bodies = vec![floor, ball];
+        assert!(NarrowPhase::new().test_pair(&bodies, 0, 1).is_none());
+    }
+
+    #[test]
+    fn narrow_phase_sphere_vs_cuboid_handles_embedded_sphere_without_panicking() {
+        // A sphere entirely inside a box (deep penetration) must still
+        // produce a finite, unit-length normal and a positive
+        // penetration — not a divide-by-zero from a zero-length delta.
+        let box_body = cuboid(Motor3::identity(), Vec3::ZERO, 0.0, Vec3::new(1.0, 1.0, 1.0));
+        let ball = sphere(Vec3::ZERO, Vec3::ZERO, 1.0, 0.3);
+        let bodies = vec![box_body, ball];
+
+        let contact = NarrowPhase::new().test_pair(&bodies, 0, 1).unwrap();
+        assert!(contact.penetration > 0.0 && contact.penetration.is_finite());
+        assert!((contact.normal.length() - 1.0).abs() < 1e-4);
+    }
+
+    #[test]
+    fn narrow_phase_cuboid_vs_cuboid_reports_least_penetration_axis() {
+        // Two axis-aligned unit cubes overlapping only along X by 0.5.
+        let a = cuboid(Motor3::identity(), Vec3::ZERO, 1.0, Vec3::new(1.0, 1.0, 1.0));
+        let b = cuboid(
+            Motor3::translation(Vec3::new(1.5, 0.0, 0.0)),
+            Vec3::ZERO,
+            1.0,
+            Vec3::new(1.0, 1.0, 1.0),
+        );
+        let bodies = vec![a, b];
+
+        let contact = NarrowPhase::new().test_pair(&bodies, 0, 1).unwrap();
+        assert_vec3_approx(contact.normal, Vec3::new(1.0, 0.0, 0.0));
+        assert!((contact.penetration - 0.5).abs() < 1e-4);
+    }
+
+    #[test]
+    fn narrow_phase_cuboid_vs_cuboid_returns_none_when_separated() {
+        let a = cuboid(Motor3::identity(), Vec3::ZERO, 1.0, Vec3::new(1.0, 1.0, 1.0));
+        let b = cuboid(
+            Motor3::translation(Vec3::new(5.0, 0.0, 0.0)),
+            Vec3::ZERO,
+            1.0,
+            Vec3::new(1.0, 1.0, 1.0),
+        );
+        let bodies = vec![a, b];
+        assert!(NarrowPhase::new().test_pair(&bodies, 0, 1).is_none());
+    }
+
+    #[test]
+    fn narrow_phase_cuboid_vs_cuboid_handles_rotated_boxes() {
+        // Box B rotated 45 degrees about Y — exercises the edge x edge
+        // (cross-product) SAT axes, which two axis-aligned boxes of equal
+        // orientation never do (their local axes are parallel, so every
+        // cross product is ~zero and skipped). No exact hand-derived
+        // value here (the rotated box's diagonal reach isn't a round
+        // number); just correctness properties: a clearly-overlapping
+        // pair reports a valid contact, a clearly-separated pair doesn't.
+        let a = cuboid(Motor3::identity(), Vec3::ZERO, 1.0, Vec3::new(1.0, 1.0, 1.0));
+        let overlapping_b = cuboid(
+            Motor3::rotation(Vec3::Y, PI / 4.0).compose(Motor3::translation(Vec3::new(
+                1.5, 0.0, 0.0,
+            ))),
+            Vec3::ZERO,
+            1.0,
+            Vec3::new(1.0, 1.0, 1.0),
+        );
+        let bodies = vec![a, overlapping_b];
+        let contact = NarrowPhase::new().test_pair(&bodies, 0, 1).unwrap();
+        assert!(contact.penetration > 0.0 && contact.penetration.is_finite());
+        assert!((contact.normal.length() - 1.0).abs() < 1e-4);
+
+        let separated_b = cuboid(
+            Motor3::rotation(Vec3::Y, PI / 4.0).compose(Motor3::translation(Vec3::new(
+                10.0, 0.0, 0.0,
+            ))),
+            Vec3::ZERO,
+            1.0,
+            Vec3::new(1.0, 1.0, 1.0),
+        );
+        let bodies = vec![a, separated_b];
+        assert!(NarrowPhase::new().test_pair(&bodies, 0, 1).is_none());
+    }
+
+    #[test]
+    fn full_step_cuboid_settles_on_static_cuboid_floor_without_sinking_through() {
+        let floor = cuboid(
+            Motor3::translation(Vec3::new(0.0, -5.0, 0.0)),
+            Vec3::ZERO,
+            0.0,
+            Vec3::new(10.0, 5.0, 10.0),
+        );
+        let falling = cuboid(
+            Motor3::translation(Vec3::new(0.0, 3.0, 0.0)),
+            Vec3::ZERO,
+            1.0,
+            Vec3::new(0.5, 0.5, 0.5),
+        );
+        let mut bodies = vec![floor, falling];
+
+        let integrator = Integrator::default();
+        let solver = ConstraintSolver::new(0.1);
+        let mut broad = BroadPhase::new();
+        let narrow = NarrowPhase::new();
+        let dt = 1.0 / 60.0;
+
+        for _ in 0..600 {
+            integrator.step(&mut bodies, dt);
+            let pairs = broad.find_candidate_pairs(&bodies).to_vec();
+            for contact in narrow.generate_contacts(&bodies, &pairs) {
+                solver.resolve(&mut bodies, &contact);
+            }
+        }
+
+        // Floor top surface is at y=0; the box rests with its center one
+        // half-extent (0.5) above that.
+        let resting_height = bodies[1].position().y;
+        assert!(
+            (resting_height - 0.5).abs() < 0.5,
+            "box should settle near the floor surface, got y={resting_height}"
         );
     }
 }
