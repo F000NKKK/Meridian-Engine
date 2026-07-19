@@ -544,6 +544,38 @@ pub struct Frame {
     pub motor: Motor3,
 }
 
+/// An axis-aligned bounding box: plain spatial-extent math with no domain
+/// meaning of its own, shared by every subsystem that needs a cheap
+/// overlap/culling test (`physics-core`'s broad phase, `graphics-core`'s
+/// frustum culling, ...). Lives here rather than in one of those crates so
+/// neither re-derives it independently — the same reason `Vec3`/`Motor3`
+/// live here instead of in whichever subsystem needed them first (see
+/// "Consumers" above).
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct Aabb {
+    pub min: Vec3,
+    pub max: Vec3,
+}
+
+impl Aabb {
+    pub fn from_sphere(center: Vec3, radius: Scalar) -> Self {
+        let r = Vec3::new(radius, radius, radius);
+        Self {
+            min: center - r,
+            max: center + r,
+        }
+    }
+
+    pub fn overlaps(&self, other: &Aabb) -> bool {
+        self.min.x <= other.max.x
+            && self.max.x >= other.min.x
+            && self.min.y <= other.max.y
+            && self.max.y >= other.min.y
+            && self.min.z <= other.max.z
+            && self.max.z >= other.min.z
+    }
+}
+
 /// A camera/projective mapping: view-space (right-handed, looking down
 /// `-Z`, `+X` right, `+Y` up) to clip space. Column-major, column-vector
 /// convention (`M * v`), depth range `[0, 1]` — matches wgpu/DX12/Metal,
