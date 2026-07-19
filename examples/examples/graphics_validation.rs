@@ -27,14 +27,13 @@ fn main() {
     };
     let view = camera.view_matrix();
     let forward_point = Vec3::new(10.0, 0.0, 0.0);
-    let view_space =
-        |m: [[f32; 4]; 4], p: Vec3| -> Vec3 {
-            Vec3::new(
-                m[0][0] * p.x + m[1][0] * p.y + m[2][0] * p.z + m[3][0],
-                m[0][1] * p.x + m[1][1] * p.y + m[2][1] * p.z + m[3][1],
-                m[0][2] * p.x + m[1][2] * p.y + m[2][2] * p.z + m[3][2],
-            )
-        };
+    let view_space = |m: [[f32; 4]; 4], p: Vec3| -> Vec3 {
+        Vec3::new(
+            m[0][0] * p.x + m[1][0] * p.y + m[2][0] * p.z + m[3][0],
+            m[0][1] * p.x + m[1][1] * p.y + m[2][1] * p.z + m[3][1],
+            m[0][2] * p.x + m[1][2] * p.y + m[2][2] * p.z + m[3][2],
+        )
+    };
     let vp = view_space(view, forward_point);
     println!("  world (10,0,0) -> view space {vp:?}");
     check(
@@ -56,8 +55,14 @@ fn main() {
         min: Vec3::new(200.0, -0.5, -0.5),
         max: Vec3::new(201.0, 0.5, 0.5),
     };
-    check("box directly ahead is visible", frustum.intersects_aabb(ahead));
-    check("box behind the camera is culled", !frustum.intersects_aabb(behind));
+    check(
+        "box directly ahead is visible",
+        frustum.intersects_aabb(ahead),
+    );
+    check(
+        "box behind the camera is culled",
+        !frustum.intersects_aabb(behind),
+    );
     check(
         "box beyond the far plane is culled",
         !frustum.intersects_aabb(beyond_far),
@@ -84,7 +89,9 @@ fn main() {
     // Declared in shadow/lighting/tonemap-shuffled order above (lighting
     // added first) to prove the graph derives order from declared
     // reads/writes, not insertion order.
-    let order = graph.execution_order().expect("no cycle, no write conflict");
+    let order = graph
+        .execution_order()
+        .expect("no cycle, no write conflict");
     let names: Vec<&str> = order.iter().map(|&i| graph.passes[i].name).collect();
     println!("  declared order: [lighting, shadow, tonemap] (insertion order)");
     println!("  derived order:  {names:?}");

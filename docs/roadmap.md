@@ -80,6 +80,22 @@ via `./build.sh run audio_spatialization`) — including the front/back
 ambiguity stereo genuinely can't resolve without HRTF (not implemented;
 documented as a real, known limitation, not hidden).
 
+`meridian-graphics-core`'s driver-independent half is real: `Camera`
+bridges a `Motor3` world frame into a classical view/projection matrix
+(`Motor3::to_mat4` in `gac-core` plus a fixed local-forward-`+X`-to-view-`-Z`
+remap, reusing `audio-core`'s listener-forward convention for
+cross-subsystem consistency — see docs/graphics-design.md for the full
+derivation), `Frustum`/`Aabb` do Gribb/Hartmann frustum culling, and
+`RenderGraph::execution_order` derives pass ordering from declared
+resource reads/writes (Kahn's algorithm, the same pattern as `task-core`'s
+`JobGraph`, applied to resource conflicts instead of explicit
+dependencies), rejecting write conflicts and cycles rather than guessing
+(`cargo test -p meridian-graphics-core`; human-readable version via
+`./build.sh run graphics_validation`). Scene extraction, lighting,
+materials-as-shading-inputs, animation and post processing remain scaffolds
+— they need an actual GPU resource to shade against, which is blocked on
+`graphics-driver`/`wgpu` below.
+
 Every other crate is still a scaffold: correct name, correct dependency
 edges, a one-line doc comment, no implementation. This staged order is
 intentional — see "Why implementation is deliberately last" below.
@@ -135,12 +151,16 @@ priority before writing implementations is keeping that document and the
    state" above). `meridian-audio-core` — **done** (`SpeakerLayout`/
    `Mixer`/`AttenuationModel`/`DspGraph`; see "Current state" above).
    `meridian-graphics-driver` and `meridian-audio-driver` are blocked on
-   the GPU/device backend decision (`wgpu`, see "Not yet decided"); next
-   up is `meridian-graphics-core`'s driver-independent half (render graph
-   ordering, camera/culling math) — the harder of the two remaining
-   `-core`s, since it has to bridge `gac-core`'s `Motor3` into the
-   classical 4×4 view/projection matrices graphics APIs actually need,
-   where `audio-core` could stay entirely in GA/`Vec3` terms throughout.
+   the GPU/device backend decision (`wgpu`, see "Not yet decided").
+   `meridian-graphics-core`'s driver-independent half — **done**: render
+   graph pass ordering, `Camera`'s `Motor3` -> view/projection matrix
+   bridge, and frustum culling (see "Current state" above). This was the
+   harder of the two remaining `-core`s, since it has to bridge
+   `gac-core`'s `Motor3` into the classical 4×4 view/projection matrices
+   graphics APIs actually need, where `audio-core` could stay entirely in
+   GA/`Vec3` terms throughout. Scene extraction, lighting, materials, and
+   post-processing are the parts of `graphics-core` still blocked on a
+   concrete GPU resource existing (`graphics-driver`/`wgpu`).
 9. `meridian-engine-core` — wires everything into the main loop last, once
    there's something real to schedule.
 
