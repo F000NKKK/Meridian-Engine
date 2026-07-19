@@ -403,11 +403,20 @@ priority before writing implementations is keeping that document and the
   `audio-core`'s own dependency footprint minimal. Creating the crate before
   that concrete need exists would be exactly the speculative split
   `roadmap.md` already rejects elsewhere (see "Explicitly out of scope").
-- **`meridian-platform-core`'s `Window` and `DynamicLibrary`** — decided:
-  hand-written unsafe FFI (`dlopen`/`LoadLibrary` for `DynamicLibrary`,
-  per-platform window creation for `Window`), not an external crate —
-  these stay small enough to hand-roll safely, unlike the GPU backend
-  above. Deliberately deferred: not needed until `graphics-driver` (step
-  8), and `Time`/`InputState`/`BackendCapabilities` (all implemented,
-  step 3) cover what every other crate has needed from `platform-core` so
-  far.
+- **`meridian-platform-core`'s `Window` — decided: `winit`, not
+  hand-written per-platform FFI.** Reversed from the original plan (see
+  [ADR 010](adr/010-windowing-via-winit.md) for the full decision):
+  correct cross-platform windowing (lifecycle, input delivery, HiDPI,
+  IME) turned out to be the same class of multi-month,
+  multiple-independent-bug-classes undertaking that justified accepting
+  `wgpu` over hand-written Vulkan/DX12/Metal — the "small enough to
+  hand-roll safely" reasoning didn't survive contact with the real scope.
+  `platform-core::Window` wraps a real `Arc<winit::window::Window>`;
+  `meridian-graphics-driver` stays `winit`-agnostic (`Device::new_windowed`
+  takes `impl Into<wgpu::SurfaceTarget<'static>>`, a `wgpu`-defined bound,
+  not a `winit`-specific type). `platform-core`'s existing
+  `KeyCode`/`MouseButton`/`InputState` vocabulary needed no redesign —
+  real `winit` event handling translates into that existing API.
+  `DynamicLibrary` is unaffected by this decision: still hand-written FFI
+  (`dlopen`/`LoadLibrary`) — genuinely small, no ecosystem-standard crate
+  the way `winit` is for windowing.
