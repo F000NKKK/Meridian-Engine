@@ -33,7 +33,7 @@ use core::ops::{Add, Div, Mul, Neg, Sub};
 /// path — see `meridian-gac-compute`) and a `fixed_ga` module (this
 /// type's geometric algebra, used by `physics-core`'s deterministic
 /// simulation path only) built on top of it. See
-/// `physics-core::DeterministicBody` and docs/roadmap.md.
+/// `physics-core::fixed::RigidBody` and docs/roadmap.md.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub struct Fixed(i32);
 
@@ -42,6 +42,7 @@ impl Fixed {
 
     pub const ZERO: Fixed = Fixed(0);
     pub const ONE: Fixed = Fixed(1 << Self::FRAC_BITS);
+    pub const MAX: Fixed = Fixed(i32::MAX);
 
     /// Constructs a `Fixed` directly from its raw Q16.16 bit pattern.
     pub const fn from_bits(bits: i32) -> Self {

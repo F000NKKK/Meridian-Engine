@@ -2,7 +2,9 @@
 
 use std::collections::{HashMap, VecDeque};
 
-use meridian_gac_core::{ConvexVolume, Motor3, Plane, Projection, Shape, Vec3};
+use meridian_gac_core::float_ga::FloatFlavor;
+use meridian_gac_core::generic::Shape;
+use meridian_gac_core::{ConvexVolume, Motor3, Plane, Projection, Vec3};
 use meridian_resource_core::ResourceId;
 
 /// Marker types distinguishing `ResourceId`s of different graphics resource
@@ -254,7 +256,7 @@ impl Frustum {
     /// one plane (definitely not visible); `true` means it's inside every
     /// plane's half-space (visible, or a false positive near a corner —
     /// standard shape/frustum trade-off, cheaper than exact separation).
-    pub fn intersects<S: Shape>(&self, shape: &S) -> bool {
+    pub fn intersects<S: Shape<FloatFlavor>>(&self, shape: &S) -> bool {
         self.volume.intersects(shape)
     }
 }
