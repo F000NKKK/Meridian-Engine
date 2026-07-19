@@ -120,7 +120,6 @@ impl FrameScheduler {
 /// broad/narrow-phase and solver/integrator, and `audio-core`'s listener,
 /// emitters and mixer. The only place in the workspace allowed to know
 /// about every `*-core` at once — see docs/dependency-rules.md rule 7.
-#[derive(Debug)]
 pub struct SubsystemManager {
     pub world: World,
 
@@ -133,6 +132,19 @@ pub struct SubsystemManager {
     pub listener: Listener,
     pub emitters: Vec<(Emitter, f32)>,
     pub mixer: Mixer,
+}
+
+impl std::fmt::Debug for SubsystemManager {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // `World` doesn't derive `Debug` (it holds type-erased archetype
+        // storage — see meridian-ecs-core), so this summarizes it rather
+        // than deriving through it.
+        f.debug_struct("SubsystemManager")
+            .field("bodies", &self.bodies.len())
+            .field("emitters", &self.emitters.len())
+            .field("listener", &self.listener)
+            .finish_non_exhaustive()
+    }
 }
 
 impl SubsystemManager {
