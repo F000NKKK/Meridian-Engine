@@ -32,8 +32,12 @@ use std::sync::mpsc;
 use meridian_platform_core::{BackendCapabilities, CpuCapabilities, GpuCapabilities};
 
 /// A GPU device: owns the `wgpu::Device`/`wgpu::Queue` pair every other
-/// type here is created through or submitted against.
-#[derive(Debug)]
+/// type here is created through or submitted against. `Clone` is cheap
+/// (`wgpu::Device`/`Queue` are `Arc`-backed internally) — useful for
+/// callers that want to hand the same logical device to more than one
+/// consumer (e.g. `compute-runtime::ComputeContext` holding one
+/// alongside its CPU backend).
+#[derive(Debug, Clone)]
 pub struct Device {
     device: wgpu::Device,
     queue: wgpu::Queue,
