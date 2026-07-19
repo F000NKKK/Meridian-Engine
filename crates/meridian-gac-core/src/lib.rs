@@ -303,6 +303,85 @@ pub struct Blade {
     pub value: Scalar,
 }
 
+/// A bivector in the Euclidean part of the algebra (`e23`, `e31`, `e12`
+/// components) — the GA-native representation of angular velocity and
+/// rotation generators. Deliberately a distinct type from [`Vec3`]:
+/// angular velocity lives in the Lie algebra so(3), which *is* the space
+/// of these bivectors, not the space of vectors. Cross-product-based
+/// "angular velocity as a vector" conflates the two because in 3D a
+/// bivector's Hodge dual happens to have the same 3 components as a
+/// vector — a coincidence special to 3D that GA makes explicit instead of
+/// hiding (see [`Bivector3::wedge`]).
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct Bivector3 {
+    pub e23: Scalar,
+    pub e31: Scalar,
+    pub e12: Scalar,
+}
+
+impl Bivector3 {
+    pub const ZERO: Bivector3 = Bivector3 {
+        e23: 0.0,
+        e31: 0.0,
+        e12: 0.0,
+    };
+
+    pub const fn new(e23: Scalar, e31: Scalar, e12: Scalar) -> Self {
+        Self { e23, e31, e12 }
+    }
+
+    /// The wedge product `a ∧ b`, e.g. torque = `Bivector3::wedge(r, f)`
+    /// for a force `f` applied at offset `r` from a pivot. Numerically
+    /// identical to `a.cross(b)` — the "coincidence" `Bivector3`'s own
+    /// doc comment mentions — but returns a `Bivector3`, not a `Vec3`,
+    /// because a torque *is* a bivector quantity, not a vector one.
+    pub fn wedge(a: Vec3, b: Vec3) -> Bivector3 {
+        Bivector3::new(
+            a.y * b.z - a.z * b.y,
+            a.z * b.x - a.x * b.z,
+            a.x * b.y - a.y * b.x,
+        )
+    }
+
+    pub fn length(self) -> Scalar {
+        (self.e23 * self.e23 + self.e31 * self.e31 + self.e12 * self.e12).sqrt()
+    }
+
+    /// `exp(B)` for a rotation-generator bivector: reduces to
+    /// [`Rotor::from_axis_angle`] (a rotation-only bivector's exponential
+    /// *is* a rotor, by definition — no separate derivation needed, this
+    /// delegates to the already-verified formula) with axis = the
+    /// bivector's direction and angle = its magnitude. Used to integrate
+    /// a rigid body's orientation over a timestep: `(angular_velocity *
+    /// dt).exp()` gives the rotor to compose onto the body's frame — the
+    /// GA equivalent of quaternion exponential-map integration, and for
+    /// the same reason: it stays exactly on the unit-rotor manifold, no
+    /// drift/renormalization the way separately integrating three Euler
+    /// angles would.
+    pub fn exp(self) -> Rotor {
+        let angle = self.length();
+        if angle <= meridian_numeric_core::EPSILON {
+            return Rotor::identity();
+        }
+        let axis = Vec3::new(self.e23, self.e31, self.e12) * (1.0 / angle);
+        Rotor::from_axis_angle(axis, angle)
+    }
+}
+
+impl Add for Bivector3 {
+    type Output = Bivector3;
+    fn add(self, rhs: Bivector3) -> Bivector3 {
+        Bivector3::new(self.e23 + rhs.e23, self.e31 + rhs.e31, self.e12 + rhs.e12)
+    }
+}
+
+impl Mul<Scalar> for Bivector3 {
+    type Output = Bivector3;
+    fn mul(self, rhs: Scalar) -> Bivector3 {
+        Bivector3::new(self.e23 * rhs, self.e31 * rhs, self.e12 * rhs)
+    }
+}
+
 /// A pure rotation, the even-graded (scalar + bivector) subalgebra element
 /// `cos(θ/2) - sin(θ/2) * (n1*e23 + n2*e31 + n3*e12)` for a unit axis `n`
 /// and angle `θ` — geometric algebra's equivalent of a unit quaternion.
@@ -563,5 +642,72 @@ mod tests {
         let via_step_by_step = parent.transform_point(child.transform_point(local_point));
 
         assert_vec3_approx(via_composed_motor, via_step_by_step);
+    }
+
+    #[test]
+    fn bivector_exp_matches_rotor_from_axis_angle_directly() {
+        let axis = Vec3::new(0.2, -0.5, 0.8);
+        let angle = 1.1;
+        let unit_axis = axis.normalize();
+        let bivector = Bivector3::new(unit_axis.x, unit_axis.y, unit_axis.z) * angle;
+
+        let via_exp = bivector.exp();
+        let via_direct = Rotor::from_axis_angle(axis, angle);
+
+        let p = Vec3::new(1.0, 2.0, 3.0);
+        assert_vec3_approx(via_exp.transform_vector(p), via_direct.transform_vector(p));
+    }
+
+    #[test]
+    fn bivector_exp_of_zero_is_identity() {
+        let rotor = Bivector3::ZERO.exp();
+        let p = Vec3::new(1.0, 2.0, 3.0);
+        assert_vec3_approx(rotor.transform_vector(p), p);
+    }
+
+    #[test]
+    fn integrating_constant_angular_velocity_matches_one_big_rotation() {
+        // Spinning at a constant angular velocity for `steps` small dt's
+        // and composing the per-step rotors must match one direct
+        // rotation by the total angle swept — the same "many small
+        // compositions = one big one" property `rotor_composition_adds_angles`
+        // checks, but exercised through the exponential-map integration
+        // path a physics integrator actually uses.
+        let angular_velocity = Bivector3::new(0.0, 0.0, 3.0); // "about Z", magnitude 3 rad/s
+        let dt = 0.001;
+        let steps = 1000;
+
+        let mut accumulated = Rotor::identity();
+        for _ in 0..steps {
+            let step_rotor = (angular_velocity * dt).exp();
+            accumulated = accumulated.compose(step_rotor);
+        }
+
+        let direct = Rotor::from_axis_angle(Vec3::Z, angular_velocity.length() * dt * steps as f32);
+
+        // A looser tolerance than assert_vec3_approx's 1e-5 is correct
+        // here, not a workaround: this test measures f32 accumulation
+        // error over 1000 sequential compositions, which is a real
+        // property of the floating-point path, not the algebra being
+        // wrong. 1000 steps at 1kHz is already more substeps than a
+        // physics integrator runs per frame at 60-120Hz.
+        let p = Vec3::X;
+        let got = accumulated.transform_vector(p);
+        let want = direct.transform_vector(p);
+        assert!(
+            (got - want).length() < 5e-4,
+            "accumulated drift too large: got {got:?}, want {want:?}"
+        );
+    }
+
+    #[test]
+    fn wedge_matches_cross_product_components() {
+        let a = Vec3::new(1.0, 0.0, 0.0);
+        let b = Vec3::new(0.0, 1.0, 0.0);
+        let bivector = Bivector3::wedge(a, b);
+        let cross = a.cross(b);
+        assert!((bivector.e23 - cross.x).abs() < 1e-6);
+        assert!((bivector.e31 - cross.y).abs() < 1e-6);
+        assert!((bivector.e12 - cross.z).abs() < 1e-6);
     }
 }
