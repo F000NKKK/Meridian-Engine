@@ -164,7 +164,7 @@ run_preflight() {
         || die "dependency-rules нарушены — релиз запрещён, см. docs/dependency-rules.md"
 
     info "Preflight: cargo fmt --check ..."
-    cargo fmt --manifest-path "$WS/Cargo.toml" --check \
+    (cd "$WS" && cargo fmt --check) \
         || die "cargo fmt --check провалился — прогони 'cargo fmt' и закоммить"
 
     info "Preflight: cargo clippy --workspace --all-targets ..."
