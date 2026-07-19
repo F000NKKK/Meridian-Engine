@@ -375,6 +375,13 @@ impl Add for Bivector3 {
     }
 }
 
+impl Sub for Bivector3 {
+    type Output = Bivector3;
+    fn sub(self, rhs: Bivector3) -> Bivector3 {
+        Bivector3::new(self.e23 - rhs.e23, self.e31 - rhs.e31, self.e12 - rhs.e12)
+    }
+}
+
 impl Mul<Scalar> for Bivector3 {
     type Output = Bivector3;
     fn mul(self, rhs: Scalar) -> Bivector3 {
