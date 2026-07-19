@@ -13,25 +13,25 @@ repository = "https://github.com/F000NKKK/Meridian-Engine"
 # repeating path/version — bump a version once here and it's correct both
 # for local builds (path) and for `cargo publish` (version).
 [workspace.dependencies]
-meridian-foundation = { path = "crates/meridian-foundation", version = "0.2" }
-meridian-numeric-core = { path = "crates/meridian-numeric-core", version = "0.2" }
-meridian-gac-core = { path = "crates/meridian-gac-core", version = "0.2" }
-meridian-memory-core = { path = "crates/meridian-memory-core", version = "0.2" }
-meridian-resource-core = { path = "crates/meridian-resource-core", version = "0.1" }
-meridian-task-core = { path = "crates/meridian-task-core", version = "0.1" }
-meridian-platform-core = { path = "crates/meridian-platform-core", version = "0.2" }
-meridian-compute-driver = { path = "crates/meridian-compute-driver", version = "0.2" }
-meridian-compute-runtime = { path = "crates/meridian-compute-runtime", version = "0.1" }
-meridian-gac-compute = { path = "crates/meridian-gac-compute", version = "0.1" }
-meridian-asset-core = { path = "crates/meridian-asset-core", version = "0.2" }
-meridian-ecs-core = { path = "crates/meridian-ecs-core", version = "0.2" }
-meridian-graphics-driver = { path = "crates/meridian-graphics-driver", version = "0.1" }
-meridian-audio-driver = { path = "crates/meridian-audio-driver", version = "0.2" }
-meridian-graphics-core = { path = "crates/meridian-graphics-core", version = "0.1" }
-meridian-physics-driver = { path = "crates/meridian-physics-driver", version = "0.1" }
-meridian-physics-core = { path = "crates/meridian-physics-core", version = "0.2" }
-meridian-audio-core = { path = "crates/meridian-audio-core", version = "0.1" }
-meridian-engine-core = { path = "crates/meridian-engine-core", version = "0.1" }
+meridian-foundation = { path = "crates/meridian-foundation", version = "0.3" }
+meridian-numeric-core = { path = "crates/meridian-numeric-core", version = "0.3" }
+meridian-gac-core = { path = "crates/meridian-gac-core", version = "0.3" }
+meridian-memory-core = { path = "crates/meridian-memory-core", version = "0.3" }
+meridian-resource-core = { path = "crates/meridian-resource-core", version = "0.2" }
+meridian-task-core = { path = "crates/meridian-task-core", version = "0.2" }
+meridian-platform-core = { path = "crates/meridian-platform-core", version = "0.3" }
+meridian-compute-driver = { path = "crates/meridian-compute-driver", version = "0.3" }
+meridian-compute-runtime = { path = "crates/meridian-compute-runtime", version = "0.2" }
+meridian-gac-compute = { path = "crates/meridian-gac-compute", version = "0.2" }
+meridian-asset-core = { path = "crates/meridian-asset-core", version = "0.3" }
+meridian-ecs-core = { path = "crates/meridian-ecs-core", version = "0.3" }
+meridian-graphics-driver = { path = "crates/meridian-graphics-driver", version = "0.2" }
+meridian-audio-driver = { path = "crates/meridian-audio-driver", version = "0.3" }
+meridian-graphics-core = { path = "crates/meridian-graphics-core", version = "0.2" }
+meridian-physics-driver = { path = "crates/meridian-physics-driver", version = "0.2" }
+meridian-physics-core = { path = "crates/meridian-physics-core", version = "0.3" }
+meridian-audio-core = { path = "crates/meridian-audio-core", version = "0.2" }
+meridian-engine-core = { path = "crates/meridian-engine-core", version = "0.2" }
 
 [profile.release]
 lto = true

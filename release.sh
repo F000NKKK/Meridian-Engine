@@ -337,9 +337,11 @@ fi
 echo ""
 
 # ── Шаг 1: решаем версию/бамп для каждого крейта, в порядке зависимостей ─────
+declare -A ORIGINAL_VERSIONS
 declare -A NEW_VERSIONS
 declare -A SHOULD_PUBLISH
 for c in $PLAN; do
+    ORIGINAL_VERSIONS[$c]="$(crate_version "$c")"
     if $PUBLISH_ALL || [[ "$c" == "$CRATE" ]]; then
         crate_bump="$BUMP"
     else
@@ -362,6 +364,40 @@ if $DRY_RUN; then
 else
     cargo check --offline --workspace --manifest-path "$WS/Cargo.toml" 2>&1 | tail -3
     ok "check пройден"
+fi
+
+# ── Шаг 2.5: коммитим бампы версий ────────────────────────────────────────────
+# cargo publish отказывается публиковать грязное дерево (без --allow-dirty),
+# а бампы версий на шаге 1 правят Cargo.toml на диске, ничего не коммитя —
+# отсюда и падение "to proceed despite this... pass --allow-dirty". Коммитим
+# сюда, а не --allow-dirty на публикации: --allow-dirty опубликовал бы дерево
+# как есть в момент публикации, включая любые посторонние незакоммиченные
+# правки, а не только сами бампы.
+BUMPED=()
+for c in $PLAN; do
+    [[ "${ORIGINAL_VERSIONS[$c]}" != "${NEW_VERSIONS[$c]}" ]] && BUMPED+=("$c v${NEW_VERSIONS[$c]}")
+done
+
+echo ""
+if $DRY_RUN; then
+    dryrun "git commit (пропущено)"
+elif [[ ${#BUMPED[@]} -eq 0 ]]; then
+    info "Версии не менялись — коммитить нечего."
+elif git -C "$WS" diff --quiet -- Cargo.toml 'crates/*/Cargo.toml'; then
+    warn "Версии изменились в памяти скрипта, но diff по Cargo.toml пуст — пропускаю коммит."
+else
+    info "Коммичу бамп версий (${#BUMPED[@]})..."
+    git -C "$WS" add -- Cargo.toml crates/*/Cargo.toml
+    if [[ ${#BUMPED[@]} -eq 1 ]]; then
+        git -C "$WS" commit -q -m "chore(release): bump ${BUMPED[0]}"
+    else
+        {
+            echo "chore(release): bump ${#BUMPED[@]} crate versions"
+            echo ""
+            for b in "${BUMPED[@]}"; do echo "- $b"; done
+        } | git -C "$WS" commit -q -F -
+    fi
+    ok "Закоммичено: $(git -C "$WS" rev-parse --short HEAD)"
 fi
 
 # ── Шаг 3: публикация цепочки ─────────────────────────────────────────────────
