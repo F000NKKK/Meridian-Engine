@@ -600,6 +600,147 @@ impl FixedConvexVolume {
     }
 }
 
+// ---- GaFlavor: lets generic code be written once against `f32` and
+// `Fixed` both. See `float_ga`'s matching section for the pattern.
+
+use crate::{BivectorLike, GaFlavor, MotorLike, RotorLike, ScalarLike, VectorLike};
+
+/// The deterministic GA flavor: `Fixed`-backed. See the crate root doc
+/// comment for what "flavor" means here.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct FixedFlavor;
+
+impl ScalarLike for Fixed {
+    const ZERO: Self = Fixed::ZERO;
+    const ONE: Self = Fixed::ONE;
+    const EPSILON: Self = FIXED_EPSILON;
+
+    fn from_f64(v: f64) -> Self {
+        Fixed::from_num(v)
+    }
+    fn sqrt(self) -> Self {
+        self.sqrt()
+    }
+    fn tan(self) -> Self {
+        self.tan()
+    }
+    fn sin_cos(self) -> (Self, Self) {
+        self.sin_cos()
+    }
+    fn signum(self) -> Self {
+        self.signum()
+    }
+    fn max(self, other: Self) -> Self {
+        self.max(other)
+    }
+}
+
+impl VectorLike for FixedVec3 {
+    type Scalar = Fixed;
+
+    const ZERO: Self = FixedVec3::ZERO;
+
+    fn new(x: Fixed, y: Fixed, z: Fixed) -> Self {
+        FixedVec3::new(x, y, z)
+    }
+    fn x(self) -> Fixed {
+        self.x
+    }
+    fn y(self) -> Fixed {
+        self.y
+    }
+    fn z(self) -> Fixed {
+        self.z
+    }
+    fn dot(self, rhs: Self) -> Fixed {
+        self.dot(rhs)
+    }
+    fn length(self) -> Fixed {
+        self.length()
+    }
+    fn length_squared(self) -> Fixed {
+        self.length_squared()
+    }
+    fn normalize(self) -> Self {
+        self.normalize()
+    }
+}
+
+impl BivectorLike for FixedBivector3 {
+    type Scalar = Fixed;
+    type Vector = FixedVec3;
+    type Rotor = FixedRotor;
+
+    const ZERO: Self = FixedBivector3::ZERO;
+
+    fn wedge(a: FixedVec3, b: FixedVec3) -> Self {
+        FixedBivector3::wedge(a, b)
+    }
+    fn length(self) -> Fixed {
+        self.length()
+    }
+    fn exp(self) -> FixedRotor {
+        self.exp()
+    }
+}
+
+impl RotorLike for FixedRotor {
+    type Scalar = Fixed;
+    type Vector = FixedVec3;
+
+    fn identity() -> Self {
+        FixedRotor::identity()
+    }
+    fn from_axis_angle(axis: FixedVec3, angle: Fixed) -> Self {
+        FixedRotor::from_axis_angle(axis, angle)
+    }
+    fn compose(self, rhs: Self) -> Self {
+        self.compose(rhs)
+    }
+    fn reverse(self) -> Self {
+        self.reverse()
+    }
+    fn transform_vector(self, v: FixedVec3) -> FixedVec3 {
+        self.transform_vector(v)
+    }
+}
+
+impl MotorLike for FixedMotor3 {
+    type Scalar = Fixed;
+    type Vector = FixedVec3;
+    type Rotor = FixedRotor;
+
+    fn identity() -> Self {
+        FixedMotor3::identity()
+    }
+    fn translation(t: FixedVec3) -> Self {
+        FixedMotor3::translation(t)
+    }
+    fn from_rotation_translation(rotor: FixedRotor, t: FixedVec3) -> Self {
+        FixedMotor3::from_rotation_translation(rotor, t)
+    }
+    fn compose(self, rhs: Self) -> Self {
+        self.compose(rhs)
+    }
+    fn inverse(self) -> Self {
+        self.inverse()
+    }
+    fn transform_point(self, p: FixedVec3) -> FixedVec3 {
+        self.transform_point(p)
+    }
+    fn transform_vector(self, v: FixedVec3) -> FixedVec3 {
+        self.transform_vector(v)
+    }
+}
+
+impl GaFlavor for FixedFlavor {
+    type Scalar = Fixed;
+    type Vector = FixedVec3;
+    type Bivector = FixedBivector3;
+    type Rotor = FixedRotor;
+    type Motor = FixedMotor3;
+}
+
 // ---- Cross-flavor interop with `crate::float_ga` ----
 //
 // See `float_ga`'s matching section for the full rationale: every
