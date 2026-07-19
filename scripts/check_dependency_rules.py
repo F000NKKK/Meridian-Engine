@@ -34,6 +34,7 @@ ALLOWED = {
     },
     "meridian-gac-compute": {
         "meridian-gac-core",
+        "meridian-numeric-core",
         "meridian-compute-runtime",
     },
     "meridian-ecs-core": {"meridian-memory-core", "meridian-gac-core"},
