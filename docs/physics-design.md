@@ -2,19 +2,23 @@
 
 ## The split
 
-`physics-driver` holds low-level, domain-agnostic spatial primitives: BVH
-construction, spatial hashing, broad-phase acceleration structures. It has
-no concept of a rigid body, a constraint, or a scene — the same separation
-`graphics-driver`/`graphics-core` follow (see
-[ADR 005](adr/005-driver-core-separation.md)).
+`physics-driver` is execution only: memory backend, SIMD/GPU dispatch,
+synchronization. It owns **no** collision algorithms, no BVH, no
+broad-phase structure — those are domain logic, not execution backend, and
+belong to `physics-core`. This is a narrower scope than the
+`graphics-driver`/`audio-driver` pattern might suggest at first glance:
+BVH/spatial-hashing are how physics *reasons about space*, not how it
+*executes work*, so they stay in `physics-core` even though they're
+"low-level" in the algorithmic sense. See
+[ADR 005](adr/005-driver-core-separation.md) and
+[dependency-rules.md](dependency-rules.md) rule 2.
 
-`physics-core` builds the actual simulation on top:
+`physics-core` owns the actual simulation, including its own broad-phase:
 
 ```text
 Geometry
-Collision            GJK, EPA, SAT
-Broad Phase           (via physics-driver)
-Narrow Phase
+Broad Phase          BVH, spatial hashing — owned here, not in physics-driver
+Narrow Phase          GJK, EPA, SAT
 Constraint Solver     impulse-based
 Integration
 ```
@@ -31,6 +35,13 @@ struct RigidBody {
 
 There is no physics-specific position/rotation pair to keep in sync with the
 rendering transform — both read the same `Motor3`.
+
+## Collider/mesh handles
+
+Collision shapes referencing loaded mesh data go through
+`meridian-resource-core`'s handle types, not a physics-specific handle —
+see [memory-model.md](memory-model.md) and
+[ADR 006](adr/006-resource-core-separation.md).
 
 ## Compute
 
