@@ -16,26 +16,44 @@ spatial model instead of each inventing its own transform representation.
         +----------+-------+-------+----------+
         |          |               |          |
   graphics-core physics-core  audio-core  asset-core / ecs-core
-        |          |               |
-  graphics-driver  physics-driver  audio-driver
-        |          |               |
-        +----------+-------+-------+
+        |          |               |               |
+  graphics-driver  physics-driver  audio-driver     |
+        |          |               |               |
+        +----------+-------+-------+---------------+
                             |
-                     platform-core          compute-core --------+
-                                                    |             |
-                                             compute-driver  meridian-gac-core
-                                                    |             |
-                                             platform-core   meridian-numeric-core
-                                                                  |
-                                                          meridian-foundation
+                     platform-core
+                            |
+                     meridian-foundation
 ```
 
-`graphics-core`, `physics-core` and future `animation-core`/`particles-core`/
-`ai-core` reach batched CPU-SIMD/GPU work through `compute-core`, which in
-turn depends on `gac-core` for the `Motor3` type those batches operate on —
-see [ADR 007](adr/007-batch-transforms-via-compute.md). `gac-core` never
-depends on `compute-core` back; it stays pure geometric algebra regardless
-of which backend eventually executes a given batch.
+`gac-core` (math) and `compute-runtime` (dispatch execution) are a second,
+parallel spine underneath `graphics-core`/`physics-core`, deliberately
+independent of each other:
+
+```text
+graphics-core   physics-core
+        |             |
+        +------+------+
+               |
+     meridian-gac-compute
+        |             |
+        v             v
+meridian-gac-core   meridian-compute-runtime
+        |                     |
+meridian-numeric-core   meridian-compute-driver
+        |                     |
+meridian-foundation      platform-core
+```
+
+`gac-core` defines *what* to compute (`Motor3`, `Rotor`, ...); `compute-runtime`
+defines *where* (CPU-SIMD or GPU, via `compute-driver`); `gac-compute` is the
+adapter that implements `compute-runtime`'s `ComputeKernel` trait for batched
+GAC operations. `graphics-core` and `physics-core` depend on `gac-compute`
+for batched transform work and on `compute-runtime` directly for non-GAC
+compute (e.g. GPU culling) — see
+[ADR 007](adr/007-batch-transforms-via-compute.md). `gac-core` never depends
+on `compute-runtime`, and `compute-runtime` never depends on `gac-core`, in
+either direction.
 
 See [dependency-rules.md](dependency-rules.md) for the exact, enforceable
 edge list — this diagram is the intuition, that document is the ruling.
@@ -77,9 +95,16 @@ application layer, on top of the core crates — see
 
 Every hardware-facing subsystem (graphics, audio, physics, compute) splits
 into a `*-driver` crate (hardware abstraction, no domain concepts) and a
-`*-core` crate (domain logic, built on the driver). This is what lets a
+domain-logic crate built on top of the driver. This is what lets a
 `vulkan-driver` or `dx12-driver` be added later without touching
 `graphics-core` at all. See [ADR 005](adr/005-driver-core-separation.md).
+`compute` is named `compute-runtime` rather than `compute-core`: unlike
+graphics/audio/physics, it has no domain concepts of its own (no algorithm
+lives in it) — it's dispatch infrastructure that domain crates
+(`gac-compute`, and future `particle-compute`/`physics-compute`/...) build
+on top of, so it doesn't get the "core" name reserved for
+`graphics-core`/`physics-core`/`audio-core`-style domain layers. See
+[ADR 007](adr/007-batch-transforms-via-compute.md).
 
 ## Threading and scheduling
 

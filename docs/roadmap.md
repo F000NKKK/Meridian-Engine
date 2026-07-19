@@ -29,8 +29,12 @@ priority before writing implementations is keeping that document and the
    generic `Handle`, needed before any subsystem below can hold a
    `TextureHandle`/`MeshHandle`/etc.
 5. `meridian-ecs-core` — archetype storage, `Transform` as a component.
-6. `meridian-compute-driver` → `meridian-compute-core` — needed before
-   physics or graphics can use compute.
+6. `meridian-compute-driver` → `meridian-compute-runtime` → `meridian-gac-compute`
+   — needed before physics or graphics can use compute for batched
+   transforms. `gac-compute` depends on both `gac-core` (step 2) and
+   `compute-runtime` and is what lets a `Motor3` batch run on CPU-SIMD or
+   GPU without `gac-core` or `compute-runtime` depending on each other — see
+   [ADR 007](adr/007-batch-transforms-via-compute.md).
 7. `meridian-asset-core` — decoders, independent of the above once
    `platform-core` exists.
 8. `meridian-graphics-driver` → `meridian-graphics-core`, and
@@ -44,7 +48,7 @@ priority before writing implementations is keeping that document and the
 
 - `animation-core`, `particles-core`, `ai-core` — referenced in
   [dependency-rules.md](dependency-rules.md) as future consumers of
-  `compute-core`, but not part of the current workspace. Add them only when
+  `compute-runtime`, but not part of the current workspace. Add them only when
   there's a concrete subsystem to build, not speculatively.
 - Splitting `graphics-driver` into a separately-named RHI crate plus backend
   crates (`vulkan-driver`, etc.) — `graphics-driver` already plays the RHI

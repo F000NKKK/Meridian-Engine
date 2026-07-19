@@ -19,7 +19,7 @@ into leaking domain concepts downward.
 
 Every such subsystem splits into a `*-driver` crate and a `*-core` crate:
 `graphics-driver`/`graphics-core`, `audio-driver`/`audio-core`,
-`physics-driver`/`physics-core`, `compute-driver`/`compute-core`. The
+`physics-driver`/`physics-core`, `compute-driver`/`compute-runtime`. The
 dependency edge only ever points `*-core → *-driver`, never the reverse —
 enforced by [dependency-rules.md](../dependency-rules.md) rule 2. `*-driver`
 crates depend only on `platform-core`, never on their own `*-core` or on any
@@ -30,6 +30,15 @@ concrete implementation (`VulkanBackend`, `DX12Backend`); "driver" names the
 abstract hardware interface those implementations satisfy. Concrete
 backends (`vulkan-driver`, `dx12-driver`, `metal-driver`) are expected to
 live *underneath* `graphics-driver` later, not replace it.
+
+`compute` is the one subsystem in this list whose domain-logic layer is
+named `compute-runtime`, not `compute-core`: it has no algorithms of its own
+(no domain concept the way materials are to `graphics-core` or rigid bodies
+are to `physics-core`) — it's dispatch infrastructure (`ComputeContext`,
+`ComputeKernel`, buffers) that other crates build kernels on top of. Actual
+compute algorithms live in adapter crates like `meridian-gac-compute`, one
+per domain that needs batched CPU-SIMD/GPU execution — see
+[ADR 007](007-batch-transforms-via-compute.md).
 
 ## Alternatives considered
 

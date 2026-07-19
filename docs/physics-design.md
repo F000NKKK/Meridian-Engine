@@ -47,7 +47,7 @@ see [memory-model.md](memory-model.md) and
 
 Broad-phase and constraint solving are natural candidates for SIMD/GPU
 parallelism at scale. `physics-core` reaches that through
-`meridian-compute-core`, not by depending on `compute-driver` directly or
+`meridian-compute-runtime`, not by depending on `compute-driver` directly or
 building its own scheduler — see
 [dependency-rules.md](dependency-rules.md) rule 5.
 

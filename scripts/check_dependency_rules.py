@@ -27,11 +27,14 @@ ALLOWED = {
     "meridian-task-core": set(),
     "meridian-platform-core": set(),
     "meridian-compute-driver": {"meridian-platform-core"},
-    "meridian-compute-core": {
+    "meridian-compute-runtime": {
         "meridian-compute-driver",
         "meridian-task-core",
         "meridian-memory-core",
+    },
+    "meridian-gac-compute": {
         "meridian-gac-core",
+        "meridian-compute-runtime",
     },
     "meridian-ecs-core": {"meridian-memory-core", "meridian-gac-core"},
     "meridian-asset-core": {"meridian-platform-core"},
@@ -40,17 +43,19 @@ ALLOWED = {
     "meridian-physics-driver": {"meridian-platform-core"},
     "meridian-graphics-core": {
         "meridian-gac-core",
+        "meridian-gac-compute",
         "meridian-memory-core",
         "meridian-ecs-core",
         "meridian-asset-core",
         "meridian-graphics-driver",
-        "meridian-compute-core",
+        "meridian-compute-runtime",
         "meridian-resource-core",
     },
     "meridian-physics-core": {
         "meridian-gac-core",
+        "meridian-gac-compute",
         "meridian-ecs-core",
-        "meridian-compute-core",
+        "meridian-compute-runtime",
         "meridian-physics-driver",
         "meridian-resource-core",
     },
@@ -68,7 +73,7 @@ ALLOWED = {
         "meridian-physics-core",
         "meridian-audio-core",
         "meridian-asset-core",
-        "meridian-compute-core",
+        "meridian-compute-runtime",
     },
 }
 

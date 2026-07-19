@@ -14,17 +14,17 @@ meridian-numeric-core
         |
         v
 meridian-gac-core   meridian-memory-core   meridian-task-core   meridian-platform-core
-   |    |                  |     |                 |                     |
-   |    |                  |     v                 |                     +---------------+
-   |    |                  |  meridian-resource-core|                     |               |
-   |    v                  v     |                  v                     v               v
-   |  meridian-ecs-core <--+     |        meridian-compute-driver   meridian-graphics-driver
-   |         |                   |                  |               meridian-audio-driver
-   |         |                   |                  v               meridian-physics-driver
-   +---------|-------------------|-->  meridian-compute-core                |
-             |                   |                  |                       |
-             +----------+--------+------------------+-----------------------+
-                        |
+        |                  |     |                 |                     |
+        |                  |     v                 |                     +---------------+
+        |                  |  meridian-resource-core|                     |               |
+        v                  v     |                  v                     v               v
+meridian-ecs-core <--------+     |        meridian-compute-driver   meridian-graphics-driver
+        |                        |                  |               meridian-audio-driver
+        |                        |                  v               meridian-physics-driver
+        |                        |        meridian-compute-runtime          |
+        |                        |                                          |
+        +----------+-------------+------------------------------------------+
+                    |
    meridian-asset-core   meridian-graphics-core   meridian-physics-core   meridian-audio-core
                     |                |                    |                     |
                     +----------------+--------------------+---------------------+
@@ -32,12 +32,32 @@ meridian-gac-core   meridian-memory-core   meridian-task-core   meridian-platfor
                                     meridian-engine-core
 ```
 
-(Arrows point from a dependency to its dependent. `meridian-audio-core` also
-depends on `meridian-gac-core` and `meridian-audio-driver`, omitted above for
-readability — see each crate's own `Cargo.toml` for the exact edge list.
-`meridian-gac-core -> meridian-compute-core` is the batch-transform edge
-added in [ADR 007](adr/007-batch-transforms-via-compute.md): `compute-core`
-depends on `gac-core` for `Motor3`, never the other way around.)
+`meridian-gac-core` and `meridian-compute-runtime` never depend on each
+other — geometric algebra ("what to compute") and the compute dispatch
+runtime ("where to compute it") are deliberately independent. The adapter
+between them is its own crate:
+
+```text
+meridian-gac-core   meridian-compute-runtime
+        |                     |
+        +----------+----------+
+                    |
+          meridian-gac-compute
+                    |
+        +-----------+-----------+
+        |                       |
+  graphics-core            physics-core
+```
+
+`meridian-gac-compute` depends on both and implements `compute-runtime`'s
+`ComputeKernel` trait for GAC batch operations (`MotorTransformKernel`,
+`MotorComposeKernel`, ...). `graphics-core` and `physics-core` depend on
+`gac-compute` for batched transform work and on `compute-runtime` directly
+for non-GAC compute (e.g. GPU culling) — both edges omitted from the main
+diagram above for readability, along with `meridian-audio-core`'s dependency
+on `meridian-gac-core` and `meridian-audio-driver`; see each crate's own
+`Cargo.toml` for the exact edge list. See
+[ADR 007](adr/007-batch-transforms-via-compute.md).
 
 ## Rules
 
@@ -59,11 +79,13 @@ depends on `gac-core` for `Motor3`, never the other way around.)
    "file bytes → decoder → CPU-side representation"; deciding where that
    representation lives and when it dies is the application's problem, not
    this crate's.
-5. **`meridian-compute-core` is the only path to CPU-SIMD/GPU-compute for
-   subsystem crates.** `physics-core` and `graphics-core` reach compute
-   through `compute-core`, never by depending on `compute-driver` directly,
-   and never by re-implementing scheduling/dispatch themselves. Any future
-   `animation-core`, `particles-core`, or `ai-core` follows the same rule.
+5. **`meridian-compute-runtime` is the only path to CPU-SIMD/GPU-compute
+   for subsystem crates.** `physics-core` and `graphics-core` reach compute
+   through `compute-runtime` (directly, or via an adapter crate like
+   `gac-compute` — see rule 10), never by depending on `compute-driver`
+   directly, and never by re-implementing scheduling/dispatch themselves.
+   Any future `animation-core`, `particles-core`, or `ai-core` follows the
+   same rule.
 6. **`meridian-gac-core` stays pure geometric algebra.** Scalar types, SIMD
    dispatch, and CPU feature detection live in `meridian-numeric-core`
    (which itself sits on `meridian-foundation`), not in `gac-core`. If you
@@ -85,14 +107,17 @@ depends on `gac-core` for `Motor3`, never the other way around.)
    `physics-driver` is execution only: memory backend, SIMD/GPU dispatch,
    synchronization — the same role `compute-driver` plays for compute in
    general. See [physics-design.md](physics-design.md).
-10. **`meridian-compute-core` may depend on `meridian-gac-core`; the edge
-    never points the other way.** Batch spatial-math kernels (e.g.
-    `TransformBatchKernel`) need the `Motor3` type to describe what they
-    operate on, so `compute-core -> gac-core` is allowed. `gac-core` itself
-    must never depend on `compute-core`, `compute-driver`, or know that a
-    GPU exists — it stays pure geometric algebra per rule 6, and it is
-    `compute-core`'s job to pick a CPU or GPU execution path for a given
-    batch, not `gac-core`'s. See
+10. **`meridian-gac-core` and `meridian-compute-runtime` never depend on
+    each other, in either direction.** `gac-core` stays pure geometric
+    algebra (rule 6) and must never know a GPU exists; `compute-runtime`
+    stays a generic dispatch runtime (rule 5) and must never know what a
+    `Motor3` is. Batch GAC operations that need both — `MotorTransformKernel`
+    and friends — live in the adapter crate `meridian-gac-compute`, which
+    depends on both and is the only crate allowed to. The same pattern
+    applies to any future `<domain>-compute` adapter (`particle-compute`,
+    `physics-compute`, ...): the math/domain crate and `compute-runtime`
+    stay mutually unaware, and the adapter is what implements
+    `compute-runtime`'s `ComputeKernel` trait for that domain's types. See
     [ADR 007](adr/007-batch-transforms-via-compute.md).
 
 ## How to check locally

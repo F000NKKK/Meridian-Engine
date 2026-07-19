@@ -40,7 +40,7 @@ adding a pass without manually re-threading every pass after it.
 The long-term direction is minimizing CPU-side per-object work: the CPU
 prepares data, the GPU (via indirect draw, compute-based culling, and
 instancing) decides what actually gets drawn. This is why `graphics-core`
-depends on `meridian-compute-core` — GPU culling and compute-based
+depends on `meridian-compute-runtime` — GPU culling and compute-based
 visibility are compute workloads, not rendering-specific ones (see
 [dependency-rules.md](dependency-rules.md) rule 5).
 

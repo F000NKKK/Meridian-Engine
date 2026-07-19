@@ -32,15 +32,15 @@ the graph — not a hardcoded call order — determines what can overlap.
 - **Work stealing** — idle workers pull from busy workers' queues instead of
   sitting idle while work is unevenly distributed.
 
-## Relationship to `compute-core`
+## Relationship to `compute-runtime`
 
 `task-core` schedules CPU-side jobs (systems, subsystem updates).
-`meridian-compute-core` is the separate, explicit path for SIMD/GPU compute
+`meridian-compute-runtime` is the separate, explicit path for SIMD/GPU compute
 dispatch used by physics, rendering, and future animation/particles/AI work
-— see [dependency-rules.md](dependency-rules.md) rule 5. `compute-core`
+— see [dependency-rules.md](dependency-rules.md) rule 5. `compute-runtime`
 itself depends on `task-core` for CPU-side scheduling of that compute work,
 but the two are not the same layer: `task-core` doesn't know what a compute
-buffer is, and `compute-core` doesn't schedule general application logic.
+buffer is, and `compute-runtime` doesn't schedule general application logic.
 
 ## Determinism note
 
