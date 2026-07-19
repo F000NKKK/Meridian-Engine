@@ -1,0 +1,13 @@
+[workspace]
+resolver = "3"
+members = ["crates/*", "examples"]
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.92"
+license = "MPL-2.0"
+repository = "https://github.com/F000NKKK/Meridian-Engine"
+
+[profile.release]
+lto = true
+codegen-units = 1

@@ -1,0 +1,15 @@
+[package]
+name = "meridian-examples"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+meridian-engine-core = { path = "../crates/meridian-engine-core", version = "0.1.0" }
+
+[[example]]
+name = "hello_engine"
+path = "examples/hello_engine.rs"

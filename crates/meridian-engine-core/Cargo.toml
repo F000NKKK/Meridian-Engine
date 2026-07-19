@@ -1,0 +1,18 @@
+[package]
+name = "meridian-engine-core"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Runtime: frame scheduler, event system, subsystem manager; ties every other crate into the main loop."
+
+[dependencies]
+meridian-memory-core = { path = "../meridian-memory-core", version = "0.1.0" }
+meridian-task-core = { path = "../meridian-task-core", version = "0.1.0" }
+meridian-platform-core = { path = "../meridian-platform-core", version = "0.1.0" }
+meridian-ecs-core = { path = "../meridian-ecs-core", version = "0.1.0" }
+meridian-graphics-core = { path = "../meridian-graphics-core", version = "0.1.0" }
+meridian-physics-core = { path = "../meridian-physics-core", version = "0.1.0" }
+meridian-audio-core = { path = "../meridian-audio-core", version = "0.1.0" }
+meridian-asset-core = { path = "../meridian-asset-core", version = "0.1.0" }

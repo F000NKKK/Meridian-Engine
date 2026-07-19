@@ -1,0 +1,12 @@
+[package]
+name = "meridian-ecs-core"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Archetype-based, data-oriented Entity Component System with SoA storage, built for cache- and SIMD-friendly iteration."
+
+[dependencies]
+meridian-memory-core = { path = "../meridian-memory-core", version = "0.1.0" }
+meridian-gac-core = { path = "../meridian-gac-core", version = "0.1.0" }

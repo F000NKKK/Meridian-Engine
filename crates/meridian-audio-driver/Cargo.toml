@@ -1,0 +1,11 @@
+[package]
+name = "meridian-audio-driver"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Low-level audio device abstraction: output streams, buffers and platform audio backends."
+
+[dependencies]
+meridian-platform-core = { path = "../meridian-platform-core", version = "0.1.0" }
