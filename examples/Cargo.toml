@@ -20,6 +20,8 @@ meridian-graphics-core = { workspace = true }
 meridian-graphics-driver = { workspace = true }
 meridian-physics-core = { workspace = true }
 meridian-numeric-core = { workspace = true }
+meridian-gpu-driver.workspace = true
+
 tokio = { workspace = true }
 
 [[example]]
