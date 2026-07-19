@@ -45,6 +45,13 @@ convention).
 ./release.sh meridian-gac-core --minor          # bump + cascade + publish
 ./release.sh meridian-engine-core --patch       # no cascade, patch is link-compatible
 ./release.sh meridian-gac-core --publish-only   # publish current version as-is
+./release.sh --publish-all --patch              # bump + publish every crate in the workspace
+./release.sh --publish-all --no-bump            # publish every crate at its current version
 ```
+
+`--publish-all` replaces `<crate-name>` and builds the plan from the whole
+workspace (topologically) instead of one crate's cascade. `--no-bump` skips
+the version bump and publishes the plan as-is — works with a single crate,
+its cascade, or `--publish-all`.
 
 Add `--dry-run` to preview, `--no-publish` to bump without publishing.
