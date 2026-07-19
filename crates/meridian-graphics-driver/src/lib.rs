@@ -85,7 +85,13 @@ impl Device {
         };
         surface.configure(device.wgpu_device(), &config);
 
-        Ok((Self(device), Surface { raw: surface, config }))
+        Ok((
+            Self(device),
+            Surface {
+                raw: surface,
+                config,
+            },
+        ))
     }
 
     /// The adapter's reported name — see
@@ -94,7 +100,11 @@ impl Device {
         self.0.adapter_name()
     }
 
-    pub fn create_buffer(&self, byte_len: usize, usage: BufferUsage) -> meridian_gpu_driver::Buffer {
+    pub fn create_buffer(
+        &self,
+        byte_len: usize,
+        usage: BufferUsage,
+    ) -> meridian_gpu_driver::Buffer {
         self.0.create_buffer(byte_len, usage)
     }
 
@@ -309,13 +319,18 @@ impl RenderPass<'_> {
         self.raw.set_pipeline(&pipeline.raw);
     }
 
-    pub fn set_bind_group(&mut self, group_index: u32, bind_group: &meridian_gpu_driver::BindGroup) {
+    pub fn set_bind_group(
+        &mut self,
+        group_index: u32,
+        bind_group: &meridian_gpu_driver::BindGroup,
+    ) {
         self.raw
             .set_bind_group(group_index, bind_group.wgpu_bind_group(), &[]);
     }
 
     pub fn set_vertex_buffer(&mut self, slot: u32, buffer: &meridian_gpu_driver::Buffer) {
-        self.raw.set_vertex_buffer(slot, buffer.wgpu_buffer().slice(..));
+        self.raw
+            .set_vertex_buffer(slot, buffer.wgpu_buffer().slice(..));
     }
 
     /// `u16` indices — the common case for a mesh with under 65536
@@ -413,9 +428,13 @@ impl std::fmt::Display for AcquireFrameError {
         match self {
             AcquireFrameError::Timeout => write!(f, "timed out acquiring the next swapchain frame"),
             AcquireFrameError::Occluded => write!(f, "surface is occluded (minimized or hidden)"),
-            AcquireFrameError::Outdated => write!(f, "surface configuration is outdated, call Surface::resize"),
+            AcquireFrameError::Outdated => {
+                write!(f, "surface configuration is outdated, call Surface::resize")
+            }
             AcquireFrameError::Lost => write!(f, "surface was lost and needs to be recreated"),
-            AcquireFrameError::Validation => write!(f, "validation error acquiring the next swapchain frame"),
+            AcquireFrameError::Validation => {
+                write!(f, "validation error acquiring the next swapchain frame")
+            }
         }
     }
 }

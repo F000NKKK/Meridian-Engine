@@ -259,7 +259,12 @@ impl Device {
             view_formats: &[],
         });
         let view = raw.create_view(&wgpu::TextureViewDescriptor::default());
-        Texture { raw, view, width, height }
+        Texture {
+            raw,
+            view,
+            width,
+            height,
+        }
     }
 
     /// Compiles a WGSL shader module. `label` is for GPU-debugger/error
@@ -387,7 +392,12 @@ impl CommandBuffer<'_> {
     /// [`Device::create_compute_pipeline`]'s doc comment) and dispatches
     /// `workgroups` workgroups along X (Y/Z left at 1 — 1D dispatch is
     /// all today's callers need; extending to 3D is additive).
-    pub fn dispatch_compute(&mut self, pipeline: &ComputePipeline, buffer: &Buffer, workgroups: u32) {
+    pub fn dispatch_compute(
+        &mut self,
+        pipeline: &ComputePipeline,
+        buffer: &Buffer,
+        workgroups: u32,
+    ) {
         let bind_group_layout = pipeline.raw.get_bind_group_layout(0);
         let bind_group = self
             .device
@@ -559,7 +569,9 @@ mod tests {
             64,
             32,
             wgpu::TextureFormat::Rgba8Unorm,
-            wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::COPY_SRC,
+            wgpu::TextureUsages::TEXTURE_BINDING
+                | wgpu::TextureUsages::COPY_DST
+                | wgpu::TextureUsages::COPY_SRC,
         );
         assert_eq!(texture.width, 64);
         assert_eq!(texture.height, 32);
