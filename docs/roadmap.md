@@ -48,7 +48,8 @@ simple enough to hand-roll without an external crate; PNG/JPEG/glTF need
 one, added when a concrete asset needs it, not speculatively.
 
 Step 8's physics half (`physics-driver`/`physics-core`) is real: AABB
-broad phase, sphere-sphere narrow phase, an impulse-based constraint
+broad phase, sphere-sphere/sphere-cuboid/cuboid-cuboid (SAT) narrow phase
+(see below for the `Cuboid` collider shape), an impulse-based constraint
 solver (linear *and* angular — see below), semi-implicit Euler
 integration. `graphics-driver`/`audio-driver` are still scaffolds —
 blocked on the GPU backend decision below (audio doesn't strictly need a
