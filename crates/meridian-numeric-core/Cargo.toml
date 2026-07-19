@@ -1,0 +1,11 @@
+[package]
+name = "meridian-numeric-core"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Scalar types, SIMD helpers, numeric traits and CPU feature dispatch underlying the GAC — kept separate so gac-core stays pure geometric algebra."
+
+[dependencies]
+meridian-foundation = { workspace = true }

@@ -1,0 +1,11 @@
+[package]
+name = "meridian-physics-driver"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Low-level collision/broad-phase primitives (BVH, spatial hashing) and backend hooks. Knows nothing about rigid bodies, constraints or scenes."
+
+[dependencies]
+meridian-platform-core = { workspace = true }

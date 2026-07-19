@@ -1,0 +1,10 @@
+[package]
+name = "meridian-foundation"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Zero-dependency foundational types shared workspace-wide: error conventions, basic type aliases, feature-detection primitives."
+
+[dependencies]

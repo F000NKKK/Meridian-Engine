@@ -16,3 +16,4 @@ meridian-graphics-core = { workspace = true }
 meridian-physics-core = { workspace = true }
 meridian-audio-core = { workspace = true }
 meridian-asset-core = { workspace = true }
+meridian-compute-core = { workspace = true }

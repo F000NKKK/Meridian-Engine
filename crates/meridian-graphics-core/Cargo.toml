@@ -13,3 +13,4 @@ meridian-memory-core = { workspace = true }
 meridian-ecs-core = { workspace = true }
 meridian-asset-core = { workspace = true }
 meridian-graphics-driver = { workspace = true }
+meridian-compute-core = { workspace = true }
