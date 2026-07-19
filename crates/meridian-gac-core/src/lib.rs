@@ -204,10 +204,26 @@ pub struct Vec3 {
 }
 
 impl Vec3 {
-    pub const ZERO: Vec3 = Vec3 { x: 0.0, y: 0.0, z: 0.0 };
-    pub const X: Vec3 = Vec3 { x: 1.0, y: 0.0, z: 0.0 };
-    pub const Y: Vec3 = Vec3 { x: 0.0, y: 1.0, z: 0.0 };
-    pub const Z: Vec3 = Vec3 { x: 0.0, y: 0.0, z: 1.0 };
+    pub const ZERO: Vec3 = Vec3 {
+        x: 0.0,
+        y: 0.0,
+        z: 0.0,
+    };
+    pub const X: Vec3 = Vec3 {
+        x: 1.0,
+        y: 0.0,
+        z: 0.0,
+    };
+    pub const Y: Vec3 = Vec3 {
+        x: 0.0,
+        y: 1.0,
+        z: 0.0,
+    };
+    pub const Z: Vec3 = Vec3 {
+        x: 0.0,
+        y: 0.0,
+        z: 1.0,
+    };
 
     pub const fn new(x: Scalar, y: Scalar, z: Scalar) -> Self {
         Self { x, y, z }
