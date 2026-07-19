@@ -1,0 +1,127 @@
+//! Roadmap milestone: `meridian-engine-core`'s `Runtime` ties the
+//! driver-independent subsystems (ecs-core, physics-core, audio-core)
+//! into one real per-frame loop — `SubsystemManager` owns real instances,
+//! `Runtime::tick` advances physics then recomputes audio gains from the
+//! result, and `EventSystem` decouples that from anything downstream that
+//! wants to react to a completed frame. `graphics-core` isn't part of this
+//! loop yet: rendering has nothing to submit to without a real
+//! `graphics-driver` backend (blocked on the `wgpu` decision — see
+//! docs/roadmap.md). The exhaustive numeric checks live in
+//! `meridian-engine-core`'s own test suite (`cargo test -p
+//! meridian-engine-core`); this is the human-readable version.
+//!
+//! Run with:
+//!   ./build.sh run runtime_loop
+
+use meridian_audio_core::{Channel, Emitter, Listener, Mixer, SpeakerLayout};
+use meridian_ecs_core::{Component, Transform, World};
+use meridian_engine_core::{FrameCompleted, Runtime, SubsystemManager};
+use meridian_gac_core::{Motor3, Vec3};
+use meridian_physics_core::{ColliderShape, RigidBody};
+
+#[derive(Debug, Clone, Copy)]
+struct Name(&'static str);
+impl Component for Name {}
+
+fn check(label: &str, condition: bool) {
+    println!("  [{}] {label}", if condition { "OK" } else { "FAIL" });
+    assert!(condition, "{label} failed");
+}
+
+fn main() {
+    println!("== SubsystemManager: real ecs-core + physics-core + audio-core instances ==");
+    let mut subsystems = SubsystemManager::new(Mixer::new(SpeakerLayout::stereo_headphones()));
+
+    // The ecs-core World is available for application-level entities —
+    // engine-core doesn't invent a sync between it and physics-core's own
+    // RigidBody list (see the crate's module doc for why).
+    let mut world = World::new();
+    let ball_entity = world.spawn();
+    world.insert(
+        ball_entity,
+        Transform {
+            motor: Motor3::translation(Vec3::new(0.0, 10.0, 0.0)),
+        },
+    );
+    world.insert(ball_entity, Name("ball"));
+    subsystems.world = world;
+    check(
+        "ecs-core entity spawned independently of physics bodies",
+        subsystems.world.query::<Name>().count() == 1,
+    );
+
+    // A falling ball above a static floor — the same scenario
+    // physics-core's own tests use, driven through Runtime this time.
+    subsystems.bodies.push(RigidBody {
+        frame: Motor3::translation(Vec3::new(0.0, -50.0, 0.0)),
+        mass: 0.0, // static floor
+        shape: ColliderShape::Sphere { radius: 50.0 },
+        ..Default::default()
+    });
+    subsystems.bodies.push(RigidBody {
+        frame: Motor3::translation(Vec3::new(0.0, 5.0, 0.0)),
+        mass: 1.0,
+        shape: ColliderShape::Sphere { radius: 0.5 },
+        ..Default::default()
+    });
+
+    subsystems.listener = Listener {
+        frame: Motor3::identity(),
+    };
+    subsystems.emitters.push((
+        Emitter {
+            frame: Motor3::translation(Vec3::new(0.0, 0.0, 5.0)), // local +Z: to the right
+        },
+        1.0,
+    ));
+
+    println!("\n== Runtime: tick physics + audio together, drain events ==");
+    let mut runtime = Runtime::new(subsystems);
+    let starting_velocity = runtime.subsystems.bodies[1].velocity.y;
+
+    for _ in 0..120 {
+        runtime.tick();
+    }
+
+    let completed = runtime.events.drain::<FrameCompleted>();
+    check("120 FrameCompleted events published, one per tick", completed.len() == 120);
+    check(
+        "frame indices increase monotonically",
+        completed
+            .windows(2)
+            .all(|w| w[1].frame_index == w[0].frame_index + 1),
+    );
+    check(
+        "draining again returns nothing (mailbox, not a log)",
+        runtime.events.drain::<FrameCompleted>().is_empty(),
+    );
+
+    let resting_height = runtime.subsystems.bodies[1].position().y;
+    println!("  ball settled at y={resting_height:.3} after 120 ticks");
+    check(
+        "ball fell and came to rest near the floor surface (y=0.5)",
+        (resting_height - 0.5).abs() < 0.5,
+    );
+    check(
+        "gravity was applied (velocity changed from its starting value)",
+        runtime.subsystems.bodies[1].velocity.y != starting_velocity,
+    );
+
+    let gains = runtime.subsystems.mix_audio();
+    let gain_of = |channel: Channel| {
+        gains
+            .iter()
+            .find(|(c, _)| *c == channel)
+            .map(|(_, g)| *g)
+            .unwrap_or(0.0)
+    };
+    println!("  audio gains after physics-driven ticks: {gains:?}");
+    check(
+        "audio still reflects the (physics-independent) emitter's position",
+        gain_of(Channel::Right) > 0.99 && gain_of(Channel::Left) < 1e-3,
+    );
+
+    println!(
+        "\nAll checks passed — Runtime ties ecs-core/physics-core/audio-core into one real per-frame loop."
+    );
+}
