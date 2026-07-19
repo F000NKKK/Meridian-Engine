@@ -327,7 +327,10 @@ mod tests {
 
         input.release_mouse_button(MouseButton::Other(6));
         assert!(!input.is_mouse_button_down(MouseButton::Other(6)));
-        assert!(input.is_mouse_button_down(MouseButton::Back), "releasing Other(6) must not affect Back");
+        assert!(
+            input.is_mouse_button_down(MouseButton::Back),
+            "releasing Other(6) must not affect Back"
+        );
     }
 
     #[test]
