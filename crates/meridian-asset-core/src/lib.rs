@@ -452,8 +452,14 @@ mod tests {
     }
 
     #[test]
-    fn obj_rejects_non_triangular_faces() {
+    fn obj_rejects_faces_with_more_than_three_indices() {
         let text = "v 0 0 0\nv 1 0 0\nv 0 1 0\nv 1 1 0\nf 1 2 3 4\n";
+        assert_eq!(ObjDecoder.decode(text.as_bytes()), Err(DecodeError::Unsupported("non-triangular face")));
+    }
+
+    #[test]
+    fn obj_rejects_faces_with_fewer_than_three_indices() {
+        let text = "v 0 0 0\nv 1 0 0\nf 1 2\n";
         assert_eq!(ObjDecoder.decode(text.as_bytes()), Err(DecodeError::Unsupported("non-triangular face")));
     }
 
