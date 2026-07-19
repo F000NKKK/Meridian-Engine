@@ -8,12 +8,28 @@
 //! work across real OS threads via `std::thread::scope`, safe, no
 //! `unsafe`.
 
+use meridian_platform_core::BackendCapabilities;
+
 /// Backend capability flags (CPU SIMD width, GPU compute support).
+/// Implements `platform-core`'s [`BackendCapabilities`] — the shape shared
+/// with `physics-driver::PhysicsBackend` and future `graphics-driver`/
+/// `audio-driver` equivalents; `gpu_compute` is this crate's
+/// domain-specific name for the shared "is a GPU backend available" bit.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct ComputeCapabilities {
     pub gpu_compute: bool,
     /// Worker thread count the CPU backend will fan a dispatch out across.
     pub cpu_threads: usize,
+}
+
+impl BackendCapabilities for ComputeCapabilities {
+    fn gpu_available(&self) -> bool {
+        self.gpu_compute
+    }
+
+    fn cpu_threads(&self) -> usize {
+        self.cpu_threads
+    }
 }
 
 /// A device-visible compute buffer. On the CPU backend this is just owned
