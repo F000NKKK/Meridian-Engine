@@ -8,8 +8,8 @@ repository.workspace = true
 description = "High-level rendering: render graph, scene extraction, visibility/culling, lighting, materials, camera and post-processing."
 
 [dependencies]
-meridian-gac-core = { path = "../meridian-gac-core", version = "0.1.0" }
-meridian-memory-core = { path = "../meridian-memory-core", version = "0.1.0" }
-meridian-ecs-core = { path = "../meridian-ecs-core", version = "0.1.0" }
-meridian-asset-core = { path = "../meridian-asset-core", version = "0.1.0" }
-meridian-graphics-driver = { path = "../meridian-graphics-driver", version = "0.1.0" }
+meridian-gac-core = { workspace = true }
+meridian-memory-core = { workspace = true }
+meridian-ecs-core = { workspace = true }
+meridian-asset-core = { workspace = true }
+meridian-graphics-driver = { workspace = true }

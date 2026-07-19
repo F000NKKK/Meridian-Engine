@@ -8,4 +8,4 @@ repository.workspace = true
 description = "Loading and decoding of images, meshes, audio, shaders and binary formats. Does not manage ownership or lifetime of loaded data."
 
 [dependencies]
-meridian-platform-core = { path = "../meridian-platform-core", version = "0.1.0" }
+meridian-platform-core = { workspace = true }

@@ -180,21 +180,19 @@ bump_crate() {
         ok "$crate: $current → $new_version" >&2
     fi
 
-    # Ссылки обновляем только когда минор/мажор реально сменился.
+    # Единственное место со ссылкой на версию крейта — [workspace.dependencies]
+    # в корневом Cargo.toml (member-крейты используют `workspace = true` и
+    # ничего не хранят локально). Обновляем только при смене минора/мажора.
     if [[ "$old_short" != "$new_short" ]]; then
-        local t
-        for t in "$WS/crates"/*/Cargo.toml "$WS/examples/Cargo.toml" "$WS/Cargo.toml"; do
-            [[ "$t" == "$toml" ]] && continue
-            [[ -f "$t" ]] || continue
-            if grep -qE "${crate}[[:space:]]*=.*\"${old_short}" "$t" 2>/dev/null; then
-                if $DRY_RUN; then
-                    dryrun "  ${t#$WS/} : $crate $old_short → $new_short" >&2
-                else
-                    update_ref "$crate" "$t" "$old_short" "$new_short"
-                    ok "  ссылка: ${t#$WS/}" >&2
-                fi
+        local root_toml="$WS/Cargo.toml"
+        if grep -qE "${crate}[[:space:]]*=.*\"${old_short}\"" "$root_toml" 2>/dev/null; then
+            if $DRY_RUN; then
+                dryrun "  Cargo.toml [workspace.dependencies] : $crate $old_short → $new_short" >&2
+            else
+                update_ref "$crate" "$root_toml" "$old_short" "$new_short"
+                ok "  ссылка: Cargo.toml [workspace.dependencies]" >&2
             fi
-        done
+        fi
     fi
 
     echo "$new_version"

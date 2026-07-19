@@ -8,5 +8,5 @@ repository.workspace = true
 description = "Rigid body dynamics built on the GAC: broad/narrow phase collision, constraint solving and integration."
 
 [dependencies]
-meridian-gac-core = { path = "../meridian-gac-core", version = "0.1.0" }
-meridian-ecs-core = { path = "../meridian-ecs-core", version = "0.1.0" }
+meridian-gac-core = { workspace = true }
+meridian-ecs-core = { workspace = true }

@@ -8,4 +8,4 @@ repository.workspace = true
 description = "Low-level GPU abstraction (device, command queues, buffers, textures, shaders, pipelines, synchronization). Knows nothing about scenes or materials."
 
 [dependencies]
-meridian-platform-core = { path = "../meridian-platform-core", version = "0.1.0" }
+meridian-platform-core = { workspace = true }

@@ -7,8 +7,8 @@ license.workspace = true
 repository.workspace = true
 publish = false
 
-[dependencies]
-meridian-engine-core = { path = "../crates/meridian-engine-core", version = "0.1.0" }
+[dev-dependencies]
+meridian-engine-core = { workspace = true }
 
 [[example]]
 name = "hello_engine"

@@ -8,5 +8,5 @@ repository.workspace = true
 description = "Spatial audio built on the GAC: mixer, DSP graph, listener and emitter frames."
 
 [dependencies]
-meridian-gac-core = { path = "../meridian-gac-core", version = "0.1.0" }
-meridian-audio-driver = { path = "../meridian-audio-driver", version = "0.1.0" }
+meridian-gac-core = { workspace = true }
+meridian-audio-driver = { workspace = true }
