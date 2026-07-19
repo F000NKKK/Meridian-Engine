@@ -1,19 +1,18 @@
-//! Roadmap milestone: validate `physics-core::deterministic`'s opt-in,
+//! Roadmap milestone: validate `physics-core::fixed`'s opt-in,
 //! bit-reproducible simulation path — `Fixed` (Q16.16 fixed-point, CORDIC
 //! trig, integer sqrt) instead of `f32`, for lockstep networking/replay
 //! (see `meridian_numeric_core::Fixed`'s doc comment for why `f32` can't
 //! promise this). The exhaustive checks live in
-//! `meridian-physics-core::deterministic`'s own test suite (`cargo test
-//! -p meridian-physics-core`); this is the human-readable version.
+//! `meridian-physics-core::fixed`'s own test suite (`cargo test -p
+//! meridian-physics-core`); this is the human-readable version.
 //!
 //! Run with:
 //!   ./build.sh run determinism_validation
 
 use meridian_gac_core::fixed_ga::{FixedMotor3, FixedVec3};
 use meridian_numeric_core::Fixed;
-use meridian_physics_core::deterministic::{
-    DeterministicBody, DeterministicBroadPhase, DeterministicConstraintSolver,
-    DeterministicIntegrator, DeterministicNarrowPhase, DeterministicShape,
+use meridian_physics_core::fixed::{
+    BroadPhase, ColliderShape, ConstraintSolver, Integrator, NarrowPhase, RigidBody,
 };
 
 fn check(label: &str, condition: bool) {
@@ -25,12 +24,12 @@ fn fv3(x: f64, y: f64, z: f64) -> FixedVec3 {
     FixedVec3::new(Fixed::from_num(x), Fixed::from_num(y), Fixed::from_num(z))
 }
 
-fn sphere(position: FixedVec3, velocity: FixedVec3, mass: f64, radius: f64) -> DeterministicBody {
-    DeterministicBody {
+fn sphere(position: FixedVec3, velocity: FixedVec3, mass: f64, radius: f64) -> RigidBody {
+    RigidBody {
         frame: FixedMotor3::translation(position),
         velocity,
         mass: Fixed::from_num(mass),
-        shape: DeterministicShape::Sphere {
+        shape: ColliderShape::Sphere {
             radius: Fixed::from_num(radius),
         },
         ..Default::default()
@@ -48,15 +47,15 @@ fn sphere(position: FixedVec3, velocity: FixedVec3, mass: f64, radius: f64) -> D
 /// example) settling to rest, matching `physics-core`'s own proven
 /// `full_step_ball_settles_on_static_floor_without_sinking_through` test
 /// scenario exactly.
-fn run_scenario() -> Vec<DeterministicBody> {
+fn run_scenario() -> Vec<RigidBody> {
     let mut bodies = vec![
         sphere(fv3(0.0, -50.0, 0.0), FixedVec3::ZERO, 0.0, 50.0), // static floor
         sphere(fv3(0.0, 3.0, 0.0), FixedVec3::ZERO, 1.0, 0.5),
     ];
-    let integrator = DeterministicIntegrator::default();
-    let solver = DeterministicConstraintSolver::new(Fixed::from_num(0.3));
-    let mut broad = DeterministicBroadPhase::new();
-    let narrow = DeterministicNarrowPhase::new();
+    let integrator = Integrator::default();
+    let solver = ConstraintSolver::new(Fixed::from_num(0.3));
+    let mut broad = BroadPhase::new();
+    let narrow = NarrowPhase::new();
     let dt = Fixed::from_num(1.0 / 60.0);
 
     for _ in 0..300 {
@@ -86,7 +85,7 @@ fn main() {
             && (cos.to_num() - std::f64::consts::FRAC_PI_4.cos()).abs() < 1e-3,
     );
 
-    println!("\n== DeterministicBody: full physics pipeline, run twice ==");
+    println!("\n== RigidBody (Fixed flavor): full physics pipeline, run twice ==");
     let run_a = run_scenario();
     let run_b = run_scenario();
 
@@ -105,7 +104,7 @@ fn main() {
     );
 
     println!("\n== Handoff to rendering: Fixed pose -> f32 Motor3 ==");
-    let f32_frame = run_a[1].frame_f32();
+    let f32_frame = run_a[1].frame.to_float_lossy();
     let f32_position = f32_frame.transform_point(meridian_gac_core::Vec3::ZERO);
     let fixed_position = run_a[1].position();
     println!(

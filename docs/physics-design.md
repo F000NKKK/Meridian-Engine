@@ -13,6 +13,23 @@ BVH/spatial-hashing are how physics *reasons about space*, not how it
 [ADR 005](adr/005-driver-core-separation.md) and
 [dependency-rules.md](dependency-rules.md) rule 2.
 
+`physics-core`'s whole engine — `RigidBody`, `ColliderShape`, `Contact`,
+`BroadPhase`, `NarrowPhase`, `ConstraintSolver`, `Integrator` — is written
+**once**, in `src/generic.rs`, generic over
+`meridian_gac_core::generic::GaFlavor`. Unlike `gac-core::Motor3`/`Vec3`
+(concretely duplicated between `float_ga`/`fixed_ga` because
+`meridian-gac-compute` dispatches them to a GPU with no real `i64`),
+nothing in this engine has a GPU-dispatch constraint of its own — broad
+phase, narrow phase, constraint solving and integration are the same
+sequence of operations regardless of scalar flavor. `src/float.rs` and
+`src/fixed.rs` are thin `FloatFlavor`/`FixedFlavor` type aliases over that
+one engine, not a second copy of it (see CLAUDE.md's "Float/Fixed
+branching" rule and [ADR 008](adr/008-fixed-point-determinism.md)).
+`float`'s aliases are re-exported at the crate root, so
+`meridian_physics_core::RigidBody`/etc. resolve to the default `f32` path
+unchanged; `fixed`'s aliases are the deterministic path, see
+"Determinism" below.
+
 `physics-core` owns the actual simulation, including its own broad-phase.
 Real, tested (not stub) as of this writing:
 
@@ -97,30 +114,28 @@ yet.
 
 ## Determinism
 
-Real, via `physics-core::deterministic` — see
+Real, via `physics-core::fixed` — see
 [ADR 008](adr/008-fixed-point-determinism.md) for the full decision.
-`DeterministicBody`/`DeterministicIntegrator`/
-`DeterministicConstraintSolver`/`DeterministicBroadPhase`/
-`DeterministicNarrowPhase` mirror `RigidBody`/`Integrator`/
-`ConstraintSolver`/`BroadPhase`/`NarrowPhase` one-for-one, built on
-`gac-core::fixed_ga` (`Fixed`, Q16.16) instead of `float_ga` (`f32`) — a
-genuinely separate, opt-in pipeline, not a mode flag on the existing
-types. `DeterministicBroadPhase` builds its `FixedAabb`s from
-`gac-core::fixed_ga` the same way this crate's `f32` `BroadPhase` builds
-`Aabb`s from `gac-core::float_ga` — geometry is `gac-core`'s job
-regardless of scalar flavor, not reimplemented per consumer (see
-docs/gac-design.md). Sphere colliders only so far in this crate; SAT
-contact *generation* for `Cuboid` wasn't ported to the deterministic
-pipeline in this pass (the underlying primitive, `fixed_ga::FixedObb`,
-already exists and is usable — it's specifically the collision-response
-algorithm that's pending) — tracked as explicit follow-up in
-[roadmap.md](roadmap.md), not silently dropped.
-`DeterministicBody::frame_f32` converts the pose to `gac-core::Motor3`
-for rendering/ECS/audio handoff either way, via
-`fixed_ga::FixedMotor3::to_float_lossy` — a named, deliberate
-precision-changing cast (see docs/gac-design.md's "Cross-flavor interop"
-section), not a `From`/`Into` that would make the cast look free. Proven
-with an actual bit-exact reproducibility test (the same scenario run
-twice produces identical `Fixed` bit patterns, not just approximately
-equal floats) — `cargo test -p meridian-physics-core`; human-readable
-version via `./build.sh run determinism_validation`.
+`fixed::RigidBody`/`fixed::Integrator`/`fixed::ConstraintSolver`/
+`fixed::BroadPhase`/`fixed::NarrowPhase` are thin `FixedFlavor` aliases
+over the exact same generic engine (`src/generic.rs`) `float::RigidBody`/
+etc. alias with `FloatFlavor` — built on `gac-core::fixed_ga` (`Fixed`,
+Q16.16) instead of `float_ga` (`f32`) via the `GaFlavor` trait, a
+genuinely separate, opt-in pipeline, not a mode flag on the default
+types. `fixed::BroadPhase` builds its `Aabb<FixedFlavor>`s from
+`gac-core::generic` the same way `float::BroadPhase` builds
+`Aabb<FloatFlavor>`s — geometry is `gac-core`'s job regardless of scalar
+flavor, not reimplemented per consumer (see docs/gac-design.md). Because
+the engine is generic rather than hand-duplicated, sphere-sphere,
+sphere-cuboid *and* cuboid-cuboid (SAT) narrow phase all work for
+`fixed::RigidBody` for free — there is no "sphere only" scope limit to
+track as follow-up, unlike the earlier hand-duplicated
+`physics-core::deterministic` module this replaced.
+`FixedMotor3::to_float_lossy` (called on `fixed::RigidBody::frame`)
+converts a pose to `gac-core::Motor3` for rendering/ECS/audio handoff — a
+named, deliberate precision-changing cast (see docs/gac-design.md's
+"Cross-flavor interop" section), not a `From`/`Into` that would make the
+cast look free. Proven with an actual bit-exact reproducibility test (the
+same scenario run twice produces identical `Fixed` bit patterns, not just
+approximately equal floats) — `cargo test -p meridian-physics-core`;
+human-readable version via `./build.sh run determinism_validation`.

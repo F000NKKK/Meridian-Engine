@@ -139,54 +139,64 @@ call, which is what makes it exactly reproducible across
 platforms/compilers, unlike `f32`) — split into its own file
 (`numeric-core::fixed`) alongside the existing `f32` flavor
 (`numeric-core::float`), both re-exported at the crate root. `gac-core`
-now has two **self-contained** GA modules — algebra *and* geometric
-primitives both — `float_ga` (`f32`, the default, re-exported at the
-crate root so nothing downstream changed) and `fixed_ga` (`Fixed`, a
-disclosed one-for-one duplication of `float_ga`'s structure, including
-`FixedAabb`/`FixedSphere`/`FixedObb`/`FixedCone`/`FixedPlane`/
-`FixedShape`/`FixedConvexVolume` alongside the algebra types — not
-`physics-core`-local, reusable by any future CPU-deterministic consumer,
-the same reason `float_ga`'s primitives aren't `physics-core`-local
-either; see that module's doc comment for why one generic implementation
-wasn't used instead: GPUs have no real `i64` support and are `f32`-native
-hardware, so a GPU-dispatchable `Motor3` has to stay floating-point
-regardless, and GPU parallelism has its own execution-order
-nondeterminism on top of that). The pure-integer `blade` bitmask module
-(scalar-type-independent) lives once at the crate root, shared by both.
-Converting between flavors is a named method
-(`Vec3::to_fixed_lossy`/`FixedVec3::to_float_lossy`, same pair for
-`Bivector3`/`Rotor`/`Motor3`), not `From`/`Into` — deliberately, so a
-precision/determinism-changing cast never looks free at the call site;
-`Vec3`/`FixedVec3` also support direct mixed-type `+`/`-`/`*` built on
-those same named conversions. `gac-compute` grew `Fixed` counterparts too
-(`FixedMotorTransformKernel`/`FixedMotorComposeKernel`), CPU-dispatch
-only by documented convention (no GPU backend exists yet to restrict
-against). `physics-core` gained `deterministic` —
-`DeterministicBody`/`DeterministicIntegrator`/
-`DeterministicConstraintSolver`/`DeterministicBroadPhase`/
-`DeterministicNarrowPhase`, mirroring the `f32` pipeline one-for-one and
-building its `FixedAabb`s from `gac-core::fixed_ga` (not hand-rolled —
-geometry stays `gac-core`'s job regardless of scalar flavor). Sphere
-colliders only for this pass — SAT contact *generation* for `Cuboid`
-wasn't ported (the primitive, `FixedObb`, already exists; it's the
-collision-response algorithm that's pending) — tracked as explicit
-follow-up, not silently dropped. This is opt-in, not a replacement:
-`RigidBody` and the rest of `physics-core`'s default pipeline are
-untouched; a caller chooses `DeterministicBody` instead when it needs
-bit-reproducibility (lockstep networking, replay), and
-`DeterministicBody::frame_f32` converts the pose to `gac-core::Motor3`
-for handoff to rendering/ECS/audio either way. Proven with an actual
-bit-exact reproducibility test — the same scenario run twice via
-independent `DeterministicBody` simulations produces identical `Fixed`
-bit patterns, not just approximately-equal floats (`cargo test -p
-meridian-numeric-core` for `Fixed` itself, `-p meridian-gac-core` for
-`fixed_ga` cross-checked against `float_ga` as an oracle, `-p
-meridian-gac-compute` for the `Fixed` kernels, `-p meridian-physics-core`
-for the full pipeline and the reproducibility test; human-readable
-version via `./build.sh run determinism_validation`). See
+grew a `fixed_ga` module (`Fixed`-backed `Multivector`/`Vec3`/`Bivector3`/
+`Rotor`/`Motor3`) alongside the existing `float_ga` (`f32`, the default,
+re-exported at the crate root so nothing downstream changed) — this pair
+*is* a deliberate, disclosed duplication (see `fixed_ga`'s doc comment for
+why: GPUs have no real `i64` support and are `f32`-native hardware, so a
+GPU-dispatchable `Motor3` has to stay floating-point regardless, and GPU
+parallelism has its own execution-order nondeterminism on top of that).
+The pure-integer `blade` bitmask module (scalar-type-independent) lives
+once at the crate root, shared by both. Converting between flavors is a
+named method (`Vec3::to_fixed_lossy`/`FixedVec3::to_float_lossy`, same
+pair for `Bivector3`/`Rotor`/`Motor3`), not `From`/`Into` — deliberately,
+so a precision/determinism-changing cast never looks free at the call
+site; `Vec3`/`FixedVec3` also support direct mixed-type `+`/`-`/`*` built
+on those same named conversions. `gac-compute` grew `Fixed` counterparts
+too (`FixedMotorTransformKernel`/`FixedMotorComposeKernel`), CPU-dispatch
+only in practice (no GPU backend exists yet to actually dispatch to, not
+a type-level restriction — see that crate's doc comment).
+
+Everything *besides* the algebra itself — `Aabb`/`Sphere`/`Obb`/`Cone`/
+`Plane`/`Shape`/`ConvexVolume`/`Projection`/`Frame` in `gac-core`, and the
+entire `physics-core` engine (`RigidBody`/`ColliderShape`/`Contact`/
+`BroadPhase`/`NarrowPhase`/`ConstraintSolver`/`Integrator`) — has no
+GPU-dispatch constraint of its own, so it's written **once**, generic
+over a `GaFlavor` trait (`gac-core::generic::GaFlavor`, bundling
+`ScalarLike`/`VectorLike`/`BivectorLike`/`RotorLike`/`MotorLike`), not
+hand-duplicated per scalar flavor. `gac-core::float_ga`/`fixed_ga` and
+`physics-core::float`/`fixed` each expose thin `FloatFlavor`/`FixedFlavor`
+type aliases over that one generic implementation (`float`'s aliases
+re-exported at each crate's root, so existing unparameterized call sites
+are unaffected). This was a correction made partway through the original
+determinism work: `physics-core::deterministic` initially hand-duplicated
+`RigidBody`/`Integrator`/etc. as `DeterministicBody`/
+`DeterministicIntegrator`/etc. (sphere colliders only, since porting SAT
+by hand was deferred as risky/duplicative) — caught on review as
+duplicating logic with no GPU-dispatch justification, and replaced by the
+generic engine described above. A direct benefit of that correction:
+because `physics-core`'s engine is now generic rather than duplicated,
+sphere-sphere, sphere-cuboid *and* cuboid-cuboid (SAT) narrow phase all
+work for the `Fixed` flavor for free — there's no "sphere only" scope
+limit left to track as follow-up. `fixed::RigidBody`/etc. are opt-in, not
+a replacement: `float::RigidBody` (aliased at the crate root) and the
+rest of `physics-core`'s default pipeline are untouched; a caller chooses
+`physics-core::fixed::RigidBody` instead when it needs bit-reproducibility
+(lockstep networking, replay), and `FixedMotor3::to_float_lossy` (called
+on its `frame`) converts the pose to `gac-core::Motor3` for handoff to
+rendering/ECS/audio either way. Proven with an actual bit-exact
+reproducibility test — the same scenario run twice via independent
+`fixed::RigidBody` simulations produces identical `Fixed` bit patterns,
+not just approximately-equal floats (`cargo test -p meridian-numeric-core`
+for `Fixed` itself, `-p meridian-gac-core` for `fixed_ga` cross-checked
+against `float_ga` as an oracle, `-p meridian-gac-compute` for the `Fixed`
+kernels, `-p meridian-physics-core` for the full pipeline and the
+reproducibility test; human-readable version via `./build.sh run
+determinism_validation`). See
 [ADR 008](adr/008-fixed-point-determinism.md) for the full decision,
 including the layering correction (primitives belong in `gac-core`, not
-`physics-core`) made partway through this work.
+`physics-core`) and the later genericization correction, both made
+partway through this work.
 
 Step 9 (`meridian-engine-core`) is real: `SubsystemManager` owns real
 `ecs-core`/`physics-core`/`audio-core` instances (the one place in the
@@ -300,7 +310,7 @@ priority before writing implementations is keeping that document and the
   cross-`libm` `sin`/`cos`/`sqrt` disagreement, which fixed-point +
   CORDIC avoids by construction (integer add/subtract/shift only). See
   "Current state" above for what's built (`gac-core::fixed_ga`,
-  `physics-core::deterministic`) and [ADR
+  `physics-core::fixed`) and [ADR
   008](adr/008-fixed-point-determinism.md).
 - **GPU backend beneath `compute-driver`/`graphics-driver`/`physics-driver`
   — decided: `wgpu`, not hand-written per-API FFI.** Reversed from the

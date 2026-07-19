@@ -1,4 +1,4 @@
-# ADR 008: Fixed-point determinism via a disclosed float_ga/fixed_ga split
+# ADR 008: Fixed-point determinism via a disclosed float_ga/fixed_ga algebra split, generic elsewhere
 
 ## Status
 
@@ -64,38 +64,55 @@ pure `f32`, so genericity buys nothing here beyond what a second concrete
 module gives directly, at the cost of a shared generic engine that every
 call site (including the GPU-relevant one) has to reason about.
 
-**Opt-in, not a mode switch.** `physics-core::deterministic` mirrors the
-default `f32` pipeline one-for-one — `DeterministicBody` ~ `RigidBody`,
-`DeterministicIntegrator` ~ `Integrator`, `DeterministicConstraintSolver`
-~ `ConstraintSolver`, `DeterministicBroadPhase`/`DeterministicNarrowPhase`
-~ `BroadPhase`/`NarrowPhase` — as a genuinely separate, parallel path.
-`RigidBody` and the rest of `physics-core`'s default pipeline are
-untouched; nothing in the engine has to know a simulation is running
-deterministically unless it explicitly constructs `DeterministicBody`s.
-`DeterministicBody::frame_f32` converts the pose to `gac-core::Motor3` for
+**Opt-in, not a mode switch.** `physics-core::fixed` is a genuinely
+separate, parallel path from `physics-core::float` (the default,
+re-exported at the crate root). `float::RigidBody` and the rest of
+`physics-core`'s default pipeline are untouched; nothing in the engine has
+to know a simulation is running deterministically unless it explicitly
+constructs `fixed::RigidBody`s. `FixedMotor3::to_float_lossy` (called on a
+`fixed::RigidBody`'s `frame`) converts the pose to `gac-core::Motor3` for
 handoff to rendering/ECS/audio, which stay in `f32` regardless of which
 physics path produced the pose — a direct component-wise conversion of
 the underlying 16-component multivector (both types expose theirs, `pub`),
 not a re-derivation through rotation/translation.
 
-**`fixed_ga` owns geometric primitives too, not just algebra — and not
-`physics-core`.** `FixedAabb`/`FixedSphere`/`FixedObb`/`FixedCone`/
-`FixedPlane`/`FixedShape`/`FixedConvexVolume` mirror `float_ga`'s
-primitive set one-for-one, living in `gac-core`, the same place
-`float_ga`'s primitives do. An early version of this work put a
-sphere-only `DeterministicShape` and hand-rolled broad-phase overlap math
-directly inside `physics-core::deterministic` — caught on review as a
-layering violation: geometric primitives are `gac-core`'s
-responsibility regardless of scalar flavor (the same reason `Aabb` was
-moved out of `physics-core` into `gac-core` earlier in this project's
-history, once it turned out `physics-core` and `graphics-core` had each
-written the same one independently). Locking `Fixed` primitives inside
-`physics-core` would have blocked exactly the kind of reuse `gac-core`
-exists to enable — a deterministic `graphics-core` CPU path, or a large
-precise CPU/GPU-emulated simulation, would have had no way to reach them
-without depending on physics. `physics-core::deterministic` now builds
-its `FixedAabb`s from `gac-core::fixed_ga` the same way its `f32`
-`BroadPhase` builds `Aabb`s from `gac-core::float_ga`.
+**Geometric primitives, and the entire `physics-core` engine, are generic
+— not duplicated, and not `physics-core`-local.** Unlike the algebra
+(`Multivector`/`Vec3`/`Bivector3`/`Rotor`/`Motor3`), nothing about
+`Aabb`/`Sphere`/`Obb`/`Cone`/`Plane`/`Shape`/`ConvexVolume`/`Projection`
+(in `gac-core`) or `RigidBody`/`ColliderShape`/`Contact`/`BroadPhase`/
+`NarrowPhase`/`ConstraintSolver`/`Integrator` (in `physics-core`) has a
+GPU-dispatch constraint of its own: an AABB overlap test, a SAT contact
+generation, or an impulse resolution is the same sequence of operations
+regardless of scalar flavor. Both are written **once**, generic over
+`gac-core::generic::GaFlavor` (an associated-type bundle of
+`ScalarLike`/`VectorLike`/`BivectorLike`/`RotorLike`/`MotorLike`); each
+crate's `float`/`fixed` (or `float_ga`/`fixed_ga`) modules expose thin
+`FloatFlavor`/`FixedFlavor` type aliases over that one implementation,
+not a second copy of the logic. This was a correction made partway
+through the work: an early version put a sphere-only
+`DeterministicShape` and hand-rolled broad-phase overlap math directly
+inside `physics-core::deterministic`, and a first pass at moving
+primitives into `gac-core` still hand-duplicated them into
+`FixedAabb`/`FixedSphere`/`FixedObb`/`FixedCone`/`FixedPlane`/
+`FixedShape`/`FixedConvexVolume` mirroring `float_ga`'s set one-for-one —
+both caught on review as duplicating logic with no GPU-dispatch
+justification (the same reason `Aabb` was moved out of `physics-core`
+into `gac-core` earlier in this project's history, once it turned out
+`physics-core` and `graphics-core` had each written the same one
+independently). `gac-core::float_ga`/`fixed_ga` now expose thin aliases
+over `gac-core::generic`'s primitives (`float_ga::Aabb =
+generic::Aabb<FloatFlavor>`, `fixed_ga::FixedAabb =
+generic::Aabb<FixedFlavor>`), and `physics-core::float`/`fixed` do the
+same over `physics-core::generic`'s engine. Locking `Fixed` primitives
+inside `physics-core` would have blocked exactly the kind of reuse
+`gac-core` exists to enable — a deterministic `graphics-core` CPU path,
+or a large precise CPU/GPU-emulated simulation, has no way to reach them
+without depending on physics. A direct benefit of genericizing the
+physics engine specifically: sphere-sphere, sphere-cuboid *and*
+cuboid-cuboid (SAT) narrow phase all work for `physics-core::fixed`'s
+`RigidBody` for free, since it's the exact same code the `f32` flavor
+runs — see the "Sphere colliders only" note below, now superseded.
 
 **Cross-flavor interop is named, not `From`/`Into`.** Both flavors
 already share the same method names by construction (`dot`, `compose`,
@@ -125,17 +142,15 @@ the same GPU-can't-do-fixed-point-or-determinism reasons as everywhere
 else in this ADR.
 
 **Sphere colliders only, for now, in `physics-core::deterministic`
-specifically.** `Cuboid`/SAT collision *response* (contact
-generation with point/normal/depth — a different, harder problem than
-the containment test `Shape`/`ConvexVolume` answer, see
-docs/physics-design.md) was not ported to the deterministic pipeline in
-this pass. That's a large, intricate piece of code, and porting it
-hastily risks subtle bugs in exactly the code whose entire purpose is
-trustworthy reproducibility. Tracked as explicit follow-up work in
-[roadmap.md](../roadmap.md), not silently dropped. `fixed_ga::FixedObb`
-itself already exists (see above), so this is narrower than it was
-before: only the SAT contact-generation algorithm remains to be ported,
-not the underlying primitive.
+specifically — superseded.** An earlier pass deferred porting `Cuboid`/SAT
+collision *response* (contact generation with point/normal/depth) to the
+hand-duplicated `physics-core::deterministic` module, tracked as explicit
+follow-up rather than silently dropped. Once the physics engine was
+genericized (see above), this follow-up dissolved on its own: SAT contact
+generation is ordinary generic code like the rest of the engine, with no
+scalar-flavor-specific logic to port, so `physics-core::fixed::RigidBody`
+supports `Cuboid` colliders identically to `physics-core::float::RigidBody`
+with no separate porting step.
 
 ## Alternatives considered
 
@@ -158,27 +173,32 @@ not the underlying primitive.
 
 ## Consequences
 
-- `Fixed` and `gac-core::fixed_ga` (algebra *and* primitives) are real,
-  independently tested (cross-checked against `f64`/`float_ga` oracles),
-  and proven with an actual bit-exact reproducibility test — not just
-  "close" — in `physics-core::deterministic`.
+- `Fixed` and `gac-core::fixed_ga` (algebra) are real, independently
+  tested (cross-checked against `f64`/`float_ga` oracles), and proven
+  with an actual bit-exact reproducibility test — not just "close" — in
+  `physics-core::fixed`.
 - `float_ga` (and everything built on `f32`, including the GPU compute
   path) is completely unaffected — no downstream crate changed to make
   this possible.
-- `fixed_ga`'s primitives are reusable by any future crate that needs
-  CPU-deterministic geometry, not gated behind `physics-core` — the
-  specific property the "not `physics-core`" correction above exists to
-  preserve.
+- `gac-core::generic`'s primitives and `physics-core::generic`'s engine
+  are reusable by any future crate that needs CPU-deterministic geometry
+  or physics, not gated behind `physics-core` — the specific property the
+  "not `physics-core`" correction above exists to preserve, now also true
+  for the physics algorithms themselves, not just the geometric
+  primitives.
 - `gac-compute` carries `Fixed` kernels alongside its `f32` ones now, so
-  batch-transform work has a deterministic path too, once something
-  needs it at scale (today: nothing does yet, `physics-core::deterministic`
-  calls `fixed_ga` directly per-body).
-- A second collider shape's *collision response* (SAT contact generation
-  for `Cuboid`, specifically) or a second compute domain choosing
-  fixed-point would each need their own disclosed duplication into
-  `fixed_ga`-adjacent code, following the same pattern — accepted as the
-  cost of keeping the GPU-dispatchable path pure `f32` without a generic
-  scalar abstraction leaking into it.
+  batch-transform work has a deterministic path too, once something needs
+  it at scale (today: nothing does yet, `physics-core::fixed` calls
+  `fixed_ga` directly per-body).
+- A future `ColliderShape` variant or a second compute domain choosing
+  fixed-point does *not* need a disclosed duplication into
+  `fixed_ga`-adjacent code the way the algebra types do — new geometry
+  goes into `gac-core::generic` once, generic over `GaFlavor`, and
+  `physics-core::generic`'s engine picks it up automatically through the
+  same `ColliderShape<F>`/`Shape<F>` interfaces. Only a genuinely new
+  *algebra* type (something GPU-dispatched via `gac-compute`) would need
+  the disclosed-duplication pattern this ADR establishes for `Motor3`/
+  `Vec3`/etc.
 - Determinism is a CPU-only guarantee in this workspace: nothing here
   makes GPU-dispatched work (rendering, GPU-side batch transforms)
   reproducible, and nothing tries to — that's a structurally different
