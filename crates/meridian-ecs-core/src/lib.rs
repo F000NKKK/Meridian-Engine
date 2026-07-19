@@ -30,13 +30,19 @@ pub struct Entity {
 
 impl From<Handle> for Entity {
     fn from(h: Handle) -> Self {
-        Entity { index: h.index, generation: h.generation }
+        Entity {
+            index: h.index,
+            generation: h.generation,
+        }
     }
 }
 
 impl From<Entity> for Handle {
     fn from(e: Entity) -> Self {
-        Handle { index: e.index, generation: e.generation }
+        Handle {
+            index: e.index,
+            generation: e.generation,
+        }
     }
 }
 
@@ -51,7 +57,6 @@ pub trait Component: 'static {}
 trait AnyColumn {
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
-    fn len(&self) -> usize;
     /// A fresh, empty column of the same concrete type — how a new
     /// archetype clones the *shape* of an existing one without `World`
     /// ever needing to know the concrete `T`.
@@ -74,9 +79,6 @@ impl<T: Component> AnyColumn for Column<T> {
     }
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
-    }
-    fn len(&self) -> usize {
-        self.0.len()
     }
     fn new_same_type(&self) -> Box<dyn AnyColumn> {
         Box::new(Column::<T>(Vec::new()))
@@ -150,7 +152,11 @@ impl World {
             columns.insert(tid, col);
         }
         let idx = self.archetypes.len();
-        self.archetypes.push(ArchetypeData { type_ids: signature.clone(), entities: Vec::new(), columns });
+        self.archetypes.push(ArchetypeData {
+            type_ids: signature.clone(),
+            entities: Vec::new(),
+            columns,
+        });
         self.archetype_lookup.insert(signature, idx);
         idx
     }
@@ -160,7 +166,8 @@ impl World {
         let archetype = self.get_or_create_archetype(Vec::new(), None, None);
         let row = self.archetypes[archetype].entities.len();
         self.archetypes[archetype].entities.push(entity);
-        self.locations.insert(entity, EntityLocation { archetype, row });
+        self.locations
+            .insert(entity, EntityLocation { archetype, row });
         entity
     }
 
@@ -195,7 +202,10 @@ impl World {
     /// which index is larger. Panics if `i == j` (a caller bug: moving an
     /// entity to its own archetype should never reach here).
     fn archetypes_mut2(&mut self, i: usize, j: usize) -> (&mut ArchetypeData, &mut ArchetypeData) {
-        assert_ne!(i, j, "archetypes_mut2: cannot borrow the same archetype twice");
+        assert_ne!(
+            i, j,
+            "archetypes_mut2: cannot borrow the same archetype twice"
+        );
         if i < j {
             let (left, right) = self.archetypes.split_at_mut(j);
             (&mut left[i], &mut right[0])
@@ -237,7 +247,13 @@ impl World {
         if let Some(&moved_entity) = old.entities.get(old_row) {
             self.locations.get_mut(&moved_entity).unwrap().row = old_row;
         }
-        self.locations.insert(entity, EntityLocation { archetype: new_arch, row: new_row });
+        self.locations.insert(
+            entity,
+            EntityLocation {
+                archetype: new_arch,
+                row: new_row,
+            },
+        );
     }
 
     /// Adds `component` to `entity`, moving it into (creating if needed)
@@ -245,7 +261,11 @@ impl World {
     /// `T`, overwrites it in place — no archetype move. Returns `false` if
     /// `entity` isn't alive.
     pub fn insert<T: Component>(&mut self, entity: Entity, component: T) -> bool {
-        let Some(&EntityLocation { archetype: old_arch, row: old_row }) = self.locations.get(&entity) else {
+        let Some(&EntityLocation {
+            archetype: old_arch,
+            row: old_row,
+        }) = self.locations.get(&entity)
+        else {
             return false;
         };
         let type_id = TypeId::of::<T>();
@@ -261,12 +281,17 @@ impl World {
         new_signature.sort_unstable();
 
         let extra: Box<dyn AnyColumn> = Box::new(Column::<T>(Vec::new()));
-        let new_arch = self.get_or_create_archetype(new_signature, Some(old_arch), Some((type_id, extra)));
+        let new_arch =
+            self.get_or_create_archetype(new_signature, Some(old_arch), Some((type_id, extra)));
 
         self.move_entity(entity, old_arch, old_row, new_arch, None);
 
         let col = self.archetypes[new_arch].columns.get_mut(&type_id).unwrap();
-        col.as_any_mut().downcast_mut::<Column<T>>().unwrap().0.push(component);
+        col.as_any_mut()
+            .downcast_mut::<Column<T>>()
+            .unwrap()
+            .0
+            .push(component);
         true
     }
 
@@ -274,7 +299,10 @@ impl World {
     /// archetype for its remaining component set. Returns the removed
     /// value, or `None` if `entity` isn't alive or doesn't have a `T`.
     pub fn remove<T: Component>(&mut self, entity: Entity) -> Option<T> {
-        let &EntityLocation { archetype: old_arch, row: old_row } = self.locations.get(&entity)?;
+        let &EntityLocation {
+            archetype: old_arch,
+            row: old_row,
+        } = self.locations.get(&entity)?;
         let type_id = TypeId::of::<T>();
         if !self.archetypes[old_arch].type_ids.contains(&type_id) {
             return None;
@@ -287,7 +315,11 @@ impl World {
 
         let removed = {
             let col = self.archetypes[old_arch].columns.get_mut(&type_id).unwrap();
-            col.as_any_mut().downcast_mut::<Column<T>>().unwrap().0.swap_remove(old_row)
+            col.as_any_mut()
+                .downcast_mut::<Column<T>>()
+                .unwrap()
+                .0
+                .swap_remove(old_row)
         };
 
         self.move_entity(entity, old_arch, old_row, new_arch, Some(type_id));
@@ -297,14 +329,21 @@ impl World {
 
     pub fn get<T: Component>(&self, entity: Entity) -> Option<&T> {
         let loc = self.locations.get(&entity)?;
-        let col = self.archetypes[loc.archetype].columns.get(&TypeId::of::<T>())?;
+        let col = self.archetypes[loc.archetype]
+            .columns
+            .get(&TypeId::of::<T>())?;
         col.as_any().downcast_ref::<Column<T>>()?.0.get(loc.row)
     }
 
     pub fn get_mut<T: Component>(&mut self, entity: Entity) -> Option<&mut T> {
         let loc = *self.locations.get(&entity)?;
-        let col = self.archetypes[loc.archetype].columns.get_mut(&TypeId::of::<T>())?;
-        col.as_any_mut().downcast_mut::<Column<T>>()?.0.get_mut(loc.row)
+        let col = self.archetypes[loc.archetype]
+            .columns
+            .get_mut(&TypeId::of::<T>())?;
+        col.as_any_mut()
+            .downcast_mut::<Column<T>>()?
+            .0
+            .get_mut(loc.row)
     }
 
     pub fn contains<T: Component>(&self, entity: Entity) -> bool {
@@ -322,7 +361,9 @@ impl World {
                 .into_iter()
                 .flat_map(|col| arch.entities.iter().copied().zip(col.0.iter()))
         });
-        Query { inner: Box::new(inner) }
+        Query {
+            inner: Box::new(inner),
+        }
     }
 
     /// Iterates `(Entity, &mut T)` for every entity that has a `T`, across
@@ -336,7 +377,9 @@ impl World {
                 .into_iter()
                 .flat_map(|col| arch.entities.iter().copied().zip(col.0.iter_mut()))
         });
-        QueryMut { inner: Box::new(inner) }
+        QueryMut {
+            inner: Box::new(inner),
+        }
     }
 }
 
@@ -400,7 +443,10 @@ mod tests {
         let e = world.spawn();
         assert!(world.despawn(e));
         assert!(!world.is_alive(e));
-        assert!(!world.despawn(e), "double despawn must return false, not panic");
+        assert!(
+            !world.despawn(e),
+            "double despawn must return false, not panic"
+        );
     }
 
     #[test]
@@ -443,7 +489,11 @@ mod tests {
         assert_eq!(world.remove::<Velocity>(e), Some(Velocity(3.0, 4.0)));
         assert!(world.is_alive(e));
         assert_eq!(world.get::<Velocity>(e), None);
-        assert_eq!(world.get::<Position>(e), Some(&Position(1.0, 2.0)), "removing Velocity must not disturb Position");
+        assert_eq!(
+            world.get::<Position>(e),
+            Some(&Position(1.0, 2.0)),
+            "removing Velocity must not disturb Position"
+        );
     }
 
     #[test]
@@ -457,7 +507,10 @@ mod tests {
     #[test]
     fn get_on_dead_or_unknown_entity_returns_none_not_panic() {
         let world = World::new();
-        let fake = Entity { index: 999, generation: 0 };
+        let fake = Entity {
+            index: 999,
+            generation: 0,
+        };
         assert_eq!(world.get::<Position>(fake), None);
     }
 
@@ -488,7 +541,8 @@ mod tests {
         world.insert(b, Position(2.0, 0.0));
         world.insert(b, Velocity(0.0, 0.0)); // b lives in a different archetype than a
 
-        let mut seen: Vec<(Entity, Position)> = world.query::<Position>().map(|(e, p)| (e, *p)).collect();
+        let mut seen: Vec<(Entity, Position)> =
+            world.query::<Position>().map(|(e, p)| (e, *p)).collect();
         seen.sort_by_key(|(e, _)| e.index);
 
         assert_eq!(seen, vec![(a, Position(1.0, 0.0)), (b, Position(2.0, 0.0))]);
