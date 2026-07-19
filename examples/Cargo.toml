@@ -15,6 +15,7 @@ meridian-memory-core = { workspace = true }
 meridian-resource-core = { workspace = true }
 meridian-task-core = { workspace = true }
 meridian-platform-core = { workspace = true }
+meridian-audio-core = { workspace = true }
 
 [[example]]
 name = "hello_engine"
@@ -27,3 +28,7 @@ path = "examples/gac_validation.rs"
 [[example]]
 name = "headless_world"
 path = "examples/headless_world.rs"
+
+[[example]]
+name = "audio_spatialization"
+path = "examples/audio_spatialization.rs"

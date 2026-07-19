@@ -50,9 +50,11 @@ one, added when a concrete asset needs it, not speculatively.
 Step 8's physics half (`physics-driver`/`physics-core`) is real: AABB
 broad phase, sphere-sphere narrow phase, an impulse-based constraint
 solver (linear *and* angular — see below), semi-implicit Euler
-integration. `graphics-driver`/`audio-driver` and the driver-dependent
-parts of `graphics-core`/`audio-core` are still scaffolds — blocked on
-the GPU backend decision below.
+integration. `graphics-driver`/`audio-driver` are still scaffolds —
+blocked on the GPU backend decision below (audio doesn't strictly need a
+GPU, but a real *output device* is the same class of OS-boundary problem
+as `Window`, so `audio-driver` is deferred alongside it; `audio-core`
+itself doesn't need `audio-driver` to be real to be useful — see next).
 
 **GA is used in physics where it actually matters, not decoratively**:
 angular velocity/torque are `gac-core::Bivector3` (angular quantities
@@ -63,6 +65,20 @@ vector/bivector conflation GA exists to make explicit, not hide), and
 exponential map composed onto `Motor3`) rather than a naive "add angle"
 — the same reason `Transform` is a `Motor3` at all instead of a
 quaternion+vector pair (ADR 001). See docs/physics-design.md.
+
+`meridian-audio-core` (the driver-independent half of step 8) is real:
+`SpeakerLayout` (mono/stereo-headphones/stereo-speakers/5.0/5.1, one VBAP-lite
+panning algorithm for all of them — see the crate's module doc for the
+`wraps_around` distinction between front-only and real-rear-speaker
+layouts, and why front/back correctly collapse to the same centered pan
+for stereo but not for 5.0/5.1), `AttenuationModel` (OpenAL's inverse-
+clamped-distance model), `Mixer`, and a small `DspGraph`
+(`Gain`/`LowPassFilter`). Validated against a listener at the origin
+facing `+X` with sources placed front/back/left/right and checked across
+every layout (`cargo test -p meridian-audio-core`; human-readable version
+via `./build.sh run audio_spatialization`) — including the front/back
+ambiguity stereo genuinely can't resolve without HRTF (not implemented;
+documented as a real, known limitation, not hidden).
 
 Every other crate is still a scaffold: correct name, correct dependency
 edges, a one-line doc comment, no implementation. This staged order is
@@ -116,12 +132,15 @@ priority before writing implementations is keeping that document and the
    `platform-core` exists.
 8. `meridian-physics-driver` → `meridian-physics-core` — **done** (broad/
    narrow phase, impulse solver, GA-native integration; see "Current
-   state" above). `meridian-graphics-driver` → `meridian-graphics-core`
-   and `meridian-audio-driver` → `meridian-audio-core` are blocked on the
-   GPU backend decision (`wgpu`, see "Not yet decided") for their driver
-   halves; the driver-*independent* parts of each `-core` (render graph
-   ordering, camera/culling math, spatial audio mixer) don't need to wait
-   for that and can start once there's time for them.
+   state" above). `meridian-audio-core` — **done** (`SpeakerLayout`/
+   `Mixer`/`AttenuationModel`/`DspGraph`; see "Current state" above).
+   `meridian-graphics-driver` and `meridian-audio-driver` are blocked on
+   the GPU/device backend decision (`wgpu`, see "Not yet decided"); next
+   up is `meridian-graphics-core`'s driver-independent half (render graph
+   ordering, camera/culling math) — the harder of the two remaining
+   `-core`s, since it has to bridge `gac-core`'s `Motor3` into the
+   classical 4×4 view/projection matrices graphics APIs actually need,
+   where `audio-core` could stay entirely in GA/`Vec3` terms throughout.
 9. `meridian-engine-core` — wires everything into the main loop last, once
    there's something real to schedule.
 
@@ -164,6 +183,24 @@ priority before writing implementations is keeping that document and the
   decision (below) and keep their own hand-written-FFI answer; GPU is the
   one deliberate exception to zero-deps, not a reversal of the policy in
   general.
+- **`meridian-audio-effects` (heavier DSP effects as a separate crate)** —
+  decided: not yet, and only split it out when a concrete effect actually
+  needs an external dependency. `meridian-audio-core` already owns basic,
+  zero-dependency DSP (`DspNode`/`DspGraph`, `Gain`, `LowPassFilter`) and
+  should keep owning simple effects that need nothing beyond
+  `numeric-core`/`gac-core` — there's no architectural reason to move those
+  out. The trigger for a separate crate is the same class of decision as
+  `wgpu` below: something like a real convolution reverb, multiband EQ, or
+  resampling needs an FFT crate (e.g. `rustfft`), and pulling that into
+  `audio-core` would force every consumer of basic spatial audio (including
+  `engine-core` and every example) to compile it too. When that concrete
+  need exists, `meridian-audio-effects` depends on `meridian-audio-core`
+  only (implements its `DspNode` trait, one edge, no new adapter pattern —
+  unlike `gac-compute` this isn't avoiding a forbidden edge, just isolating
+  an optional heavy dependency) and ships the heavy effects there, keeping
+  `audio-core`'s own dependency footprint minimal. Creating the crate before
+  that concrete need exists would be exactly the speculative split
+  `roadmap.md` already rejects elsewhere (see "Explicitly out of scope").
 - **`meridian-platform-core`'s `Window` and `DynamicLibrary`** — decided:
   hand-written unsafe FFI (`dlopen`/`LoadLibrary` for `DynamicLibrary`,
   per-platform window creation for `Window`), not an external crate —
