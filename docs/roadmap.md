@@ -21,8 +21,48 @@ Step 3 (`memory-core`/`task-core`/`platform-core`) is also real and tested:
   that's a first step, not the final design.
 - `meridian-platform-core` — `Time`/`Clock` and `InputState` (held/
   pressed-this-frame/released-this-frame key state, mouse position+delta)
-  are real; `Window` and `DynamicLibrary` are deliberately still stubs —
-  see "Not yet decided" below.
+  are real; `BackendCapabilities`/`CpuCapabilities`/`GpuCapabilities`
+  (shared by every `*-driver` crate's own capability type) are real;
+  `Window` and `DynamicLibrary` are deliberately still stubs — see "Not
+  yet decided" below.
+
+Steps 4-6 are real and tested:
+- `meridian-resource-core` — `Version::next()`, and `DependencyGraph`
+  (tracks declared `ResourceDependency` edges by `Handle`, answers
+  `depends_on`/`would_cycle` — topology only, never owns resource data or
+  lifetime, per rule 8).
+- `meridian-ecs-core` — a real archetype `World`: type-erased SoA columns
+  (checked `downcast`, no `unsafe`), archetype migration on `insert`/
+  `remove`, single-component `Query`/`QueryMut` (multi-component queries
+  deferred — see the crate's module doc for why that's a harder,
+  `unsafe`-adjacent problem, not built speculatively).
+- `meridian-compute-driver`/`meridian-compute-runtime`/`meridian-gac-compute`
+  — a real CPU-parallel dispatch pipeline (`std::thread::scope`, no
+  `unsafe`), with `MotorTransformKernel`/`MotorComposeKernel` batching
+  `Motor3` composition, cross-checked against direct `gac-core` calls at
+  2000+/500+ item batches. No GPU backend — see "Not yet decided" below.
+
+Step 7 (`asset-core`) is real: BMP (uncompressed 24/32-bit), WAV (PCM
+16-bit), and a minimal OBJ (positions + triangles) decoder — formats
+simple enough to hand-roll without an external crate; PNG/JPEG/glTF need
+one, added when a concrete asset needs it, not speculatively.
+
+Step 8's physics half (`physics-driver`/`physics-core`) is real: AABB
+broad phase, sphere-sphere narrow phase, an impulse-based constraint
+solver (linear *and* angular — see below), semi-implicit Euler
+integration. `graphics-driver`/`audio-driver` and the driver-dependent
+parts of `graphics-core`/`audio-core` are still scaffolds — blocked on
+the GPU backend decision below.
+
+**GA is used in physics where it actually matters, not decoratively**:
+angular velocity/torque are `gac-core::Bivector3` (angular quantities
+live in so(3), the Lie algebra of rotations — a bivector space, not a
+vector space; using `Vec3` for them would be exactly the
+vector/bivector conflation GA exists to make explicit, not hide), and
+`Integrator` advances orientation via `Bivector3::exp` (a rotor
+exponential map composed onto `Motor3`) rather than a naive "add angle"
+— the same reason `Transform` is a `Motor3` at all instead of a
+quaternion+vector pair (ADR 001). See docs/physics-design.md.
 
 Every other crate is still a scaffold: correct name, correct dependency
 edges, a one-line doc comment, no implementation. This staged order is
@@ -74,10 +114,14 @@ priority before writing implementations is keeping that document and the
    [ADR 007](adr/007-batch-transforms-via-compute.md).
 7. `meridian-asset-core` — decoders, independent of the above once
    `platform-core` exists.
-8. `meridian-graphics-driver` → `meridian-graphics-core`, and
-   `meridian-physics-driver` → `meridian-physics-core`, and
-   `meridian-audio-driver` → `meridian-audio-core` — in parallel across
-   subsystems once their shared dependencies (steps 1-7) exist.
+8. `meridian-physics-driver` → `meridian-physics-core` — **done** (broad/
+   narrow phase, impulse solver, GA-native integration; see "Current
+   state" above). `meridian-graphics-driver` → `meridian-graphics-core`
+   and `meridian-audio-driver` → `meridian-audio-core` are blocked on the
+   GPU backend decision (`wgpu`, see "Not yet decided") for their driver
+   halves; the driver-*independent* parts of each `-core` (render graph
+   ordering, camera/culling math, spatial audio mixer) don't need to wait
+   for that and can start once there's time for them.
 9. `meridian-engine-core` — wires everything into the main loop last, once
    there's something real to schedule.
 
@@ -97,15 +141,34 @@ priority before writing implementations is keeping that document and the
 
 - Deterministic simulation mode (fixed-point vs. ordered floating point) —
   needed for physics replay/networking, tracked but unspecified.
-- Concrete graphics backend(s) beneath `graphics-driver` (Vulkan first,
-  per [ADR 005](adr/005-driver-core-separation.md), but not started).
-- **`meridian-platform-core`'s `Window` and `DynamicLibrary`** — the
-  workspace's first candidates for either an external dependency (`winit`,
-  `libloading`) or hand-written unsafe FFI. Decided: hand-written unsafe
-  FFI (`dlopen`/`LoadLibrary` for `DynamicLibrary`, per-platform window
-  creation for `Window`), not an external crate — the workspace stays at
-  zero external dependencies for now. Deliberately deferred: `Window` and
-  `DynamicLibrary` aren't needed until `graphics-driver` (step 8), and
-  `Time`/`InputState` (implemented, step 3) cover what `resource-core`/
-  `ecs-core` (steps 4-5) actually need from `platform-core` in the
-  meantime.
+- **GPU backend beneath `compute-driver`/`graphics-driver`/`physics-driver`
+  — decided: `wgpu`, not hand-written per-API FFI.** Reversed from the
+  earlier zero-external-dependencies stance: hand-writing Vulkan bindings
+  alone (extension loading, swapchain/memory management, synchronization)
+  is a multi-month undertaking on its own, "Vulkan *and* DirectX *and*
+  Metal by hand" triples that with three independent classes of driver
+  bugs, and doing it ourselves wouldn't avoid a dependency so much as
+  badly reimplement `wgpu` with more memory-safety risk — `wgpu` is a
+  safe Rust API over Vulkan/DX12/Metal/GL, actively maintained, already
+  what most Rust engines (Bevy included) use for exactly this. Real cost:
+  `wgpu`'s first external dependency, a heavy transitive tree (`wgpu` +
+  `naga` + platform GPU bindings), and some async-flavored device/adapter
+  acquisition needing `pollster::block_on`-style bridging in an otherwise
+  sync codebase — not a reason to pull in a full async runtime (`tokio`)
+  for one call. `graphics-driver`'s existing stub shape (`Device`,
+  `CommandBuffer`, `Buffer`, `Texture`, `Shader`, `Pipeline`) already maps
+  onto `wgpu`'s own vocabulary, so this doesn't force a redesign, just a
+  real implementation of what's already stubbed. Not started — deferred
+  until `graphics-driver` actually needs it (step 8's remaining half).
+  `platform-core`'s `Window`/`DynamicLibrary` are a separate, smaller
+  decision (below) and keep their own hand-written-FFI answer; GPU is the
+  one deliberate exception to zero-deps, not a reversal of the policy in
+  general.
+- **`meridian-platform-core`'s `Window` and `DynamicLibrary`** — decided:
+  hand-written unsafe FFI (`dlopen`/`LoadLibrary` for `DynamicLibrary`,
+  per-platform window creation for `Window`), not an external crate —
+  these stay small enough to hand-roll safely, unlike the GPU backend
+  above. Deliberately deferred: not needed until `graphics-driver` (step
+  8), and `Time`/`InputState`/`BackendCapabilities` (all implemented,
+  step 3) cover what every other crate has needed from `platform-core` so
+  far.
