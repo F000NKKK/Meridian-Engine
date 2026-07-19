@@ -44,3 +44,8 @@ visibility are compute workloads, not rendering-specific ones (see
 Asset bytes and decoding belong to `asset-core`; `graphics-core` consumes
 already-decoded CPU-side representations and turns them into GPU resources
 via `graphics-driver`. It does not implement image/mesh decoders itself.
+
+`TextureHandle`, `MeshHandle`, `BufferHandle` and `ShaderHandle` are typed
+resource identities from `meridian-resource-core`, not ad hoc handles
+defined in this crate — see
+[ADR 006](adr/006-resource-core-separation.md).
