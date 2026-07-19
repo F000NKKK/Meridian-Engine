@@ -53,9 +53,10 @@ broad phase, sphere-sphere/sphere-cuboid/cuboid-cuboid (SAT) narrow phase
 solver (linear *and* angular — see below), semi-implicit Euler
 integration. `graphics-driver` is real now, headless-only — see "Not yet
 decided" below for the `wgpu` details. `audio-driver` is still a
-scaffold: a real *output device* is the same class of OS-boundary problem
-as `Window` (not a GPU problem — it doesn't need `wgpu`), so it's
-deferred alongside `Window` on its own hand-written-FFI track; `audio-core`
+scaffold: a real *output device* is its own OS-boundary problem, not a
+GPU problem, so it isn't unblocked by `wgpu`/`winit`, and no ecosystem-
+standard crate has been evaluated for it yet the way `winit` was for
+windowing (see [ADR 010](adr/010-windowing-via-winit.md)); `audio-core`
 itself doesn't need `audio-driver` to be real to be useful — see next.
 
 **GA is used in physics where it actually matters, not decoratively**:
@@ -361,9 +362,9 @@ priority before writing implementations is keeping that document and the
   (`device_name`), populated by `Device`'s `BackendCapabilities` impl;
   `compute-driver`/`physics-driver`/`audio-driver` still report `gpu:
   None` since none of them dispatch to a GPU yet. Windowing/swapchain
-  (winit or hand-written platform window creation, wiring a real surface
-  into `Device`, and an example that renders to screen) is deliberately
-  not part of this pass — see "Suggested implementation order" step 8.
+  (a real surface into `Device`, and an example that renders to screen)
+  was deliberately not part of this pass — see the `winit` entry below
+  ([ADR 010](adr/010-windowing-via-winit.md)) for that follow-up.
 - **Async I/O — decided: `tokio`, scoped to genuine I/O only, not applied
   uniformly.** `graphics-driver::Device::new`/`read_buffer` (an OS/driver
   handshake and waiting on in-flight GPU work — both genuinely unbounded
