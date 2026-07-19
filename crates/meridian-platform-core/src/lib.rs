@@ -23,17 +23,17 @@ pub trait BackendCapabilities {
 }
 
 /// The shared fields themselves. Rust has no struct inheritance, so each
-/// driver's capability type embeds this (`pub cpu: CpuCapabilities`)
+/// driver's capability type embeds this (`pub cpu: DeviceCapabilities`)
 /// instead of redeclaring `gpu_available`/`cpu_threads` itself, and adds
 /// its own domain-specific fields (SIMD width, audio latency, ...)
 /// alongside it, not by duplicating these two.
 #[derive(Debug, Clone, Copy, Default)]
-pub struct CpuCapabilities {
+pub struct DeviceCapabilities {
     pub gpu_available: bool,
     pub cpu_threads: usize,
 }
 
-impl CpuCapabilities {
+impl DeviceCapabilities {
     /// No GPU backend exists anywhere in the workspace yet (see
     /// `compute-driver`'s module doc), so `gpu_available` is always
     /// `false` here — real detection lands once a first GPU backend does.
@@ -42,7 +42,7 @@ impl CpuCapabilities {
     }
 }
 
-impl BackendCapabilities for CpuCapabilities {
+impl BackendCapabilities for DeviceCapabilities {
     fn gpu_available(&self) -> bool {
         self.gpu_available
     }
@@ -53,8 +53,8 @@ impl BackendCapabilities for CpuCapabilities {
 }
 
 /// Detects the current machine's CPU thread count. Called by
-/// [`CpuCapabilities::detect`]; exposed directly too in case a caller
-/// needs the thread count without a full `CpuCapabilities`.
+/// [`DeviceCapabilities::detect`]; exposed directly too in case a caller
+/// needs the thread count without a full `DeviceCapabilities`.
 pub fn detect_cpu_threads() -> usize {
     std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1)
 }
@@ -290,7 +290,7 @@ mod tests {
 
     #[test]
     fn cpu_capabilities_detect_reports_no_gpu_and_at_least_one_thread() {
-        let caps = CpuCapabilities::detect();
+        let caps = DeviceCapabilities::detect();
         assert!(!caps.gpu_available());
         assert!(caps.cpu_threads() >= 1);
     }
