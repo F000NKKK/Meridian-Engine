@@ -5,6 +5,24 @@ subsystem builds on. It plays the role glm/Eigen/DirectXMath play in other
 engines, but is built around geometric algebra (specifically PGA — projective
 geometric algebra — for 3D rigid transforms) instead of raw matrices.
 
+## `float_ga` and `fixed_ga`
+
+Two GA modules, both re-exported: `float_ga` (`f32`, `Scalar` — the
+default; re-exported at the crate root, so `meridian_gac_core::Vec3`/
+`Motor3`/etc. resolve to it unchanged) and `fixed_ga` (`Fixed`, Q16.16
+fixed-point from `meridian-numeric-core` — deterministic, opt-in, used by
+`physics-core::deterministic` only). `fixed_ga` is a disclosed,
+one-for-one duplication of `float_ga`'s structure (`FixedMultivector`,
+`FixedVec3`, `FixedBivector3`, `FixedRotor`, `FixedMotor3`), not a generic
+`Motor3<S>` — see [ADR 008](adr/008-fixed-point-determinism.md) for why:
+`gac-compute`'s GPU dispatch path has no good answer for fixed-point
+regardless (GPUs are `f32`-native, no real `i64`), so the duplication a
+generic type would avoid still has to exist at the GPU-relevant
+instantiation site. The geometric primitives below (`Aabb`, `Sphere`,
+`Obb`, `Cone`, `Plane`, `Shape`, `ConvexVolume`, `Projection`, `Frame`)
+build on `float_ga` only — no `Fixed` equivalents yet (tracked as
+follow-up, see roadmap.md).
+
 ## Core types
 
 ```rust
