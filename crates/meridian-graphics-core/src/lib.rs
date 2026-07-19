@@ -178,9 +178,9 @@ fn mat4_mul(lhs: [[f32; 4]; 4], rhs: [[f32; 4]; 4]) -> [[f32; 4]; 4] {
 }
 
 /// A camera's view + projection: `frame` is the camera's world transform
-/// (local-forward `+X`, see [`LOCAL_TO_VIEW_REMAP`]), `projection` is the
-/// view-to-clip mapping built via [`Projection::perspective`] or
-/// [`Projection::orthographic`].
+/// (local-forward `+X`, see `LOCAL_TO_VIEW_REMAP`'s doc comment below),
+/// `projection` is the view-to-clip mapping built via
+/// [`Projection::perspective`] or [`Projection::orthographic`].
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Camera {
     pub frame: Motor3,
