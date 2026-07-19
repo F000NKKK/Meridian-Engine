@@ -47,7 +47,7 @@ impl DispatchSize {
 /// `compute-driver` backend, synchronization state. Consumers reach
 /// `compute-driver` only through this type — see
 /// docs/dependency-rules.md rule 5.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct ComputeContext {
     device: ComputeDevice,
     parallel_threshold: usize,
@@ -107,7 +107,7 @@ pub trait ComputeKernel {
 /// The entry point consumers use instead of calling `ComputeKernel::dispatch`
 /// directly: owns the [`ComputeContext`] (and its sequential/parallel
 /// threshold policy) a kernel dispatch runs against.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct ComputeScheduler {
     context: ComputeContext,
 }

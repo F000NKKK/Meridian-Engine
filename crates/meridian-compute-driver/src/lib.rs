@@ -15,7 +15,7 @@ use meridian_platform_core::{BackendCapabilities, CpuCapabilities, GpuCapabiliti
 /// `threads`; `gpu` is `None` until a real GPU backend exists — see the
 /// module doc — at which point it becomes `Some(GpuCapabilities { .. })`
 /// with real detected fields, no restructuring needed here.
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct ComputeCapabilities {
     pub cpu: CpuCapabilities,
     pub gpu: Option<GpuCapabilities>,
@@ -27,7 +27,7 @@ impl BackendCapabilities for ComputeCapabilities {
     }
 
     fn gpu(&self) -> Option<GpuCapabilities> {
-        self.gpu
+        self.gpu.clone()
     }
 }
 
@@ -69,7 +69,7 @@ impl ComputeBuffer {
 
 /// The active compute backend. Only ever the CPU backend right now — see
 /// the module doc.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct ComputeDevice {
     capabilities: ComputeCapabilities,
 }
@@ -91,7 +91,7 @@ impl ComputeDevice {
     }
 
     pub fn capabilities(&self) -> ComputeCapabilities {
-        self.capabilities
+        self.capabilities.clone()
     }
 
     pub fn allocate_buffer(&self, byte_len: usize) -> ComputeBuffer {
