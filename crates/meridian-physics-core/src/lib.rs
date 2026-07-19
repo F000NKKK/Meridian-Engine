@@ -3,8 +3,9 @@
 //! Real, tested physics pipeline: [`BroadPhase`] (naive O(n²) AABB sweep —
 //! a spatial hash/BVH is a later optimization once profiling calls for
 //! it, same policy as `task-core`'s scheduler), [`NarrowPhase`]
-//! (sphere-sphere only so far — the only [`ColliderShape`] variant right
-//! now), [`ConstraintSolver`] (impulse-based, linear *and* angular, with
+//! (sphere-sphere, sphere-cuboid, and cuboid-cuboid via SAT — the two
+//! [`ColliderShape`] variants that exist so far), [`ConstraintSolver`]
+//! (impulse-based, linear *and* angular, with
 //! positional correction against sinking), and [`Integrator`] (semi-
 //! implicit Euler, using `gac-core`'s bivector exponential map for
 //! rotation — not a naive "add angle" or a separately-tracked quaternion).
@@ -198,7 +199,11 @@ fn sphere_vs_sphere(pa: Vec3, ra: f32, pb: Vec3, rb: f32) -> Option<(Vec3, f32, 
     }
     // Centers coincide exactly: pick an arbitrary separating axis rather
     // than dividing by a zero-length delta.
-    let normal = if dist > 1e-6 { delta * (1.0 / dist) } else { Vec3::X };
+    let normal = if dist > 1e-6 {
+        delta * (1.0 / dist)
+    } else {
+        Vec3::X
+    };
     let point = pa + normal * ra;
     Some((point, combined - dist, normal))
 }
@@ -248,7 +253,11 @@ fn closest_point_on_obb(obb: &Obb, point: Vec3) -> (Vec3, Vec3, f32) {
             },
         );
         let closest_world = obb.frame.transform_point(closest_local);
-        (closest_world, obb.frame.transform_vector(local_normal), -depth)
+        (
+            closest_world,
+            obb.frame.transform_vector(local_normal),
+            -depth,
+        )
     } else {
         let clamped = Vec3::new(
             local.x.clamp(-obb.half_extents.x, obb.half_extents.x),
@@ -258,7 +267,11 @@ fn closest_point_on_obb(obb: &Obb, point: Vec3) -> (Vec3, Vec3, f32) {
         let closest_world = obb.frame.transform_point(clamped);
         let delta = point - closest_world;
         let dist = delta.length();
-        let normal = if dist > 1e-6 { delta * (1.0 / dist) } else { Vec3::X };
+        let normal = if dist > 1e-6 {
+            delta * (1.0 / dist)
+        } else {
+            Vec3::X
+        };
         (closest_world, normal, dist)
     }
 }
@@ -810,7 +823,12 @@ mod tests {
 
     #[test]
     fn narrow_phase_sphere_vs_cuboid_returns_none_when_separated() {
-        let floor = cuboid(Motor3::identity(), Vec3::ZERO, 0.0, Vec3::new(1.0, 1.0, 1.0));
+        let floor = cuboid(
+            Motor3::identity(),
+            Vec3::ZERO,
+            0.0,
+            Vec3::new(1.0, 1.0, 1.0),
+        );
         let ball = sphere(Vec3::new(10.0, 0.0, 0.0), Vec3::ZERO, 1.0, 0.5);
         let bodies = vec![floor, ball];
         assert!(NarrowPhase::new().test_pair(&bodies, 0, 1).is_none());
@@ -821,7 +839,12 @@ mod tests {
         // A sphere entirely inside a box (deep penetration) must still
         // produce a finite, unit-length normal and a positive
         // penetration — not a divide-by-zero from a zero-length delta.
-        let box_body = cuboid(Motor3::identity(), Vec3::ZERO, 0.0, Vec3::new(1.0, 1.0, 1.0));
+        let box_body = cuboid(
+            Motor3::identity(),
+            Vec3::ZERO,
+            0.0,
+            Vec3::new(1.0, 1.0, 1.0),
+        );
         let ball = sphere(Vec3::ZERO, Vec3::ZERO, 1.0, 0.3);
         let bodies = vec![box_body, ball];
 
@@ -833,7 +856,12 @@ mod tests {
     #[test]
     fn narrow_phase_cuboid_vs_cuboid_reports_least_penetration_axis() {
         // Two axis-aligned unit cubes overlapping only along X by 0.5.
-        let a = cuboid(Motor3::identity(), Vec3::ZERO, 1.0, Vec3::new(1.0, 1.0, 1.0));
+        let a = cuboid(
+            Motor3::identity(),
+            Vec3::ZERO,
+            1.0,
+            Vec3::new(1.0, 1.0, 1.0),
+        );
         let b = cuboid(
             Motor3::translation(Vec3::new(1.5, 0.0, 0.0)),
             Vec3::ZERO,
@@ -849,7 +877,12 @@ mod tests {
 
     #[test]
     fn narrow_phase_cuboid_vs_cuboid_returns_none_when_separated() {
-        let a = cuboid(Motor3::identity(), Vec3::ZERO, 1.0, Vec3::new(1.0, 1.0, 1.0));
+        let a = cuboid(
+            Motor3::identity(),
+            Vec3::ZERO,
+            1.0,
+            Vec3::new(1.0, 1.0, 1.0),
+        );
         let b = cuboid(
             Motor3::translation(Vec3::new(5.0, 0.0, 0.0)),
             Vec3::ZERO,
@@ -869,11 +902,15 @@ mod tests {
         // value here (the rotated box's diagonal reach isn't a round
         // number); just correctness properties: a clearly-overlapping
         // pair reports a valid contact, a clearly-separated pair doesn't.
-        let a = cuboid(Motor3::identity(), Vec3::ZERO, 1.0, Vec3::new(1.0, 1.0, 1.0));
+        let a = cuboid(
+            Motor3::identity(),
+            Vec3::ZERO,
+            1.0,
+            Vec3::new(1.0, 1.0, 1.0),
+        );
         let overlapping_b = cuboid(
-            Motor3::rotation(Vec3::Y, PI / 4.0).compose(Motor3::translation(Vec3::new(
-                1.5, 0.0, 0.0,
-            ))),
+            Motor3::rotation(Vec3::Y, PI / 4.0)
+                .compose(Motor3::translation(Vec3::new(1.5, 0.0, 0.0))),
             Vec3::ZERO,
             1.0,
             Vec3::new(1.0, 1.0, 1.0),
@@ -884,9 +921,8 @@ mod tests {
         assert!((contact.normal.length() - 1.0).abs() < 1e-4);
 
         let separated_b = cuboid(
-            Motor3::rotation(Vec3::Y, PI / 4.0).compose(Motor3::translation(Vec3::new(
-                10.0, 0.0, 0.0,
-            ))),
+            Motor3::rotation(Vec3::Y, PI / 4.0)
+                .compose(Motor3::translation(Vec3::new(10.0, 0.0, 0.0))),
             Vec3::ZERO,
             1.0,
             Vec3::new(1.0, 1.0, 1.0),
