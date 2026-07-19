@@ -14,7 +14,15 @@ Rotor         // pure rotation
 Motor         // rotation + translation, composable
 Frame         // a named reference frame (origin + basis)
 Projection    // camera/projective mappings
+Aabb          // axis-aligned bounding box
+Plane         // a half-space, normal . p + d >= 0
 ```
+
+`Aabb` and `Plane` are plain geometric primitives with no domain meaning of
+their own — `physics-core`'s broad phase and `graphics-core`'s frustum
+culling both need a bounding box, and a plane has no reason to be defined
+twice either. They live here rather than being redefined per subsystem, for
+the same reason `Vec3`/`Motor3` do (see "Consumers" below).
 
 ## `Transform` is a `Motor3`
 
