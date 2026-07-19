@@ -675,6 +675,23 @@ impl GaFlavor for FloatFlavor {
     type Motor = Motor3;
 }
 
+// ---- Thin aliases for the generic primitives in `crate::lib` ----
+//
+// `Frame`/`Shape`/`Aabb`/`Sphere`/`Obb`/`Cone`/`Plane`/`ConvexVolume`/
+// `Projection` are written once, generically over `GaFlavor` (see the
+// crate root doc comment for why) — these aliases are what let existing
+// call sites keep writing `meridian_gac_core::Aabb` etc. unchanged.
+
+pub type Frame = crate::Frame<FloatFlavor>;
+pub type Shape = dyn crate::Shape<FloatFlavor>;
+pub type Aabb = crate::Aabb<FloatFlavor>;
+pub type Sphere = crate::Sphere<FloatFlavor>;
+pub type Obb = crate::Obb<FloatFlavor>;
+pub type Cone = crate::Cone<FloatFlavor>;
+pub type Plane = crate::Plane<FloatFlavor>;
+pub type ConvexVolume = crate::ConvexVolume<FloatFlavor>;
+pub type Projection = crate::Projection<FloatFlavor>;
+
 // ---- Cross-flavor interop with `crate::fixed_ga` ----
 //
 // Every conversion here is precision-changing (`f32` <-> `Fixed`'s
