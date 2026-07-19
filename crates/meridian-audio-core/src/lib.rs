@@ -96,7 +96,13 @@ pub struct SpeakerLayout {
 
 impl SpeakerLayout {
     pub fn mono() -> Self {
-        Self { speakers: vec![Speaker { channel: Channel::Center, azimuth_degrees: Some(0.0) }], wraps_around: false }
+        Self {
+            speakers: vec![Speaker {
+                channel: Channel::Center,
+                azimuth_degrees: Some(0.0),
+            }],
+            wraps_around: false,
+        }
     }
 
     /// Full front hemisphere (`±90°`) — a source directly to one side
@@ -104,8 +110,14 @@ impl SpeakerLayout {
     pub fn stereo_headphones() -> Self {
         Self {
             speakers: vec![
-                Speaker { channel: Channel::Left, azimuth_degrees: Some(-90.0) },
-                Speaker { channel: Channel::Right, azimuth_degrees: Some(90.0) },
+                Speaker {
+                    channel: Channel::Left,
+                    azimuth_degrees: Some(-90.0),
+                },
+                Speaker {
+                    channel: Channel::Right,
+                    azimuth_degrees: Some(90.0),
+                },
             ],
             wraps_around: false,
         }
@@ -118,8 +130,14 @@ impl SpeakerLayout {
     pub fn stereo_speakers() -> Self {
         Self {
             speakers: vec![
-                Speaker { channel: Channel::Left, azimuth_degrees: Some(-30.0) },
-                Speaker { channel: Channel::Right, azimuth_degrees: Some(30.0) },
+                Speaker {
+                    channel: Channel::Left,
+                    azimuth_degrees: Some(-30.0),
+                },
+                Speaker {
+                    channel: Channel::Right,
+                    azimuth_degrees: Some(30.0),
+                },
             ],
             wraps_around: false,
         }
@@ -129,11 +147,26 @@ impl SpeakerLayout {
     pub fn surround_5_0() -> Self {
         Self {
             speakers: vec![
-                Speaker { channel: Channel::Left, azimuth_degrees: Some(-30.0) },
-                Speaker { channel: Channel::Center, azimuth_degrees: Some(0.0) },
-                Speaker { channel: Channel::Right, azimuth_degrees: Some(30.0) },
-                Speaker { channel: Channel::SurroundLeft, azimuth_degrees: Some(-110.0) },
-                Speaker { channel: Channel::SurroundRight, azimuth_degrees: Some(110.0) },
+                Speaker {
+                    channel: Channel::Left,
+                    azimuth_degrees: Some(-30.0),
+                },
+                Speaker {
+                    channel: Channel::Center,
+                    azimuth_degrees: Some(0.0),
+                },
+                Speaker {
+                    channel: Channel::Right,
+                    azimuth_degrees: Some(30.0),
+                },
+                Speaker {
+                    channel: Channel::SurroundLeft,
+                    azimuth_degrees: Some(-110.0),
+                },
+                Speaker {
+                    channel: Channel::SurroundRight,
+                    azimuth_degrees: Some(110.0),
+                },
             ],
             wraps_around: true,
         }
@@ -142,7 +175,10 @@ impl SpeakerLayout {
     /// 5.0 plus a non-directional LFE channel.
     pub fn surround_5_1() -> Self {
         let mut layout = Self::surround_5_0();
-        layout.speakers.push(Speaker { channel: Channel::LowFrequency, azimuth_degrees: None });
+        layout.speakers.push(Speaker {
+            channel: Channel::LowFrequency,
+            azimuth_degrees: None,
+        });
         layout
     }
 
@@ -153,10 +189,15 @@ impl SpeakerLayout {
     /// can't pan) or none (everything `0.0` — a degenerate all-LFE
     /// layout, not a realistic case).
     pub fn pan(&self, azimuth_degrees: f32) -> Vec<(Channel, f32)> {
-        let mut gains: Vec<(Channel, f32)> = self.speakers.iter().map(|s| (s.channel, 0.0)).collect();
+        let mut gains: Vec<(Channel, f32)> =
+            self.speakers.iter().map(|s| (s.channel, 0.0)).collect();
 
-        let mut directional: Vec<(usize, f32)> =
-            self.speakers.iter().enumerate().filter_map(|(i, s)| s.azimuth_degrees.map(|a| (i, normalize_angle(a)))).collect();
+        let mut directional: Vec<(usize, f32)> = self
+            .speakers
+            .iter()
+            .enumerate()
+            .filter_map(|(i, s)| s.azimuth_degrees.map(|a| (i, normalize_angle(a))))
+            .collect();
         directional.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
 
         let n = directional.len();
@@ -191,7 +232,11 @@ impl SpeakerLayout {
             let (idx_a, angle_a) = directional[i];
             let (idx_b, angle_b_raw) = directional[(i + 1) % n];
             let wrapping_pair = i + 1 == n;
-            let angle_b = if wrapping_pair { angle_b_raw + 360.0 } else { angle_b_raw };
+            let angle_b = if wrapping_pair {
+                angle_b_raw + 360.0
+            } else {
+                angle_b_raw
+            };
 
             let mut az_adj = az;
             if wrapping_pair && az_adj < angle_a {
@@ -201,7 +246,11 @@ impl SpeakerLayout {
             const EPS: f32 = 1e-4;
             if az_adj >= angle_a - EPS && az_adj <= angle_b + EPS {
                 let span = angle_b - angle_a;
-                let t = if span.abs() < 1e-6 { 0.0 } else { ((az_adj - angle_a) / span).clamp(0.0, 1.0) };
+                let t = if span.abs() < 1e-6 {
+                    0.0
+                } else {
+                    ((az_adj - angle_a) / span).clamp(0.0, 1.0)
+                };
                 let gain_a = (t * core::f32::consts::FRAC_PI_2).cos();
                 let gain_b = (t * core::f32::consts::FRAC_PI_2).sin();
                 gains[idx_a].1 = gain_a;
@@ -214,7 +263,14 @@ impl SpeakerLayout {
         // and the non-wrapping clamp already handled the out-of-range
         // cases above, so this is unreachable in practice — kept as a
         // safe fallback (nearest speaker, full gain) rather than a panic.
-        let nearest = directional.iter().min_by(|a, b| angular_distance(az, a.1).partial_cmp(&angular_distance(az, b.1)).unwrap()).unwrap();
+        let nearest = directional
+            .iter()
+            .min_by(|a, b| {
+                angular_distance(az, a.1)
+                    .partial_cmp(&angular_distance(az, b.1))
+                    .unwrap()
+            })
+            .unwrap();
         gains[nearest.0].1 = 1.0;
         gains
     }
@@ -268,14 +324,19 @@ pub struct AttenuationModel {
 
 impl Default for AttenuationModel {
     fn default() -> Self {
-        Self { reference_distance: 1.0, rolloff: 1.0, max_distance: 1000.0 }
+        Self {
+            reference_distance: 1.0,
+            rolloff: 1.0,
+            max_distance: 1000.0,
+        }
     }
 }
 
 impl AttenuationModel {
     pub fn gain(&self, distance: f32) -> f32 {
         let d = distance.clamp(self.reference_distance, self.max_distance);
-        self.reference_distance / (self.reference_distance + self.rolloff * (d - self.reference_distance))
+        self.reference_distance
+            / (self.reference_distance + self.rolloff * (d - self.reference_distance))
     }
 }
 
@@ -292,11 +353,20 @@ fn azimuth_of(local_position: Vec3) -> f32 {
 /// (`attenuation`). This is what [`Mixer::mix`] calls per emitter — exposed
 /// standalone so a single emitter/listener pair can be tested in
 /// isolation without constructing a [`Mixer`].
-pub fn spatial_gains(listener: &Listener, emitter: &Emitter, layout: &SpeakerLayout, attenuation: &AttenuationModel) -> Vec<(Channel, f32)> {
+pub fn spatial_gains(
+    listener: &Listener,
+    emitter: &Emitter,
+    layout: &SpeakerLayout,
+    attenuation: &AttenuationModel,
+) -> Vec<(Channel, f32)> {
     let local = listener.frame.inverse().transform_point(emitter.position());
     let distance_gain = attenuation.gain(local.length());
     let azimuth = azimuth_of(local);
-    layout.pan(azimuth).into_iter().map(|(channel, gain)| (channel, gain * distance_gain)).collect()
+    layout
+        .pan(azimuth)
+        .into_iter()
+        .map(|(channel, gain)| (channel, gain * distance_gain))
+        .collect()
 }
 
 /// Mixes active emitters down to the output stream: one gain-weighted
@@ -310,7 +380,10 @@ pub struct Mixer {
 
 impl Mixer {
     pub fn new(layout: SpeakerLayout) -> Self {
-        Self { layout, attenuation: AttenuationModel::default() }
+        Self {
+            layout,
+            attenuation: AttenuationModel::default(),
+        }
     }
 
     pub fn with_attenuation(mut self, attenuation: AttenuationModel) -> Self {
@@ -320,7 +393,12 @@ impl Mixer {
 
     /// `output[channel] = sum_i(sample_i * spatial_gains(listener, emitter_i)[channel])`.
     pub fn mix(&self, listener: &Listener, emitters: &[(Emitter, f32)]) -> Vec<(Channel, f32)> {
-        let mut output: Vec<(Channel, f32)> = self.layout.speakers.iter().map(|s| (s.channel, 0.0)).collect();
+        let mut output: Vec<(Channel, f32)> = self
+            .layout
+            .speakers
+            .iter()
+            .map(|s| (s.channel, 0.0))
+            .collect();
         for (emitter, sample) in emitters {
             let gains = spatial_gains(listener, emitter, &self.layout, &self.attenuation);
             for (i, (_, gain)) in gains.into_iter().enumerate() {
@@ -401,22 +479,34 @@ mod tests {
     use super::*;
 
     fn listener_at_origin_facing_x() -> Listener {
-        Listener { frame: Motor3::identity() }
+        Listener {
+            frame: Motor3::identity(),
+        }
     }
 
     fn emitter_at(position: Vec3) -> Emitter {
-        Emitter { frame: Motor3::translation(position) }
+        Emitter {
+            frame: Motor3::translation(position),
+        }
     }
 
     /// A model with `gain == 1.0` for any distance used in these tests
     /// (reference_distance far beyond them) — isolates *direction* tests
     /// from *distance* attenuation, which has its own dedicated tests.
     fn no_attenuation() -> AttenuationModel {
-        AttenuationModel { reference_distance: 1000.0, rolloff: 1.0, max_distance: 1000.0 }
+        AttenuationModel {
+            reference_distance: 1000.0,
+            rolloff: 1.0,
+            max_distance: 1000.0,
+        }
     }
 
     fn gain_of(gains: &[(Channel, f32)], channel: Channel) -> f32 {
-        gains.iter().find(|(c, _)| *c == channel).map(|(_, g)| *g).unwrap_or(0.0)
+        gains
+            .iter()
+            .find(|(c, _)| *c == channel)
+            .map(|(_, g)| *g)
+            .unwrap_or(0.0)
     }
 
     // ---- direction, stereo (headphones: full ±90° hemisphere) ----
@@ -425,9 +515,20 @@ mod tests {
     fn stereo_headphones_front_source_is_centered() {
         let listener = listener_at_origin_facing_x();
         let emitter = emitter_at(Vec3::new(5.0, 0.0, 0.0));
-        let gains = spatial_gains(&listener, &emitter, &SpeakerLayout::stereo_headphones(), &no_attenuation());
-        let (l, r) = (gain_of(&gains, Channel::Left), gain_of(&gains, Channel::Right));
-        assert!((l - r).abs() < 1e-4, "front source must be centered, got L={l} R={r}");
+        let gains = spatial_gains(
+            &listener,
+            &emitter,
+            &SpeakerLayout::stereo_headphones(),
+            &no_attenuation(),
+        );
+        let (l, r) = (
+            gain_of(&gains, Channel::Left),
+            gain_of(&gains, Channel::Right),
+        );
+        assert!(
+            (l - r).abs() < 1e-4,
+            "front source must be centered, got L={l} R={r}"
+        );
         assert!(l > 0.5, "centered gain should be ~0.707, got {l}");
     }
 
@@ -443,15 +544,26 @@ mod tests {
         let layout = SpeakerLayout::stereo_headphones();
         let front_gains = spatial_gains(&listener, &front, &layout, &attenuation);
         let behind_gains = spatial_gains(&listener, &behind, &layout, &attenuation);
-        assert!((gain_of(&front_gains, Channel::Left) - gain_of(&behind_gains, Channel::Left)).abs() < 1e-4);
-        assert!((gain_of(&front_gains, Channel::Right) - gain_of(&behind_gains, Channel::Right)).abs() < 1e-4);
+        assert!(
+            (gain_of(&front_gains, Channel::Left) - gain_of(&behind_gains, Channel::Left)).abs()
+                < 1e-4
+        );
+        assert!(
+            (gain_of(&front_gains, Channel::Right) - gain_of(&behind_gains, Channel::Right)).abs()
+                < 1e-4
+        );
     }
 
     #[test]
     fn stereo_headphones_left_source_is_full_left() {
         let listener = listener_at_origin_facing_x();
         let emitter = emitter_at(Vec3::new(0.0, 0.0, -5.0));
-        let gains = spatial_gains(&listener, &emitter, &SpeakerLayout::stereo_headphones(), &no_attenuation());
+        let gains = spatial_gains(
+            &listener,
+            &emitter,
+            &SpeakerLayout::stereo_headphones(),
+            &no_attenuation(),
+        );
         assert!((gain_of(&gains, Channel::Left) - 1.0).abs() < 1e-4);
         assert!(gain_of(&gains, Channel::Right) < 1e-4);
     }
@@ -460,7 +572,12 @@ mod tests {
     fn stereo_headphones_right_source_is_full_right() {
         let listener = listener_at_origin_facing_x();
         let emitter = emitter_at(Vec3::new(0.0, 0.0, 5.0));
-        let gains = spatial_gains(&listener, &emitter, &SpeakerLayout::stereo_headphones(), &no_attenuation());
+        let gains = spatial_gains(
+            &listener,
+            &emitter,
+            &SpeakerLayout::stereo_headphones(),
+            &no_attenuation(),
+        );
         assert!((gain_of(&gains, Channel::Right) - 1.0).abs() < 1e-4);
         assert!(gain_of(&gains, Channel::Left) < 1e-4);
     }
@@ -479,11 +596,27 @@ mod tests {
         let emitter = emitter_at(Vec3::new(angle.cos() * 5.0, 0.0, angle.sin() * 5.0));
         let attenuation = no_attenuation();
 
-        let headphone_gains = spatial_gains(&listener, &emitter, &SpeakerLayout::stereo_headphones(), &attenuation);
-        let speaker_gains = spatial_gains(&listener, &emitter, &SpeakerLayout::stereo_speakers(), &attenuation);
+        let headphone_gains = spatial_gains(
+            &listener,
+            &emitter,
+            &SpeakerLayout::stereo_headphones(),
+            &attenuation,
+        );
+        let speaker_gains = spatial_gains(
+            &listener,
+            &emitter,
+            &SpeakerLayout::stereo_speakers(),
+            &attenuation,
+        );
 
-        assert!(gain_of(&headphone_gains, Channel::Right) > 1e-3, "headphones should still blend in some right at -60deg");
-        assert!(gain_of(&speaker_gains, Channel::Right) < 1e-4, "narrow speakers should already be fully clamped left at -60deg");
+        assert!(
+            gain_of(&headphone_gains, Channel::Right) > 1e-3,
+            "headphones should still blend in some right at -60deg"
+        );
+        assert!(
+            gain_of(&speaker_gains, Channel::Right) < 1e-4,
+            "narrow speakers should already be fully clamped left at -60deg"
+        );
         assert!((gain_of(&speaker_gains, Channel::Left) - 1.0).abs() < 1e-4);
     }
 
@@ -493,7 +626,12 @@ mod tests {
     fn surround_5_0_front_source_goes_mostly_to_center() {
         let listener = listener_at_origin_facing_x();
         let emitter = emitter_at(Vec3::new(5.0, 0.0, 0.0));
-        let gains = spatial_gains(&listener, &emitter, &SpeakerLayout::surround_5_0(), &no_attenuation());
+        let gains = spatial_gains(
+            &listener,
+            &emitter,
+            &SpeakerLayout::surround_5_0(),
+            &no_attenuation(),
+        );
         assert!((gain_of(&gains, Channel::Center) - 1.0).abs() < 1e-4);
         assert!(gain_of(&gains, Channel::SurroundLeft) < 1e-4);
         assert!(gain_of(&gains, Channel::SurroundRight) < 1e-4);
@@ -506,10 +644,25 @@ mod tests {
         // into the front Center channel at all.
         let listener = listener_at_origin_facing_x();
         let emitter = emitter_at(Vec3::new(-5.0, 0.0, 0.0));
-        let gains = spatial_gains(&listener, &emitter, &SpeakerLayout::surround_5_0(), &no_attenuation());
-        assert_eq!(gain_of(&gains, Channel::Center), 0.0, "a dead-behind source must not leak into the front Center channel");
-        let (sl, sr) = (gain_of(&gains, Channel::SurroundLeft), gain_of(&gains, Channel::SurroundRight));
-        assert!((sl - sr).abs() < 1e-4, "dead-behind should split evenly between the two surrounds, got SL={sl} SR={sr}");
+        let gains = spatial_gains(
+            &listener,
+            &emitter,
+            &SpeakerLayout::surround_5_0(),
+            &no_attenuation(),
+        );
+        assert_eq!(
+            gain_of(&gains, Channel::Center),
+            0.0,
+            "a dead-behind source must not leak into the front Center channel"
+        );
+        let (sl, sr) = (
+            gain_of(&gains, Channel::SurroundLeft),
+            gain_of(&gains, Channel::SurroundRight),
+        );
+        assert!(
+            (sl - sr).abs() < 1e-4,
+            "dead-behind should split evenly between the two surrounds, got SL={sl} SR={sr}"
+        );
         assert!(sl > 0.5);
     }
 
@@ -517,7 +670,12 @@ mod tests {
     fn surround_5_0_left_source_goes_to_left_speaker() {
         let listener = listener_at_origin_facing_x();
         let emitter = emitter_at(Vec3::new(0.0, 0.0, -5.0));
-        let gains = spatial_gains(&listener, &emitter, &SpeakerLayout::surround_5_0(), &no_attenuation());
+        let gains = spatial_gains(
+            &listener,
+            &emitter,
+            &SpeakerLayout::surround_5_0(),
+            &no_attenuation(),
+        );
         // -90 degrees falls between L(-30) and SL(-110).
         assert!(gain_of(&gains, Channel::Left) > 0.0);
         assert!(gain_of(&gains, Channel::SurroundLeft) > 0.0);
@@ -528,9 +686,19 @@ mod tests {
     #[test]
     fn surround_5_1_lfe_never_receives_directional_gain() {
         let listener = listener_at_origin_facing_x();
-        for position in [Vec3::new(5.0, 0.0, 0.0), Vec3::new(-5.0, 0.0, 0.0), Vec3::new(0.0, 0.0, 5.0), Vec3::new(0.0, 0.0, -5.0)] {
+        for position in [
+            Vec3::new(5.0, 0.0, 0.0),
+            Vec3::new(-5.0, 0.0, 0.0),
+            Vec3::new(0.0, 0.0, 5.0),
+            Vec3::new(0.0, 0.0, -5.0),
+        ] {
             let emitter = emitter_at(position);
-            let gains = spatial_gains(&listener, &emitter, &SpeakerLayout::surround_5_1(), &no_attenuation());
+            let gains = spatial_gains(
+                &listener,
+                &emitter,
+                &SpeakerLayout::surround_5_1(),
+                &no_attenuation(),
+            );
             assert_eq!(gain_of(&gains, Channel::LowFrequency), 0.0);
         }
     }
@@ -538,9 +706,19 @@ mod tests {
     #[test]
     fn mono_always_gets_full_gain_regardless_of_direction() {
         let listener = listener_at_origin_facing_x();
-        for position in [Vec3::new(5.0, 0.0, 0.0), Vec3::new(-5.0, 0.0, 0.0), Vec3::new(0.0, 0.0, 5.0), Vec3::new(0.0, 0.0, -5.0)] {
+        for position in [
+            Vec3::new(5.0, 0.0, 0.0),
+            Vec3::new(-5.0, 0.0, 0.0),
+            Vec3::new(0.0, 0.0, 5.0),
+            Vec3::new(0.0, 0.0, -5.0),
+        ] {
             let emitter = emitter_at(position);
-            let gains = spatial_gains(&listener, &emitter, &SpeakerLayout::mono(), &no_attenuation());
+            let gains = spatial_gains(
+                &listener,
+                &emitter,
+                &SpeakerLayout::mono(),
+                &no_attenuation(),
+            );
             assert_eq!(gain_of(&gains, Channel::Center), 1.0);
         }
     }
@@ -568,8 +746,14 @@ mod tests {
         let far = emitter_at(Vec3::new(20.0, 0.0, 0.0));
         let attenuation = AttenuationModel::default();
         let layout = SpeakerLayout::mono();
-        let near_gain = gain_of(&spatial_gains(&listener, &near, &layout, &attenuation), Channel::Center);
-        let far_gain = gain_of(&spatial_gains(&listener, &far, &layout, &attenuation), Channel::Center);
+        let near_gain = gain_of(
+            &spatial_gains(&listener, &near, &layout, &attenuation),
+            Channel::Center,
+        );
+        let far_gain = gain_of(
+            &spatial_gains(&listener, &far, &layout, &attenuation),
+            Channel::Center,
+        );
         assert!(near_gain > far_gain);
     }
 
@@ -587,7 +771,9 @@ mod tests {
         let solo_right = mixer.mix(&listener, &[right_source]);
 
         assert!((gain_of(&mixed, Channel::Left) - gain_of(&solo_left, Channel::Left)).abs() < 1e-4);
-        assert!((gain_of(&mixed, Channel::Right) - gain_of(&solo_right, Channel::Right)).abs() < 1e-4);
+        assert!(
+            (gain_of(&mixed, Channel::Right) - gain_of(&solo_right, Channel::Right)).abs() < 1e-4
+        );
     }
 
     #[test]
@@ -616,7 +802,10 @@ mod tests {
         let mut samples = [1.0; 50];
         filter.process(&mut samples);
         assert!(samples[0] < 0.5, "first sample should barely move from 0");
-        assert!(samples[49] > 0.98, "after many samples the filter should have converged near 1.0");
+        assert!(
+            samples[49] > 0.98,
+            "after many samples the filter should have converged near 1.0"
+        );
     }
 
     #[test]
