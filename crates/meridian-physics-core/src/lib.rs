@@ -187,6 +187,167 @@ pub struct Contact {
     pub point: Vec3,
 }
 
+/// Sphere-sphere exact test. `None` if not overlapping.
+fn sphere_vs_sphere(pa: Vec3, ra: f32, pb: Vec3, rb: f32) -> Option<(Vec3, f32, Vec3)> {
+    let delta = pb - pa;
+    let dist = delta.length();
+    let combined = ra + rb;
+
+    if dist >= combined {
+        return None;
+    }
+    // Centers coincide exactly: pick an arbitrary separating axis rather
+    // than dividing by a zero-length delta.
+    let normal = if dist > 1e-6 { delta * (1.0 / dist) } else { Vec3::X };
+    let point = pa + normal * ra;
+    Some((point, combined - dist, normal))
+}
+
+/// Closest point on `obb`'s surface to `point`, the outward normal from
+/// the box to that point, and the separation along that normal (negative
+/// means `point` is embedded inside the box).
+///
+/// The embedded case needs its own branch: clamping `point`'s local
+/// coordinates to the box's extents is exactly the closest-surface-point
+/// formula when `point` is *outside*, but when it's already inside,
+/// clamping is a no-op (the point doesn't move) and the "normal" from a
+/// zero-length delta would be undefined — so this pushes out through
+/// whichever face is nearest instead.
+fn closest_point_on_obb(obb: &Obb, point: Vec3) -> (Vec3, Vec3, f32) {
+    let local = obb.frame.inverse().transform_point(point);
+    let inside = local.x.abs() <= obb.half_extents.x
+        && local.y.abs() <= obb.half_extents.y
+        && local.z.abs() <= obb.half_extents.z;
+
+    if inside {
+        let dx = obb.half_extents.x - local.x.abs();
+        let dy = obb.half_extents.y - local.y.abs();
+        let dz = obb.half_extents.z - local.z.abs();
+        let (local_normal, depth) = if dx <= dy && dx <= dz {
+            (Vec3::new(local.x.signum(), 0.0, 0.0), dx)
+        } else if dy <= dz {
+            (Vec3::new(0.0, local.y.signum(), 0.0), dy)
+        } else {
+            (Vec3::new(0.0, 0.0, local.z.signum()), dz)
+        };
+        let closest_local = Vec3::new(
+            if local_normal.x != 0.0 {
+                obb.half_extents.x * local_normal.x
+            } else {
+                local.x
+            },
+            if local_normal.y != 0.0 {
+                obb.half_extents.y * local_normal.y
+            } else {
+                local.y
+            },
+            if local_normal.z != 0.0 {
+                obb.half_extents.z * local_normal.z
+            } else {
+                local.z
+            },
+        );
+        let closest_world = obb.frame.transform_point(closest_local);
+        (closest_world, obb.frame.transform_vector(local_normal), -depth)
+    } else {
+        let clamped = Vec3::new(
+            local.x.clamp(-obb.half_extents.x, obb.half_extents.x),
+            local.y.clamp(-obb.half_extents.y, obb.half_extents.y),
+            local.z.clamp(-obb.half_extents.z, obb.half_extents.z),
+        );
+        let closest_world = obb.frame.transform_point(clamped);
+        let delta = point - closest_world;
+        let dist = delta.length();
+        let normal = if dist > 1e-6 { delta * (1.0 / dist) } else { Vec3::X };
+        (closest_world, normal, dist)
+    }
+}
+
+/// Sphere-cuboid exact test via [`closest_point_on_obb`]. Returns the
+/// contact point, outward normal (cuboid toward sphere), and penetration.
+fn sphere_vs_cuboid(sphere_center: Vec3, radius: f32, obb: &Obb) -> Option<(Vec3, f32, Vec3)> {
+    let (closest, normal, separation) = closest_point_on_obb(obb, sphere_center);
+    let penetration = radius - separation;
+    if penetration <= 0.0 {
+        return None;
+    }
+    Some((closest, penetration, normal))
+}
+
+/// The box's own local axes (its rotated X/Y/Z), unit length since
+/// `transform_vector` only rotates.
+fn obb_axes(obb: &Obb) -> [Vec3; 3] {
+    [
+        obb.frame.transform_vector(Vec3::X),
+        obb.frame.transform_vector(Vec3::Y),
+        obb.frame.transform_vector(Vec3::Z),
+    ]
+}
+
+/// How far `obb` extends to either side of its center when projected onto
+/// `axis` (`axis` must be unit length).
+fn projected_half_width(axis: Vec3, axes: &[Vec3; 3], half_extents: Vec3) -> f32 {
+    axes[0].dot(axis).abs() * half_extents.x
+        + axes[1].dot(axis).abs() * half_extents.y
+        + axes[2].dot(axis).abs() * half_extents.z
+}
+
+/// Cuboid-cuboid exact test via the separating axis theorem (SAT): a
+/// convex polyhedron pair is disjoint iff some axis exists — always one of
+/// the 6 face normals or 9 face-normal cross products for a box pair —
+/// along which their projections don't overlap. If every candidate axis
+/// overlaps, the pair intersects, and the axis with the *least* overlap is
+/// the standard single-point contact normal (the direction resolving the
+/// penetration with the smallest push). The contact point is the midpoint
+/// between each box's own support point along that normal — reusing the
+/// same [`Shape::support`] interface `ConvexVolume`/`Frustum` are built
+/// on, not a bespoke box-box formula.
+fn cuboid_vs_cuboid(obb_a: &Obb, obb_b: &Obb) -> Option<(Vec3, f32, Vec3)> {
+    let axes_a = obb_axes(obb_a);
+    let axes_b = obb_axes(obb_b);
+    let center_delta =
+        obb_b.frame.transform_point(Vec3::ZERO) - obb_a.frame.transform_point(Vec3::ZERO);
+
+    let mut candidate_axes: Vec<Vec3> = Vec::with_capacity(15);
+    candidate_axes.extend_from_slice(&axes_a);
+    candidate_axes.extend_from_slice(&axes_b);
+    for &ai in &axes_a {
+        for &bi in &axes_b {
+            let cross = ai.cross(bi);
+            // Near-parallel edges: the cross product is ~zero and this
+            // axis is redundant with the face-normal axes already tested.
+            if cross.length() > 1e-6 {
+                candidate_axes.push(cross.normalize());
+            }
+        }
+    }
+
+    let mut min_overlap = f32::MAX;
+    let mut best_axis = Vec3::X;
+    for axis in candidate_axes {
+        let half_width_a = projected_half_width(axis, &axes_a, obb_a.half_extents);
+        let half_width_b = projected_half_width(axis, &axes_b, obb_b.half_extents);
+        let separation = center_delta.dot(axis).abs();
+        let overlap = half_width_a + half_width_b - separation;
+        if overlap < 0.0 {
+            return None; // A separating axis exists: the boxes don't touch.
+        }
+        if overlap < min_overlap {
+            min_overlap = overlap;
+            best_axis = axis;
+        }
+    }
+
+    // Orient the normal from A toward B.
+    let normal = if center_delta.dot(best_axis) >= 0.0 {
+        best_axis
+    } else {
+        -best_axis
+    };
+    let point = (obb_a.support(normal) + obb_b.support(-normal)) * 0.5;
+    Some((point, min_overlap, normal))
+}
+
 /// Resolves candidate pairs from [`BroadPhase`] into exact [`Contact`]s.
 #[derive(Debug, Default)]
 pub struct NarrowPhase;
@@ -196,33 +357,44 @@ impl NarrowPhase {
         Self
     }
 
-    /// Exact sphere-sphere test. `None` if not overlapping.
+    /// Exact test for the current pair of [`ColliderShape`]s. `None` if
+    /// not overlapping.
     pub fn test_pair(&self, bodies: &[RigidBody], a: usize, b: usize) -> Option<Contact> {
-        let ColliderShape::Sphere { radius: ra } = bodies[a].shape;
-        let ColliderShape::Sphere { radius: rb } = bodies[b].shape;
-
-        let pa = bodies[a].position();
-        let pb = bodies[b].position();
-        let delta = pb - pa;
-        let dist = delta.length();
-        let combined = ra + rb;
-
-        if dist >= combined {
-            return None;
-        }
-        // Centers coincide exactly: pick an arbitrary separating axis
-        // rather than dividing by a zero-length delta.
-        let normal = if dist > 1e-6 {
-            delta * (1.0 / dist)
-        } else {
-            Vec3::X
+        let (point, penetration, normal) = match (bodies[a].shape, bodies[b].shape) {
+            (ColliderShape::Sphere { radius: ra }, ColliderShape::Sphere { radius: rb }) => {
+                sphere_vs_sphere(bodies[a].position(), ra, bodies[b].position(), rb)?
+            }
+            (ColliderShape::Sphere { radius }, ColliderShape::Cuboid { half_extents }) => {
+                let obb = bodies[b].as_obb(half_extents);
+                let (point, penetration, normal) =
+                    sphere_vs_cuboid(bodies[a].position(), radius, &obb)?;
+                // sphere_vs_cuboid's normal points cuboid(b) -> sphere(a);
+                // Contact.normal must point a -> b, so flip it.
+                (point, penetration, -normal)
+            }
+            (ColliderShape::Cuboid { half_extents }, ColliderShape::Sphere { radius }) => {
+                let obb = bodies[a].as_obb(half_extents);
+                // Already cuboid(a) -> sphere(b) = a -> b: no flip needed.
+                sphere_vs_cuboid(bodies[b].position(), radius, &obb)?
+            }
+            (
+                ColliderShape::Cuboid {
+                    half_extents: half_extents_a,
+                },
+                ColliderShape::Cuboid {
+                    half_extents: half_extents_b,
+                },
+            ) => {
+                let obb_a = bodies[a].as_obb(half_extents_a);
+                let obb_b = bodies[b].as_obb(half_extents_b);
+                cuboid_vs_cuboid(&obb_a, &obb_b)?
+            }
         };
-        let point = pa + normal * ra;
         Some(Contact {
             a,
             b,
             normal,
-            penetration: combined - dist,
+            penetration,
             point,
         })
     }
@@ -377,6 +549,16 @@ mod tests {
             velocity,
             mass,
             shape: ColliderShape::Sphere { radius },
+            ..Default::default()
+        }
+    }
+
+    fn cuboid(frame: Motor3, velocity: Vec3, mass: f32, half_extents: Vec3) -> RigidBody {
+        RigidBody {
+            frame,
+            velocity,
+            mass,
+            shape: ColliderShape::Cuboid { half_extents },
             ..Default::default()
         }
     }
