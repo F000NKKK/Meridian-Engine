@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # release.sh — bump, publish, и обновить ссылки в воркспейсе.
-# Использование: ./release.sh <crate-name> --patch|--minor|--major [--dry-run] [--no-publish] [--no-cascade]
-#                ./release.sh <crate-name> --publish-only
-#                ./release.sh --publish-all [--patch|--minor|--major] [--no-bump] [--dry-run] [--no-publish]
+# Использование: ./release.sh <crate-name> [--patch|--minor|--major] [--dry-run] [--no-publish] [--no-cascade] [--no-check-ver]
+#                ./release.sh --publish-all [--patch|--minor|--major] [--dry-run] [--no-publish] [--no-check-ver]
 #
 # При --minor/--major все зависимые крейты воркспейса тоже бампятся (минор) и
 # публикуются следом в порядке зависимостей — иначе на crates.io остаются
@@ -10,25 +9,36 @@
 # и verify следующего крейта падает на «two different versions of crate».
 #
 # --publish-all заменяет <crate-name>: план строится из всех крейтов
-# воркспейса (топологически), а не из каскада зависимых одного корня. Без
-# явного --patch/--minor/--major это равносильно --no-bump — просто
-# публикует DAG как есть, последовательно по зависимостям.
-# --no-bump публикует текущие версии как есть, без изменения version —
-# работает и с одним крейтом, и с --publish-all (в отличие от --publish-only,
-# которое не умеет каскад/весь воркспейс).
+# воркспейса (топологически), а не из каскада зависимых одного корня.
+#
+# Бамп теперь всегда опциональный — без --patch/--minor/--major (или явно
+# с --no-bump) ничего не бампается: для каждого крейта из плана проверяем
+# crates.io, и публикуем только то, что ещё не опубликовано.
+#
+# Проверка crates.io перед бампом (чтобы не перескочить версию, которая была
+# сбампана в git, но так и не опубликована) включается только для «круглых»
+# версий относительно запрошенного бампа:
+#   --patch  — не круглый бамп, проверка не нужна, бампаем всегда
+#   --minor  — круглый, если patch == 0    (например 1.9.0 --minor: patch=0 → проверка)
+#   --major  — круглый, если minor==0 и patch==0 (например 2.0.0 --major → проверка;
+#              1.9.0 --major: minor=9≠0 → не круглый, бампаем сразу в 2.0.0)
+# Если версия ещё не опубликована — бамп пропускается, публикуется текущая
+# версия как есть. --no-check-ver отключает эту проверку полностью (старое
+# поведение: бампаем/публикуем вслепую, без обращения к crates.io).
 #
 # Примеры:
-#   ./release.sh meridian-gac-core --minor      # каскад: gac-core → ecs-core → ... → engine-core
-#   ./release.sh meridian-engine-core --patch   # patch: ссылки совместимы, каскада нет
-#   ./release.sh meridian-gac-core --publish-only
-#   ./release.sh --publish-all                  # опубликовать весь воркспейс как есть, по DAG
-#   ./release.sh --publish-all --patch          # patch-бамп + публикация всех крейтов
+#   ./release.sh meridian-gac-core --minor        # каскад: gac-core → ecs-core → ... → engine-core
+#   ./release.sh meridian-engine-core --patch     # patch: ссылки совместимы, каскада нет
+#   ./release.sh meridian-gac-core                # без бампа: публикует v текущую, если ещё не на crates.io
+#   ./release.sh --publish-all                    # весь воркспейс как есть, публикует неопубликованное
+#   ./release.sh --publish-all --patch            # patch-бамп + публикация всех крейтов
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WS="$SCRIPT_DIR"
 CRATE_PREFIX="meridian-"
+CRATES_IO_USER_AGENT="release.sh (Meridian-Engine; https://github.com/F000NKKK/Meridian-Engine)"
 
 # ── Цвета ─────────────────────────────────────────────────────────────────────
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
@@ -42,19 +52,19 @@ dryrun()  { echo -e "${YELLOW}[dry-run]${RESET} $*"; }
 
 # ── Аргументы ─────────────────────────────────────────────────────────────────
 usage() {
-    echo -e "${BOLD}Использование:${RESET} $0 <crate-name> --patch|--minor|--major [--dry-run] [--no-publish] [--no-cascade]"
-    echo -e "           $0 --publish-all [--patch|--minor|--major] [--no-bump] [--dry-run] [--no-publish]"
+    echo -e "${BOLD}Использование:${RESET} $0 <crate-name> [--patch|--minor|--major] [--dry-run] [--no-publish] [--no-cascade] [--no-check-ver]"
+    echo -e "           $0 --publish-all [--patch|--minor|--major] [--dry-run] [--no-publish] [--no-check-ver]"
     echo ""
     echo "  --patch          0.1.3 → 0.1.4  (ссылки не меняются — semver совместимость)"
     echo "  --minor          0.1.3 → 0.2.0  (обновит ссылки и каскадно сбампит зависимые крейты)"
     echo "  --major          0.1.3 → 1.0.0  (обновит ссылки и каскадно сбампит зависимые крейты)"
+    echo "  (без бампа)      не менять version — опубликовать план как есть, что ещё не на crates.io"
+    echo "  --no-bump        то же самое явно (алиас «без бампа»)"
     echo "  --dry-run        только показать, что изменится"
     echo "  --no-publish     сбампить и обновить ссылки без публикации"
     echo "  --no-cascade     не трогать зависимые крейты"
-    echo "  --publish-only   только опубликовать текущую версию крейта (без бампа, без каскада)"
+    echo "  --no-check-ver   не проверять crates.io — бампать/публиковать вслепую"
     echo "  --publish-all    заменяет <crate-name>: план — все крейты воркспейса, топологически"
-    echo "                   (без бампа по умолчанию — как --no-bump, если не указан --patch/--minor/--major)"
-    echo "  --no-bump        не менять version — опубликовать план как есть (крейт, каскад или всё)"
     exit 1
 }
 
@@ -62,9 +72,9 @@ CRATE=""
 BUMP=""
 DRY_RUN=false
 NO_PUBLISH=false
-PUBLISH_ONLY=false
 PUBLISH_ALL=false
 NO_BUMP=false
+NO_CHECK_VER=false
 CASCADE=true
 
 for arg in "$@"; do
@@ -72,9 +82,9 @@ for arg in "$@"; do
         --patch|--minor|--major) BUMP="$arg" ;;
         --dry-run)      DRY_RUN=true ;;
         --no-publish)   NO_PUBLISH=true ;;
-        --publish-only) PUBLISH_ONLY=true ;;
         --publish-all)  PUBLISH_ALL=true ;;
         --no-bump)      NO_BUMP=true ;;
+        --no-check-ver) NO_CHECK_VER=true ;;
         --no-cascade)   CASCADE=false ;;
         --*) die "Неизвестный флаг: $arg"; ;;
         *)
@@ -86,18 +96,12 @@ done
 
 if $PUBLISH_ALL; then
     [[ -n "$CRATE" ]] && die "--publish-all нельзя сочетать с именем крейта ($CRATE)"
-    $PUBLISH_ONLY && die "--publish-all нельзя сочетать с --publish-only — используйте --no-bump"
 else
     [[ -z "$CRATE" ]] && { echo "Не указано имя крейта (или используйте --publish-all)."; usage; }
 fi
-if ! $PUBLISH_ONLY && ! $NO_BUMP && [[ -z "$BUMP" ]]; then
-    if $PUBLISH_ALL; then
-        # --publish-all без явного бампа: просто опубликовать DAG как есть.
-        NO_BUMP=true
-    else
-        echo "Не указан тип бампа (или используйте --no-bump)."; usage
-    fi
-fi
+# Бамп всегда опционален: явный --no-bump или просто отсутствие
+# --patch/--minor/--major — синонимы «не бампать».
+$NO_BUMP && BUMP=""
 # patch-бамп совместим по ссылкам — каскад не нужен
 [[ "$BUMP" == "--patch" ]] && CASCADE=false
 
@@ -108,6 +112,15 @@ crate_version() {
 }
 
 $PUBLISH_ALL || { [[ -f "$(crate_toml "$CRATE")" ]] || die "Крейт не найден: $(crate_toml "$CRATE")"; }
+
+# ── crates.io: опубликована ли данная версия? ─────────────────────────────────
+crate_is_published() {
+    local crate="$1" ver="$2" code
+    code="$(curl -s -o /dev/null -w '%{http_code}' \
+        -A "$CRATES_IO_USER_AGENT" \
+        "https://crates.io/api/v1/crates/${crate}/${ver}" 2>/dev/null)" || code="000"
+    [[ "$code" == "200" ]]
+}
 
 # ── Публикация с ретраями ─────────────────────────────────────────────────────
 # Без фиксированного ожидания индексации: cargo сам ждёт появления крейта в
@@ -140,31 +153,6 @@ publish_with_retry() {
     done
 }
 
-# ── --publish-only: публикуем как есть, без бампа ─────────────────────────────
-if $PUBLISH_ONLY; then
-    CURRENT="$(crate_version "$CRATE")"
-    echo ""
-    echo -e "${BOLD}Крейт:${RESET}   $CRATE"
-    echo -e "${BOLD}Версия:${RESET}  ${GREEN}$CURRENT${RESET} (без изменений)"
-    echo -e "${BOLD}Режим:${RESET}   --publish-only"
-    echo ""
-    info "cargo check -p $CRATE ..."
-    cargo check --offline -p "$CRATE" --manifest-path "$WS/Cargo.toml" 2>&1 | tail -3
-    ok "check пройден"
-    echo ""
-    if $DRY_RUN; then
-        dryrun "cargo publish -p $CRATE"
-    elif $NO_PUBLISH; then
-        warn "--no-publish: пропускаю cargo publish"
-    else
-        publish_with_retry "$CRATE" "$CURRENT"
-    fi
-    echo ""
-    echo -e "${GREEN}${BOLD}Готово!${RESET} $CRATE v$CURRENT"
-    echo ""
-    exit 0
-fi
-
 # ── Функция замены версии-ссылки в файле ──────────────────────────────────────
 update_ref() {
     local dep="$1" file="$2" old="$3" new="$4"
@@ -174,16 +162,59 @@ update_ref() {
     sed -i -E "s|(${dep}[[:space:]]*=[[:space:]]*\{[^}]*version[[:space:]]*=[[:space:]]*\")${old}([.\"])|\1${new}\2|g" "$file"
 }
 
-# ── Бамп одного крейта + обновление ссылок на него по воркспейсу ──────────────
-# bump_crate <crate> <--patch|--minor|--major>; печатает новую версию в stdout.
-bump_crate() {
+# ── Круглая ли версия относительно запрошенного бампа? ────────────────────────
+# Круглая версия — та, где не проверив crates.io нельзя быть уверенным, что
+# она реально опубликована (а не просто сбампана в git прошлым запуском).
+is_round_for_bump() {
+    local bump="$1" min="$2" pat="$3"
+    case "$bump" in
+        --patch) return 1 ;;
+        --minor) [[ "$pat" == "0" ]] ;;
+        --major) [[ "$min" == "0" && "$pat" == "0" ]] ;;
+        *)       return 1 ;;
+    esac
+}
+
+# ── Решение по одному крейту: новая версия + публиковать или пропустить ───────
+# resolve_crate_action <crate> <--patch|--minor|--major|(пусто)>
+# Печатает на stdout ровно одну строку: "<version> <publish|skip>".
+# Статусы — в stderr.
+resolve_crate_action() {
     local crate="$1" bump="$2"
     local toml; toml="$(crate_toml "$crate")"
     local current; current="$(crate_version "$crate")"
     [[ -n "$current" ]] || die "Не удалось прочитать version из $toml"
 
+    if [[ -z "$bump" ]]; then
+        if $NO_CHECK_VER; then
+            echo "$current publish"
+            return 0
+        fi
+        info "Проверяю crates.io: $crate v$current ..." >&2
+        if crate_is_published "$crate" "$current"; then
+            warn "  $crate v$current уже опубликован — пропускаю" >&2
+            echo "$current skip"
+        else
+            ok "  $crate v$current ещё не опубликован — публикую как есть" >&2
+            echo "$current publish"
+        fi
+        return 0
+    fi
+
     local maj min pat
     IFS='.' read -r maj min pat <<< "$current"
+
+    if ! $NO_CHECK_VER && is_round_for_bump "$bump" "$min" "$pat"; then
+        info "Проверяю crates.io: $crate v$current ($bump — круглая версия) ..." >&2
+        if crate_is_published "$crate" "$current"; then
+            ok "  $crate v$current опубликован — бампаю" >&2
+        else
+            warn "  $crate v$current ещё не опубликован — публикую как есть, без бампа" >&2
+            echo "$current publish"
+            return 0
+        fi
+    fi
+
     case "$bump" in
         --major) maj=$((maj + 1)); min=0; pat=0 ;;
         --minor) min=$((min + 1)); pat=0 ;;
@@ -194,7 +225,6 @@ bump_crate() {
     old_short="$(echo "$current" | cut -d. -f1-2)"
     new_short="$maj.$min"
 
-    # Статусы — в stderr: stdout этой функции захватывается как результат.
     if $DRY_RUN; then
         dryrun "$crate: $current → $new_version" >&2
     else
@@ -224,7 +254,7 @@ bump_crate() {
         fi
     fi
 
-    echo "$new_version"
+    echo "$new_version publish"
 }
 
 # ── Порядок публикации ─────────────────────────────────────────────────────────
@@ -296,8 +326,8 @@ if $PUBLISH_ALL; then
 else
     echo -e "${BOLD}Крейт:${RESET}    $CRATE"
 fi
-if $NO_BUMP; then
-    echo -e "${BOLD}Бамп:${RESET}     нет (--no-bump)"
+if [[ -z "$BUMP" ]]; then
+    echo -e "${BOLD}Бамп:${RESET}     нет (публикуем то, чего ещё нет на crates.io)"
 else
     echo -e "${BOLD}Бамп:${RESET}     $BUMP"
 fi
@@ -306,16 +336,22 @@ if $PUBLISH_ALL || [[ "$PLAN" != "$CRATE" ]]; then
 fi
 echo ""
 
-# ── Шаг 1: бампы + обновление ссылок, в порядке зависимостей ──────────────────
+# ── Шаг 1: решаем версию/бамп для каждого крейта, в порядке зависимостей ─────
 declare -A NEW_VERSIONS
+declare -A SHOULD_PUBLISH
 for c in $PLAN; do
-    if $NO_BUMP; then
-        NEW_VERSIONS[$c]="$(crate_version "$c")"
-    elif $PUBLISH_ALL || [[ "$c" == "$CRATE" ]]; then
-        NEW_VERSIONS[$c]="$(bump_crate "$c" "$BUMP" | tail -1)"
+    if $PUBLISH_ALL || [[ "$c" == "$CRATE" ]]; then
+        crate_bump="$BUMP"
     else
-        NEW_VERSIONS[$c]="$(bump_crate "$c" --minor | tail -1)"
+        # Зависимые крейты в каскаде: если корень бампается, они бампаются
+        # минором (см. заголовок файла); если корень не бампается — тоже нет.
+        crate_bump=""
+        [[ -n "$BUMP" ]] && crate_bump="--minor"
     fi
+    result="$(resolve_crate_action "$c" "$crate_bump")"
+    read -r ver action <<< "$result"
+    NEW_VERSIONS[$c]="$ver"
+    SHOULD_PUBLISH[$c]="$action"
 done
 
 # ── Шаг 2: один общий check по воркспейсу ────────────────────────────────────
@@ -333,10 +369,20 @@ echo ""
 if $NO_PUBLISH; then
     warn "--no-publish: пропускаю cargo publish"
 elif $DRY_RUN; then
-    for c in $PLAN; do dryrun "cargo publish -p $c   # v${NEW_VERSIONS[$c]}"; done
+    for c in $PLAN; do
+        if [[ "${SHOULD_PUBLISH[$c]}" == "publish" ]]; then
+            dryrun "cargo publish -p $c   # v${NEW_VERSIONS[$c]}"
+        else
+            dryrun "cargo publish -p $c   # v${NEW_VERSIONS[$c]} — уже опубликован, пропуск"
+        fi
+    done
 else
     for c in $PLAN; do
-        publish_with_retry "$c" "${NEW_VERSIONS[$c]}"
+        if [[ "${SHOULD_PUBLISH[$c]}" == "publish" ]]; then
+            publish_with_retry "$c" "${NEW_VERSIONS[$c]}"
+        else
+            warn "$c v${NEW_VERSIONS[$c]} уже опубликован — пропускаю"
+        fi
     done
 fi
 
