@@ -25,9 +25,16 @@
 //! (see [ADR 001](../../../docs/adr/001-geometric-algebra-as-spatial-model.md)).
 //! Linear velocity stays a plain `Vec3` — GA doesn't say vectors are
 //! wrong, only that angular quantities specifically are bivectors.
+//!
+//! [`deterministic`] is a separate, opt-in, bit-reproducible simulation
+//! path (`Fixed`-point, sphere colliders only so far) for lockstep
+//! networking/replay — see that module's doc comment. Nothing here
+//! changes; it's a parallel API, not a mode switch on these types.
 
 use meridian_gac_core::{Aabb, Bivector3, Motor3, Obb, Shape, Vec3};
 use meridian_resource_core::ResourceId;
+
+pub mod deterministic;
 
 /// Marker type for collider-mesh `ResourceId`s — see
 /// docs/adr/006-resource-core-separation.md.

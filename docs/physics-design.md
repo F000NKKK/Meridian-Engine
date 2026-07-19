@@ -97,7 +97,20 @@ yet.
 
 ## Determinism
 
-A deterministic simulation mode (fixed-point or carefully-ordered
-floating-point accumulation) is a design goal for reproducible replays and
-networked simulation, but is not yet implemented — tracked in
-[roadmap.md](roadmap.md).
+Real, via `physics-core::deterministic` — see
+[ADR 008](adr/008-fixed-point-determinism.md) for the full decision.
+`DeterministicBody`/`DeterministicIntegrator`/
+`DeterministicConstraintSolver`/`DeterministicBroadPhase`/
+`DeterministicNarrowPhase` mirror `RigidBody`/`Integrator`/
+`ConstraintSolver`/`BroadPhase`/`NarrowPhase` one-for-one, built on
+`gac-core::fixed_ga` (`Fixed`, Q16.16) instead of `float_ga` (`f32`) — a
+genuinely separate, opt-in pipeline, not a mode flag on the existing
+types. Sphere colliders only so far; `Cuboid`/SAT wasn't ported to
+fixed-point in this pass (no `Fixed` `Aabb`/`Obb`/`Shape` exist yet
+either) — tracked as explicit follow-up in [roadmap.md](roadmap.md), not
+silently dropped. `DeterministicBody::frame_f32` converts the pose to
+`gac-core::Motor3` for rendering/ECS/audio handoff either way. Proven
+with an actual bit-exact reproducibility test (the same scenario run
+twice produces identical `Fixed` bit patterns, not just approximately
+equal floats) — `cargo test -p meridian-physics-core`; human-readable
+version via `./build.sh run determinism_validation`.

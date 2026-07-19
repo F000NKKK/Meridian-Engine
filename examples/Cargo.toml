@@ -18,6 +18,7 @@ meridian-platform-core = { workspace = true }
 meridian-audio-core = { workspace = true }
 meridian-graphics-core = { workspace = true }
 meridian-physics-core = { workspace = true }
+meridian-numeric-core = { workspace = true }
 
 [[example]]
 name = "hello_engine"
@@ -42,3 +43,7 @@ path = "examples/graphics_validation.rs"
 [[example]]
 name = "runtime_loop"
 path = "examples/runtime_loop.rs"
+
+[[example]]
+name = "determinism_validation"
+path = "examples/determinism_validation.rs"
