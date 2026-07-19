@@ -71,7 +71,10 @@ pub struct Aabb {
 impl Aabb {
     pub fn from_sphere(center: Vec3, radius: f32) -> Self {
         let r = Vec3::new(radius, radius, radius);
-        Self { min: center - r, max: center + r }
+        Self {
+            min: center - r,
+            max: center + r,
+        }
     }
 
     pub fn overlaps(&self, other: &Aabb) -> bool {
@@ -155,12 +158,28 @@ impl NarrowPhase {
         }
         // Centers coincide exactly: pick an arbitrary separating axis
         // rather than dividing by a zero-length delta.
-        let normal = if dist > 1e-6 { delta * (1.0 / dist) } else { Vec3::X };
-        Some(Contact { a, b, normal, penetration: combined - dist })
+        let normal = if dist > 1e-6 {
+            delta * (1.0 / dist)
+        } else {
+            Vec3::X
+        };
+        Some(Contact {
+            a,
+            b,
+            normal,
+            penetration: combined - dist,
+        })
     }
 
-    pub fn generate_contacts(&self, bodies: &[RigidBody], candidate_pairs: &[(usize, usize)]) -> Vec<Contact> {
-        candidate_pairs.iter().filter_map(|&(a, b)| self.test_pair(bodies, a, b)).collect()
+    pub fn generate_contacts(
+        &self,
+        bodies: &[RigidBody],
+        candidate_pairs: &[(usize, usize)],
+    ) -> Vec<Contact> {
+        candidate_pairs
+            .iter()
+            .filter_map(|&(a, b)| self.test_pair(bodies, a, b))
+            .collect()
     }
 }
 
@@ -209,10 +228,16 @@ impl ConstraintSolver {
             bodies[contact.b].velocity = bodies[contact.b].velocity + impulse * inv_mass_b;
         }
 
-        let correction_mag = (contact.penetration - POSITIONAL_CORRECTION_SLOP).max(0.0) / total_inv_mass * POSITIONAL_CORRECTION_PERCENT;
+        let correction_mag = (contact.penetration - POSITIONAL_CORRECTION_SLOP).max(0.0)
+            / total_inv_mass
+            * POSITIONAL_CORRECTION_PERCENT;
         let correction = contact.normal * correction_mag;
-        bodies[contact.a].frame = bodies[contact.a].frame.compose(Motor3::translation(correction * -inv_mass_a));
-        bodies[contact.b].frame = bodies[contact.b].frame.compose(Motor3::translation(correction * inv_mass_b));
+        bodies[contact.a].frame = bodies[contact.a]
+            .frame
+            .compose(Motor3::translation(correction * -inv_mass_a));
+        bodies[contact.b].frame = bodies[contact.b]
+            .frame
+            .compose(Motor3::translation(correction * inv_mass_b));
     }
 }
 
@@ -227,7 +252,9 @@ pub struct Integrator {
 
 impl Default for Integrator {
     fn default() -> Self {
-        Self { gravity: Vec3::new(0.0, -9.81, 0.0) }
+        Self {
+            gravity: Vec3::new(0.0, -9.81, 0.0),
+        }
     }
 }
 
@@ -253,7 +280,12 @@ mod tests {
     use super::*;
 
     fn sphere(position: Vec3, velocity: Vec3, mass: f32, radius: f32) -> RigidBody {
-        RigidBody { frame: Motor3::translation(position), velocity, mass, shape: ColliderShape::Sphere { radius } }
+        RigidBody {
+            frame: Motor3::translation(position),
+            velocity,
+            mass,
+            shape: ColliderShape::Sphere { radius },
+        }
     }
 
     #[test]
@@ -261,7 +293,10 @@ mod tests {
         let a = Aabb::from_sphere(Vec3::ZERO, 1.0);
         let touching = Aabb::from_sphere(Vec3::new(2.0, 0.0, 0.0), 1.0);
         let separate = Aabb::from_sphere(Vec3::new(10.0, 0.0, 0.0), 1.0);
-        assert!(a.overlaps(&touching), "boxes sharing a boundary count as overlapping");
+        assert!(
+            a.overlaps(&touching),
+            "boxes sharing a boundary count as overlapping"
+        );
         assert!(!a.overlaps(&separate));
     }
 
@@ -279,15 +314,24 @@ mod tests {
 
     #[test]
     fn narrow_phase_reports_normal_pointing_from_a_to_b_and_correct_penetration() {
-        let bodies = vec![sphere(Vec3::ZERO, Vec3::ZERO, 1.0, 1.0), sphere(Vec3::new(1.5, 0.0, 0.0), Vec3::ZERO, 1.0, 1.0)];
+        let bodies = vec![
+            sphere(Vec3::ZERO, Vec3::ZERO, 1.0, 1.0),
+            sphere(Vec3::new(1.5, 0.0, 0.0), Vec3::ZERO, 1.0, 1.0),
+        ];
         let contact = NarrowPhase::new().test_pair(&bodies, 0, 1).unwrap();
         assert_eq!(contact.normal, Vec3::new(1.0, 0.0, 0.0));
-        assert!((contact.penetration - 0.5).abs() < 1e-5, "spheres of radius 1 each, centers 1.5 apart -> 0.5 overlap");
+        assert!(
+            (contact.penetration - 0.5).abs() < 1e-5,
+            "spheres of radius 1 each, centers 1.5 apart -> 0.5 overlap"
+        );
     }
 
     #[test]
     fn narrow_phase_returns_none_when_not_touching() {
-        let bodies = vec![sphere(Vec3::ZERO, Vec3::ZERO, 1.0, 1.0), sphere(Vec3::new(10.0, 0.0, 0.0), Vec3::ZERO, 1.0, 1.0)];
+        let bodies = vec![
+            sphere(Vec3::ZERO, Vec3::ZERO, 1.0, 1.0),
+            sphere(Vec3::new(10.0, 0.0, 0.0), Vec3::ZERO, 1.0, 1.0),
+        ];
         assert!(NarrowPhase::new().test_pair(&bodies, 0, 1).is_none());
     }
 
@@ -295,37 +339,66 @@ mod tests {
     fn solver_separates_bodies_moving_toward_each_other() {
         let mut bodies = vec![
             sphere(Vec3::ZERO, Vec3::new(1.0, 0.0, 0.0), 1.0, 1.0),
-            sphere(Vec3::new(1.5, 0.0, 0.0), Vec3::new(-1.0, 0.0, 0.0), 1.0, 1.0),
+            sphere(
+                Vec3::new(1.5, 0.0, 0.0),
+                Vec3::new(-1.0, 0.0, 0.0),
+                1.0,
+                1.0,
+            ),
         ];
         let contact = NarrowPhase::new().test_pair(&bodies, 0, 1).unwrap();
         ConstraintSolver::new(1.0).resolve(&mut bodies, &contact);
 
         let relative_velocity_after = bodies[1].velocity - bodies[0].velocity;
-        assert!(relative_velocity_after.dot(contact.normal) >= 0.0, "bodies must no longer be closing after resolution");
+        assert!(
+            relative_velocity_after.dot(contact.normal) >= 0.0,
+            "bodies must no longer be closing after resolution"
+        );
     }
 
     #[test]
     fn solver_conserves_momentum_in_elastic_collision() {
-        let mut bodies = vec![sphere(Vec3::ZERO, Vec3::new(2.0, 0.0, 0.0), 2.0, 1.0), sphere(Vec3::new(1.5, 0.0, 0.0), Vec3::ZERO, 1.0, 1.0)];
-        let momentum_before = bodies[0].velocity * bodies[0].mass + bodies[1].velocity * bodies[1].mass;
+        let mut bodies = vec![
+            sphere(Vec3::ZERO, Vec3::new(2.0, 0.0, 0.0), 2.0, 1.0),
+            sphere(Vec3::new(1.5, 0.0, 0.0), Vec3::ZERO, 1.0, 1.0),
+        ];
+        let momentum_before =
+            bodies[0].velocity * bodies[0].mass + bodies[1].velocity * bodies[1].mass;
 
         let contact = NarrowPhase::new().test_pair(&bodies, 0, 1).unwrap();
         ConstraintSolver::new(1.0).resolve(&mut bodies, &contact);
 
-        let momentum_after = bodies[0].velocity * bodies[0].mass + bodies[1].velocity * bodies[1].mass;
-        assert!((momentum_before - momentum_after).length() < 1e-4, "impulse resolution must conserve momentum: before {momentum_before:?}, after {momentum_after:?}");
+        let momentum_after =
+            bodies[0].velocity * bodies[0].mass + bodies[1].velocity * bodies[1].mass;
+        assert!(
+            (momentum_before - momentum_after).length() < 1e-4,
+            "impulse resolution must conserve momentum: before {momentum_before:?}, after {momentum_after:?}"
+        );
     }
 
     #[test]
     fn solver_does_not_move_a_static_body() {
         let mut bodies = vec![
             sphere(Vec3::ZERO, Vec3::ZERO, 0.0, 1.0), // static: mass = 0
-            sphere(Vec3::new(1.5, 0.0, 0.0), Vec3::new(-1.0, 0.0, 0.0), 1.0, 1.0),
+            sphere(
+                Vec3::new(1.5, 0.0, 0.0),
+                Vec3::new(-1.0, 0.0, 0.0),
+                1.0,
+                1.0,
+            ),
         ];
         let contact = NarrowPhase::new().test_pair(&bodies, 0, 1).unwrap();
         ConstraintSolver::new(0.0).resolve(&mut bodies, &contact);
-        assert_eq!(bodies[0].velocity, Vec3::ZERO, "static body's velocity must never change");
-        assert_eq!(bodies[0].position(), Vec3::ZERO, "static body's position must never change");
+        assert_eq!(
+            bodies[0].velocity,
+            Vec3::ZERO,
+            "static body's velocity must never change"
+        );
+        assert_eq!(
+            bodies[0].position(),
+            Vec3::ZERO,
+            "static body's position must never change"
+        );
     }
 
     #[test]
@@ -353,7 +426,12 @@ mod tests {
         let floor_radius = 50.0;
         let ball_radius = 0.5;
         let mut bodies = vec![
-            sphere(Vec3::new(0.0, -floor_radius, 0.0), Vec3::ZERO, 0.0, floor_radius),
+            sphere(
+                Vec3::new(0.0, -floor_radius, 0.0),
+                Vec3::ZERO,
+                0.0,
+                floor_radius,
+            ),
             sphere(Vec3::new(0.0, 3.0, 0.0), Vec3::ZERO, 1.0, ball_radius),
         ];
 
@@ -375,6 +453,9 @@ mod tests {
         // y=0; the ball rests with its center one radius above that.
         let resting_height = bodies[1].position().y;
         let expected = ball_radius;
-        assert!((resting_height - expected).abs() < 0.5, "ball should settle near the floor surface, got y={resting_height}, expected near {expected}");
+        assert!(
+            (resting_height - expected).abs() < 0.5,
+            "ball should settle near the floor surface, got y={resting_height}, expected near {expected}"
+        );
     }
 }

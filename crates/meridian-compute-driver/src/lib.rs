@@ -81,7 +81,11 @@ impl Default for ComputeDevice {
 
 impl ComputeDevice {
     pub fn new() -> Self {
-        Self { capabilities: ComputeCapabilities { cpu: DeviceCapabilities::detect() } }
+        Self {
+            capabilities: ComputeCapabilities {
+                cpu: DeviceCapabilities::detect(),
+            },
+        }
     }
 
     pub fn capabilities(&self) -> ComputeCapabilities {

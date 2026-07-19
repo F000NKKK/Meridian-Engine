@@ -38,7 +38,10 @@ impl DeviceCapabilities {
     /// `compute-driver`'s module doc), so `gpu_available` is always
     /// `false` here — real detection lands once a first GPU backend does.
     pub fn detect() -> Self {
-        Self { gpu_available: false, cpu_threads: detect_cpu_threads() }
+        Self {
+            gpu_available: false,
+            cpu_threads: detect_cpu_threads(),
+        }
     }
 }
 
@@ -56,7 +59,9 @@ impl BackendCapabilities for DeviceCapabilities {
 /// [`DeviceCapabilities::detect`]; exposed directly too in case a caller
 /// needs the thread count without a full `DeviceCapabilities`.
 pub fn detect_cpu_threads() -> usize {
-    std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1)
+    std::thread::available_parallelism()
+        .map(|n| n.get())
+        .unwrap_or(1)
 }
 
 /// An OS window. Not yet implemented — see the module doc.
