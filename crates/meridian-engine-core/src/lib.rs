@@ -225,7 +225,7 @@ impl Runtime {
         self.subsystems.step_physics(time.delta_seconds as f32);
         self.events.publish(FrameCompleted {
             frame_index: self.frame_index,
-            delta_seconds: time.delta_seconds as f64,
+            delta_seconds: time.delta_seconds,
         });
         self.frame_index += 1;
         time
