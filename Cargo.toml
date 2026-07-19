@@ -46,6 +46,14 @@ meridian-engine-core = { path = "crates/meridian-engine-core", version = "0.16" 
 wgpu = "30.0.0"
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros", "sync"] }
 
+# `winit` is `platform-core::Window`'s windowing backend — see
+# docs/adr/010-windowing-via-winit.md. Pinned to the latest version whose
+# `raw-window-handle` matches `wgpu`'s own (both currently 0.6.x), since
+# that's what lets `Arc<winit::window::Window>` satisfy
+# `wgpu::Surface` creation without `graphics-driver` depending on `winit`
+# itself — see that ADR's "graphics-driver stays winit-agnostic" section.
+winit = "0.30.13"
+
 [profile.release]
 lto = true
 codegen-units = 1
