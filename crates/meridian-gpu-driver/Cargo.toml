@@ -10,3 +10,4 @@ description = "Shared low-level wgpu device/buffer/shader/compute-pipeline mecha
 [dependencies]
 meridian-platform-core = { workspace = true }
 wgpu = { workspace = true }
+tokio = { workspace = true }
