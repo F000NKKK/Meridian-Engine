@@ -2,11 +2,16 @@
 //!
 //! No GPU backend yet — same call as `compute-driver`/`platform-core`'s
 //! `Window`: needs an external crate or unsafe FFI, not taken on
-//! speculatively. `PhysicsBackend` reports real CPU capability
-//! (`std::thread::available_parallelism`) so `physics-core` can decide
+//! speculatively. `PhysicsBackend` reports real CPU capability via
+//! `platform-core::detect_cpu_threads` so `physics-core` can decide
 //! batch-size cutoffs the same way `compute-runtime` does.
 
-/// Selects/reports the execution backend for a physics step.
+use meridian_platform_core::BackendCapabilities;
+
+/// Selects/reports the execution backend for a physics step. Implements
+/// `platform-core`'s [`BackendCapabilities`] — the shape shared with
+/// `compute-driver::ComputeCapabilities` and future `graphics-driver`/
+/// `audio-driver` equivalents.
 #[derive(Debug, Clone, Copy)]
 pub struct PhysicsBackend {
     pub gpu: bool,
@@ -21,8 +26,17 @@ impl Default for PhysicsBackend {
 
 impl PhysicsBackend {
     pub fn new() -> Self {
-        let cpu_threads = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1);
-        Self { gpu: false, cpu_threads }
+        Self { gpu: false, cpu_threads: meridian_platform_core::detect_cpu_threads() }
+    }
+}
+
+impl BackendCapabilities for PhysicsBackend {
+    fn gpu_available(&self) -> bool {
+        self.gpu
+    }
+
+    fn cpu_threads(&self) -> usize {
+        self.cpu_threads
     }
 }
 
