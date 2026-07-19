@@ -25,7 +25,7 @@
 //! Linear velocity stays a plain `Vec3` — GA doesn't say vectors are
 //! wrong, only that angular quantities specifically are bivectors.
 
-use meridian_gac_core::{Bivector3, Motor3, Vec3};
+use meridian_gac_core::{Aabb, Bivector3, Motor3, Vec3};
 use meridian_resource_core::ResourceId;
 
 /// Marker type for collider-mesh `ResourceId`s — see
@@ -85,34 +85,6 @@ impl RigidBody {
 
     pub fn position(&self) -> Vec3 {
         self.frame.transform_point(Vec3::ZERO)
-    }
-}
-
-/// An axis-aligned bounding box, used by [`BroadPhase`] to cheaply reject
-/// pairs that can't possibly be touching before running exact narrow-phase
-/// tests.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Aabb {
-    pub min: Vec3,
-    pub max: Vec3,
-}
-
-impl Aabb {
-    pub fn from_sphere(center: Vec3, radius: f32) -> Self {
-        let r = Vec3::new(radius, radius, radius);
-        Self {
-            min: center - r,
-            max: center + r,
-        }
-    }
-
-    pub fn overlaps(&self, other: &Aabb) -> bool {
-        self.min.x <= other.max.x
-            && self.max.x >= other.min.x
-            && self.min.y <= other.max.y
-            && self.max.y >= other.min.y
-            && self.min.z <= other.max.z
-            && self.max.z >= other.min.z
     }
 }
 
