@@ -511,6 +511,17 @@ impl Motor3 {
         Vec3::new(-r.0[blade::E023], r.0[blade::E013], -r.0[blade::E012])
     }
 
+    /// Transforms a direction (not a point) through this rigid motion's
+    /// rotational part only — translation has no effect on a direction.
+    /// Computed exactly as `transform_point(v) - transform_point(ZERO)`:
+    /// `transform_point` is an affine map, so the translation term cancels
+    /// out of that difference algebraically, leaving exactly the linear
+    /// (rotational) part — not an approximation, the same reasoning
+    /// [`to_mat4`](Self::to_mat4) uses to isolate each basis column.
+    pub fn transform_vector(self, v: Vec3) -> Vec3 {
+        self.transform_point(v) - self.transform_point(Vec3::ZERO)
+    }
+
     /// The equivalent column-major homogeneous 4x4 matrix: `to_mat4()[c][r]`
     /// is column `c`, row `r`, so that `M * [x, y, z, 1]^T` (column-vector
     /// convention, matching wgpu/GLSL) reproduces `self.transform_point`.
@@ -648,21 +659,23 @@ impl Shape for Sphere {
 
 /// An oriented (rotated) box — the other of the two box variants; see
 /// [`Aabb`] for the axis-aligned one. A cube is either with equal
-/// `half_extents` on every axis, not a separate type.
-#[derive(Debug, Clone, Copy, PartialEq)]
+/// `half_extents` on every axis, not a separate type. Position *and*
+/// orientation are one `frame: Motor3`, not a separate center/rotation
+/// pair — the same convention every rigid pose in the workspace uses
+/// (`RigidBody`, `Camera`, `Listener`/`Emitter`; see docs/gac-design.md),
+/// so a physics `RigidBody`'s own `frame` can be used here directly.
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Obb {
-    pub center: Vec3,
+    pub frame: Motor3,
     pub half_extents: Vec3,
-    pub orientation: Rotor,
 }
 
 impl Obb {
     /// An oriented cube: equal half-extent on every axis.
-    pub fn cube(center: Vec3, half_extent: Scalar, orientation: Rotor) -> Self {
+    pub fn cube(frame: Motor3, half_extent: Scalar) -> Self {
         Self {
-            center,
+            frame,
             half_extents: Vec3::new(half_extent, half_extent, half_extent),
-            orientation,
         }
     }
 }
@@ -670,16 +683,17 @@ impl Obb {
 impl Shape for Obb {
     fn support(&self, direction: Vec3) -> Vec3 {
         // Rotate the query direction into the box's local (axis-aligned)
-        // space, pick the local corner, then rotate that corner back out
-        // to world space — the same idea as Aabb::support, done in a
-        // frame where the box actually is axis-aligned.
-        let local_direction = self.orientation.reverse().transform_vector(direction);
+        // space, pick the local corner, then carry that corner back out
+        // to world space through the full frame (rotation *and*
+        // translation) — the same idea as Aabb::support, done in a frame
+        // where the box actually is axis-aligned.
+        let local_direction = self.frame.inverse().transform_vector(direction);
         let local_support = Vec3::new(
             self.half_extents.x * local_direction.x.signum(),
             self.half_extents.y * local_direction.y.signum(),
             self.half_extents.z * local_direction.z.signum(),
         );
-        self.center + self.orientation.transform_vector(local_support)
+        self.frame.transform_point(local_support)
     }
 }
 
@@ -1206,13 +1220,12 @@ mod tests {
     }
 
     #[test]
-    fn obb_with_identity_orientation_matches_aabb_support() {
+    fn obb_with_identity_frame_matches_aabb_support() {
         let center = Vec3::new(2.0, 0.0, -1.0);
         let half_extents = Vec3::new(1.0, 2.0, 3.0);
         let obb = Obb {
-            center,
+            frame: Motor3::translation(center),
             half_extents,
-            orientation: Rotor::identity(),
         };
         let aabb = Aabb {
             min: center - half_extents,
@@ -1234,16 +1247,15 @@ mod tests {
         // support point there), so the other components are a tie-break
         // detail, not a claim this test should make.
         let obb = Obb {
-            center: Vec3::ZERO,
+            frame: Motor3::rotation(Vec3::Z, PI / 2.0),
             half_extents: Vec3::new(3.0, 1.0, 1.0),
-            orientation: Rotor::from_axis_angle(Vec3::Z, PI / 2.0),
         };
         assert!((obb.support(Vec3::Y).y - 3.0).abs() < 1e-4);
     }
 
     #[test]
     fn obb_cube_has_equal_half_extents() {
-        let obb = Obb::cube(Vec3::ZERO, 2.0, Rotor::identity());
+        let obb = Obb::cube(Motor3::identity(), 2.0);
         assert_vec3_approx(obb.half_extents, Vec3::new(2.0, 2.0, 2.0));
     }
 
