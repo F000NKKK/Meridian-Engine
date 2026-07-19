@@ -216,12 +216,20 @@ sequentially data-dependent today, not independent branches, so running
 them through a job graph would be decorative; see
 docs/threading-model.md's `FrameScheduler` section for why, and what makes
 it load-bearing later. `graphics-core` isn't wired into `Runtime::tick`
-either — rendering has nothing to submit to without a real
-`graphics-driver` backend.
+either — `graphics-driver` has a real headless `wgpu` device now, but
+nothing to present a rendered frame to without a window/swapchain
+surface (see the `winit`/windowing entry below).
 
-Every other crate is still a scaffold: correct name, correct dependency
-edges, a one-line doc comment, no implementation. This staged order is
-intentional — see "Why implementation is deliberately last" below.
+The remaining incomplete areas are, specifically: window/swapchain
+presentation (`platform-core::Window`, a real surface into
+`graphics-driver::Device`, and `graphics-core`'s scene/material/lighting
+layers that need one to shade against), real audio output
+(`audio-driver`'s device stub), and `DynamicLibrary` (still a stub,
+deferred alongside `Window` on the same OS-boundary track) — not a
+blanket "every other crate is a scaffold." Every crate not named above
+has a real, tested implementation; see each crate's own section above
+for specifics. This staged order is intentional — see "Why implementation
+is deliberately last" below.
 
 ## Why implementation is deliberately last
 
