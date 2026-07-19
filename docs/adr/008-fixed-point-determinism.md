@@ -78,12 +78,64 @@ physics path produced the pose — a direct component-wise conversion of
 the underlying 16-component multivector (both types expose theirs, `pub`),
 not a re-derivation through rotation/translation.
 
-**Sphere colliders only, for now.** `Cuboid`/SAT was not ported to
-`fixed_ga` in this pass — `gac-core::Aabb`/`Obb`/`Shape` have no `Fixed`
-equivalents either. That's a large, intricate piece of code, and porting
-it hastily risks subtle bugs in exactly the code whose entire purpose is
+**`fixed_ga` owns geometric primitives too, not just algebra — and not
+`physics-core`.** `FixedAabb`/`FixedSphere`/`FixedObb`/`FixedCone`/
+`FixedPlane`/`FixedShape`/`FixedConvexVolume` mirror `float_ga`'s
+primitive set one-for-one, living in `gac-core`, the same place
+`float_ga`'s primitives do. An early version of this work put a
+sphere-only `DeterministicShape` and hand-rolled broad-phase overlap math
+directly inside `physics-core::deterministic` — caught on review as a
+layering violation: geometric primitives are `gac-core`'s
+responsibility regardless of scalar flavor (the same reason `Aabb` was
+moved out of `physics-core` into `gac-core` earlier in this project's
+history, once it turned out `physics-core` and `graphics-core` had each
+written the same one independently). Locking `Fixed` primitives inside
+`physics-core` would have blocked exactly the kind of reuse `gac-core`
+exists to enable — a deterministic `graphics-core` CPU path, or a large
+precise CPU/GPU-emulated simulation, would have had no way to reach them
+without depending on physics. `physics-core::deterministic` now builds
+its `FixedAabb`s from `gac-core::fixed_ga` the same way its `f32`
+`BroadPhase` builds `Aabb`s from `gac-core::float_ga`.
+
+**Cross-flavor interop is named, not `From`/`Into`.** Both flavors
+already share the same method names by construction (`dot`, `compose`,
+`transform_point`, ...), so converting between them is `to_fixed_lossy`/
+`to_float_lossy` — explicit, precision-changing casts named as such at
+every call site, plus mixed-type `Add`/`Sub`/`Mul` (`Vec3 + FixedVec3`,
+...) built on those same named conversions internally. `From`/`Into` was
+considered and rejected: `.into()` makes a cast that changes both
+precision *and* the determinism guarantee look free, which invites
+exactly the accidental use this ADR's "ordered floating point" rejection
+above is also about — a silent conversion nobody notices at review time.
+A custom `#[deprecated]`-style compiler warning was also considered (repurposing
+that lint to force `#[allow(deprecated)]` at each call site) and rejected
+as a misuse of an attribute whose stated meaning is "will be removed", not
+"deliberate lossy cast" — a self-describing method name achieves the same
+call-site visibility without repurposing unrelated compiler machinery.
+
+**`gac-compute` gets `Fixed` kernels too, CPU-dispatch only.**
+`FixedMotorTransformKernel`/`FixedMotorComposeKernel` mirror
+`MotorTransformKernel`/`MotorComposeKernel`, built on
+`fixed_ga::FixedMotor3`. Restricted to CPU dispatch by convention/doc
+comment, not by a type-level distinction — `compute-runtime` has no GPU
+backend implemented yet (see [roadmap.md](../roadmap.md)), so there's
+nothing to restrict against today; the restriction is recorded now so a
+future GPU backend doesn't accidentally get offered `Fixed` kernels, for
+the same GPU-can't-do-fixed-point-or-determinism reasons as everywhere
+else in this ADR.
+
+**Sphere colliders only, for now, in `physics-core::deterministic`
+specifically.** `Cuboid`/SAT collision *response* (contact
+generation with point/normal/depth — a different, harder problem than
+the containment test `Shape`/`ConvexVolume` answer, see
+docs/physics-design.md) was not ported to the deterministic pipeline in
+this pass. That's a large, intricate piece of code, and porting it
+hastily risks subtle bugs in exactly the code whose entire purpose is
 trustworthy reproducibility. Tracked as explicit follow-up work in
-[roadmap.md](../roadmap.md), not silently dropped.
+[roadmap.md](../roadmap.md), not silently dropped. `fixed_ga::FixedObb`
+itself already exists (see above), so this is narrower than it was
+before: only the SAT contact-generation algorithm remains to be ported,
+not the underlying primitive.
 
 ## Alternatives considered
 
@@ -106,14 +158,23 @@ trustworthy reproducibility. Tracked as explicit follow-up work in
 
 ## Consequences
 
-- `Fixed` and `gac-core::fixed_ga` are real, independently tested (cross-
-  checked against `f64`/`float_ga` oracles), and proven with an actual
-  bit-exact reproducibility test — not just "close" — in
-  `physics-core::deterministic`.
+- `Fixed` and `gac-core::fixed_ga` (algebra *and* primitives) are real,
+  independently tested (cross-checked against `f64`/`float_ga` oracles),
+  and proven with an actual bit-exact reproducibility test — not just
+  "close" — in `physics-core::deterministic`.
 - `float_ga` (and everything built on `f32`, including the GPU compute
   path) is completely unaffected — no downstream crate changed to make
   this possible.
-- A second collider shape (`Cuboid`) or a second compute domain choosing
+- `fixed_ga`'s primitives are reusable by any future crate that needs
+  CPU-deterministic geometry, not gated behind `physics-core` — the
+  specific property the "not `physics-core`" correction above exists to
+  preserve.
+- `gac-compute` carries `Fixed` kernels alongside its `f32` ones now, so
+  batch-transform work has a deterministic path too, once something
+  needs it at scale (today: nothing does yet, `physics-core::deterministic`
+  calls `fixed_ga` directly per-body).
+- A second collider shape's *collision response* (SAT contact generation
+  for `Cuboid`, specifically) or a second compute domain choosing
   fixed-point would each need their own disclosed duplication into
   `fixed_ga`-adjacent code, following the same pattern — accepted as the
   cost of keeping the GPU-dispatchable path pure `f32` without a generic

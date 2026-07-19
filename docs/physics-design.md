@@ -105,11 +105,21 @@ Real, via `physics-core::deterministic` — see
 `ConstraintSolver`/`BroadPhase`/`NarrowPhase` one-for-one, built on
 `gac-core::fixed_ga` (`Fixed`, Q16.16) instead of `float_ga` (`f32`) — a
 genuinely separate, opt-in pipeline, not a mode flag on the existing
-types. Sphere colliders only so far; `Cuboid`/SAT wasn't ported to
-fixed-point in this pass (no `Fixed` `Aabb`/`Obb`/`Shape` exist yet
-either) — tracked as explicit follow-up in [roadmap.md](roadmap.md), not
-silently dropped. `DeterministicBody::frame_f32` converts the pose to
-`gac-core::Motor3` for rendering/ECS/audio handoff either way. Proven
+types. `DeterministicBroadPhase` builds its `FixedAabb`s from
+`gac-core::fixed_ga` the same way this crate's `f32` `BroadPhase` builds
+`Aabb`s from `gac-core::float_ga` — geometry is `gac-core`'s job
+regardless of scalar flavor, not reimplemented per consumer (see
+docs/gac-design.md). Sphere colliders only so far in this crate; SAT
+contact *generation* for `Cuboid` wasn't ported to the deterministic
+pipeline in this pass (the underlying primitive, `fixed_ga::FixedObb`,
+already exists and is usable — it's specifically the collision-response
+algorithm that's pending) — tracked as explicit follow-up in
+[roadmap.md](roadmap.md), not silently dropped.
+`DeterministicBody::frame_f32` converts the pose to `gac-core::Motor3`
+for rendering/ECS/audio handoff either way, via
+`fixed_ga::FixedMotor3::to_float_lossy` — a named, deliberate
+precision-changing cast (see docs/gac-design.md's "Cross-flavor interop"
+section), not a `From`/`Into` that would make the cast look free. Proven
 with an actual bit-exact reproducibility test (the same scenario run
 twice produces identical `Fixed` bit patterns, not just approximately
 equal floats) — `cargo test -p meridian-physics-core`; human-readable
