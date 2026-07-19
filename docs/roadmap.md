@@ -329,35 +329,54 @@ priority before writing implementations is keeping that document and the
   safe Rust API over Vulkan/DX12/Metal/GL, actively maintained, already
   what most Rust engines (Bevy included) use for exactly this. Real cost:
   `wgpu`'s first external dependency, a heavy transitive tree (`wgpu` +
-  `naga` + platform GPU bindings), and some async-flavored device/adapter
-  acquisition needing `pollster::block_on`-style bridging in an otherwise
-  sync codebase — not a reason to pull in a full async runtime (`tokio`)
-  for one call. `graphics-driver`'s existing stub shape (`Device`,
-  `CommandBuffer`, `Buffer`, `Texture`, `Shader`, `Pipeline`) already maps
-  onto `wgpu`'s own vocabulary, so this doesn't force a redesign, just a
-  real implementation of what's already stubbed. `platform-core`'s
+  `naga` + platform GPU bindings), and `async`-flavored device/adapter
+  acquisition — see the `tokio` entry below for how that's bridged.
+  `graphics-driver`'s existing stub shape (`Device`, `CommandBuffer`,
+  `Buffer`, `Texture`, `Shader`, `Pipeline`) already maps onto `wgpu`'s
+  own vocabulary, so this doesn't force a redesign, just a real
+  implementation of what's already stubbed. `platform-core`'s
   `Window`/`DynamicLibrary` are a separate, smaller decision (below) and
   keep their own hand-written-FFI answer; GPU is the one deliberate
   exception to zero-deps, not a reversal of the policy in general.
 
   **`graphics-driver` is real now, headless-only.** `Device::new`
-  requests a real `wgpu` adapter/device with no `compatible_surface` (the
-  `async` acquisition bridged via `pollster::block_on`, the one place
-  this crate's otherwise-sync API needs it), and `Buffer`/`Texture`/
-  `Shader`/`CommandBuffer` are real `wgpu` resource wrappers — proven by
-  an actual end-to-end test that writes a buffer, runs a WGSL compute
-  shader over it on the GPU, and reads the doubled values back (`cargo
-  test -p meridian-graphics-driver`). `Pipeline` is compute-only so far:
-  a render pipeline needs a vertex layout and color-target formats, which
-  need either a real swapchain surface or a mesh/material vocabulary that
-  doesn't exist yet — both a separate follow-up, not blocked on anything
-  here. `platform-core::GpuCapabilities` gained its first real field
+  requests a real `wgpu` adapter/device with no `compatible_surface`, and
+  `Buffer`/`Texture`/`Shader`/`CommandBuffer` are real `wgpu` resource
+  wrappers — proven by an actual end-to-end test that writes a buffer,
+  runs a WGSL compute shader over it on the GPU, and reads the doubled
+  values back (`cargo test -p meridian-graphics-driver`). `Pipeline` is
+  compute-only so far: a render pipeline needs a vertex layout and
+  color-target formats, which need either a real swapchain surface or a
+  mesh/material vocabulary that doesn't exist yet — both a separate
+  follow-up, not blocked on anything here. `platform-core::GpuCapabilities`
+  gained its first real field
   (`device_name`), populated by `Device`'s `BackendCapabilities` impl;
   `compute-driver`/`physics-driver`/`audio-driver` still report `gpu:
   None` since none of them dispatch to a GPU yet. Windowing/swapchain
   (winit or hand-written platform window creation, wiring a real surface
   into `Device`, and an example that renders to screen) is deliberately
   not part of this pass — see "Suggested implementation order" step 8.
+- **Async I/O — decided: `tokio`, scoped to genuine I/O only, not applied
+  uniformly.** `graphics-driver::Device::new`/`read_buffer` (an OS/driver
+  handshake and waiting on in-flight GPU work — both genuinely unbounded
+  wait, no useful CPU work to do meanwhile) are real `async fn`s now, not
+  `pollster`-wrapped synchronous functions; `read_buffer`'s manual
+  `wgpu::Device::poll` (needed since `wgpu` has no reactor integration of
+  its own) runs inside `tokio::task::spawn_blocking` so it can't stall
+  other work sharing the runtime. Recording/allocation calls
+  (`create_buffer`, `write_buffer`, `CommandBuffer::submit`, ...) stay
+  synchronous — bounded, local, effectively-instant work gains nothing
+  from being `async`, the same reason `Vec::push` isn't. `tokio` is only
+  a dependency of crates with a genuine I/O operation of their own —
+  `platform-core::Window`/`DynamicLibrary` and `audio-driver`'s device
+  stubs will add it once their real implementations land, the same way
+  `graphics-driver` just did; it isn't forced onto `ecs-core`,
+  `gac-core`, `physics-core`, or anything else with no I/O. See
+  [ADR 009](adr/009-async-io-via-tokio.md) for the full decision,
+  including why this reverses this document's own earlier "not a reason
+  to pull in a full async runtime for one call" note (that reasoning held
+  only while GPU acquisition was the workspace's *only* I/O-shaped
+  operation).
 - **`meridian-audio-effects` (heavier DSP effects as a separate crate)** —
   decided: not yet, and only split it out when a concrete effect actually
   needs an external dependency. `meridian-audio-core` already owns basic,

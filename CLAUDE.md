@@ -197,3 +197,25 @@ sphere-overlap math or bounding-box structs instead of using
 catching. When in doubt about which crate owns a piece of logic, check
 [dependency-rules.md](docs/dependency-rules.md) and the crate's own
 top-of-file doc comment before writing new code, not after.
+
+## Async only on genuine I/O
+
+This is an async-native engine: `tokio` is the workspace's async runtime
+(see [ADR 009](docs/adr/009-async-io-via-tokio.md)). A function becomes
+`async fn` only when it performs genuine I/O — completion time that is
+unbounded and determined by something outside this process (an OS/driver
+handshake, a GPU/device queue, a filesystem, a network peer): the
+textbook definition, not "talks to an external system's *type*."
+`meridian-graphics-driver::Device::new`/`read_buffer` are the concrete
+precedent. Recording/allocation/validation calls with bounded,
+effectively-instant local cost stay plain synchronous functions —
+`create_buffer`, `write_buffer`, `CommandBuffer::submit`, and their
+future counterparts elsewhere (decoders taking already-in-memory bytes,
+ECS queries, GA math) never become `async` just for API consistency; that
+adds `Future`-polling/executor overhead to hot-path code with nothing to
+gain from it. Only add `tokio` as a dependency to a crate that has a
+genuine I/O operation of its own — it is not a default every crate picks
+up. When a blocking call is unavoidable inside an `async fn` (e.g.
+manually pumping `wgpu::Device::poll` because `wgpu` has no reactor
+integration), run it via `tokio::task::spawn_blocking`, not inline on the
+async task.
