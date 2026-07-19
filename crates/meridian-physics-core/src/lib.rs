@@ -25,7 +25,7 @@
 //! Linear velocity stays a plain `Vec3` — GA doesn't say vectors are
 //! wrong, only that angular quantities specifically are bivectors.
 
-use meridian_gac_core::{Aabb, Bivector3, Motor3, Vec3};
+use meridian_gac_core::{Aabb, Bivector3, Motor3, Obb, Shape, Vec3};
 use meridian_resource_core::ResourceId;
 
 /// Marker type for collider-mesh `ResourceId`s — see
@@ -33,12 +33,14 @@ use meridian_resource_core::ResourceId;
 pub struct ColliderMeshMarker;
 pub type ColliderMeshHandle = ResourceId<ColliderMeshMarker>;
 
-/// A collision shape. Only `Sphere` for now — the simplest shape to get
-/// narrow-phase exactly right; box/capsule/mesh (via
+/// A collision shape. `Sphere` and `Cuboid` (`gac-core::Obb`'s half-extents,
+/// oriented by the owning `RigidBody`'s own `frame` — no separate
+/// orientation to keep in sync) so far; capsule/mesh (via
 /// [`ColliderMeshHandle`]) are additive later.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ColliderShape {
     Sphere { radius: f32 },
+    Cuboid { half_extents: Vec3 },
 }
 
 impl Default for ColliderShape {
@@ -69,12 +71,41 @@ impl RigidBody {
         }
     }
 
-    /// Moment of inertia about the body's center of mass. Only the solid-
-    /// sphere formula (`(2/5) * m * r²`) exists so far — other shapes need
-    /// their own formula once they exist.
+    /// Moment of inertia about the body's center of mass. `Sphere` is
+    /// exact (`(2/5) * m * r²`, isotropic by construction — a sphere's
+    /// rotational resistance really is the same about every axis).
+    /// `Cuboid` is *not* exact: a box's true inertia is a tensor (three
+    /// different principal moments, `(1/3) * m * (h_b² + h_c²)` per axis
+    /// pair), but [`ConstraintSolver`]'s angular response only has a
+    /// single scalar `inverse_inertia` to work with (see that type's own
+    /// doc comment on why the angular solve is already simplified/
+    /// decoupled). This returns the average of the three principal
+    /// moments, `(2/9) * m * (hx² + hy² + hz²)` — correct in aggregate
+    /// (matches the tensor's trace/3), wrong per-axis (a long thin box
+    /// tumbles slightly differently end-over-end vs. side-over-side in
+    /// reality; this solver can't distinguish those cases). Revisit if a
+    /// full anisotropic inertia tensor + rotational solve is ever needed.
     pub fn moment_of_inertia(&self) -> f32 {
         match self.shape {
             ColliderShape::Sphere { radius } => 0.4 * self.mass * radius * radius,
+            ColliderShape::Cuboid { half_extents } => {
+                (2.0 / 9.0)
+                    * self.mass
+                    * (half_extents.x * half_extents.x
+                        + half_extents.y * half_extents.y
+                        + half_extents.z * half_extents.z)
+            }
+        }
+    }
+
+    /// This body's collider as a world-space [`Obb`] — meaningful for
+    /// `Cuboid` bodies (a `Sphere` has no orientation to speak of, so
+    /// there's no equivalent method for it; [`RigidBody::position`] plus
+    /// the collider's radius is all a sphere needs).
+    pub fn as_obb(&self, half_extents: Vec3) -> Obb {
+        Obb {
+            frame: self.frame,
+            half_extents,
         }
     }
 
@@ -91,6 +122,26 @@ impl RigidBody {
 fn aabb_of(body: &RigidBody) -> Aabb {
     match body.shape {
         ColliderShape::Sphere { radius } => Aabb::from_sphere(body.position(), radius),
+        ColliderShape::Cuboid { half_extents } => {
+            // The world-space AABB of an oriented box: query the box's own
+            // support function along each world axis — exactly the same
+            // `Shape` interface `ConvexVolume`/`Frustum` use, applied here
+            // to a different generic problem (bounding an oriented shape),
+            // not a bespoke box-AABB formula.
+            let obb = body.as_obb(half_extents);
+            Aabb {
+                min: Vec3::new(
+                    obb.support(-Vec3::X).x,
+                    obb.support(-Vec3::Y).y,
+                    obb.support(-Vec3::Z).z,
+                ),
+                max: Vec3::new(
+                    obb.support(Vec3::X).x,
+                    obb.support(Vec3::Y).y,
+                    obb.support(Vec3::Z).z,
+                ),
+            }
+        }
     }
 }
 
