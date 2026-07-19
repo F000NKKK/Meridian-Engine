@@ -10,6 +10,11 @@ publish = false
 [dev-dependencies]
 meridian-engine-core = { workspace = true }
 meridian-gac-core = { workspace = true }
+meridian-ecs-core = { workspace = true }
+meridian-memory-core = { workspace = true }
+meridian-resource-core = { workspace = true }
+meridian-task-core = { workspace = true }
+meridian-platform-core = { workspace = true }
 
 [[example]]
 name = "hello_engine"
@@ -18,3 +23,7 @@ path = "examples/hello_engine.rs"
 [[example]]
 name = "gac_validation"
 path = "examples/gac_validation.rs"
+
+[[example]]
+name = "headless_world"
+path = "examples/headless_world.rs"
