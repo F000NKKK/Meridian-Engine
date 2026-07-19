@@ -38,6 +38,11 @@ count to know when a resource's slot may be reused. See
 [ADR 002](adr/002-handle-based-resources.md) for the full rationale
 (including why `Arc<Texture>` specifically was rejected).
 
+The generic `Handle` above lives here; typed resource identity built on top
+of it (`TextureHandle`, `MeshHandle`, versioning, cross-resource dependency
+tracking) lives one layer up, in `meridian-resource-core` — see
+[ADR 006](adr/006-resource-core-separation.md).
+
 ## Who owns lifetime decisions
 
 `memory-core` provides the arenas, pools, and handle machinery — it does not
