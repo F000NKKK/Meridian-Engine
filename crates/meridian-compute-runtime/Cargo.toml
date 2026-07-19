@@ -1,11 +1,11 @@
 [package]
-name = "meridian-compute-core"
+name = "meridian-compute-runtime"
 version = "0.1.0"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Shared compute scheduling and buffer management for subsystems that need CPU SIMD / GPU compute: physics, rendering, and future animation/particles/AI cores."
+description = "Compute dispatch runtime: device/context, buffers, and the ComputeKernel interface domain crates (gac-compute, future particle-compute/physics-compute/...) implement against. Owns no algorithms of its own."
 
 [dependencies]
 meridian-compute-driver = { workspace = true }

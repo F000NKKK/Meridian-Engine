@@ -11,6 +11,6 @@ description = "Rigid body dynamics built on the GAC: broad/narrow phase collisio
 meridian-gac-core = { workspace = true }
 meridian-gac-compute = { workspace = true }
 meridian-ecs-core = { workspace = true }
-meridian-compute-core = { workspace = true }
+meridian-compute-runtime = { workspace = true }
 meridian-physics-driver = { workspace = true }
 meridian-resource-core = { workspace = true }

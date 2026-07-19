@@ -5,8 +5,8 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Batch execution kernels for GAC transforms (Motor3) on CPU-SIMD / GPU compute. The adapter between the pure math in gac-core and the execution runtime in compute-core — neither depends on the other."
+description = "Batch execution kernels for GAC transforms (Motor3) on CPU-SIMD / GPU compute. The adapter between the pure math in gac-core and the dispatch runtime in compute-runtime — neither depends on the other."
 
 [dependencies]
 meridian-gac-core = { workspace = true }
-meridian-compute-core = { workspace = true }
+meridian-compute-runtime = { workspace = true }
