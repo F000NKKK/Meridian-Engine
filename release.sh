@@ -32,6 +32,22 @@
 #   ./release.sh meridian-gac-core                # без бампа: публикует v текущую, если ещё не на crates.io
 #   ./release.sh --publish-all                    # весь воркспейс как есть, публикует неопубликованное
 #   ./release.sh --publish-all --patch            # patch-бамп + публикация всех крейтов
+#
+# Перед бампом/публикацией (если не --skip-checks) прогоняется preflight:
+# cargo fmt --check, cargo clippy -D warnings, cargo test, cargo doc,
+# scripts/check_dependency_rules.py (блокирует релиз при нарушении
+# docs/dependency-rules.md — не warning, а die) и, если установлен
+# cargo-semver-checks, semver-сверка каждого крейта из плана против его
+# опубликованной версии (soft — предупреждает, не блокирует, т.к. умеет
+# ложно сработать на скаффолде без реального API).
+#
+# Какой бамп когда (человеческая дисциплина, скриптом не проверяется):
+#   --patch  — багфиксы, без изменения публичного API
+#   --minor  — завершённый функциональный этап (numeric-core, gac-core,
+#              ecs-core, ...) — то, ради чего вообще стоит делать релиз
+#   --major  — изменение публичной архитектуры (breaking change)
+# Не релизь просто чтобы был релиз — 19 релизов сейчас отражают 19 реально
+# завершённых этапов, не счётчик активности.
 
 set -euo pipefail
 
@@ -65,6 +81,7 @@ usage() {
     echo "  --no-cascade     не трогать зависимые крейты"
     echo "  --no-check-ver   не проверять crates.io — бампать/публиковать вслепую"
     echo "  --no-gh-release  не создавать git-теги и GitHub-релизы после публикации"
+    echo "  --skip-checks    не гонять preflight (fmt/clippy/test/doc/check-deps/semver-checks)"
     echo "  --publish-all    заменяет <crate-name>: план — все крейты воркспейса, топологически"
     exit 1
 }
@@ -77,6 +94,7 @@ PUBLISH_ALL=false
 NO_BUMP=false
 NO_CHECK_VER=false
 NO_GH_RELEASE=false
+SKIP_CHECKS=false
 CASCADE=true
 
 for arg in "$@"; do
@@ -89,6 +107,7 @@ for arg in "$@"; do
         --no-check-ver) NO_CHECK_VER=true ;;
         --no-cascade)   CASCADE=false ;;
         --no-gh-release) NO_GH_RELEASE=true ;;
+        --skip-checks)  SKIP_CHECKS=true ;;
         --*) die "Неизвестный флаг: $arg"; ;;
         *)
             if [[ -z "$CRATE" ]]; then CRATE="$arg"
@@ -123,6 +142,55 @@ crate_is_published() {
         -A "$CRATES_IO_USER_AGENT" \
         "https://crates.io/api/v1/crates/${crate}/${ver}" 2>/dev/null)" || code="000"
     [[ "$code" == "200" ]]
+}
+
+# ── Preflight ────────────────────────────────────────────────────────────────
+# Гоняется один раз, до любых правок Cargo.toml. Только dependency-rules —
+# жёсткий блок (die); fmt/clippy/test/doc — тоже блок, т.к. это то же самое,
+# что уже проверяет CI, и незачем публиковать то, что там не проходит;
+# semver-checks — мягкий (warn), т.к. на крейте, у которого ещё не было
+# осмысленного публичного API, он может ложно шуметь.
+# $1: список крейтов из плана (для semver-checks), через пробел.
+run_preflight() {
+    local plan="$1"
+
+    if $SKIP_CHECKS; then
+        warn "--skip-checks: пропускаю preflight (fmt/clippy/test/doc/check-deps/semver-checks)"
+        return 0
+    fi
+
+    info "Preflight: dependency-rules (scripts/check_dependency_rules.py) ..."
+    python3 "$WS/scripts/check_dependency_rules.py" \
+        || die "dependency-rules нарушены — релиз запрещён, см. docs/dependency-rules.md"
+
+    info "Preflight: cargo fmt --check ..."
+    cargo fmt --manifest-path "$WS/Cargo.toml" --check \
+        || die "cargo fmt --check провалился — прогони 'cargo fmt' и закоммить"
+
+    info "Preflight: cargo clippy --workspace --all-targets ..."
+    cargo clippy --manifest-path "$WS/Cargo.toml" --workspace --all-targets --quiet -- -D warnings \
+        || die "cargo clippy нашёл проблемы"
+
+    info "Preflight: cargo test --workspace ..."
+    cargo test --manifest-path "$WS/Cargo.toml" --workspace --quiet \
+        || die "cargo test провалился"
+
+    info "Preflight: cargo doc --no-deps --workspace ..."
+    cargo doc --manifest-path "$WS/Cargo.toml" --no-deps --workspace --quiet \
+        || die "cargo doc провалился"
+
+    if command -v cargo-semver-checks >/dev/null 2>&1; then
+        info "Preflight: cargo semver-checks (по крейтам из плана) ..."
+        for c in $plan; do
+            if ! cargo semver-checks check-release -p "$c" --manifest-path "$WS/Cargo.toml" 2>&1 | tail -25; then
+                warn "$c: semver-checks нашёл потенциально breaking изменения — если это не --major, проверь вручную"
+            fi
+        done
+    else
+        warn "cargo-semver-checks не установлен — пропускаю (cargo install cargo-semver-checks)"
+    fi
+
+    ok "Preflight пройден."
 }
 
 # ── Публикация с ретраями ─────────────────────────────────────────────────────
@@ -337,6 +405,9 @@ fi
 if $PUBLISH_ALL || [[ "$PLAN" != "$CRATE" ]]; then
     echo -e "${BOLD}Порядок:${RESET}  $PLAN"
 fi
+echo ""
+
+run_preflight "$PLAN"
 echo ""
 
 # ── Шаг 1: решаем версию/бамп для каждого крейта, в порядке зависимостей ─────

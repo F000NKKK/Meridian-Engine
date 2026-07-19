@@ -17,7 +17,10 @@ pub struct ResourceId<T> {
 
 impl<T> ResourceId<T> {
     pub fn new(handle: Handle) -> Self {
-        Self { handle, _marker: PhantomData }
+        Self {
+            handle,
+            _marker: PhantomData,
+        }
     }
 }
 
@@ -30,7 +33,9 @@ impl<T> Copy for ResourceId<T> {}
 
 impl<T> core::fmt::Debug for ResourceId<T> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.debug_struct("ResourceId").field("handle", &self.handle).finish()
+        f.debug_struct("ResourceId")
+            .field("handle", &self.handle)
+            .finish()
     }
 }
 

@@ -24,6 +24,8 @@ pub struct ResourcePool<T> {
 
 impl<T> Default for ResourcePool<T> {
     fn default() -> Self {
-        Self { _marker: PhantomData }
+        Self {
+            _marker: PhantomData,
+        }
     }
 }
