@@ -26,11 +26,24 @@ the graph — not a hardcoded call order — determines what can overlap.
 
 ## Mechanics
 
-- **Worker threads** — a fixed pool sized to available cores.
-- **Dependency tracking** — a job only becomes runnable once its declared
-  predecessors have completed.
-- **Work stealing** — idle workers pull from busy workers' queues instead of
-  sitting idle while work is unevenly distributed.
+- **Worker threads** — `Scheduler::new(worker_count)` spawns exactly that
+  many (`std::thread::scope`), sized by the caller to available cores.
+- **Dependency tracking** — `JobGraph::add_job` takes the `JobId`s a job
+  depends on; `Scheduler::run` computes in-degrees and only makes a job
+  runnable once every dependency has completed. A cycle or a `JobId` from
+  a different graph panics immediately (would otherwise hang forever
+  waiting for an in-degree that never reaches zero) rather than running
+  something order-broken.
+- **Shared ready-queue, not per-worker work-stealing deques (yet)** — every
+  worker pulls from one `Mutex`-guarded queue rather than each having its
+  own deque with the classic steal-from-a-busy-peer protocol. This is
+  correct and easy to verify by test (see `meridian-task-core`'s test
+  suite: sequential-dependency, diamond-dependency, and independent-jobs
+  cases, run repeatedly to catch flakiness). True lock-free work-stealing
+  deques are a real throughput win at high job counts but are a separate,
+  riskier piece of unsafe-adjacent work — worth doing once there's a real
+  frame's worth of jobs to profile against, not before. The public API
+  (`JobGraph`, `Scheduler::run`) doesn't change when that swap happens.
 
 ## Relationship to `compute-runtime`
 

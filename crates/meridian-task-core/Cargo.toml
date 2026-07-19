@@ -5,6 +5,6 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Job graph scheduler: worker threads, dependency tracking and work stealing for parallel frame execution."
+description = "Job graph scheduler: worker threads and dependency tracking for parallel frame execution."
 
 [dependencies]
