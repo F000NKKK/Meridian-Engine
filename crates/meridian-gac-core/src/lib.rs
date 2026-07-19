@@ -510,6 +510,32 @@ impl Motor3 {
         let r = self.0 * p * self.0.reverse();
         Vec3::new(-r.0[blade::E023], r.0[blade::E013], -r.0[blade::E012])
     }
+
+    /// The equivalent column-major homogeneous 4x4 matrix: `to_mat4()[c][r]`
+    /// is column `c`, row `r`, so that `M * [x, y, z, 1]^T` (column-vector
+    /// convention, matching wgpu/GLSL) reproduces `self.transform_point`.
+    ///
+    /// Built directly from `transform_point` rather than by pulling rotor
+    /// coefficients out of the multivector by hand: `transform_point` is an
+    /// affine map (rotation then translation), so evaluating it at the
+    /// origin and at each basis vector is an exact reconstruction of that
+    /// map's matrix, not a numerical approximation. This is the one place
+    /// `gac-core` produces a classical matrix — graphics APIs need one, but
+    /// the conversion stays generic bridging math, not a graphics concept
+    /// (see docs/gac-design.md), so it belongs here rather than being
+    /// re-derived independently in `graphics-core`.
+    pub fn to_mat4(self) -> [[Scalar; 4]; 4] {
+        let origin = self.transform_point(Vec3::ZERO);
+        let x_axis = self.transform_point(Vec3::X) - origin;
+        let y_axis = self.transform_point(Vec3::Y) - origin;
+        let z_axis = self.transform_point(Vec3::Z) - origin;
+        [
+            [x_axis.x, x_axis.y, x_axis.z, 0.0],
+            [y_axis.x, y_axis.y, y_axis.z, 0.0],
+            [z_axis.x, z_axis.y, z_axis.z, 0.0],
+            [origin.x, origin.y, origin.z, 1.0],
+        ]
+    }
 }
 
 /// A named reference frame: origin + basis, expressed as a motor.
@@ -518,7 +544,14 @@ pub struct Frame {
     pub motor: Motor3,
 }
 
-/// A camera/projective mapping.
+/// A camera/projective mapping: view-space (right-handed, looking down
+/// `-Z`, `+X` right, `+Y` up) to clip space. Column-major, column-vector
+/// convention (`M * v`), depth range `[0, 1]` — matches wgpu/DX12/Metal,
+/// not classic OpenGL's `[-1, 1]`. This is the one hardcoded convention
+/// choice here: `graphics-core`'s `Camera` is responsible for turning a
+/// `Motor3` world frame (whose local-forward axis is a per-subsystem
+/// convention, not a `gac-core` one) into this view space before applying
+/// a `Projection` — see docs/graphics-design.md.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Projection(pub [[Scalar; 4]; 4]);
 
@@ -529,6 +562,55 @@ impl Default for Projection {
             row[i] = 1.0;
         }
         Self(m)
+    }
+}
+
+impl Projection {
+    /// A right-handed perspective projection. `fov_y_radians` is the full
+    /// vertical field of view; `aspect` is width/height; `near`/`far` are
+    /// positive view-space distances (`0 < near < far`).
+    ///
+    /// Derivation (standard perspective projection, re-derived here rather
+    /// than copied from a specific library so it can be cross-checked
+    /// against hand-computed values in tests): a point `(x, y, z)` in view
+    /// space (`z` negative in front of the camera) projects to
+    /// `x' = x * f / aspect`, `y' = y * f`, where `f = cot(fov_y / 2)`; the
+    /// clip-space `w` is `-z`; depth is mapped to `[0, 1]` via
+    /// `z' = far * (z + near) / (z * (far - near))` after the perspective
+    /// divide, which requires `z_row = [0, 0, far / (near - far), -1]` and
+    /// `w_row = [0, 0, near * far / (near - far), 0]` in the matrix below.
+    pub fn perspective(fov_y_radians: Scalar, aspect: Scalar, near: Scalar, far: Scalar) -> Self {
+        let f = 1.0 / (fov_y_radians * 0.5).tan();
+        Self([
+            [f / aspect, 0.0, 0.0, 0.0],
+            [0.0, f, 0.0, 0.0],
+            [0.0, 0.0, far / (near - far), -1.0],
+            [0.0, 0.0, near * far / (near - far), 0.0],
+        ])
+    }
+
+    /// A right-handed orthographic projection over the view-space box
+    /// `[left, right] x [bottom, top] x [-far, -near]`, depth mapped to
+    /// `[0, 1]`.
+    pub fn orthographic(
+        left: Scalar,
+        right: Scalar,
+        bottom: Scalar,
+        top: Scalar,
+        near: Scalar,
+        far: Scalar,
+    ) -> Self {
+        Self([
+            [2.0 / (right - left), 0.0, 0.0, 0.0],
+            [0.0, 2.0 / (top - bottom), 0.0, 0.0],
+            [0.0, 0.0, -1.0 / (far - near), 0.0],
+            [
+                -(right + left) / (right - left),
+                -(top + bottom) / (top - bottom),
+                -near / (far - near),
+                1.0,
+            ],
+        ])
     }
 }
 
@@ -716,5 +798,105 @@ mod tests {
         assert!((bivector.e23 - cross.x).abs() < 1e-6);
         assert!((bivector.e31 - cross.y).abs() < 1e-6);
         assert!((bivector.e12 - cross.z).abs() < 1e-6);
+    }
+
+    fn mat4_mul_point(m: [[Scalar; 4]; 4], p: Vec3) -> Vec3 {
+        // Column-major, column-vector convention: v' = M * [p, 1]^T.
+        let x = m[0][0] * p.x + m[1][0] * p.y + m[2][0] * p.z + m[3][0];
+        let y = m[0][1] * p.x + m[1][1] * p.y + m[2][1] * p.z + m[3][1];
+        let z = m[0][2] * p.x + m[1][2] * p.y + m[2][2] * p.z + m[3][2];
+        Vec3::new(x, y, z)
+    }
+
+    #[test]
+    fn to_mat4_reproduces_transform_point_for_translation() {
+        let motor = Motor3::translation(Vec3::new(1.0, 2.0, 3.0));
+        let p = Vec3::new(5.0, -1.0, 0.5);
+        assert_vec3_approx(mat4_mul_point(motor.to_mat4(), p), motor.transform_point(p));
+    }
+
+    #[test]
+    fn to_mat4_reproduces_transform_point_for_rotation_and_translation() {
+        let motor = Motor3::from_rotation_translation(
+            Rotor::from_axis_angle(Vec3::Z, PI / 3.0),
+            Vec3::new(-2.0, 4.0, 1.0),
+        );
+        for p in [
+            Vec3::new(1.0, 0.0, 0.0),
+            Vec3::new(0.0, 1.0, 0.0),
+            Vec3::new(2.0, -3.0, 7.0),
+        ] {
+            assert_vec3_approx(mat4_mul_point(motor.to_mat4(), p), motor.transform_point(p));
+        }
+    }
+
+    #[test]
+    fn to_mat4_identity_is_the_identity_matrix() {
+        let m = Motor3::identity().to_mat4();
+        let mut expected = [[0.0; 4]; 4];
+        for (i, row) in expected.iter_mut().enumerate() {
+            row[i] = 1.0;
+        }
+        assert_eq!(m, expected);
+    }
+
+    /// Independent oracle for `Projection::perspective`: a point placed
+    /// exactly on the frustum's side/top planes at a known depth must land
+    /// on clip-space's `+-w` boundary (NDC `+-1` after the perspective
+    /// divide), computed from plain trigonometry, not the matrix itself.
+    #[test]
+    fn perspective_projects_frustum_boundary_points_to_ndc_edges() {
+        let fov_y = PI / 2.0; // 90 degrees
+        let aspect = 16.0 / 9.0;
+        let near = 0.1;
+        let far = 100.0;
+        let proj = Projection::perspective(fov_y, aspect, near, far);
+
+        let depth = 10.0_f32;
+        let half_height = depth * (fov_y * 0.5).tan();
+        let half_width = half_height * aspect;
+
+        let project = |p: [Scalar; 4]| -> [Scalar; 4] {
+            let m = proj.0;
+            [
+                m[0][0] * p[0] + m[1][0] * p[1] + m[2][0] * p[2] + m[3][0] * p[3],
+                m[0][1] * p[0] + m[1][1] * p[1] + m[2][1] * p[2] + m[3][1] * p[3],
+                m[0][2] * p[0] + m[1][2] * p[1] + m[2][2] * p[2] + m[3][2] * p[3],
+                m[0][3] * p[0] + m[1][3] * p[1] + m[2][3] * p[2] + m[3][3] * p[3],
+            ]
+        };
+
+        let top_edge = project([0.0, half_height, -depth, 1.0]);
+        assert!((top_edge[1] / top_edge[3] - 1.0).abs() < 1e-4);
+        let right_edge = project([half_width, 0.0, -depth, 1.0]);
+        assert!((right_edge[0] / right_edge[3] - 1.0).abs() < 1e-4);
+
+        let at_near = project([0.0, 0.0, -near, 1.0]);
+        assert!((at_near[2] / at_near[3]).abs() < 1e-5, "near plane maps to depth 0");
+        let at_far = project([0.0, 0.0, -far, 1.0]);
+        assert!((at_far[2] / at_far[3] - 1.0).abs() < 1e-5, "far plane maps to depth 1");
+    }
+
+    #[test]
+    fn orthographic_maps_box_corners_to_ndc_cube() {
+        let proj = Projection::orthographic(-2.0, 2.0, -1.0, 1.0, 0.5, 10.0);
+        let m = proj.0;
+        let project = |p: [Scalar; 4]| -> [Scalar; 4] {
+            [
+                m[0][0] * p[0] + m[1][0] * p[1] + m[2][0] * p[2] + m[3][0] * p[3],
+                m[0][1] * p[0] + m[1][1] * p[1] + m[2][1] * p[2] + m[3][1] * p[3],
+                m[0][2] * p[0] + m[1][2] * p[1] + m[2][2] * p[2] + m[3][2] * p[3],
+                m[0][3] * p[0] + m[1][3] * p[1] + m[2][3] * p[2] + m[3][3] * p[3],
+            ]
+        };
+        // Orthographic w stays 1: no perspective divide needed.
+        let near_corner = project([-2.0, -1.0, -0.5, 1.0]);
+        assert!((near_corner[0] - -1.0).abs() < 1e-5);
+        assert!((near_corner[1] - -1.0).abs() < 1e-5);
+        assert!((near_corner[2] - 0.0).abs() < 1e-5);
+        let far_corner = project([2.0, 1.0, -10.0, 1.0]);
+        assert!((far_corner[0] - 1.0).abs() < 1e-5);
+        assert!((far_corner[1] - 1.0).abs() < 1e-5);
+        assert!((far_corner[2] - 1.0).abs() < 1e-5);
     }
 }
