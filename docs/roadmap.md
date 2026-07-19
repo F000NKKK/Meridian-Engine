@@ -85,7 +85,8 @@ bridges a `Motor3` world frame into a classical view/projection matrix
 (`Motor3::to_mat4` in `gac-core` plus a fixed local-forward-`+X`-to-view-`-Z`
 remap, reusing `audio-core`'s listener-forward convention for
 cross-subsystem consistency — see docs/graphics-design.md for the full
-derivation), `Frustum`/`Aabb` do Gribb/Hartmann frustum culling, and
+derivation), `Frustum` does Gribb/Hartmann frustum culling against *any*
+`gac-core::Shape` (not just an AABB — see below), and
 `RenderGraph::execution_order` derives pass ordering from declared
 resource reads/writes (Kahn's algorithm, the same pattern as `task-core`'s
 `JobGraph`, applied to resource conflicts instead of explicit
@@ -95,6 +96,22 @@ dependencies), rejecting write conflicts and cycles rather than guessing
 materials-as-shading-inputs, animation and post processing remain scaffolds
 — they need an actual GPU resource to shade against, which is blocked on
 `graphics-driver`/`wgpu` below.
+
+`meridian-gac-core` also grew a small shared geometric-primitives set:
+`Aabb` (moved here after it turned out `physics-core` and `graphics-core`
+had each independently written the same one), `Sphere`, `Obb` (oriented
+box — `Aabb` is the axis-aligned box variant; a cube is either with equal
+extents, not a separate type), `Cone`, `Plane`, and a `Shape` trait (a
+support-function interface, the same one GJK/EPA-style algorithms use) that
+every one of them implements — so `Plane::contains`/
+`ConvexVolume::intersects` (the generalization of `graphics-core`'s
+6-plane `Frustum` to any number of planes) are written once, generically,
+instead of once per shape pair. All real and tested (`cargo test -p
+meridian-gac-core`). `physics-core`'s `ColliderShape::Sphere` isn't
+rewritten to use `gac-core::Sphere` yet (it stores only a radius; its
+center comes from `RigidBody::frame` — see docs/physics-design.md) since
+there's only one collider shape to test against itself today; that's the
+natural point to revisit once a second collider shape exists.
 
 Every other crate is still a scaffold: correct name, correct dependency
 edges, a one-line doc comment, no implementation. This staged order is

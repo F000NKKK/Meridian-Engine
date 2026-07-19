@@ -15,14 +15,39 @@ Motor         // rotation + translation, composable
 Frame         // a named reference frame (origin + basis)
 Projection    // camera/projective mappings
 Aabb          // axis-aligned bounding box
+Sphere        // center + radius
+Obb           // oriented (rotated) box
+Cone          // apex + axis + half-angle + height
 Plane         // a half-space, normal . p + d >= 0
+ConvexVolume  // an intersection of planes — a generalized frustum
+Shape         // trait: any convex shape describable by a support function
 ```
 
-`Aabb` and `Plane` are plain geometric primitives with no domain meaning of
-their own — `physics-core`'s broad phase and `graphics-core`'s frustum
-culling both need a bounding box, and a plane has no reason to be defined
-twice either. They live here rather than being redefined per subsystem, for
-the same reason `Vec3`/`Motor3` do (see "Consumers" below).
+`Aabb`, `Sphere`, `Obb`, `Cone` and `Plane` are plain geometric primitives
+with no domain meaning of their own — `physics-core`'s broad phase and
+`graphics-core`'s frustum culling both need a bounding box, `physics-core`'s
+only collider shape today is a sphere, and a plane has no reason to be
+defined twice either. They live here rather than being redefined per
+subsystem, for the same reason `Vec3`/`Motor3` do (see "Consumers" below).
+`Obb`/`Aabb` are the two box variants — axis-aligned vs. oriented; a cube is
+either one with equal extents on every axis, not a separate type.
+
+### `Shape`: one interface instead of a shape x shape matrix
+
+Testing every shape pair (sphere vs. AABB, cone vs. OBB, ...) by hand is
+combinatorial. Instead, every shape here implements one method — its
+[support function](https://en.wikipedia.org/wiki/Support_function)
+(`Shape::support(direction) -> Vec3`, the shape's own point farthest along
+`direction`, the same interface GJK/EPA-style algorithms use) — and
+`Plane::contains`/`ConvexVolume::intersects` are written once, generically,
+against that trait. A new shape (a capsule, a convex hull) only needs to
+implement `support`; every existing plane/volume test then works for it for
+free, and no existing code has to learn about the new shape.
+
+`ConvexVolume` generalizes `graphics-core`'s camera frustum (always exactly
+six planes) to any number of planes, so it can describe any convex bounding
+region, not just a camera's view volume — see docs/graphics-design.md for
+how `Frustum` wraps it.
 
 ## `Transform` is a `Motor3`
 

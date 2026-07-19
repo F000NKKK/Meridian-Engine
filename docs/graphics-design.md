@@ -72,14 +72,16 @@ API actually needs one, never stored as parallel state.
 
 `Frustum::from_view_projection` extracts six `gac-core::Plane` half-spaces
 from a view-projection matrix via the Gribb/Hartmann method (each plane's
-coefficients are a linear combination of the matrix's rows). `Plane` and
-`Aabb` (shared with `physics-core`'s broad phase — a bounding box or a
-plane has no graphics- or physics-specific meaning, so each lives once in
-`gac-core` rather than being redefined per subsystem, see
-docs/gac-design.md) are the primitives; `Frustum::intersects_aabb` is the
-standard conservative box/frustum test built on top of them (check the
-AABB's corner furthest along each plane's normal). This is generic once the
-planes exist — extracting them is what ties culling to a specific `Camera`.
+coefficients are a linear combination of the matrix's rows), then wraps
+them in a `gac-core::ConvexVolume`. Extracting exactly six planes from a
+`Projection` is what's camera-specific and stays here; the volume/shape
+math underneath it is generic and lives once in `gac-core` (see
+docs/gac-design.md), so `Frustum::intersects` works against *any*
+`gac-core::Shape` — `Aabb`, `Sphere`, `Obb`, `Cone`, or a future one — not
+just an AABB. `Frustum` itself owns nothing but the plane extraction; if a
+non-camera convex volume is ever needed (a spotlight's volume, a trigger
+region), it's `gac-core::ConvexVolume` directly, no `graphics-core`
+involvement required.
 
 ## Render graph over hand-ordered passes
 

@@ -24,6 +24,16 @@ Constraint Solver     Impulse-based + positional correction against sinking
 Integration           Semi-implicit Euler
 ```
 
+`Aabb` (used by `BroadPhase`) is `gac-core`'s primitive, not a physics-local
+type — see docs/gac-design.md. `ColliderShape::Sphere` currently stores
+only a `radius`; its center comes from `RigidBody::frame`, so it isn't
+`gac-core::Sphere` itself (which pairs a radius with its own `center`).
+Adding a second collider shape (box, capsule) is the natural point to
+revisit whether narrow-phase should route through `gac-core`'s generic
+`Shape`/`ConvexVolume` machinery instead of the current analytic
+sphere-sphere formula — not done now since there's only one shape to test
+against itself.
+
 ## `RigidBody` uses the GAC frame, not a bespoke transform
 
 ```rust
