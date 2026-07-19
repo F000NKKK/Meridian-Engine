@@ -266,8 +266,8 @@ mod tests {
 
     #[test]
     fn frame_scheduler_runs_a_job_graph() {
-        use std::sync::atomic::{AtomicUsize, Ordering};
         use std::sync::Arc;
+        use std::sync::atomic::{AtomicUsize, Ordering};
 
         let ran = Arc::new(AtomicUsize::new(0));
         let mut graph = JobGraph::new();
@@ -295,11 +295,20 @@ mod tests {
         subsystems.bodies.push(falling_body());
         let mut runtime = Runtime::new(subsystems);
 
-        let before = runtime.subsystems.bodies[0].position().y;
-        runtime.tick();
-        let after = runtime.subsystems.bodies[0].position().y;
-
-        assert!(after < before, "body must fall under gravity each tick");
+        // Checking velocity, not position: position starts at y=10.0, and
+        // a real wall-clock dt (microseconds, since Clock isn't a fixed
+        // step) produces a position delta many orders of magnitude below
+        // f32's precision at that magnitude — it would round away to
+        // nothing even though physics genuinely ran. Velocity starts at
+        // exactly 0.0, so any nonzero gravity contribution is visible
+        // regardless of how small the real elapsed dt was.
+        for _ in 0..5 {
+            runtime.tick();
+        }
+        assert!(
+            runtime.subsystems.bodies[0].velocity.y < 0.0,
+            "gravity must have been applied across ticks"
+        );
     }
 
     #[test]
