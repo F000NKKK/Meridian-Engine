@@ -1,0 +1,4 @@
+interface:
+  display_name: "Meridian Crate Boundary Keeper"
+  short_description: "Enforce Cargo dependency direction and crate boundaries."
+  default_prompt: "Use this skill before editing Cargo.toml, adding crates, or moving public APIs between crates."

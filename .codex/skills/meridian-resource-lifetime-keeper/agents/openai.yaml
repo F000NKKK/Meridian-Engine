@@ -1,0 +1,4 @@
+interface:
+  display_name: "Meridian Resource Lifetime Keeper"
+  short_description: "Keep memory, resource identity, asset decoding, and lifetime policy separate."
+  default_prompt: "Use this skill for handles, pools, resource IDs, dependency graphs, decoders, or manager/lifetime topics."

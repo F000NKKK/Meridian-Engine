@@ -77,10 +77,13 @@ Run `./build.sh check-deps` after any dependency or crate-boundary change.
 
 Use these repository-local skill sets as working modes. Pick the smallest set
 that covers the touched files, and state which set you used in your final note.
-These are not separate executables; they are instruction bundles for how to
-work safely in this repository.
+Each set below has real skill files under `.codex/skills/<skill-name>/SKILL.md`
+and `.claude/skills/<skill-name>/SKILL.md`. Codex-style agents should read the
+`.codex` copy; Claude-style agents should read the `.claude` copy. When a set
+applies, read the relevant skill file before editing the matching files; the
+summary below is only a routing table.
 
-### `docs-guardian`
+### `meridian-docs-guardian`
 
 Use for: `README.md`, `AGENTS.md`, `CLAUDE.md`, `docs/**`, comments that encode
 architecture, crate descriptions in `Cargo.toml`.
@@ -96,7 +99,7 @@ Workflow:
 5. Validate Markdown links where practical and run at least `./build.sh
    check-deps` when dependency rules are mentioned.
 
-### `crate-boundary-keeper`
+### `meridian-crate-boundary-keeper`
 
 Use for: any `Cargo.toml`, new crate, moved type, public API that changes what
 one crate knows about another crate.
@@ -109,7 +112,7 @@ Workflow:
 4. Never solve a compile error by adding a dependency that violates layering.
 5. Run `./build.sh check-deps` and `cargo test --workspace`.
 
-### `gac-math-keeper`
+### `meridian-gac-math-keeper`
 
 Use for: `crates/meridian-gac-core/**`, transform code, physics rotation,
 spatial audio positioning, camera transforms, and any `Motor3`/`Rotor`/
@@ -125,7 +128,7 @@ Workflow:
 4. Keep CPU feature detection/SIMD dispatch outside `gac-core`; use
    `numeric-core` or compute adapter crates instead.
 
-### `data-oriented-ecs-keeper`
+### `meridian-data-oriented-ecs-keeper`
 
 Use for: `crates/meridian-ecs-core/**` and components/query/storage changes.
 
@@ -138,7 +141,7 @@ Workflow:
 4. Be especially careful with aliasing and type erasure; add tests for entity
    movement between archetypes and stale/dead entity behavior.
 
-### `resource-lifetime-keeper`
+### `meridian-resource-lifetime-keeper`
 
 Use for: `crates/meridian-memory-core/**`, `crates/meridian-resource-core/**`,
 `crates/meridian-asset-core/**`, handle types, pools, decoders and dependency
@@ -154,7 +157,7 @@ Workflow:
 5. Test stale handles, generation bumps, dependency cycles and malformed asset
    inputs.
 
-### `compute-driver-keeper`
+### `meridian-compute-driver-keeper`
 
 Use for: `crates/meridian-compute-driver/**`,
 `crates/meridian-compute-runtime/**`, `crates/meridian-gac-compute/**`, GPU/SIMD
@@ -170,7 +173,7 @@ Workflow:
    `task-core` boundaries intentionally.
 5. Test both small batches and batches large enough to exercise parallel paths.
 
-### `subsystem-core-keeper`
+### `meridian-subsystem-core-keeper`
 
 Use for: `graphics-core`, `physics-core`, `audio-core`, and their design docs.
 
@@ -183,7 +186,7 @@ Workflow:
 5. Add tests around domain invariants: collision pairs, render graph ordering,
    mixer spatial behavior, etc.
 
-### `engine-integration-keeper`
+### `meridian-engine-integration-keeper`
 
 Use for: `crates/meridian-engine-core/**`, examples, frame scheduling,
 cross-subsystem orchestration.
@@ -197,17 +200,6 @@ Workflow:
 3. Keep examples small and demonstrative; examples may compose crates, but core
    crates must remain layered.
 4. Run relevant examples with `./build.sh run <example>` when changed.
-
-## Commit discipline
-
-Keep changes coherent. If code and docs both need updates, commit them
-together. Use commit messages that name the affected boundary or subsystem
-(e.g. `gac-core`, `ecs-core`, `docs`). Do not leave workspace status dirty
-unless explicitly asked.
-
-Do not add the AI agent as a co-author of a commit. Commit messages must not
-include a `Co-Authored-By` (or equivalent) line attributing the commit to
-Claude or any other AI agent.
 
 ## Coding and testing expectations
 

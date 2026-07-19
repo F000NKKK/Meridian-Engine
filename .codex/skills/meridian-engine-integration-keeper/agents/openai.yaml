@@ -1,0 +1,4 @@
+interface:
+  display_name: "Meridian Engine Integration Keeper"
+  short_description: "Guide engine-core and example integration work."
+  default_prompt: "Use this skill for engine-core, examples, frame scheduling, events, or subsystem orchestration."

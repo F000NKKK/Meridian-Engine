@@ -48,10 +48,13 @@ Markdown file.
 
 ## Skill sets to invoke by file area
 
-When starting work, announce the applicable skill set(s) to yourself and follow
-the listed workflow.
+When starting work, read the applicable `.claude/skills/<skill-name>/SKILL.md`
+file(s), announce the applicable skill set(s) to yourself, and follow the listed
+workflow. `.codex/skills/<skill-name>/SKILL.md` mirrors the same skill set for
+Codex-style agents; the sections below are routing summaries, while the skill
+files are the operational instructions.
 
-### Documentation skill: `docs-guardian`
+### Documentation skill: `meridian-docs-guardian`
 
 Files: `README.md`, `AGENTS.md`, `CLAUDE.md`, `docs/**`, architectural comments,
 crate descriptions.
@@ -60,7 +63,7 @@ Use it to keep documentation accurate, concise and aligned with current code.
 Update docs in the same change that invalidates them. Prefer ADRs for permanent
 architecture decisions and `roadmap.md` for implementation status.
 
-### Dependency skill: `crate-boundary-keeper`
+### Dependency skill: `meridian-crate-boundary-keeper`
 
 Files: all `Cargo.toml`, new crates, public APIs that move responsibility across
 crates.
@@ -69,7 +72,7 @@ Use it to reject forbidden edges, design adapter crates when needed, and run
 `./build.sh check-deps`. Never add a dependency merely to silence a compiler
 error without checking the graph.
 
-### GAC skill: `gac-math-keeper`
+### GAC skill: `meridian-gac-math-keeper`
 
 Files: `meridian-gac-core`, transform code, spatial math, rotation integration,
 physics angular quantities, camera/listener spatial code.
@@ -78,7 +81,7 @@ Use it to preserve GA semantics. Angular quantities that live in the rotation
 Lie algebra should be bivectors. Validate math against external oracles where
 possible.
 
-### ECS skill: `data-oriented-ecs-keeper`
+### ECS skill: `meridian-data-oriented-ecs-keeper`
 
 Files: `meridian-ecs-core`, component storage, archetypes, queries, world/entity
 logic.
@@ -86,7 +89,7 @@ logic.
 Use it to preserve SoA/archetype storage, avoid domain leakage, and test entity
 migration, dead entities, query behavior and type-erased storage boundaries.
 
-### Memory/resource/asset skill: `resource-lifetime-keeper`
+### Memory/resource/asset skill: `meridian-resource-lifetime-keeper`
 
 Files: `meridian-memory-core`, `meridian-resource-core`, `meridian-asset-core`,
 handles, pools, decoders, dependency graph.
@@ -95,7 +98,7 @@ Use it to keep generic handles, typed resource IDs, decoded CPU data and
 lifetime policy separate. Do not create managers. Test stale handles,
 generation changes, cycle checks and malformed asset bytes.
 
-### Compute skill: `compute-driver-keeper`
+### Compute skill: `meridian-compute-driver-keeper`
 
 Files: `meridian-compute-driver`, `meridian-compute-runtime`,
 `meridian-gac-compute`, future concrete `*-compute` adapter crates.
@@ -104,7 +107,7 @@ Use it to keep runtime dispatch generic, domain kernels in adapters, and
 scheduler responsibilities aligned with `task-core`. Test sequential/small and
 parallel/large dispatch paths.
 
-### Subsystem skill: `subsystem-core-keeper`
+### Subsystem skill: `meridian-subsystem-core-keeper`
 
 Files: `meridian-graphics-core`, `meridian-physics-core`, `meridian-audio-core`,
 corresponding drivers and design docs.
@@ -113,7 +116,7 @@ Use it to keep domain algorithms in core crates and hardware/OS execution in
 driver crates. Each core may use its own driver, not another subsystem's driver.
 Compute work should go through `compute-runtime` or an adapter crate.
 
-### Engine/examples skill: `engine-integration-keeper`
+### Engine/examples skill: `meridian-engine-integration-keeper`
 
 Files: `meridian-engine-core`, `examples/**`, frame scheduler and subsystem
 composition.
@@ -146,7 +149,3 @@ Run changed examples through `./build.sh run <example>`.
 Keep changes coherent. If code and docs both need updates, commit them together.
 Use commit messages that name the affected boundary or subsystem. Do not leave
 workspace status dirty unless explicitly asked.
-
-Do not add the AI agent as a co-author of a commit. Commit messages must not
-include a `Co-Authored-By` (or equivalent) line attributing the commit to
-Claude or any other AI agent.

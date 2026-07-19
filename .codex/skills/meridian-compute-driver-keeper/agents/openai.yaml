@@ -1,0 +1,4 @@
+interface:
+  display_name: "Meridian Compute Driver Keeper"
+  short_description: "Preserve compute dispatch and adapter boundaries."
+  default_prompt: "Use this skill for compute-driver, compute-runtime, gac-compute, kernels, buffers, GPU/SIMD dispatch, or threading docs."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Meridian Subsystem Core Keeper"
+  short_description: "Maintain graphics/physics/audio core-driver separation."
+  default_prompt: "Use this skill for graphics, physics, audio core/driver crates and subsystem design docs."
