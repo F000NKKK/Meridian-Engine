@@ -8,16 +8,16 @@
 //! work across real OS threads via `std::thread::scope`, safe, no
 //! `unsafe`.
 
-use meridian_platform_core::{BackendCapabilities, CpuCapabilities};
+use meridian_platform_core::{BackendCapabilities, DeviceCapabilities};
 
-/// Backend capability flags. Embeds `platform-core`'s [`CpuCapabilities`]
+/// Backend capability flags. Embeds `platform-core`'s [`DeviceCapabilities`]
 /// (the fields shared with `physics-driver::PhysicsBackend` and future
 /// `graphics-driver`/`audio-driver` equivalents) rather than redeclaring
 /// `gpu`/`cpu_threads`; add compute-specific fields (SIMD width, ...)
 /// alongside `cpu`, not by duplicating it.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct ComputeCapabilities {
-    pub cpu: CpuCapabilities,
+    pub cpu: DeviceCapabilities,
 }
 
 impl BackendCapabilities for ComputeCapabilities {
@@ -81,7 +81,7 @@ impl Default for ComputeDevice {
 
 impl ComputeDevice {
     pub fn new() -> Self {
-        Self { capabilities: ComputeCapabilities { cpu: CpuCapabilities::detect() } }
+        Self { capabilities: ComputeCapabilities { cpu: DeviceCapabilities::detect() } }
     }
 
     pub fn capabilities(&self) -> ComputeCapabilities {
@@ -103,7 +103,7 @@ impl ComputeDevice {
         if count == 0 {
             return;
         }
-        let threads = self.capabilities.cpu_threads.max(1).min(count);
+        let threads = self.capabilities.cpu.cpu_threads.max(1).min(count);
         let chunk = count.div_ceil(threads);
         let work = &work;
         std::thread::scope(|scope| {
