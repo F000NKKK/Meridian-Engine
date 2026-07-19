@@ -131,6 +131,38 @@ rotated-box SAT case and a full box-settles-on-box-floor integration test
 (`cargo test -p meridian-physics-core`). See docs/physics-design.md for
 the full breakdown.
 
+**Deterministic simulation mode is real** (see "Not yet decided" below for
+the decision this replaces): `meridian-numeric-core::Fixed`, a Q16.16
+fixed-point number (`i32`-backed) with exact integer `sqrt` and
+CORDIC-based `sin`/`cos`/`atan2` (add/subtract/shift only — no `libm`
+call, which is what makes it exactly reproducible across
+platforms/compilers, unlike `f32`). `gac-core` now has two GA modules,
+`float_ga` (`f32`, the default, re-exported at the crate root so nothing
+downstream changed) and `fixed_ga` (`Fixed`, a disclosed one-for-one
+duplication of `float_ga`'s structure — see that module's doc comment for
+why one generic implementation wasn't used instead: GPUs have no real
+`i64` support and are `f32`-native hardware, so a GPU-dispatchable
+`Motor3` has to stay floating-point regardless, and GPU parallelism has
+its own execution-order nondeterminism on top of that). `physics-core`
+gained `deterministic` — `DeterministicBody`/`DeterministicIntegrator`/
+`DeterministicConstraintSolver`/`DeterministicBroadPhase`/
+`DeterministicNarrowPhase`, mirroring the `f32` pipeline one-for-one,
+sphere colliders only for this pass (`Cuboid`/SAT wasn't ported —
+tracked as explicit follow-up, not silently dropped). This is
+opt-in, not a replacement: `RigidBody` and the rest of `physics-core`'s
+default pipeline are untouched; a caller chooses `DeterministicBody`
+instead when it needs bit-reproducibility (lockstep networking, replay),
+and `DeterministicBody::frame_f32` converts the pose to `gac-core::Motor3`
+for handoff to rendering/ECS/audio either way. Proven with an actual
+bit-exact reproducibility test — the same scenario run twice via
+independent `DeterministicBody` simulations produces identical `Fixed`
+bit patterns, not just approximately-equal floats (`cargo test -p
+meridian-numeric-core` for `Fixed` itself, `-p meridian-gac-core` for
+`fixed_ga` cross-checked against `float_ga` as an oracle, `-p
+meridian-physics-core` for the full pipeline and the reproducibility
+test; human-readable version via `./build.sh run
+determinism_validation`).
+
 Step 9 (`meridian-engine-core`) is real: `SubsystemManager` owns real
 `ecs-core`/`physics-core`/`audio-core` instances (the one place in the
 workspace allowed to know about every `*-core` at once, per
@@ -235,8 +267,16 @@ priority before writing implementations is keeping that document and the
 
 ## Not yet decided
 
-- Deterministic simulation mode (fixed-point vs. ordered floating point) —
-  needed for physics replay/networking, tracked but unspecified.
+- **Deterministic simulation mode — decided: Q16.16 fixed-point
+  (`meridian-numeric-core::Fixed`), not ordered floating point.** Ordered
+  floating point (careful summation order, no FMA, disabled
+  auto-vectorization) was rejected: it fights the compiler/CPU rather
+  than sidestepping the problem, and still doesn't fully solve
+  cross-`libm` `sin`/`cos`/`sqrt` disagreement, which fixed-point +
+  CORDIC avoids by construction (integer add/subtract/shift only). See
+  "Current state" above for what's built (`gac-core::fixed_ga`,
+  `physics-core::deterministic`) and [ADR
+  008](adr/008-fixed-point-determinism.md).
 - **GPU backend beneath `compute-driver`/`graphics-driver`/`physics-driver`
   — decided: `wgpu`, not hand-written per-API FFI.** Reversed from the
   earlier zero-external-dependencies stance: hand-writing Vulkan bindings
