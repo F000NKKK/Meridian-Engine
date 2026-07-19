@@ -114,8 +114,15 @@ order, not a hand-written sequence of system calls. See
 
 ## Current state
 
-As of this writing, every crate in the workspace is a scaffold: a
-`Cargo.toml` with the correct dependency edges and a one-line doc comment in
-`lib.rs`. The priority before writing implementations is keeping this
-document, [dependency-rules.md](dependency-rules.md), and the ADRs accurate
-— see [roadmap.md](roadmap.md) for what comes next.
+Every crate except the GPU/audio-device driver backends (blocked on the
+`wgpu` decision, see [roadmap.md](roadmap.md)) now has a real
+implementation, up through `meridian-engine-core`: `Runtime` owns a
+`SubsystemManager` (real `ecs-core`/`physics-core`/`audio-core` instances)
+and an `EventSystem` (type-erased pub/sub, the mechanism rule 7 exists
+for — subsystems communicate through it instead of depending on each
+other), and `Runtime::tick` advances physics then recomputes audio from
+the result each frame. `graphics-core`'s render graph/camera/culling are
+real too, but not wired into `Runtime::tick` — rendering has nothing to
+submit to without a real `graphics-driver` backend. See
+[roadmap.md](roadmap.md) for the exact state of each crate and what's
+still a scaffold.
