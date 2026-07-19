@@ -13,6 +13,9 @@
 //! Run with:
 //!   ./build.sh run runtime_loop
 
+use std::thread::sleep;
+use std::time::Duration;
+
 use meridian_audio_core::{Channel, Emitter, Listener, Mixer, SpeakerLayout};
 use meridian_ecs_core::{Component, Transform, World};
 use meridian_engine_core::{FrameCompleted, Runtime, SubsystemManager};
@@ -45,9 +48,10 @@ fn main() {
     );
     world.insert(ball_entity, Name("ball"));
     subsystems.world = world;
+    let ball_name = subsystems.world.query::<Name>().next().map(|(_, n)| n.0);
     check(
         "ecs-core entity spawned independently of physics bodies",
-        subsystems.world.query::<Name>().count() == 1,
+        ball_name == Some("ball"),
     );
 
     // A falling ball above a static floor — the same scenario
@@ -59,7 +63,7 @@ fn main() {
         ..Default::default()
     });
     subsystems.bodies.push(RigidBody {
-        frame: Motor3::translation(Vec3::new(0.0, 5.0, 0.0)),
+        frame: Motor3::translation(Vec3::new(0.0, 2.0, 0.0)),
         mass: 1.0,
         shape: ColliderShape::Sphere { radius: 0.5 },
         ..Default::default()
@@ -79,12 +83,23 @@ fn main() {
     let mut runtime = Runtime::new(subsystems);
     let starting_velocity = runtime.subsystems.bodies[1].velocity.y;
 
-    for _ in 0..120 {
+    // Runtime::tick uses real wall-clock time (see the crate's module
+    // doc: no fixed-step accumulator yet), the same as a real game calling
+    // tick() once per rendered frame — so this sleeps between ticks to
+    // simulate a real ~60fps frame cadence. Without it, 60 ticks fired
+    // back-to-back would accumulate only microseconds of simulated time,
+    // nowhere near enough for the ball to actually fall.
+    const TICK_COUNT: usize = 60;
+    for _ in 0..TICK_COUNT {
+        sleep(Duration::from_millis(16));
         runtime.tick();
     }
 
     let completed = runtime.events.drain::<FrameCompleted>();
-    check("120 FrameCompleted events published, one per tick", completed.len() == 120);
+    check(
+        "one FrameCompleted event published per tick",
+        completed.len() == TICK_COUNT,
+    );
     check(
         "frame indices increase monotonically",
         completed
