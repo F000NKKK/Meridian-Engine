@@ -31,6 +31,7 @@ ALLOWED = {
         "meridian-compute-driver",
         "meridian-task-core",
         "meridian-memory-core",
+        "meridian-gac-core",
     },
     "meridian-ecs-core": {"meridian-memory-core", "meridian-gac-core"},
     "meridian-asset-core": {"meridian-platform-core"},

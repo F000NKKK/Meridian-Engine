@@ -17,14 +17,25 @@ spatial model instead of each inventing its own transform representation.
         |          |               |          |
   graphics-core physics-core  audio-core  asset-core / ecs-core
         |          |               |
-  graphics-driver  physics-driver  audio-driver     compute-core
-                            |                             |
-                     platform-core               compute-driver
-                            |                             |
-                     meridian-gac-core  <-----  meridian-numeric-core
-                                                          |
-                                                 meridian-foundation
+  graphics-driver  physics-driver  audio-driver
+        |          |               |
+        +----------+-------+-------+
+                            |
+                     platform-core          compute-core --------+
+                                                    |             |
+                                             compute-driver  meridian-gac-core
+                                                    |             |
+                                             platform-core   meridian-numeric-core
+                                                                  |
+                                                          meridian-foundation
 ```
+
+`graphics-core`, `physics-core` and future `animation-core`/`particles-core`/
+`ai-core` reach batched CPU-SIMD/GPU work through `compute-core`, which in
+turn depends on `gac-core` for the `Motor3` type those batches operate on —
+see [ADR 007](adr/007-batch-transforms-via-compute.md). `gac-core` never
+depends on `compute-core` back; it stays pure geometric algebra regardless
+of which backend eventually executes a given batch.
 
 See [dependency-rules.md](dependency-rules.md) for the exact, enforceable
 edge list — this diagram is the intuition, that document is the ruling.

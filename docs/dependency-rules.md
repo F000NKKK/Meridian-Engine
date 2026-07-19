@@ -14,17 +14,17 @@ meridian-numeric-core
         |
         v
 meridian-gac-core   meridian-memory-core   meridian-task-core   meridian-platform-core
-        |                  |     |                 |                     |
-        |                  |     v                 |                     +---------------+
-        |                  |  meridian-resource-core|                     |               |
-        v                  v     |                  v                     v               v
-meridian-ecs-core <--------+     |        meridian-compute-driver   meridian-graphics-driver
-        |                        |                  |               meridian-audio-driver
-        |                        |                  v               meridian-physics-driver
-        |                        |        meridian-compute-core             |
-        |                        |                  |                       |
-        +----------+-------------+------------------+-----------------------+
-                    |
+   |    |                  |     |                 |                     |
+   |    |                  |     v                 |                     +---------------+
+   |    |                  |  meridian-resource-core|                     |               |
+   |    v                  v     |                  v                     v               v
+   |  meridian-ecs-core <--+     |        meridian-compute-driver   meridian-graphics-driver
+   |         |                   |                  |               meridian-audio-driver
+   |         |                   |                  v               meridian-physics-driver
+   +---------|-------------------|-->  meridian-compute-core                |
+             |                   |                  |                       |
+             +----------+--------+------------------+-----------------------+
+                        |
    meridian-asset-core   meridian-graphics-core   meridian-physics-core   meridian-audio-core
                     |                |                    |                     |
                     +----------------+--------------------+---------------------+
@@ -34,7 +34,10 @@ meridian-ecs-core <--------+     |        meridian-compute-driver   meridian-gra
 
 (Arrows point from a dependency to its dependent. `meridian-audio-core` also
 depends on `meridian-gac-core` and `meridian-audio-driver`, omitted above for
-readability — see each crate's own `Cargo.toml` for the exact edge list.)
+readability — see each crate's own `Cargo.toml` for the exact edge list.
+`meridian-gac-core -> meridian-compute-core` is the batch-transform edge
+added in [ADR 007](adr/007-batch-transforms-via-compute.md): `compute-core`
+depends on `gac-core` for `Motor3`, never the other way around.)
 
 ## Rules
 
@@ -82,6 +85,15 @@ readability — see each crate's own `Cargo.toml` for the exact edge list.)
    `physics-driver` is execution only: memory backend, SIMD/GPU dispatch,
    synchronization — the same role `compute-driver` plays for compute in
    general. See [physics-design.md](physics-design.md).
+10. **`meridian-compute-core` may depend on `meridian-gac-core`; the edge
+    never points the other way.** Batch spatial-math kernels (e.g.
+    `TransformBatchKernel`) need the `Motor3` type to describe what they
+    operate on, so `compute-core -> gac-core` is allowed. `gac-core` itself
+    must never depend on `compute-core`, `compute-driver`, or know that a
+    GPU exists — it stays pure geometric algebra per rule 6, and it is
+    `compute-core`'s job to pick a CPU or GPU execution path for a given
+    batch, not `gac-core`'s. See
+    [ADR 007](adr/007-batch-transforms-via-compute.md).
 
 ## How to check locally
 

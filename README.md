@@ -17,7 +17,7 @@ meridian-resource-core   typed resource handles, versioning, dependency tracking
 meridian-task-core       job graph scheduler
 meridian-platform-core   window, input, filesystem, time, threading
 meridian-compute-driver  low-level CPU-SIMD / GPU-compute dispatch abstraction
-meridian-compute-core    shared compute scheduling for physics/graphics/...
+meridian-compute-core    shared compute scheduling + batch Motor3 transforms for physics/graphics/...
 meridian-asset-core      image/mesh/audio/shader loading & decoding
 meridian-ecs-core        archetype ECS, SoA storage
 meridian-graphics-driver low-level GPU device abstraction
@@ -30,9 +30,14 @@ meridian-engine-core     runtime: frame scheduler, events, subsystem manager
 ```
 
 Dependencies flow bottom-up: `foundation` / `memory-core` / `task-core` /
-`platform-core` have none, `engine-core` sits on top of everything. The full
-graph, and the rules for which direction a dependency is allowed to point,
-are documented in [`docs/dependency-rules.md`](docs/dependency-rules.md).
+`platform-core` have none, `engine-core` sits on top of everything.
+`compute-core` depends on `gac-core` for the `Motor3` type its batch
+transform kernels operate on, never the other way — `gac-core` stays pure
+geometric algebra regardless of which CPU/GPU backend a batch ends up
+running on (see [ADR 007](docs/adr/007-batch-transforms-via-compute.md)).
+The full graph, and the rules for which direction a dependency is allowed to
+point, are documented in
+[`docs/dependency-rules.md`](docs/dependency-rules.md).
 
 ## Documentation
 

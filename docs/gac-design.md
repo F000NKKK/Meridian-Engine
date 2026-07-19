@@ -55,8 +55,42 @@ they live in `meridian-numeric-core` (see
 
 `ecs-core` (as the `Transform` component), `physics-core` (rigid body
 frames), `graphics-core` (camera/object transforms), `audio-core` (listener/
-emitter frames). None of them re-derive spatial math independently — that
-duplication is exactly what this crate exists to prevent.
+emitter frames), `compute-core` (batch `Motor3` kernels — see below). None of
+them re-derive spatial math independently — that duplication is exactly what
+this crate exists to prevent.
+
+## Batch execution via compute-core
+
+`gac-core` defines what a `Motor3` *is*; it has no opinion about how a
+million of them get transformed per frame, and it must never depend on
+`compute-core` or `compute-driver` to find out (rule 6). That decision
+— CPU scalar/SIMD for a handful of transforms, GPU compute once a batch is
+large enough that upload/dispatch/sync latency stops dominating — belongs to
+`compute-core`'s `TransformBatchKernel`, which depends on `gac-core` for the
+`Motor3` type (the one edge rule 10 allows in this direction; see
+[ADR 007](adr/007-batch-transforms-via-compute.md)):
+
+```text
+                 Transform API (Motor3, Rotor, Frame)
+                      |
+              meridian-gac-core
+                      |
+          +-----------+-----------+
+          |                       |
+       CPU path              compute-core
+   scalar/SIMD          TransformBatchKernel
+          |                       |
+      gameplay,             physics-core,
+   small batches           graphics-core,
+                          large batches
+```
+
+`ComputeScheduler` picks the path per task using
+`GPU_DISPATCH_THRESHOLD` — below it, a batch runs on the CPU path directly
+against `Motor3`; at or above it, `TransformBatchKernel` dispatches through
+`compute-driver`. Either way the math is the same `Motor3` geometric product
+— only the execution backend changes, and `gac-core` never has to know which
+one is running.
 
 See [ADR 001](adr/001-geometric-algebra-as-spatial-model.md) for why PGA was
 chosen over quaternions + matrices.

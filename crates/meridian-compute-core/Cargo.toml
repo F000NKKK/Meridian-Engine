@@ -11,3 +11,4 @@ description = "Shared compute scheduling and buffer management for subsystems th
 meridian-compute-driver = { workspace = true }
 meridian-task-core = { workspace = true }
 meridian-memory-core = { workspace = true }
+meridian-gac-core = { workspace = true }
