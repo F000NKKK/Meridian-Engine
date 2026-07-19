@@ -22,13 +22,18 @@
 //! This is deterministic-simulation opt-in, not the default —
 //! `float_ga`'s `Motor3` (`f32`) remains the everyday, GPU-dispatchable
 //! pose type for everything else (rendering, ECS, audio, and
-//! `physics-core`'s own default `RigidBody`). But it's *usable by any
-//! crate* that needs CPU-deterministic geometry (`physics-core`'s
-//! `DeterministicBody` today, potentially a deterministic
-//! `graphics-core` CPU path or a large precise CPU/GPU-emulated
-//! simulation later) — that reusability is exactly why the primitives
-//! below live here in `gac-core`, not inside `physics-core`, the same
-//! reason `float_ga`'s primitives aren't `physics-core`-local either.
+//! `physics-core`'s own default `float::RigidBody`). But it's *usable by
+//! any crate* that needs CPU-deterministic geometry (`physics-core`'s
+//! `fixed::RigidBody` today, potentially a deterministic `graphics-core`
+//! CPU path or a large precise CPU/GPU-emulated simulation later) —
+//! that reusability is exactly why the primitives below live here in
+//! `gac-core`, not inside `physics-core`, the same reason `float_ga`'s
+//! primitives aren't `physics-core`-local either. `physics-core`'s own
+//! engine (`RigidBody`/`BroadPhase`/`NarrowPhase`/`ConstraintSolver`/
+//! `Integrator`) goes a step further: it has no GPU-dispatch constraint
+//! of its own at all, so it's written once, generic over
+//! `crate::generic::GaFlavor`, rather than duplicated like `float_ga`/
+//! `fixed_ga` are here.
 
 use core::ops::{Add, Mul, Neg, Sub};
 use meridian_numeric_core::Fixed;
@@ -198,6 +203,14 @@ impl FixedVec3 {
 
     pub fn dot(self, rhs: FixedVec3) -> Fixed {
         self.x * rhs.x + self.y * rhs.y + self.z * rhs.z
+    }
+
+    pub fn cross(self, rhs: FixedVec3) -> FixedVec3 {
+        FixedVec3::new(
+            self.y * rhs.z - self.z * rhs.y,
+            self.z * rhs.x - self.x * rhs.z,
+            self.x * rhs.y - self.y * rhs.x,
+        )
     }
 
     pub fn length_squared(self) -> Fixed {
@@ -419,7 +432,7 @@ impl FixedMotor3 {
 // ---- GaFlavor: lets generic code be written once against `f32` and
 // `Fixed` both. See `float_ga`'s matching section for the pattern.
 
-use crate::{BivectorLike, GaFlavor, MotorLike, RotorLike, ScalarLike, VectorLike};
+use crate::generic::{BivectorLike, GaFlavor, MotorLike, RotorLike, ScalarLike, VectorLike};
 
 /// The deterministic GA flavor: `Fixed`-backed. See the crate root doc
 /// comment for what "flavor" means here.
@@ -430,6 +443,7 @@ impl ScalarLike for Fixed {
     const ZERO: Self = Fixed::ZERO;
     const ONE: Self = Fixed::ONE;
     const EPSILON: Self = FIXED_EPSILON;
+    const MAX: Self = Fixed::MAX;
 
     fn from_f64(v: f64) -> Self {
         Fixed::from_num(v)
@@ -446,8 +460,17 @@ impl ScalarLike for Fixed {
     fn signum(self) -> Self {
         self.signum()
     }
+    fn abs(self) -> Self {
+        self.abs()
+    }
+    fn min(self, other: Self) -> Self {
+        self.min(other)
+    }
     fn max(self, other: Self) -> Self {
         self.max(other)
+    }
+    fn clamp(self, lo: Self, hi: Self) -> Self {
+        self.clamp(lo, hi)
     }
 }
 
@@ -470,6 +493,9 @@ impl VectorLike for FixedVec3 {
     }
     fn dot(self, rhs: Self) -> Fixed {
         self.dot(rhs)
+    }
+    fn cross(self, rhs: Self) -> Self {
+        self.cross(rhs)
     }
     fn length(self) -> Fixed {
         self.length()
@@ -560,7 +586,7 @@ impl GaFlavor for FixedFlavor {
 /// A single point, treated as a degenerate shape — see
 /// `float_ga`'s matching impl for why this is concrete, not a blanket
 /// impl in `lib.rs`.
-impl crate::Shape<FixedFlavor> for FixedVec3 {
+impl crate::generic::Shape<FixedFlavor> for FixedVec3 {
     fn support(&self, _direction: FixedVec3) -> FixedVec3 {
         *self
     }
@@ -569,13 +595,13 @@ impl crate::Shape<FixedFlavor> for FixedVec3 {
 // ---- Thin aliases for the generic primitives in `crate::lib`. See
 // `float_ga`'s matching section for the full rationale. ----
 
-pub type FixedFrame = crate::Frame<FixedFlavor>;
-pub type FixedAabb = crate::Aabb<FixedFlavor>;
-pub type FixedSphere = crate::Sphere<FixedFlavor>;
-pub type FixedObb = crate::Obb<FixedFlavor>;
-pub type FixedCone = crate::Cone<FixedFlavor>;
-pub type FixedPlane = crate::Plane<FixedFlavor>;
-pub type FixedConvexVolume = crate::ConvexVolume<FixedFlavor>;
+pub type FixedFrame = crate::generic::Frame<FixedFlavor>;
+pub type FixedAabb = crate::generic::Aabb<FixedFlavor>;
+pub type FixedSphere = crate::generic::Sphere<FixedFlavor>;
+pub type FixedObb = crate::generic::Obb<FixedFlavor>;
+pub type FixedCone = crate::generic::Cone<FixedFlavor>;
+pub type FixedPlane = crate::generic::Plane<FixedFlavor>;
+pub type FixedConvexVolume = crate::generic::ConvexVolume<FixedFlavor>;
 
 // ---- Cross-flavor interop with `crate::float_ga` ----
 //
@@ -627,8 +653,8 @@ impl FixedMotor3 {
     /// Deliberate precision-changing cast to the default flavor —
     /// component-wise across the underlying multivector, not a
     /// re-derivation through rotation/translation. The way a
-    /// `DeterministicBody`'s pose reaches rendering/ECS/audio, which stay
-    /// `f32` regardless of which physics path produced the pose.
+    /// `physics-core::fixed::RigidBody`'s pose reaches rendering/ECS/audio,
+    /// which stay `f32` regardless of which physics path produced the pose.
     pub fn to_float_lossy(self) -> Motor3 {
         let mut out = [0.0f32; 16];
         for (dst, src) in out.iter_mut().zip(self.0.0) {
@@ -663,7 +689,7 @@ impl Mul<Scalar> for FixedVec3 {
 mod tests {
     use super::*;
     use crate::float_ga as float;
-    use crate::float_ga::Shape as _;
+    use crate::generic::Shape as _;
 
     fn fv3(x: f64, y: f64, z: f64) -> FixedVec3 {
         FixedVec3::new(Fixed::from_num(x), Fixed::from_num(y), Fixed::from_num(z))

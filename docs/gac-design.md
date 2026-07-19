@@ -5,35 +5,54 @@ subsystem builds on. It plays the role glm/Eigen/DirectXMath play in other
 engines, but is built around geometric algebra (specifically PGA — projective
 geometric algebra — for 3D rigid transforms) instead of raw matrices.
 
-## `float_ga` and `fixed_ga`
+## `float_ga`, `fixed_ga`, and `generic`
 
-Two GA modules, both re-exported: `float_ga` (`f32`, `Scalar` — the
-default; re-exported at the crate root, so `meridian_gac_core::Vec3`/
-`Motor3`/etc. resolve to it unchanged) and `fixed_ga` (`Fixed`, Q16.16
-fixed-point from `meridian-numeric-core` — deterministic, opt-in). Each is
-**self-contained**: algebra (`Multivector`/`Vec3`/`Bivector3`/`Rotor`/
-`Motor3`) *and* geometric primitives (`Aabb`/`Sphere`/`Obb`/`Cone`/
-`Plane`/`Shape`/`ConvexVolume`) both exist in both flavors
-(`FixedAabb`/`FixedSphere`/`FixedObb`/`FixedCone`/`FixedPlane`/
-`FixedShape`/`FixedConvexVolume` in `fixed_ga`). Neither flavor is
-`physics-core`-local or owned by whichever crate needed it first — a
-`Fixed`-based CPU-deterministic simulation for *any* subsystem
-(`graphics-core`, a large precise CPU/GPU-emulated simulation, not just
-`physics-core::deterministic`) can reach for `fixed_ga`'s primitives
-directly, the same way any subsystem already reaches for `float_ga`'s.
-`Projection` has no `Fixed` equivalent — it feeds a GPU pipeline directly,
-which is `f32`-only regardless of which scalar type produced the camera's
-pose (see [ADR 008](adr/008-fixed-point-determinism.md)).
-
-`fixed_ga` is a disclosed, one-for-one duplication of `float_ga`'s
-structure, not a generic `Motor3<S>`/`Shape<S>` — see
-[ADR 008](adr/008-fixed-point-determinism.md) for why: `gac-compute`'s GPU
+Three modules. `float_ga` (`f32`, `Scalar` — the default; re-exported at
+the crate root, so `meridian_gac_core::Vec3`/`Motor3`/`Aabb`/etc. resolve
+to it unchanged) and `fixed_ga` (`Fixed`, Q16.16 fixed-point from
+`meridian-numeric-core` — deterministic, opt-in) each hold a concretely
+duplicated **algebra**: `Multivector`/`Vec3`/`Bivector3`/`Rotor`/`Motor3`
+in `float_ga`, `FixedMultivector`/`FixedVec3`/`FixedBivector3`/
+`FixedRotor`/`FixedMotor3` in `fixed_ga`. This pair *is* a deliberate,
+disclosed duplication — see [ADR 008](adr/008-fixed-point-determinism.md)
+for why a generic `Motor3<S>` wasn't used instead: `gac-compute`'s GPU
 dispatch path has no good answer for fixed-point regardless (GPUs are
 `f32`-native, no real `i64`), so the duplication a generic type would
 avoid still has to exist at the GPU-relevant instantiation site. The pure
 integer bitmask `blade` module (shared by both `Multivector` types — it
 doesn't depend on the scalar type at all) lives once at the crate root,
 not duplicated.
+
+Geometric **primitives** — `Aabb`/`Sphere`/`Obb`/`Cone`/`Plane`/`Shape`/
+`ConvexVolume`/`Projection`/`Frame` — have no such constraint: an AABB
+overlap test or a projection-matrix derivation is the same sequence of
+operations regardless of scalar type, so they're written **once**,
+generic over `generic::GaFlavor` (an associated-type bundle of
+`ScalarLike`/`VectorLike`/`BivectorLike`/`RotorLike`/`MotorLike`, each a
+thin trait naming the operations generic code needs — implemented by
+forwarding to `float_ga`/`fixed_ga`'s own inherent methods, not
+reimplemented). `float_ga`/`fixed_ga` each expose thin type aliases over
+`generic`'s definitions (`float_ga::Aabb = generic::Aabb<FloatFlavor>`,
+`fixed_ga::FixedAabb = generic::Aabb<FixedFlavor>`, ...), so existing call
+sites don't need to think about the generic parameter — only code that
+wants to *be* generic over the flavor (like `physics-core`'s own engine;
+see docs/physics-design.md) reaches into `generic` directly. `generic` is
+deliberately its own module rather than living directly in `lib.rs`: a
+locally-defined item always shadows a same-named glob-imported item in
+Rust, so `Aabb<F>` at the crate root next to `pub use float_ga::*;` would
+silently shadow `float_ga::Aabb`'s re-export and break every existing
+unparameterized `meridian_gac_core::Aabb` call site — caught during the
+genericization pass, fixed by moving the generic definitions out of
+`lib.rs` into their own namespace. Neither flavor's primitives are
+`physics-core`-local or owned by whichever crate needed them first — a
+`Fixed`-based CPU-deterministic simulation for *any* subsystem
+(`graphics-core`, a large precise CPU/GPU-emulated simulation, not just
+`physics-core::fixed`) can reach for `fixed_ga`'s primitives directly, the
+same way any subsystem already reaches for `float_ga`'s. `Projection` has
+no meaningfully different `Fixed` behavior — it's generic like every
+other primitive here, but most consumers only ever build a `FloatFlavor`
+one, since a GPU pipeline needs `f32` uniforms regardless of which flavor
+computed the camera's pose (via `to_float_lossy`).
 
 ### Cross-flavor interop
 

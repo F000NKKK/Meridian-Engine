@@ -533,11 +533,10 @@ impl Motor3 {
     }
 }
 
-
 // ---- GaFlavor: lets generic code (this crate's primitives, physics-core's
 // engine) be written once against `f32` and `Fixed` both ----
 
-use crate::{BivectorLike, GaFlavor, MotorLike, RotorLike, ScalarLike, VectorLike};
+use crate::generic::{BivectorLike, GaFlavor, MotorLike, RotorLike, ScalarLike, VectorLike};
 
 /// The default GA flavor: `f32`-backed, GPU-dispatchable. See the crate
 /// root doc comment for what "flavor" means here.
@@ -548,6 +547,7 @@ impl ScalarLike for Scalar {
     const ZERO: Self = 0.0;
     const ONE: Self = 1.0;
     const EPSILON: Self = meridian_numeric_core::EPSILON;
+    const MAX: Self = f32::MAX;
 
     fn from_f64(v: f64) -> Self {
         v as f32
@@ -564,8 +564,17 @@ impl ScalarLike for Scalar {
     fn signum(self) -> Self {
         self.signum()
     }
+    fn abs(self) -> Self {
+        self.abs()
+    }
+    fn min(self, other: Self) -> Self {
+        self.min(other)
+    }
     fn max(self, other: Self) -> Self {
         self.max(other)
+    }
+    fn clamp(self, lo: Self, hi: Self) -> Self {
+        self.clamp(lo, hi)
     }
 }
 
@@ -588,6 +597,9 @@ impl VectorLike for Vec3 {
     }
     fn dot(self, rhs: Self) -> Scalar {
         self.dot(rhs)
+    }
+    fn cross(self, rhs: Self) -> Self {
+        self.cross(rhs)
     }
     fn length(self) -> Scalar {
         self.length()
@@ -680,7 +692,7 @@ impl GaFlavor for FloatFlavor {
 /// be a blanket `impl<F: GaFlavor> Shape<F> for F::Vector` in `lib.rs` for
 /// coherence reasons (see the comment there), so it's concrete per flavor
 /// instead.
-impl crate::Shape<FloatFlavor> for Vec3 {
+impl crate::generic::Shape<FloatFlavor> for Vec3 {
     fn support(&self, _direction: Vec3) -> Vec3 {
         *self
     }
@@ -698,14 +710,14 @@ impl crate::Shape<FloatFlavor> for Vec3 {
 // generic parameters as `S: meridian_gac_core::Shape<FloatFlavor>`
 // directly (`meridian_gac_core::Shape` and `FloatFlavor` are both already
 // re-exported at the crate root).
-pub type Frame = crate::Frame<FloatFlavor>;
-pub type Aabb = crate::Aabb<FloatFlavor>;
-pub type Sphere = crate::Sphere<FloatFlavor>;
-pub type Obb = crate::Obb<FloatFlavor>;
-pub type Cone = crate::Cone<FloatFlavor>;
-pub type Plane = crate::Plane<FloatFlavor>;
-pub type ConvexVolume = crate::ConvexVolume<FloatFlavor>;
-pub type Projection = crate::Projection<FloatFlavor>;
+pub type Frame = crate::generic::Frame<FloatFlavor>;
+pub type Aabb = crate::generic::Aabb<FloatFlavor>;
+pub type Sphere = crate::generic::Sphere<FloatFlavor>;
+pub type Obb = crate::generic::Obb<FloatFlavor>;
+pub type Cone = crate::generic::Cone<FloatFlavor>;
+pub type Plane = crate::generic::Plane<FloatFlavor>;
+pub type ConvexVolume = crate::generic::ConvexVolume<FloatFlavor>;
+pub type Projection = crate::generic::Projection<FloatFlavor>;
 
 // ---- Cross-flavor interop with `crate::fixed_ga` ----
 //
@@ -797,6 +809,7 @@ impl Mul<Fixed> for Vec3 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::generic::Shape;
     use core::f32::consts::PI;
 
     fn assert_vec3_approx(a: Vec3, b: Vec3) {
