@@ -236,63 +236,6 @@ impl BackendCapabilities for Device {
     }
 }
 
-/// Re-requests the adapter behind an already-constructed
-/// [`meridian_gpu_driver::Device`], for [`Surface::get_capabilities`]'s
-/// sake. `wgpu` associates a surface's format capabilities with the
-/// adapter, not the device, and `meridian_gpu_driver::Device` doesn't
-/// expose the adapter it was built from (its own job ends at
-/// device/queue) — this is a cheap, deterministic re-request (adapter
-/// enumeration is not the expensive/unbounded part of GPU acquisition;
-/// [`meridian_gpu_driver::Device::new_windowed`] already did the real
-/// work of picking a *specific* adapter compatible with this surface, and
-/// `wgpu`/the platform driver will enumerate the identical adapter set
-/// again here), not a second real handshake.
-fn find_adapter_for(device: &meridian_gpu_driver::Device) -> wgpu::Adapter {
-    // `wgpu::Device` doesn't expose its originating adapter directly
-    // either, so this goes through the same instance/adapter-request path
-    // `meridian_gpu_driver::Device::new` uses, filtered by adapter name to
-    // recover the exact one already in use.
-    pollster_lite::block_on(async {
-        let instance =
-            wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle_from_env());
-        let adapters = instance.enumerate_adapters(wgpu::Backends::all());
-        adapters
-            .into_iter()
-            .find(|a| a.get_info().name == device.adapter_name())
-            .expect("the adapter behind an existing Device must still enumerate")
-    })
-}
-
-mod pollster_lite {
-    //! A minimal, local `block_on` for the one non-I/O-bound async call in
-    //! this crate ([`super::find_adapter_for`]'s adapter re-enumeration) —
-    //! not a general bridging mechanism (see
-    //! [ADR 009](../../../docs/adr/009-async-io-via-tokio.md): real I/O
-    //! stays `async fn` and is driven by the caller's own `tokio` runtime;
-    //! this exists only because `wgpu::Instance::enumerate_adapters`/
-    //! adapter info access here happens to run inside a sync fn that
-    //! itself isn't part of this crate's own async surface).
-    use std::future::Future;
-    use std::task::{Context, Poll, RawWaker, RawWakerVTable, Waker};
-
-    pub fn block_on<F: Future>(mut fut: F) -> F::Output {
-        fn noop(_: *const ()) {}
-        fn clone(_: *const ()) -> RawWaker {
-            RawWaker::new(std::ptr::null(), &VTABLE)
-        }
-        static VTABLE: RawWakerVTable = RawWakerVTable::new(clone, noop, noop, noop);
-        let waker = unsafe { Waker::from_raw(RawWaker::new(std::ptr::null(), &VTABLE)) };
-        let mut cx = Context::from_waker(&waker);
-        // SAFETY: `fut` is not moved after being pinned on the stack here.
-        let mut fut = unsafe { std::pin::Pin::new_unchecked(&mut fut) };
-        loop {
-            if let Poll::Ready(out) = fut.as_mut().poll(&mut cx) {
-                return out;
-            }
-        }
-    }
-}
-
 /// A recorded, submittable sequence of GPU commands. Wraps
 /// [`meridian_gpu_driver::CommandBuffer`], adding
 /// [`CommandBuffer::begin_render_pass`] — the graphics-specific recording
