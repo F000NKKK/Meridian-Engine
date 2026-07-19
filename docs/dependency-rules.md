@@ -85,7 +85,11 @@ on `meridian-gac-core` and `meridian-audio-driver`; see each crate's own
    depend on `ecs-core`, `graphics-core`, or `engine-core`. Its job ends at
    "file bytes → decoder → CPU-side representation"; deciding where that
    representation lives and when it dies is the application's problem, not
-   this crate's.
+   this crate's. Concretely: a loader function returns `CpuMeshData` (or
+   equivalent), never a `MeshHandle`/`ResourceId` — minting a handle is
+   `resource-core`'s job (rule 8), and an asset-core function that returns
+   one would mean asset-core deciding runtime identity/lifetime, exactly
+   what this rule exists to keep out of it.
 5. **`meridian-compute-runtime` is the only path to CPU-SIMD/GPU-compute
    for subsystem crates.** `physics-core` and `graphics-core` reach compute
    through `compute-runtime` (directly, or via an adapter crate like
@@ -124,9 +128,12 @@ on `meridian-gac-core` and `meridian-audio-driver`; see each crate's own
     [ADR 007](adr/007-batch-transforms-via-compute.md).
 11. **No domain-specific GPU/SIMD algorithm may live in
     `meridian-compute-runtime`.** It owns dispatch mechanics only
-    (`ComputeContext`, `ComputeKernel`, buffers, scheduling) and must never
-    grow a kernel that encodes what a `Motor3`, a particle, or a rigid body
-    is. Every domain that needs batched compute gets its own
+    (`ComputeContext`, `ComputeKernel`, buffers, and *dispatch ordering
+    within a compute submission* — not general engine task scheduling,
+    which stays `task-core`'s job; see
+    [threading-model.md](threading-model.md)) and must never grow a kernel
+    that encodes what a `Motor3`, a particle, or a rigid body is. Every
+    domain that needs batched compute gets its own
     `meridian-<domain>-compute` adapter crate — `gac-compute` today,
     `particle-compute`/`physics-compute`/`ai-compute` as they're needed —
     depending on that domain's `*-core` plus `compute-runtime`, per rule 10.

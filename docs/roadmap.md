@@ -22,7 +22,20 @@ priority before writing implementations is keeping that document and the
 1. `meridian-foundation`, `meridian-numeric-core` — scalar/SIMD groundwork
    everything else depends on.
 2. `meridian-gac-core` — motors, rotors, transforms. Nothing above this
-   layer can be meaningfully tested without it.
+   layer can be meaningfully tested without it. Build it bottom-up and
+   validate before moving on: `Vec3` → `Rotor3` → `Motor3` → a parent/child
+   transform-hierarchy composition test, *then* wire `Transform` into
+   `ecs-core` (step 5) — not the other way around. `ecs-core` should
+   consume a `Motor3` API already proven to compose and invert correctly,
+   not be the place that API gets debugged.
+
+   **Milestone before continuing to step 3:** a standalone example
+   exercising `Vec3`/`Rotor3`/`Motor3` — compose two transforms, invert
+   one, propagate a parent → child transform, and check the result against
+   a hand-computed expectation. This is the highest-risk layer in the
+   workspace (see [ADR 001](adr/001-geometric-algebra-as-spatial-model.md));
+   if the `Motor3` API is awkward to use, better to find out here than
+   after `ecs-core`/`physics-core`/`graphics-core` have all built on it.
 3. `meridian-memory-core`, `meridian-task-core`, `meridian-platform-core` —
    in parallel, no interdependency.
 4. `meridian-resource-core` — typed handles on top of `memory-core`'s

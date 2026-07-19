@@ -23,10 +23,11 @@ pub trait ComputeKernel {
     fn dispatch(&self, context: &ComputeContext, size: DispatchSize);
 }
 
-/// Schedules `ComputeKernel` dispatches across whichever `compute-driver`
-/// backend is active. CPU-vs-GPU dispatch policy (e.g. a batch-size
-/// threshold) is a scheduling decision, not a fixed constant — it belongs
-/// here as configurable state once the scheduler is implemented, not as a
-/// hardcoded value domain crates read.
+/// Orders and dispatches `ComputeKernel` submissions across whichever
+/// `compute-driver` backend is active — command/queue-level ordering
+/// within a compute submission, not general engine task scheduling (that's
+/// `task-core`'s job; see docs/threading-model.md). CPU-vs-GPU dispatch
+/// policy (e.g. a batch-size threshold) belongs here as configurable state
+/// once this is implemented, not as a hardcoded value domain crates read.
 #[derive(Debug, Default)]
 pub struct ComputeScheduler;

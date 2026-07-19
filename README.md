@@ -23,7 +23,7 @@ meridian-asset-core      image/mesh/audio/shader loading & decoding
 meridian-ecs-core        archetype ECS, SoA storage
 meridian-graphics-driver low-level GPU device abstraction
 meridian-audio-driver    low-level audio device abstraction
-meridian-physics-driver  low-level broad-phase / spatial structures
+meridian-physics-driver  low-level physics execution backend (memory, SIMD/GPU dispatch, sync)
 meridian-graphics-core   render graph, culling, lighting, materials, camera
 meridian-physics-core    broad/narrow phase collision, constraint solver
 meridian-audio-core      spatial mixer, DSP graph, listener/emitter
