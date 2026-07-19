@@ -17,22 +17,42 @@ BVH/spatial-hashing are how physics *reasons about space*, not how it
 Real, tested (not stub) as of this writing:
 
 ```text
-Geometry              Sphere only (ColliderShape) — box/capsule/mesh later
+Geometry              Sphere, Cuboid (ColliderShape) — capsule/mesh later
 Broad Phase           Naive O(n²) AABB sweep — spatial hash/BVH once profiling calls for it
-Narrow Phase          Sphere-sphere exact test — GJK/EPA/SAT once more shapes exist
+Narrow Phase          Sphere-sphere, sphere-cuboid, cuboid-cuboid (SAT) exact tests
 Constraint Solver     Impulse-based + positional correction against sinking
 Integration           Semi-implicit Euler
 ```
 
 `Aabb` (used by `BroadPhase`) is `gac-core`'s primitive, not a physics-local
-type — see docs/gac-design.md. `ColliderShape::Sphere` currently stores
-only a `radius`; its center comes from `RigidBody::frame`, so it isn't
-`gac-core::Sphere` itself (which pairs a radius with its own `center`).
-Adding a second collider shape (box, capsule) is the natural point to
-revisit whether narrow-phase should route through `gac-core`'s generic
-`Shape`/`ConvexVolume` machinery instead of the current analytic
-sphere-sphere formula — not done now since there's only one shape to test
-against itself.
+type — see docs/gac-design.md. `ColliderShape::Sphere` still stores only a
+`radius` (its center comes from `RigidBody::frame`, so it isn't
+`gac-core::Sphere` itself, which pairs a radius with its own `center`).
+`ColliderShape::Cuboid` stores only `half_extents`; `RigidBody::as_obb`
+builds the world-space `gac-core::Obb` on demand from the body's own
+`frame` — no second orientation to keep in sync (see docs/gac-design.md's
+note on `Obb`'s `frame: Motor3` field).
+
+Narrow phase does *not* go through `gac-core`'s generic `Shape`/
+`ConvexVolume` machinery for collision detection itself (that machinery
+answers "is X inside this convex region", a boolean/containment question —
+narrow phase needs a contact point, normal *and* penetration depth, which
+is a different, harder problem). What it does reuse from `Shape`:
+`RigidBody::aabb_of`'s broad-phase bound (`Obb::support` along each world
+axis) and cuboid-cuboid's contact point (`Obb::support` along the chosen
+SAT axis from each box) — both genuinely the same "any convex shape, one
+interface" idea, just not the boolean containment test. Sphere-cuboid uses
+a closest-point-on-box formula; cuboid-cuboid uses the separating axis
+theorem (SAT: 6 face-normal axes + 9 edge-cross-product axes for a box
+pair) — the two techniques `roadmap.md` already anticipated for this step.
+Both produce a single contact point, matching `Contact`'s existing
+single-point shape (no multi-point manifold) — the same simplification
+`ConstraintSolver`'s doc comment already discloses for its angular
+response. `RigidBody::moment_of_inertia` for `Cuboid` is the average of
+the box's three true principal moments, not the full anisotropic tensor —
+disclosed on that method's own doc comment, needed because
+`ConstraintSolver` only has a single scalar `inverse_inertia` to work
+with, not per-axis.
 
 ## `RigidBody` uses the GAC frame, not a bespoke transform
 
