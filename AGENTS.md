@@ -198,6 +198,17 @@ Workflow:
    crates must remain layered.
 4. Run relevant examples with `./build.sh run <example>` when changed.
 
+## Commit discipline
+
+Keep changes coherent. If code and docs both need updates, commit them
+together. Use commit messages that name the affected boundary or subsystem
+(e.g. `gac-core`, `ecs-core`, `docs`). Do not leave workspace status dirty
+unless explicitly asked.
+
+Do not add the AI agent as a co-author of a commit. Commit messages must not
+include a `Co-Authored-By` (or equivalent) line attributing the commit to
+Claude or any other AI agent.
+
 ## Coding and testing expectations
 
 - Use Rust 2024 and the workspace Rust version from `Cargo.toml`.

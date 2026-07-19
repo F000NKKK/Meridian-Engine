@@ -146,3 +146,7 @@ Run changed examples through `./build.sh run <example>`.
 Keep changes coherent. If code and docs both need updates, commit them together.
 Use commit messages that name the affected boundary or subsystem. Do not leave
 workspace status dirty unless explicitly asked.
+
+Do not add the AI agent as a co-author of a commit. Commit messages must not
+include a `Co-Authored-By` (or equivalent) line attributing the commit to
+Claude or any other AI agent.
