@@ -416,190 +416,6 @@ impl FixedMotor3 {
     }
 }
 
-/// Mirrors [`crate::float_ga::Shape`].
-pub trait FixedShape {
-    fn support(&self, direction: FixedVec3) -> FixedVec3;
-}
-
-/// Mirrors [`crate::float_ga::Shape`]'s `impl for Vec3`.
-impl FixedShape for FixedVec3 {
-    fn support(&self, _direction: FixedVec3) -> FixedVec3 {
-        *self
-    }
-}
-
-/// Mirrors [`crate::float_ga::Aabb`].
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
-pub struct FixedAabb {
-    pub min: FixedVec3,
-    pub max: FixedVec3,
-}
-
-impl FixedAabb {
-    pub fn from_sphere(center: FixedVec3, radius: Fixed) -> Self {
-        let r = FixedVec3::new(radius, radius, radius);
-        Self {
-            min: center - r,
-            max: center + r,
-        }
-    }
-
-    /// An axis-aligned cube: equal half-extent on every axis.
-    pub fn cube(center: FixedVec3, half_extent: Fixed) -> Self {
-        Self::from_sphere(center, half_extent)
-    }
-
-    pub fn overlaps(&self, other: &FixedAabb) -> bool {
-        self.min.x <= other.max.x
-            && self.max.x >= other.min.x
-            && self.min.y <= other.max.y
-            && self.max.y >= other.min.y
-            && self.min.z <= other.max.z
-            && self.max.z >= other.min.z
-    }
-}
-
-impl FixedShape for FixedAabb {
-    fn support(&self, direction: FixedVec3) -> FixedVec3 {
-        FixedVec3::new(
-            if direction.x >= Fixed::ZERO {
-                self.max.x
-            } else {
-                self.min.x
-            },
-            if direction.y >= Fixed::ZERO {
-                self.max.y
-            } else {
-                self.min.y
-            },
-            if direction.z >= Fixed::ZERO {
-                self.max.z
-            } else {
-                self.min.z
-            },
-        )
-    }
-}
-
-/// Mirrors [`crate::float_ga::Sphere`].
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
-pub struct FixedSphere {
-    pub center: FixedVec3,
-    pub radius: Fixed,
-}
-
-impl FixedShape for FixedSphere {
-    fn support(&self, direction: FixedVec3) -> FixedVec3 {
-        self.center + direction.normalize() * self.radius
-    }
-}
-
-/// Mirrors [`crate::float_ga::Obb`].
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
-pub struct FixedObb {
-    pub frame: FixedMotor3,
-    pub half_extents: FixedVec3,
-}
-
-impl FixedObb {
-    /// An oriented cube: equal half-extent on every axis.
-    pub fn cube(frame: FixedMotor3, half_extent: Fixed) -> Self {
-        Self {
-            frame,
-            half_extents: FixedVec3::new(half_extent, half_extent, half_extent),
-        }
-    }
-}
-
-impl FixedShape for FixedObb {
-    fn support(&self, direction: FixedVec3) -> FixedVec3 {
-        let local_direction = self.frame.inverse().transform_vector(direction);
-        let local_support = FixedVec3::new(
-            self.half_extents.x * local_direction.x.signum(),
-            self.half_extents.y * local_direction.y.signum(),
-            self.half_extents.z * local_direction.z.signum(),
-        );
-        self.frame.transform_point(local_support)
-    }
-}
-
-/// Mirrors [`crate::float_ga::Cone`].
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct FixedCone {
-    pub apex: FixedVec3,
-    pub axis: FixedVec3,
-    pub half_angle: Fixed,
-    pub height: Fixed,
-}
-
-impl FixedShape for FixedCone {
-    fn support(&self, direction: FixedVec3) -> FixedVec3 {
-        let base_center = self.apex + self.axis * self.height;
-        let base_radius = self.height * self.half_angle.tan();
-
-        let along_axis = direction.dot(self.axis);
-        let perpendicular = direction - self.axis * along_axis;
-        let perpendicular_len = perpendicular.length();
-
-        let rim_point = if perpendicular_len > FIXED_EPSILON {
-            base_center + perpendicular * (base_radius / perpendicular_len)
-        } else {
-            base_center
-        };
-
-        if direction.dot(self.apex) >= direction.dot(rim_point) {
-            self.apex
-        } else {
-            rim_point
-        }
-    }
-}
-
-/// Mirrors [`crate::float_ga::Plane`].
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct FixedPlane {
-    pub normal: FixedVec3,
-    pub d: Fixed,
-}
-
-impl FixedPlane {
-    pub fn normalize(self) -> Self {
-        let len = self.normal.length();
-        FixedPlane {
-            normal: FixedVec3::new(
-                self.normal.x / len,
-                self.normal.y / len,
-                self.normal.z / len,
-            ),
-            d: self.d / len,
-        }
-    }
-
-    pub fn distance(&self, p: FixedVec3) -> Fixed {
-        self.normal.dot(p) + self.d
-    }
-
-    pub fn contains<S: FixedShape>(&self, shape: &S) -> bool {
-        self.distance(shape.support(self.normal)) >= Fixed::ZERO
-    }
-}
-
-/// Mirrors [`crate::float_ga::ConvexVolume`].
-#[derive(Debug, Clone, Default)]
-pub struct FixedConvexVolume {
-    pub planes: Vec<FixedPlane>,
-}
-
-impl FixedConvexVolume {
-    pub fn new(planes: Vec<FixedPlane>) -> Self {
-        Self { planes }
-    }
-
-    pub fn intersects<S: FixedShape>(&self, shape: &S) -> bool {
-        self.planes.iter().all(|plane| plane.contains(shape))
-    }
-}
-
 // ---- GaFlavor: lets generic code be written once against `f32` and
 // `Fixed` both. See `float_ga`'s matching section for the pattern.
 
@@ -740,6 +556,26 @@ impl GaFlavor for FixedFlavor {
     type Rotor = FixedRotor;
     type Motor = FixedMotor3;
 }
+
+/// A single point, treated as a degenerate shape — see
+/// `float_ga`'s matching impl for why this is concrete, not a blanket
+/// impl in `lib.rs`.
+impl crate::Shape<FixedFlavor> for FixedVec3 {
+    fn support(&self, _direction: FixedVec3) -> FixedVec3 {
+        *self
+    }
+}
+
+// ---- Thin aliases for the generic primitives in `crate::lib`. See
+// `float_ga`'s matching section for the full rationale. ----
+
+pub type FixedFrame = crate::Frame<FixedFlavor>;
+pub type FixedAabb = crate::Aabb<FixedFlavor>;
+pub type FixedSphere = crate::Sphere<FixedFlavor>;
+pub type FixedObb = crate::Obb<FixedFlavor>;
+pub type FixedCone = crate::Cone<FixedFlavor>;
+pub type FixedPlane = crate::Plane<FixedFlavor>;
+pub type FixedConvexVolume = crate::ConvexVolume<FixedFlavor>;
 
 // ---- Cross-flavor interop with `crate::float_ga` ----
 //

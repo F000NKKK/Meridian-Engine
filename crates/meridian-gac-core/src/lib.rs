@@ -218,15 +218,14 @@ pub trait Shape<F: GaFlavor> {
     fn support(&self, direction: F::Vector) -> F::Vector;
 }
 
-/// A single point, treated as a degenerate shape: its own support point
-/// regardless of direction. Lets a single position be tested against a
-/// [`Plane`]/[`ConvexVolume`] with the same generic code as any other
-/// [`Shape`].
-impl<F: GaFlavor> Shape<F> for F::Vector {
-    fn support(&self, _direction: F::Vector) -> F::Vector {
-        *self
-    }
-}
+// A blanket `impl<F: GaFlavor> Shape<F> for F::Vector` (treating a point
+// as a degenerate shape) is deliberately *not* here: Rust's coherence
+// checker can't prove `F::Vector` is disjoint from `Aabb<F>`/`Sphere<F>`/
+// etc. for every possible future `GaFlavor` impl, so it conflicts with
+// the `Shape<F>` impls below. `float_ga`/`fixed_ga` each provide their
+// own concrete `impl Shape<FloatFlavor> for Vec3`/
+// `impl Shape<FixedFlavor> for FixedVec3` instead — the same
+// "a point is a degenerate shape" behavior, just per-flavor.
 
 /// An axis-aligned bounding box: plain spatial-extent math with no domain
 /// meaning of its own, shared by every subsystem that needs a cheap

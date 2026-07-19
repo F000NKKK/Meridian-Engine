@@ -675,6 +675,17 @@ impl GaFlavor for FloatFlavor {
     type Motor = Motor3;
 }
 
+/// A single point, treated as a degenerate shape: its own support point
+/// regardless of direction. See `crate::Shape`'s doc comment; this can't
+/// be a blanket `impl<F: GaFlavor> Shape<F> for F::Vector` in `lib.rs` for
+/// coherence reasons (see the comment there), so it's concrete per flavor
+/// instead.
+impl crate::Shape<FloatFlavor> for Vec3 {
+    fn support(&self, _direction: Vec3) -> Vec3 {
+        *self
+    }
+}
+
 // ---- Thin aliases for the generic primitives in `crate::lib` ----
 //
 // `Frame`/`Shape`/`Aabb`/`Sphere`/`Obb`/`Cone`/`Plane`/`ConvexVolume`/
@@ -682,8 +693,12 @@ impl GaFlavor for FloatFlavor {
 // crate root doc comment for why) — these aliases are what let existing
 // call sites keep writing `meridian_gac_core::Aabb` etc. unchanged.
 
+// `Shape` itself can't get a same-style alias (`Shape<F>` is a trait, and
+// Rust's stable trait aliases don't exist yet) — downstream code bounds
+// generic parameters as `S: meridian_gac_core::Shape<FloatFlavor>`
+// directly (`meridian_gac_core::Shape` and `FloatFlavor` are both already
+// re-exported at the crate root).
 pub type Frame = crate::Frame<FloatFlavor>;
-pub type Shape = dyn crate::Shape<FloatFlavor>;
 pub type Aabb = crate::Aabb<FloatFlavor>;
 pub type Sphere = crate::Sphere<FloatFlavor>;
 pub type Obb = crate::Obb<FloatFlavor>;
