@@ -133,8 +133,8 @@ mod tests {
     fn capabilities_report_at_least_one_cpu_thread_and_no_gpu() {
         let device = ComputeDevice::new();
         let caps = device.capabilities();
-        assert!(caps.cpu_threads >= 1);
-        assert!(!caps.gpu_compute);
+        assert!(caps.cpu.cpu_threads >= 1);
+        assert!(!caps.cpu.gpu_available);
     }
 
     #[test]
