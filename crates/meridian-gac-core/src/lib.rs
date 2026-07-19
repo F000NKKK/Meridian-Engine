@@ -1098,6 +1098,26 @@ mod tests {
     }
 
     #[test]
+    fn motor_transform_vector_ignores_translation() {
+        let motor = Motor3::translation(Vec3::new(100.0, -50.0, 25.0));
+        // A pure translation has no rotational part: every direction must
+        // come back unchanged.
+        for v in [Vec3::X, Vec3::Y, Vec3::new(1.0, 2.0, 3.0)] {
+            assert_vec3_approx(motor.transform_vector(v), v);
+        }
+    }
+
+    #[test]
+    fn motor_transform_vector_matches_rotor_for_pure_rotation_plus_translation() {
+        let rotor = Rotor::from_axis_angle(Vec3::Z, PI / 3.0);
+        let motor = Motor3::from_rotation_translation(rotor, Vec3::new(7.0, -3.0, 2.0));
+        let v = Vec3::new(1.0, 2.0, -1.0);
+        // Translation must cancel out of transform_vector regardless of
+        // how large it is, leaving exactly the rotor's own action.
+        assert_vec3_approx(motor.transform_vector(v), rotor.transform_vector(v));
+    }
+
+    #[test]
     fn to_mat4_identity_is_the_identity_matrix() {
         let m = Motor3::identity().to_mat4();
         let mut expected = [[0.0; 4]; 4];
