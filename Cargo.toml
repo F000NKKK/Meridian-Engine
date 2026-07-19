@@ -15,22 +15,22 @@ repository = "https://github.com/F000NKKK/Meridian-Engine"
 [workspace.dependencies]
 meridian-foundation = { path = "crates/meridian-foundation", version = "0.5" }
 meridian-numeric-core = { path = "crates/meridian-numeric-core", version = "0.6" }
-meridian-gac-core = { path = "crates/meridian-gac-core", version = "0.8" }
+meridian-gac-core = { path = "crates/meridian-gac-core", version = "0.9" }
 meridian-memory-core = { path = "crates/meridian-memory-core", version = "0.6" }
 meridian-resource-core = { path = "crates/meridian-resource-core", version = "0.6" }
 meridian-task-core = { path = "crates/meridian-task-core", version = "0.5" }
 meridian-platform-core = { path = "crates/meridian-platform-core", version = "0.8" }
 meridian-compute-driver = { path = "crates/meridian-compute-driver", version = "0.8" }
 meridian-compute-runtime = { path = "crates/meridian-compute-runtime", version = "0.9" }
-meridian-gac-compute = { path = "crates/meridian-gac-compute", version = "0.12" }
+meridian-gac-compute = { path = "crates/meridian-gac-compute", version = "0.13" }
 meridian-asset-core = { path = "crates/meridian-asset-core", version = "0.8" }
-meridian-ecs-core = { path = "crates/meridian-ecs-core", version = "0.10" }
+meridian-ecs-core = { path = "crates/meridian-ecs-core", version = "0.11" }
 meridian-graphics-driver = { path = "crates/meridian-graphics-driver", version = "0.7" }
 meridian-audio-driver = { path = "crates/meridian-audio-driver", version = "0.7" }
 meridian-graphics-core = { path = "crates/meridian-graphics-core", version = "0.15" }
 meridian-physics-driver = { path = "crates/meridian-physics-driver", version = "0.6" }
 meridian-physics-core = { path = "crates/meridian-physics-core", version = "0.14" }
-meridian-audio-core = { path = "crates/meridian-audio-core", version = "0.11" }
+meridian-audio-core = { path = "crates/meridian-audio-core", version = "0.12" }
 meridian-engine-core = { path = "crates/meridian-engine-core", version = "0.17" }
 
 # External dependencies shared by more than one crate go here too, same
