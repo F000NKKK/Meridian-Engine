@@ -1,0 +1,46 @@
+# Graphics design — `meridian-graphics-driver` + `meridian-graphics-core`
+
+## The split
+
+`graphics-driver` is the hardware abstraction — the engine's equivalent of a
+thin Vulkan/DX12/Metal wrapper: devices, command queues, buffers, textures,
+shaders, pipelines, synchronization. It has no concept of a scene, a
+material, or a camera. Later, concrete backends (`vulkan-driver`,
+`dx12-driver`, `metal-driver`) plug in underneath it without
+`graphics-core` ever changing — see
+[ADR 005](adr/005-driver-core-separation.md).
+
+`graphics-core` is everything that *does* know about scenes:
+
+```text
+Render Graph        automatic pass ordering + resource dependency tracking
+Scene Extraction     pulling renderable state out of the ECS each frame
+Visibility / Culling
+Lighting
+Materials
+Camera
+Animation
+Post Processing
+```
+
+## Render graph over hand-ordered passes
+
+Instead of a hardcoded `Shadow → Geometry → Lighting → Postprocess`
+sequence, passes declare their resource reads/writes and the graph derives
+execution order and resource lifetime automatically. This is what allows
+adding a pass without manually re-threading every pass after it.
+
+## GPU-driven rendering
+
+The long-term direction is minimizing CPU-side per-object work: the CPU
+prepares data, the GPU (via indirect draw, compute-based culling, and
+instancing) decides what actually gets drawn. This is why `graphics-core`
+depends on `meridian-compute-core` — GPU culling and compute-based
+visibility are compute workloads, not rendering-specific ones (see
+[dependency-rules.md](dependency-rules.md) rule 5).
+
+## What this crate does not own
+
+Asset bytes and decoding belong to `asset-core`; `graphics-core` consumes
+already-decoded CPU-side representations and turns them into GPU resources
+via `graphics-driver`. It does not implement image/mesh decoders itself.
