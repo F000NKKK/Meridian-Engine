@@ -2,9 +2,16 @@
 
 ## Current state
 
-Every crate in the workspace is a scaffold: correct name, correct
-dependency edges, a one-line doc comment. No implementation yet. This is
-intentional — see "Why implementation is deliberately last" below.
+`meridian-foundation`, `meridian-numeric-core`, and `meridian-gac-core` have
+real implementations: `Vec3`, `Rotor`, `Motor3`, and the underlying 16-blade
+`Multivector` geometric product, with a test suite that cross-checks
+rotation against an independent Rodrigues-formula oracle and validates the
+parent/child transform-hierarchy milestone below (`cargo test -p
+meridian-gac-core`; runnable end to end via `./build.sh run
+gac_validation`). Every other crate is still a scaffold: correct name,
+correct dependency edges, a one-line doc comment, no implementation. This
+staged order is intentional — see "Why implementation is deliberately last"
+below.
 
 ## Why implementation is deliberately last
 
@@ -29,13 +36,15 @@ priority before writing implementations is keeping that document and the
    consume a `Motor3` API already proven to compose and invert correctly,
    not be the place that API gets debugged.
 
-   **Milestone before continuing to step 3:** a standalone example
-   exercising `Vec3`/`Rotor3`/`Motor3` — compose two transforms, invert
-   one, propagate a parent → child transform, and check the result against
-   a hand-computed expectation. This is the highest-risk layer in the
+   **Milestone before continuing to step 3 — done:** `Vec3`/`Rotor`/
+   `Motor3` are implemented and validated: composition, inversion, and
+   parent → child transform propagation are covered by both
+   `meridian-gac-core`'s test suite and the `gac_validation` example, each
+   cross-checked against an independent (non-GA) oracle rather than just
+   internal self-consistency. This was the highest-risk layer in the
    workspace (see [ADR 001](adr/001-geometric-algebra-as-spatial-model.md));
-   if the `Motor3` API is awkward to use, better to find out here than
-   after `ecs-core`/`physics-core`/`graphics-core` have all built on it.
+   the `Motor3` API held up through this milestone, so the next crates can
+   build on it directly.
 3. `meridian-memory-core`, `meridian-task-core`, `meridian-platform-core` —
    in parallel, no interdependency.
 4. `meridian-resource-core` — typed handles on top of `memory-core`'s
