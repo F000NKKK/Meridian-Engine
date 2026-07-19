@@ -10,18 +10,47 @@ geometric algebra — for 3D rigid transforms) instead of raw matrices.
 Two GA modules, both re-exported: `float_ga` (`f32`, `Scalar` — the
 default; re-exported at the crate root, so `meridian_gac_core::Vec3`/
 `Motor3`/etc. resolve to it unchanged) and `fixed_ga` (`Fixed`, Q16.16
-fixed-point from `meridian-numeric-core` — deterministic, opt-in, used by
-`physics-core::deterministic` only). `fixed_ga` is a disclosed,
-one-for-one duplication of `float_ga`'s structure (`FixedMultivector`,
-`FixedVec3`, `FixedBivector3`, `FixedRotor`, `FixedMotor3`), not a generic
-`Motor3<S>` — see [ADR 008](adr/008-fixed-point-determinism.md) for why:
-`gac-compute`'s GPU dispatch path has no good answer for fixed-point
-regardless (GPUs are `f32`-native, no real `i64`), so the duplication a
-generic type would avoid still has to exist at the GPU-relevant
-instantiation site. The geometric primitives below (`Aabb`, `Sphere`,
-`Obb`, `Cone`, `Plane`, `Shape`, `ConvexVolume`, `Projection`, `Frame`)
-build on `float_ga` only — no `Fixed` equivalents yet (tracked as
-follow-up, see roadmap.md).
+fixed-point from `meridian-numeric-core` — deterministic, opt-in). Each is
+**self-contained**: algebra (`Multivector`/`Vec3`/`Bivector3`/`Rotor`/
+`Motor3`) *and* geometric primitives (`Aabb`/`Sphere`/`Obb`/`Cone`/
+`Plane`/`Shape`/`ConvexVolume`) both exist in both flavors
+(`FixedAabb`/`FixedSphere`/`FixedObb`/`FixedCone`/`FixedPlane`/
+`FixedShape`/`FixedConvexVolume` in `fixed_ga`). Neither flavor is
+`physics-core`-local or owned by whichever crate needed it first — a
+`Fixed`-based CPU-deterministic simulation for *any* subsystem
+(`graphics-core`, a large precise CPU/GPU-emulated simulation, not just
+`physics-core::deterministic`) can reach for `fixed_ga`'s primitives
+directly, the same way any subsystem already reaches for `float_ga`'s.
+`Projection` has no `Fixed` equivalent — it feeds a GPU pipeline directly,
+which is `f32`-only regardless of which scalar type produced the camera's
+pose (see [ADR 008](adr/008-fixed-point-determinism.md)).
+
+`fixed_ga` is a disclosed, one-for-one duplication of `float_ga`'s
+structure, not a generic `Motor3<S>`/`Shape<S>` — see
+[ADR 008](adr/008-fixed-point-determinism.md) for why: `gac-compute`'s GPU
+dispatch path has no good answer for fixed-point regardless (GPUs are
+`f32`-native, no real `i64`), so the duplication a generic type would
+avoid still has to exist at the GPU-relevant instantiation site. The pure
+integer bitmask `blade` module (shared by both `Multivector` types — it
+doesn't depend on the scalar type at all) lives once at the crate root,
+not duplicated.
+
+### Cross-flavor interop
+
+Both flavors implement the same method names (`dot`, `cross`, `length`,
+`normalize`, `compose`, `transform_point`, ...) by construction — `Fixed`
+implements the same arithmetic operators `f32` does (see
+`meridian-numeric-core`), so `fixed_ga` mirrors `float_ga` call-for-call.
+Converting between them is a **named method, not `From`/`Into`**:
+`Vec3::to_fixed_lossy()` / `FixedVec3::to_float_lossy()` (and the same
+pair for `Bivector3`, `Rotor`, `Motor3`). `From`/`Into` would make a
+precision- and determinism-changing cast look free at the call site
+(`.into()` gives no hint anything happened); a `_lossy`-suffixed method
+says so out loud everywhere it's used. `Vec3`/`FixedVec3` also support
+direct mixed-type `+`/`-`/`*` (e.g. `vec3 + fixed_vec3`) built on the same
+named conversions internally — useful when a value computed
+deterministically on CPU needs combining with `f32` data headed for the
+GPU, without hand-writing the conversion at every call site.
 
 ## Core types
 
@@ -31,7 +60,7 @@ Blade         // a single k-vector term (scalar, vector, bivector, ...)
 Rotor         // pure rotation
 Motor         // rotation + translation, composable
 Frame         // a named reference frame (origin + basis)
-Projection    // camera/projective mappings
+Projection    // camera/projective mappings (float_ga only — GPU-bound)
 Aabb          // axis-aligned bounding box
 Sphere        // center + radius
 Obb           // oriented (rotated) box

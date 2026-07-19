@@ -566,7 +566,11 @@ impl FixedPlane {
     pub fn normalize(self) -> Self {
         let len = self.normal.length();
         FixedPlane {
-            normal: FixedVec3::new(self.normal.x / len, self.normal.y / len, self.normal.z / len),
+            normal: FixedVec3::new(
+                self.normal.x / len,
+                self.normal.y / len,
+                self.normal.z / len,
+            ),
             d: self.d / len,
         }
     }
@@ -596,10 +600,93 @@ impl FixedConvexVolume {
     }
 }
 
+// ---- Cross-flavor interop with `crate::float_ga` ----
+//
+// See `float_ga`'s matching section for the full rationale: every
+// conversion here is precision- and determinism-relevant, so it's a
+// named `_lossy` method, never an implicit `From`/`Into`.
+use crate::float_ga::{Bivector3, Motor3, Multivector, Rotor, Vec3};
+use meridian_numeric_core::Scalar;
+
+impl FixedVec3 {
+    /// Deliberate precision-changing cast to the default flavor — needed
+    /// for GPU handoff (GPUs are `f32`-native; see
+    /// `docs/adr/008-fixed-point-determinism.md`) or any other `f32`-only
+    /// consumer (rendering, ECS, audio).
+    pub fn to_float_lossy(self) -> Vec3 {
+        Vec3::new(
+            self.x.to_num() as f32,
+            self.y.to_num() as f32,
+            self.z.to_num() as f32,
+        )
+    }
+}
+
+impl FixedBivector3 {
+    /// Deliberate precision-changing cast to the default flavor.
+    pub fn to_float_lossy(self) -> Bivector3 {
+        Bivector3::new(
+            self.e23.to_num() as f32,
+            self.e31.to_num() as f32,
+            self.e12.to_num() as f32,
+        )
+    }
+}
+
+impl FixedRotor {
+    /// Deliberate precision-changing cast to the default flavor —
+    /// component-wise across the underlying multivector, not a
+    /// re-derivation through axis/angle.
+    pub fn to_float_lossy(self) -> Rotor {
+        let mut out = [0.0f32; 16];
+        for (dst, src) in out.iter_mut().zip(self.0.0) {
+            *dst = src.to_num() as f32;
+        }
+        Rotor(Multivector(out))
+    }
+}
+
+impl FixedMotor3 {
+    /// Deliberate precision-changing cast to the default flavor —
+    /// component-wise across the underlying multivector, not a
+    /// re-derivation through rotation/translation. The way a
+    /// `DeterministicBody`'s pose reaches rendering/ECS/audio, which stay
+    /// `f32` regardless of which physics path produced the pose.
+    pub fn to_float_lossy(self) -> Motor3 {
+        let mut out = [0.0f32; 16];
+        for (dst, src) in out.iter_mut().zip(self.0.0) {
+            *dst = src.to_num() as f32;
+        }
+        Motor3(Multivector(out))
+    }
+}
+
+impl Add<Vec3> for FixedVec3 {
+    type Output = FixedVec3;
+    fn add(self, rhs: Vec3) -> FixedVec3 {
+        self + rhs.to_fixed_lossy()
+    }
+}
+
+impl Sub<Vec3> for FixedVec3 {
+    type Output = FixedVec3;
+    fn sub(self, rhs: Vec3) -> FixedVec3 {
+        self - rhs.to_fixed_lossy()
+    }
+}
+
+impl Mul<Scalar> for FixedVec3 {
+    type Output = FixedVec3;
+    fn mul(self, rhs: Scalar) -> FixedVec3 {
+        self * Fixed::from_num(rhs as f64)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::float_ga as float;
+    use crate::float_ga::Shape as _;
 
     fn fv3(x: f64, y: f64, z: f64) -> FixedVec3 {
         FixedVec3::new(Fixed::from_num(x), Fixed::from_num(y), Fixed::from_num(z))
@@ -688,5 +775,113 @@ mod tests {
         assert!((a.x - b.x).abs() < tolerance);
         assert!((a.y - b.y).abs() < tolerance);
         assert!((a.z - b.z).abs() < tolerance);
+    }
+
+    #[test]
+    fn fixed_aabb_support_matches_float_aabb_support() {
+        let faabb = FixedAabb {
+            min: fv3(-1.0, -2.0, -3.0),
+            max: fv3(4.0, 5.0, 6.0),
+        };
+        let aabb = float::Aabb {
+            min: float::Vec3::new(-1.0, -2.0, -3.0),
+            max: float::Vec3::new(4.0, 5.0, 6.0),
+        };
+        for direction in [fv3(1.0, 1.0, 1.0), fv3(-1.0, -1.0, -1.0)] {
+            let got = faabb.support(direction).to_float_lossy();
+            let want = aabb.support(direction.to_float_lossy());
+            assert!((got.x - want.x).abs() < 1e-3);
+            assert!((got.y - want.y).abs() < 1e-3);
+            assert!((got.z - want.z).abs() < 1e-3);
+        }
+    }
+
+    #[test]
+    fn fixed_obb_support_matches_float_obb_support() {
+        let frame =
+            FixedRotor::from_axis_angle(fv3(0.0, 0.0, 1.0), Fixed::pi() / Fixed::from_num(2.0));
+        let fobb = FixedObb {
+            frame: FixedMotor3::from_rotation_translation(frame, FixedVec3::ZERO),
+            half_extents: fv3(3.0, 1.0, 1.0),
+        };
+        let got = fobb.support(fv3(0.0, 1.0, 0.0)).to_float_lossy();
+        assert!((got.y - 3.0).abs() < 1e-2);
+    }
+
+    #[test]
+    fn fixed_convex_volume_generalizes_intersects_to_any_shape() {
+        let one = Fixed::ONE;
+        let volume = FixedConvexVolume::new(vec![
+            FixedPlane {
+                normal: fv3(1.0, 0.0, 0.0),
+                d: one,
+            },
+            FixedPlane {
+                normal: fv3(-1.0, 0.0, 0.0),
+                d: one,
+            },
+            FixedPlane {
+                normal: fv3(0.0, 1.0, 0.0),
+                d: one,
+            },
+            FixedPlane {
+                normal: fv3(0.0, -1.0, 0.0),
+                d: one,
+            },
+            FixedPlane {
+                normal: fv3(0.0, 0.0, 1.0),
+                d: one,
+            },
+            FixedPlane {
+                normal: fv3(0.0, 0.0, -1.0),
+                d: one,
+            },
+        ]);
+
+        assert!(volume.intersects(&FixedSphere {
+            center: FixedVec3::ZERO,
+            radius: Fixed::from_num(0.5),
+        }));
+        assert!(!volume.intersects(&FixedSphere {
+            center: fv3(10.0, 0.0, 0.0),
+            radius: Fixed::from_num(0.5),
+        }));
+    }
+
+    #[test]
+    fn lossy_round_trip_preserves_value_within_precision() {
+        let v = float::Vec3::new(1.5, -2.25, 3.75);
+        let round_tripped = v.to_fixed_lossy().to_float_lossy();
+        assert!((round_tripped.x - v.x).abs() < 1e-3);
+        assert!((round_tripped.y - v.y).abs() < 1e-3);
+        assert!((round_tripped.z - v.z).abs() < 1e-3);
+    }
+
+    #[test]
+    fn cross_type_add_matches_converting_first() {
+        let a = fv3(1.0, 2.0, 3.0);
+        let b = float::Vec3::new(0.5, -1.0, 2.0);
+
+        let mixed = a + b;
+        let converted_first = a + b.to_fixed_lossy();
+        assert_eq!(mixed, converted_first);
+
+        let mixed_float = b + a;
+        let converted_first_float = b + a.to_float_lossy();
+        assert!((mixed_float.x - converted_first_float.x).abs() < 1e-3);
+    }
+
+    #[test]
+    fn motor_to_fixed_lossy_matches_transform_point_within_precision() {
+        let motor = float::Motor3::from_rotation_translation(
+            float::Rotor::from_axis_angle(float::Vec3::new(0.0, 0.0, 1.0), 0.6),
+            float::Vec3::new(2.0, -1.0, 3.0),
+        );
+        let p = float::Vec3::new(1.0, 1.0, 1.0);
+        let want = motor.transform_point(p);
+        let got = motor.to_fixed_lossy().transform_point(p.to_fixed_lossy());
+        assert!((got.x.to_num() as f32 - want.x).abs() < 1e-2);
+        assert!((got.y.to_num() as f32 - want.y).abs() < 1e-2);
+        assert!((got.z.to_num() as f32 - want.z).abs() < 1e-2);
     }
 }

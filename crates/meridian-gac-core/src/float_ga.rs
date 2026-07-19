@@ -869,6 +869,93 @@ impl Projection {
     }
 }
 
+// ---- Cross-flavor interop with `crate::fixed_ga` ----
+//
+// Every conversion here is precision-changing (`f32` <-> `Fixed`'s
+// ~1.5e-5 fixed resolution) and, going float -> fixed, changes how the
+// value behaves under further computation (gains the determinism
+// guarantee; going fixed -> float, loses it). Deliberately *not*
+// `From`/`Into`: those traits make a cast look free at the call site
+// (`.into()` gives no hint anything precision- or determinism-relevant
+// happened), which is exactly wrong for a conversion this consequential.
+// Every method here is named `_lossy` instead, so every call site says
+// out loud what it's doing — see docs/gac-design.md's "float_ga/fixed_ga
+// interop" section. The `Add`/`Sub`/`Mul` impls below (for mixing a
+// `Vec3` with a `FixedVec3` directly) go through these same named
+// methods internally, not a silent implicit conversion.
+use crate::fixed_ga::{FixedBivector3, FixedMotor3, FixedMultivector, FixedRotor, FixedVec3};
+use meridian_numeric_core::Fixed;
+
+impl Vec3 {
+    /// Deliberate precision-changing cast to the deterministic flavor.
+    pub fn to_fixed_lossy(self) -> FixedVec3 {
+        FixedVec3::new(
+            Fixed::from_num(self.x as f64),
+            Fixed::from_num(self.y as f64),
+            Fixed::from_num(self.z as f64),
+        )
+    }
+}
+
+impl Bivector3 {
+    /// Deliberate precision-changing cast to the deterministic flavor.
+    pub fn to_fixed_lossy(self) -> FixedBivector3 {
+        FixedBivector3::new(
+            Fixed::from_num(self.e23 as f64),
+            Fixed::from_num(self.e31 as f64),
+            Fixed::from_num(self.e12 as f64),
+        )
+    }
+}
+
+impl Rotor {
+    /// Deliberate precision-changing cast to the deterministic flavor —
+    /// component-wise across the underlying multivector (both `Rotor`
+    /// and `FixedRotor` expose theirs, `pub`), not a re-derivation
+    /// through axis/angle.
+    pub fn to_fixed_lossy(self) -> FixedRotor {
+        let mut out = [Fixed::ZERO; 16];
+        for (dst, src) in out.iter_mut().zip(self.0.0) {
+            *dst = Fixed::from_num(src as f64);
+        }
+        FixedRotor(FixedMultivector(out))
+    }
+}
+
+impl Motor3 {
+    /// Deliberate precision-changing cast to the deterministic flavor —
+    /// component-wise across the underlying multivector, not a
+    /// re-derivation through rotation/translation.
+    pub fn to_fixed_lossy(self) -> FixedMotor3 {
+        let mut out = [Fixed::ZERO; 16];
+        for (dst, src) in out.iter_mut().zip(self.0.0) {
+            *dst = Fixed::from_num(src as f64);
+        }
+        FixedMotor3(FixedMultivector(out))
+    }
+}
+
+impl Add<FixedVec3> for Vec3 {
+    type Output = Vec3;
+    fn add(self, rhs: FixedVec3) -> Vec3 {
+        self + rhs.to_float_lossy()
+    }
+}
+
+impl Sub<FixedVec3> for Vec3 {
+    type Output = Vec3;
+    fn sub(self, rhs: FixedVec3) -> Vec3 {
+        self - rhs.to_float_lossy()
+    }
+}
+
+impl Mul<Fixed> for Vec3 {
+    type Output = Vec3;
+    fn mul(self, rhs: Fixed) -> Vec3 {
+        self * (rhs.to_num() as f32)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
