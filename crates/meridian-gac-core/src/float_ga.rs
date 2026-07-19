@@ -869,6 +869,147 @@ impl Projection {
     }
 }
 
+// ---- GaFlavor: lets generic code (this crate's primitives, physics-core's
+// engine) be written once against `f32` and `Fixed` both ----
+
+use crate::{BivectorLike, GaFlavor, MotorLike, RotorLike, ScalarLike, VectorLike};
+
+/// The default GA flavor: `f32`-backed, GPU-dispatchable. See the crate
+/// root doc comment for what "flavor" means here.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct FloatFlavor;
+
+impl ScalarLike for Scalar {
+    const ZERO: Self = 0.0;
+    const ONE: Self = 1.0;
+    const EPSILON: Self = meridian_numeric_core::EPSILON;
+
+    fn from_f64(v: f64) -> Self {
+        v as f32
+    }
+    fn sqrt(self) -> Self {
+        self.sqrt()
+    }
+    fn tan(self) -> Self {
+        self.tan()
+    }
+    fn sin_cos(self) -> (Self, Self) {
+        self.sin_cos()
+    }
+    fn signum(self) -> Self {
+        self.signum()
+    }
+    fn max(self, other: Self) -> Self {
+        self.max(other)
+    }
+}
+
+impl VectorLike for Vec3 {
+    type Scalar = Scalar;
+
+    const ZERO: Self = Vec3::ZERO;
+
+    fn new(x: Scalar, y: Scalar, z: Scalar) -> Self {
+        Vec3::new(x, y, z)
+    }
+    fn x(self) -> Scalar {
+        self.x
+    }
+    fn y(self) -> Scalar {
+        self.y
+    }
+    fn z(self) -> Scalar {
+        self.z
+    }
+    fn dot(self, rhs: Self) -> Scalar {
+        self.dot(rhs)
+    }
+    fn length(self) -> Scalar {
+        self.length()
+    }
+    fn length_squared(self) -> Scalar {
+        self.length_squared()
+    }
+    fn normalize(self) -> Self {
+        self.normalize()
+    }
+}
+
+impl BivectorLike for Bivector3 {
+    type Scalar = Scalar;
+    type Vector = Vec3;
+    type Rotor = Rotor;
+
+    const ZERO: Self = Bivector3::ZERO;
+
+    fn wedge(a: Vec3, b: Vec3) -> Self {
+        Bivector3::wedge(a, b)
+    }
+    fn length(self) -> Scalar {
+        self.length()
+    }
+    fn exp(self) -> Rotor {
+        self.exp()
+    }
+}
+
+impl RotorLike for Rotor {
+    type Scalar = Scalar;
+    type Vector = Vec3;
+
+    fn identity() -> Self {
+        Rotor::identity()
+    }
+    fn from_axis_angle(axis: Vec3, angle: Scalar) -> Self {
+        Rotor::from_axis_angle(axis, angle)
+    }
+    fn compose(self, rhs: Self) -> Self {
+        self.compose(rhs)
+    }
+    fn reverse(self) -> Self {
+        self.reverse()
+    }
+    fn transform_vector(self, v: Vec3) -> Vec3 {
+        self.transform_vector(v)
+    }
+}
+
+impl MotorLike for Motor3 {
+    type Scalar = Scalar;
+    type Vector = Vec3;
+    type Rotor = Rotor;
+
+    fn identity() -> Self {
+        Motor3::identity()
+    }
+    fn translation(t: Vec3) -> Self {
+        Motor3::translation(t)
+    }
+    fn from_rotation_translation(rotor: Rotor, t: Vec3) -> Self {
+        Motor3::from_rotation_translation(rotor, t)
+    }
+    fn compose(self, rhs: Self) -> Self {
+        self.compose(rhs)
+    }
+    fn inverse(self) -> Self {
+        self.inverse()
+    }
+    fn transform_point(self, p: Vec3) -> Vec3 {
+        self.transform_point(p)
+    }
+    fn transform_vector(self, v: Vec3) -> Vec3 {
+        self.transform_vector(v)
+    }
+}
+
+impl GaFlavor for FloatFlavor {
+    type Scalar = Scalar;
+    type Vector = Vec3;
+    type Bivector = Bivector3;
+    type Rotor = Rotor;
+    type Motor = Motor3;
+}
+
 // ---- Cross-flavor interop with `crate::fixed_ga` ----
 //
 // Every conversion here is precision-changing (`f32` <-> `Fixed`'s
