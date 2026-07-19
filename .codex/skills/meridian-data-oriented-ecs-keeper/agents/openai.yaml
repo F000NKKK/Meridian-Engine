@@ -1,0 +1,4 @@
+interface:
+  display_name: "Meridian ECS Keeper"
+  short_description: "Protect data-oriented ECS boundaries."
+  default_prompt: "Use this skill for World, Entity, archetype, component, query, or ECS design changes."

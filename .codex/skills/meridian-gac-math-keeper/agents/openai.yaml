@@ -1,0 +1,4 @@
+interface:
+  display_name: "Meridian GAC Math Keeper"
+  short_description: "Preserve geometric algebra semantics."
+  default_prompt: "Use this skill for Motor3, Rotor, Bivector3, transform, spatial math, or GAC design changes."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Meridian Docs Guardian"
+  short_description: "Maintain documentation and architecture text."
+  default_prompt: "Use this skill when editing README, docs, ADRs, agent guides, or architecture-facing comments."
