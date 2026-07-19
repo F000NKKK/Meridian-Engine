@@ -26,11 +26,15 @@ Shape         // trait: any convex shape describable by a support function
 `Aabb`, `Sphere`, `Obb`, `Cone` and `Plane` are plain geometric primitives
 with no domain meaning of their own — `physics-core`'s broad phase and
 `graphics-core`'s frustum culling both need a bounding box, `physics-core`'s
-only collider shape today is a sphere, and a plane has no reason to be
-defined twice either. They live here rather than being redefined per
+collider shapes are a sphere and an oriented box, and a plane has no reason
+to be defined twice either. They live here rather than being redefined per
 subsystem, for the same reason `Vec3`/`Motor3` do (see "Consumers" below).
 `Obb`/`Aabb` are the two box variants — axis-aligned vs. oriented; a cube is
-either one with equal extents on every axis, not a separate type.
+either one with equal extents on every axis, not a separate type. `Obb`
+stores a `frame: Motor3` (not a separate center/orientation pair) — the
+same pose convention every rigid body in the workspace uses (`RigidBody`,
+`Camera`, `Listener`/`Emitter`), so a physics `RigidBody`'s own `frame` can
+build an `Obb` directly, with no second orientation to keep in sync.
 
 ### `Shape`: one interface instead of a shape x shape matrix
 
@@ -76,6 +80,14 @@ folded into the motor — it's a separate, explicit factor where a subsystem
 needs it (e.g. rendering), because scale doesn't behave like a rigid motion
 and baking it into the spatial primitive is what causes shear bugs in
 matrix-based engines.
+
+`Motor3` has three ways to apply itself: `transform_point` (the sandwich
+product, points move by rotation *and* translation), `transform_vector`
+(directions — computed exactly as `transform_point(v) -
+transform_point(ZERO)`, which algebraically cancels the translation term,
+not an approximation), and `to_mat4` (the classical matrix form graphics
+APIs need — see docs/graphics-design.md). `Obb::support` uses
+`transform_vector` to rotate a query direction into the box's local space.
 
 ## What lives outside `gac-core`
 
