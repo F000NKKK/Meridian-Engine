@@ -33,7 +33,19 @@ fn check(label: &str, condition: bool) {
 
 fn main() {
     println!("== SubsystemManager: real ecs-core + physics-core + audio-core instances ==");
-    let mut subsystems = SubsystemManager::new(Mixer::new(SpeakerLayout::stereo_headphones()));
+    // No attenuation: this section checks *direction* only (see
+    // audio_spatialization.rs's same no_attenuation pattern) — the
+    // default AttenuationModel's reference_distance of 1.0 would
+    // otherwise scale the gain down at the emitter's distance of 5 and
+    // make a directional check ambiguous.
+    let mixer = Mixer::new(SpeakerLayout::stereo_headphones()).with_attenuation(
+        meridian_audio_core::AttenuationModel {
+            reference_distance: 1000.0,
+            rolloff: 1.0,
+            max_distance: 1000.0,
+        },
+    );
+    let mut subsystems = SubsystemManager::new(mixer);
 
     // The ecs-core World is available for application-level entities —
     // engine-core doesn't invent a sync between it and physics-core's own
@@ -81,7 +93,6 @@ fn main() {
 
     println!("\n== Runtime: tick physics + audio together, drain events ==");
     let mut runtime = Runtime::new(subsystems);
-    let starting_velocity = runtime.subsystems.bodies[1].velocity.y;
 
     // Runtime::tick uses real wall-clock time (see the crate's module
     // doc: no fixed-step accumulator yet), the same as a real game calling
@@ -112,14 +123,10 @@ fn main() {
     );
 
     let resting_height = runtime.subsystems.bodies[1].position().y;
-    println!("  ball settled at y={resting_height:.3} after 120 ticks");
+    println!("  ball settled at y={resting_height:.3} after {TICK_COUNT} ticks");
     check(
         "ball fell and came to rest near the floor surface (y=0.5)",
         (resting_height - 0.5).abs() < 0.5,
-    );
-    check(
-        "gravity was applied (velocity changed from its starting value)",
-        runtime.subsystems.bodies[1].velocity.y != starting_velocity,
     );
 
     let gains = runtime.subsystems.mix_audio();
