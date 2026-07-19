@@ -72,7 +72,14 @@ on `meridian-gac-core` and `meridian-audio-driver`; see each crate's own
    `meridian-memory-core`.** It must never depend on `engine-core`,
    `graphics-core`, `physics-core`, `audio-core`, or `asset-core`. ECS is a
    storage mechanism (`Entity`, `Component`, `Archetype`, `Query`,
-   `Storage`); it has no opinion about what the components mean.
+   `Storage`); it has no opinion about *gameplay/domain* component meaning
+   (materials, rigid bodies, DSP graphs, ...) — that's what the
+   `graphics-core`/`physics-core`/`audio-core` boundary above exists to
+   enforce. The one exception is `Transform`, an engine-primitive spatial
+   type built directly on `gac-core`'s `Motor3` and shared by every
+   subsystem (see [gac-design.md](gac-design.md)); ECS knows about it the
+   same way it knows about `Entity` itself, not as a domain concept it
+   interprets.
 4. **`meridian-asset-core` only loads and decodes.** It must never define a
    `AssetManager`, `ResourceManager`, or `CacheManager` type, and must never
    depend on `ecs-core`, `graphics-core`, or `engine-core`. Its job ends at
@@ -113,12 +120,18 @@ on `meridian-gac-core` and `meridian-audio-driver`; see each crate's own
     stays a generic dispatch runtime (rule 5) and must never know what a
     `Motor3` is. Batch GAC operations that need both — `MotorTransformKernel`
     and friends — live in the adapter crate `meridian-gac-compute`, which
-    depends on both and is the only crate allowed to. The same pattern
-    applies to any future `<domain>-compute` adapter (`particle-compute`,
-    `physics-compute`, ...): the math/domain crate and `compute-runtime`
-    stay mutually unaware, and the adapter is what implements
-    `compute-runtime`'s `ComputeKernel` trait for that domain's types. See
+    depends on both and is the only crate allowed to. See
     [ADR 007](adr/007-batch-transforms-via-compute.md).
+11. **No domain-specific GPU/SIMD algorithm may live in
+    `meridian-compute-runtime`.** It owns dispatch mechanics only
+    (`ComputeContext`, `ComputeKernel`, buffers, scheduling) and must never
+    grow a kernel that encodes what a `Motor3`, a particle, or a rigid body
+    is. Every domain that needs batched compute gets its own
+    `meridian-<domain>-compute` adapter crate — `gac-compute` today,
+    `particle-compute`/`physics-compute`/`ai-compute` as they're needed —
+    depending on that domain's `*-core` plus `compute-runtime`, per rule 10.
+    This is what keeps `compute-runtime` small and stable as new domains
+    adopt it instead of each one adding its own edge into its internals.
 
 ## How to check locally
 
