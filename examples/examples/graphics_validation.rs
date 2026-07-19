@@ -8,8 +8,8 @@
 //! Run with:
 //!   ./build.sh run graphics_validation
 
-use meridian_gac_core::{Motor3, Projection, Vec3};
-use meridian_graphics_core::{Aabb, Camera, Frustum, GraphResourceId, RenderGraph, RenderPass};
+use meridian_gac_core::{Aabb, Motor3, Projection, Vec3};
+use meridian_graphics_core::{Camera, Frustum, GraphResourceId, RenderGraph, RenderPass};
 
 fn check(label: &str, condition: bool) {
     println!("  [{}] {label}", if condition { "OK" } else { "FAIL" });

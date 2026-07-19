@@ -72,7 +72,10 @@ API actually needs one, never stored as parallel state.
 
 `Frustum::from_view_projection` extracts six half-space planes from a
 view-projection matrix via the Gribb/Hartmann method (each plane's
-coefficients are a linear combination of the matrix's rows); `Aabb` plus
+coefficients are a linear combination of the matrix's rows); `gac-core`'s
+`Aabb` (shared with `physics-core`'s broad phase — a bounding box has no
+graphics- or physics-specific meaning, so it lives once in `gac-core`
+rather than being redefined per subsystem, see docs/gac-design.md) plus
 `Frustum::intersects_aabb` is the standard conservative box/frustum test
 (check the AABB's corner furthest along each plane's normal). This is
 generic once the planes exist — extracting them is what ties culling to a

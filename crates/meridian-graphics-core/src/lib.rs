@@ -2,7 +2,7 @@
 
 use std::collections::{HashMap, VecDeque};
 
-use meridian_gac_core::{Motor3, Projection, Vec3};
+use meridian_gac_core::{Aabb, Motor3, Projection, Vec3};
 use meridian_resource_core::ResourceId;
 
 /// Marker types distinguishing `ResourceId`s of different graphics resource
@@ -200,13 +200,6 @@ impl Camera {
     pub fn view_projection_matrix(&self) -> [[f32; 4]; 4] {
         mat4_mul(self.projection.0, self.view_matrix())
     }
-}
-
-/// An axis-aligned bounding box in world space.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Aabb {
-    pub min: Vec3,
-    pub max: Vec3,
 }
 
 /// A half-space `normal . p + d >= 0` — a point satisfying this is on the
