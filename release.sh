@@ -52,8 +52,8 @@ dryrun()  { echo -e "${YELLOW}[dry-run]${RESET} $*"; }
 
 # ── Аргументы ─────────────────────────────────────────────────────────────────
 usage() {
-    echo -e "${BOLD}Использование:${RESET} $0 <crate-name> [--patch|--minor|--major] [--dry-run] [--no-publish] [--no-cascade] [--no-check-ver]"
-    echo -e "           $0 --publish-all [--patch|--minor|--major] [--dry-run] [--no-publish] [--no-check-ver]"
+    echo -e "${BOLD}Использование:${RESET} $0 <crate-name> [--patch|--minor|--major] [--dry-run] [--no-publish] [--no-cascade] [--no-check-ver] [--no-gh-release]"
+    echo -e "           $0 --publish-all [--patch|--minor|--major] [--dry-run] [--no-publish] [--no-check-ver] [--no-gh-release]"
     echo ""
     echo "  --patch          0.1.3 → 0.1.4  (ссылки не меняются — semver совместимость)"
     echo "  --minor          0.1.3 → 0.2.0  (обновит ссылки и каскадно сбампит зависимые крейты)"
@@ -64,6 +64,7 @@ usage() {
     echo "  --no-publish     сбампить и обновить ссылки без публикации"
     echo "  --no-cascade     не трогать зависимые крейты"
     echo "  --no-check-ver   не проверять crates.io — бампать/публиковать вслепую"
+    echo "  --no-gh-release  не создавать git-теги и GitHub-релизы после публикации"
     echo "  --publish-all    заменяет <crate-name>: план — все крейты воркспейса, топологически"
     exit 1
 }
@@ -75,6 +76,7 @@ NO_PUBLISH=false
 PUBLISH_ALL=false
 NO_BUMP=false
 NO_CHECK_VER=false
+NO_GH_RELEASE=false
 CASCADE=true
 
 for arg in "$@"; do
@@ -86,6 +88,7 @@ for arg in "$@"; do
         --no-bump)      NO_BUMP=true ;;
         --no-check-ver) NO_CHECK_VER=true ;;
         --no-cascade)   CASCADE=false ;;
+        --no-gh-release) NO_GH_RELEASE=true ;;
         --*) die "Неизвестный флаг: $arg"; ;;
         *)
             if [[ -z "$CRATE" ]]; then CRATE="$arg"
@@ -420,6 +423,30 @@ else
             warn "$c v${NEW_VERSIONS[$c]} уже опубликован — пропускаю"
         fi
     done
+fi
+
+# ── Шаг 4: git-теги + GitHub-релизы для опубликованного ──────────────────────
+# Best-effort и неблокирующий: если этот шаг вообще запускается, значит шаг 3
+# (публикация) выше отработал без `die` — это и есть транзакционность, а не
+# отдельная проверка. scripts/gh_release.sh сверяется с crates.io напрямую
+# (а не с тем, что бампнул именно этот запуск), так что он идемпотентно
+# доделывает теги/релизы и для прошлых успешных, но не дотегированных
+# публикаций — включая тот случай, когда прошлый запуск упал на публикации
+# уже после коммита бампа.
+echo ""
+if $NO_GH_RELEASE; then
+    warn "--no-gh-release: пропускаю git-теги/GitHub-релизы"
+elif $NO_PUBLISH || $DRY_RUN; then
+    info "Пропускаю git-теги/GitHub-релизы (--no-publish/--dry-run)"
+elif ! command -v gh >/dev/null 2>&1; then
+    warn "gh (GitHub CLI) не найден — пропускаю. Запусти ./scripts/gh_release.sh отдельно, когда он появится."
+else
+    info "Создаю git-теги и GitHub-релизы для опубликованного (scripts/gh_release.sh) ..."
+    if "$SCRIPT_DIR/scripts/gh_release.sh"; then
+        ok "Теги/релизы готовы."
+    else
+        warn "scripts/gh_release.sh завершился с ошибкой — публикация на crates.io уже прошла, но теги/релизы могли остаться неполными. Перезапусти ./scripts/gh_release.sh отдельно."
+    fi
 fi
 
 # ── Итог ──────────────────────────────────────────────────────────────────────
