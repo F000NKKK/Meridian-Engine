@@ -1,0 +1,12 @@
+[package]
+name = "meridian-gpu-driver"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Shared low-level wgpu device/buffer/shader/compute-pipeline mechanics underneath graphics-driver and compute-driver. Knows nothing about scenes, materials, or compute-dispatch scheduling policy."
+
+[dependencies]
+meridian-platform-core = { workspace = true }
+wgpu = { workspace = true }
