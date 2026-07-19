@@ -12,6 +12,27 @@
 use std::collections::HashSet;
 use std::time::Instant;
 
+/// Backend capability reporting shared by every `*-driver` crate's own
+/// capability type (`compute-driver::ComputeCapabilities`,
+/// `physics-driver::PhysicsBackend`, and future `graphics-driver`/
+/// `audio-driver` equivalents): whether a GPU backend is available, and
+/// how many CPU worker threads a parallel dispatch can use. Each driver
+/// implements this on its own concrete type rather than duplicating the
+/// detection logic — domain-specific fields (SIMD width, audio latency,
+/// ...) go on that concrete type, not here.
+pub trait BackendCapabilities {
+    fn gpu_available(&self) -> bool;
+    fn cpu_threads(&self) -> usize;
+}
+
+/// Detects the current machine's CPU thread count. Every `*-driver`
+/// backend's capability constructor should call this instead of calling
+/// `std::thread::available_parallelism()` directly, so the "no threads
+/// reported -> assume 1" fallback stays in one place.
+pub fn detect_cpu_threads() -> usize {
+    std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1)
+}
+
 /// An OS window. Not yet implemented — see the module doc.
 #[derive(Debug)]
 pub struct Window;
@@ -235,6 +256,11 @@ mod tests {
     use super::*;
     use std::thread::sleep;
     use std::time::Duration;
+
+    #[test]
+    fn detect_cpu_threads_reports_at_least_one() {
+        assert!(detect_cpu_threads() >= 1);
+    }
 
     #[test]
     fn press_key_sets_down_and_pressed_this_frame() {
