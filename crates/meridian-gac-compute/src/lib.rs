@@ -12,10 +12,25 @@
 //! `meridian-task-core`'s shared-ready-queue-not-work-stealing-deques
 //! note for the same tradeoff made elsewhere).
 
+//! [`FixedMotorTransformKernel`]/[`FixedMotorComposeKernel`] are the same
+//! two kernels built on `gac-core::fixed_ga::FixedMotor3` instead —
+//! deterministic, for `physics-core::deterministic`-style consumers that
+//! need a batch path too. **CPU dispatch only, deliberately**: GPUs are
+//! `f32`-native with no real `i64` support (`Fixed`'s multiply/divide need
+//! one), and GPU execution order has its own nondeterminism independent of
+//! the arithmetic type, so a GPU backend wouldn't preserve the
+//! determinism guarantee even if it could run `Fixed` math — see
+//! docs/adr/008-fixed-point-determinism.md. `compute-runtime` has no GPU
+//! backend implemented yet (see docs/roadmap.md), so this restriction
+//! isn't enforced by a type/API distinction today; it's a documented
+//! constraint on which `compute-driver` backend a caller may configure
+//! once one exists, not a limitation of these kernels' own code.
+
 use std::sync::Mutex;
 
 use meridian_compute_runtime::{ComputeContext, ComputeKernel, DispatchSize};
 use meridian_gac_core::Motor3;
+use meridian_gac_core::fixed_ga::FixedMotor3;
 
 /// Batch-composes a shared `parent` motor with many `locals` — the
 /// `world[i] = locals[i].compose(parent)` step of parent/child transform
@@ -89,11 +104,77 @@ impl ComputeKernel for MotorComposeKernel {
     }
 }
 
+/// Mirrors [`MotorTransformKernel`], built on
+/// `gac-core::fixed_ga::FixedMotor3`. See the module doc for why this
+/// (and [`FixedMotorComposeKernel`]) are CPU-dispatch only.
+#[derive(Debug)]
+pub struct FixedMotorTransformKernel {
+    pub parent: FixedMotor3,
+    pub locals: Vec<FixedMotor3>,
+    results: Mutex<Vec<FixedMotor3>>,
+}
+
+impl FixedMotorTransformKernel {
+    pub fn new(parent: FixedMotor3, locals: Vec<FixedMotor3>) -> Self {
+        let results = Mutex::new(vec![FixedMotor3::identity(); locals.len()]);
+        Self {
+            parent,
+            locals,
+            results,
+        }
+    }
+
+    pub fn results(&self) -> Vec<FixedMotor3> {
+        self.results.lock().unwrap().clone()
+    }
+}
+
+impl ComputeKernel for FixedMotorTransformKernel {
+    fn dispatch(&self, context: &ComputeContext, size: DispatchSize) {
+        let count = size.total().min(self.locals.len());
+        context.parallel_for(count, |i| {
+            let world = self.locals[i].compose(self.parent);
+            self.results.lock().unwrap()[i] = world;
+        });
+    }
+}
+
+/// Mirrors [`MotorComposeKernel`], built on
+/// `gac-core::fixed_ga::FixedMotor3`.
+#[derive(Debug)]
+pub struct FixedMotorComposeKernel {
+    pub pairs: Vec<(FixedMotor3, FixedMotor3)>,
+    results: Mutex<Vec<FixedMotor3>>,
+}
+
+impl FixedMotorComposeKernel {
+    pub fn new(pairs: Vec<(FixedMotor3, FixedMotor3)>) -> Self {
+        let results = Mutex::new(vec![FixedMotor3::identity(); pairs.len()]);
+        Self { pairs, results }
+    }
+
+    pub fn results(&self) -> Vec<FixedMotor3> {
+        self.results.lock().unwrap().clone()
+    }
+}
+
+impl ComputeKernel for FixedMotorComposeKernel {
+    fn dispatch(&self, context: &ComputeContext, size: DispatchSize) {
+        let count = size.total().min(self.pairs.len());
+        context.parallel_for(count, |i| {
+            let (child, parent) = self.pairs[i];
+            self.results.lock().unwrap()[i] = child.compose(parent);
+        });
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use meridian_compute_runtime::ComputeScheduler;
+    use meridian_gac_core::fixed_ga::{FixedRotor, FixedVec3};
     use meridian_gac_core::{Rotor, Vec3};
+    use meridian_numeric_core::Fixed;
     use std::f32::consts::PI;
 
     fn approx_eq(a: Motor3, b: Motor3, p: Vec3) -> bool {
@@ -183,6 +264,77 @@ mod tests {
                 Motor3::identity(),
                 "untouched slots must stay at their initial identity value"
             );
+        }
+    }
+
+    fn fixed_approx_eq(a: FixedMotor3, b: FixedMotor3, p: FixedVec3) -> bool {
+        (a.transform_point(p) - b.transform_point(p)).length() < Fixed::from_num(1e-3)
+    }
+
+    #[test]
+    fn fixed_motor_transform_kernel_matches_gac_core_compose_directly() {
+        let parent = FixedMotor3::from_rotation_translation(
+            FixedRotor::from_axis_angle(
+                FixedVec3::new(Fixed::ZERO, Fixed::ZERO, Fixed::ONE),
+                Fixed::from_num(std::f64::consts::FRAC_PI_4),
+            ),
+            FixedVec3::new(Fixed::from_num(10.0), Fixed::ZERO, Fixed::ZERO),
+        );
+        let locals: Vec<FixedMotor3> = (0..500)
+            .map(|i| {
+                FixedMotor3::from_rotation_translation(
+                    FixedRotor::from_axis_angle(
+                        FixedVec3::new(Fixed::ZERO, Fixed::ONE, Fixed::ZERO),
+                        Fixed::from_num(i as f64 * 0.001),
+                    ),
+                    FixedVec3::new(Fixed::ZERO, Fixed::from_num(i as f64 * 0.01), Fixed::ZERO),
+                )
+            })
+            .collect();
+
+        let kernel = FixedMotorTransformKernel::new(parent, locals.clone());
+        let scheduler = ComputeScheduler::with_parallel_threshold(1);
+        scheduler.run(&kernel, DispatchSize::linear(locals.len() as u32));
+
+        let results = kernel.results();
+        assert_eq!(results.len(), locals.len());
+
+        let p = FixedVec3::new(Fixed::ONE, Fixed::ZERO, Fixed::ZERO);
+        for (i, (&local, &world)) in locals.iter().zip(results.iter()).enumerate() {
+            let expected = local.compose(parent);
+            assert!(fixed_approx_eq(world, expected, p), "mismatch at index {i}");
+        }
+    }
+
+    #[test]
+    fn fixed_motor_compose_kernel_handles_independent_parents_per_pair() {
+        let pairs: Vec<(FixedMotor3, FixedMotor3)> = (0..200)
+            .map(|i| {
+                let child = FixedMotor3::translation(FixedVec3::new(
+                    Fixed::from_num(i as f64),
+                    Fixed::ZERO,
+                    Fixed::ZERO,
+                ));
+                let parent = FixedMotor3::from_rotation_translation(
+                    FixedRotor::from_axis_angle(
+                        FixedVec3::new(Fixed::ZERO, Fixed::ZERO, Fixed::ONE),
+                        Fixed::from_num(i as f64 * 0.01),
+                    ),
+                    FixedVec3::new(Fixed::ZERO, Fixed::from_num(i as f64), Fixed::ZERO),
+                );
+                (child, parent)
+            })
+            .collect();
+
+        let kernel = FixedMotorComposeKernel::new(pairs.clone());
+        let scheduler = ComputeScheduler::with_parallel_threshold(1);
+        scheduler.run(&kernel, DispatchSize::linear(pairs.len() as u32));
+
+        let results = kernel.results();
+        let p = FixedVec3::ZERO;
+        for (i, (&(child, parent), &world)) in pairs.iter().zip(results.iter()).enumerate() {
+            let expected = child.compose(parent);
+            assert!(fixed_approx_eq(world, expected, p), "mismatch at index {i}");
         }
     }
 }

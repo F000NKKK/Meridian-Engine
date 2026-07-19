@@ -8,11 +8,10 @@
 //! `gac-core::fixed_ga` takes relative to `gac-core::float_ga`.
 //!
 //! Scope for this pass: **sphere colliders only**. `Cuboid`/SAT was not
-//! ported to fixed-point — that's a large, intricate piece of code
-//! (`gac-core::Aabb`/`Obb`/`Shape` have no `Fixed` equivalents yet either)
-//! and porting it hastily risks subtle bugs in exactly the code whose
-//! entire purpose is trustworthy reproducibility. Tracked as explicit
-//! follow-up work, not silently dropped.
+//! ported to fixed-point — that's a large, intricate piece of code and
+//! porting it hastily risks subtle bugs in exactly the code whose entire
+//! purpose is trustworthy reproducibility. Tracked as explicit follow-up
+//! work, not silently dropped.
 //!
 //! This is a genuinely separate, parallel path — nothing here changes
 //! how [`crate::RigidBody`]/[`crate::Integrator`]/etc. behave, and
@@ -22,9 +21,19 @@
 //! [`DeterministicBody::frame_f32`] converts the pose to
 //! `gac-core::Motor3` for handoff to rendering/ECS/audio, which stay
 //! entirely in `f32` regardless of which physics path produced the pose.
+//!
+//! Geometry (`FixedAabb`, `FixedShape`, ...) comes from
+//! `gac-core::fixed_ga`, not reinvented here: this crate's own `f32`
+//! pipeline builds its broad-phase `Aabb` from `gac-core::Aabb`/`Obb`
+//! (see [`crate::aabb_of`]), and the deterministic pipeline follows the
+//! exact same pattern with the `Fixed` equivalents — geometric
+//! primitives are `gac-core`'s responsibility regardless of which scalar
+//! flavor they're built on, so any other crate that needs
+//! CPU-deterministic geometry later (not just this module) can reuse
+//! them too.
 
-use meridian_gac_core::fixed_ga::{FixedBivector3, FixedMotor3, FixedVec3};
-use meridian_gac_core::float_ga::{Motor3, Multivector};
+use meridian_gac_core::fixed_ga::{FixedAabb, FixedBivector3, FixedMotor3, FixedVec3};
+use meridian_gac_core::float_ga::Motor3;
 use meridian_numeric_core::Fixed;
 
 /// Mirrors [`crate::ColliderShape`] — sphere only for now, see the module
@@ -85,17 +94,23 @@ impl DeterministicBody {
     }
 
     /// Converts this body's pose to `gac-core::Motor3` (`f32`) for handoff
-    /// to rendering/ECS/audio — a direct component-wise conversion of the
-    /// underlying 16-component multivector (both `FixedMotor3` and
-    /// `Motor3` expose theirs, `pub`), not a re-derivation through
-    /// rotation/translation, so it's exact modulo each component's own
-    /// `Fixed -> f32` rounding.
+    /// to rendering/ECS/audio — `gac-core::fixed_ga::FixedMotor3::to_float_lossy`,
+    /// a deliberate, named precision-changing cast (see
+    /// docs/gac-design.md's "float_ga/fixed_ga interop" section), not a
+    /// re-derivation through rotation/translation.
     pub fn frame_f32(&self) -> Motor3 {
-        let mut components = [0.0f32; 16];
-        for (dst, src) in components.iter_mut().zip(self.frame.0.0) {
-            *dst = src.to_num() as f32;
+        self.frame.to_float_lossy()
+    }
+
+    /// This body's collider as a world-space [`FixedAabb`] — mirrors
+    /// [`crate::RigidBody::as_obb`]'s role in the `f32` pipeline (there
+    /// building an `Obb`; here a sphere already has its bound directly).
+    fn aabb(&self) -> FixedAabb {
+        match self.shape {
+            DeterministicShape::Sphere { radius } => {
+                FixedAabb::from_sphere(self.position(), radius)
+            }
         }
-        Motor3(Multivector(components))
     }
 }
 
@@ -109,13 +124,10 @@ pub struct DeterministicContact {
     pub point: FixedVec3,
 }
 
-/// Mirrors [`crate::BroadPhase`]. Sphere-only, so this coincides with
-/// [`DeterministicNarrowPhase`]'s own exact overlap test rather than
-/// being a cheaper conservative filter over it (there's no `Fixed`
-/// `Aabb` yet — see the module doc) — kept as its own stage anyway to
-/// preserve the same two-stage pipeline shape [`crate::BroadPhase`] has,
-/// so adding a second deterministic shape later is additive, not a
-/// restructure.
+/// Mirrors [`crate::BroadPhase`]: naive O(n²) `FixedAabb` sweep, built
+/// from `gac-core::fixed_ga::FixedAabb` the same way `crate::BroadPhase`
+/// builds its `Aabb`s from `gac-core::Aabb`, not a hand-rolled overlap
+/// test local to this module.
 #[derive(Debug, Default)]
 pub struct DeterministicBroadPhase {
     pairs: Vec<(usize, usize)>,
@@ -128,13 +140,10 @@ impl DeterministicBroadPhase {
 
     pub fn find_candidate_pairs(&mut self, bodies: &[DeterministicBody]) -> &[(usize, usize)] {
         self.pairs.clear();
+        let aabbs: Vec<FixedAabb> = bodies.iter().map(DeterministicBody::aabb).collect();
         for i in 0..bodies.len() {
             for j in (i + 1)..bodies.len() {
-                let DeterministicShape::Sphere { radius: ri } = bodies[i].shape;
-                let DeterministicShape::Sphere { radius: rj } = bodies[j].shape;
-                let combined = ri + rj;
-                let delta = bodies[j].position() - bodies[i].position();
-                if delta.length_squared() <= combined * combined {
+                if aabbs[i].overlaps(&aabbs[j]) {
                     self.pairs.push((i, j));
                 }
             }
