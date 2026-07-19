@@ -2,7 +2,7 @@
 
 use std::collections::{HashMap, VecDeque};
 
-use meridian_gac_core::{Aabb, Motor3, Plane, Projection, Vec3};
+use meridian_gac_core::{ConvexVolume, Motor3, Plane, Projection, Shape, Vec3};
 use meridian_resource_core::ResourceId;
 
 /// Marker types distinguishing `ResourceId`s of different graphics resource
@@ -206,12 +206,15 @@ impl Camera {
 /// a view-projection matrix via the Gribb/Hartmann method: each plane's
 /// coefficients are a linear combination of the matrix's rows, chosen so
 /// that "inside" matches the clip-space bounds `Projection` documents
-/// (`-w <= x,y <= w`, `0 <= z <= w`). Plane extraction, not object
-/// culling, is what ties this to a specific `Projection`/`Camera` — the
-/// AABB test below is generic once the planes exist.
-#[derive(Debug, Clone, Copy)]
+/// (`-w <= x,y <= w`, `0 <= z <= w`). A thin wrapper around `gac-core`'s
+/// [`ConvexVolume`]: extracting exactly six planes from a `Projection` is
+/// what's camera-specific and belongs here; the underlying "is this shape
+/// inside every plane" test is generic and lives once in `gac-core` (see
+/// docs/graphics-design.md) — [`Frustum::intersects`] works for *any*
+/// [`Shape`], not just an AABB.
+#[derive(Debug, Clone)]
 pub struct Frustum {
-    planes: [Plane; 6],
+    volume: ConvexVolume,
 }
 
 impl Frustum {
@@ -236,45 +239,23 @@ impl Frustum {
             .normalize()
         };
         Frustum {
-            planes: [
+            volume: ConvexVolume::new(vec![
                 make(combine(w, x, 1.0)),  // left:   x + w >= 0
                 make(combine(w, x, -1.0)), // right:  w - x >= 0
                 make(combine(w, y, 1.0)),  // bottom: y + w >= 0
                 make(combine(w, y, -1.0)), // top:    w - y >= 0
                 make(z),                   // near:   z >= 0
                 make(combine(w, z, -1.0)), // far:    w - z >= 0
-            ],
+            ]),
         }
     }
 
-    /// Conservative test: `false` means the AABB is fully outside at least
+    /// Conservative test: `false` means `shape` is fully outside at least
     /// one plane (definitely not visible); `true` means it's inside every
     /// plane's half-space (visible, or a false positive near a corner —
-    /// standard AABB/frustum trade-off, cheaper than exact separation).
-    pub fn intersects_aabb(&self, aabb: Aabb) -> bool {
-        for plane in &self.planes {
-            let positive = Vec3::new(
-                if plane.normal.x >= 0.0 {
-                    aabb.max.x
-                } else {
-                    aabb.min.x
-                },
-                if plane.normal.y >= 0.0 {
-                    aabb.max.y
-                } else {
-                    aabb.min.y
-                },
-                if plane.normal.z >= 0.0 {
-                    aabb.max.z
-                } else {
-                    aabb.min.z
-                },
-            );
-            if plane.distance(positive) < 0.0 {
-                return false;
-            }
-        }
-        true
+    /// standard shape/frustum trade-off, cheaper than exact separation).
+    pub fn intersects<S: Shape>(&self, shape: &S) -> bool {
+        self.volume.intersects(shape)
     }
 }
 
@@ -287,6 +268,7 @@ pub struct Material {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use meridian_gac_core::{Aabb, Sphere};
 
     fn transform_via_matrix(m: [[f32; 4]; 4], p: Vec3) -> Vec3 {
         Vec3::new(
@@ -365,7 +347,20 @@ mod tests {
             min: Vec3::new(9.0, -0.5, -0.5),
             max: Vec3::new(11.0, 0.5, 0.5),
         };
-        assert!(frustum.intersects_aabb(aabb));
+        assert!(frustum.intersects(&aabb));
+    }
+
+    #[test]
+    fn frustum_intersects_works_for_any_shape_not_just_aabb() {
+        let frustum = test_frustum();
+        assert!(frustum.intersects(&Sphere {
+            center: Vec3::new(10.0, 0.0, 0.0),
+            radius: 0.5,
+        }));
+        assert!(!frustum.intersects(&Sphere {
+            center: Vec3::new(-10.0, 0.0, 0.0),
+            radius: 0.5,
+        }));
     }
 
     #[test]
@@ -375,7 +370,7 @@ mod tests {
             min: Vec3::new(-11.0, -0.5, -0.5),
             max: Vec3::new(-9.0, 0.5, 0.5),
         };
-        assert!(!frustum.intersects_aabb(aabb));
+        assert!(!frustum.intersects(&aabb));
     }
 
     #[test]
@@ -385,7 +380,7 @@ mod tests {
             min: Vec3::new(200.0, -0.5, -0.5),
             max: Vec3::new(201.0, 0.5, 0.5),
         };
-        assert!(!frustum.intersects_aabb(aabb));
+        assert!(!frustum.intersects(&aabb));
     }
 
     #[test]
@@ -398,7 +393,7 @@ mod tests {
             min: Vec3::new(9.0, -0.5, 15.0),
             max: Vec3::new(11.0, 0.5, 16.0),
         };
-        assert!(!frustum.intersects_aabb(aabb));
+        assert!(!frustum.intersects(&aabb));
     }
 
     #[test]
@@ -413,7 +408,7 @@ mod tests {
             min: Vec3::new(9.0, -0.5, 8.0),
             max: Vec3::new(11.0, 0.5, 12.0),
         };
-        assert!(frustum.intersects_aabb(aabb));
+        assert!(frustum.intersects(&aabb));
     }
 
     #[test]

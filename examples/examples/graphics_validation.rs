@@ -8,7 +8,7 @@
 //! Run with:
 //!   ./build.sh run graphics_validation
 
-use meridian_gac_core::{Aabb, Motor3, Projection, Vec3};
+use meridian_gac_core::{Aabb, Motor3, Projection, Sphere, Vec3};
 use meridian_graphics_core::{Camera, Frustum, GraphResourceId, RenderGraph, RenderPass};
 
 fn check(label: &str, condition: bool) {
@@ -41,7 +41,7 @@ fn main() {
         (vp.x.abs() < 1e-4) && (vp.y.abs() < 1e-4) && (vp.z - -10.0).abs() < 1e-4,
     );
 
-    println!("\n== Frustum culling: AABB vs the camera's visible volume ==");
+    println!("\n== Frustum culling: any Shape vs the camera's visible volume ==");
     let frustum = Frustum::from_view_projection(camera.view_projection_matrix());
     let ahead = Aabb {
         min: Vec3::new(9.0, -0.5, -0.5),
@@ -55,17 +55,25 @@ fn main() {
         min: Vec3::new(200.0, -0.5, -0.5),
         max: Vec3::new(201.0, 0.5, 0.5),
     };
-    check(
-        "box directly ahead is visible",
-        frustum.intersects_aabb(ahead),
-    );
+    check("box directly ahead is visible", frustum.intersects(&ahead));
     check(
         "box behind the camera is culled",
-        !frustum.intersects_aabb(behind),
+        !frustum.intersects(&behind),
     );
     check(
         "box beyond the far plane is culled",
-        !frustum.intersects_aabb(beyond_far),
+        !frustum.intersects(&beyond_far),
+    );
+
+    // Frustum::intersects works for any Shape, not just Aabb — same test,
+    // a Sphere this time, to demonstrate the generic Shape interface.
+    let sphere_ahead = Sphere {
+        center: Vec3::new(10.0, 0.0, 0.0),
+        radius: 1.0,
+    };
+    check(
+        "a sphere works too, not just Aabb",
+        frustum.intersects(&sphere_ahead),
     );
 
     println!("\n== Render graph: pass order derived from resource reads/writes ==");
