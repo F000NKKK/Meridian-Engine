@@ -371,8 +371,10 @@ mod tests {
             }
         }
 
+        // Floor center is at y=-floor_radius, so its top surface is at
+        // y=0; the ball rests with its center one radius above that.
         let resting_height = bodies[1].position().y;
-        let expected = floor_radius + ball_radius; // surface-to-surface contact
+        let expected = ball_radius;
         assert!((resting_height - expected).abs() < 0.5, "ball should settle near the floor surface, got y={resting_height}, expected near {expected}");
     }
 }
