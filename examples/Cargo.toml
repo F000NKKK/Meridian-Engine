@@ -9,7 +9,12 @@ publish = false
 
 [dev-dependencies]
 meridian-engine-core = { workspace = true }
+meridian-gac-core = { workspace = true }
 
 [[example]]
 name = "hello_engine"
 path = "examples/hello_engine.rs"
+
+[[example]]
+name = "gac_validation"
+path = "examples/gac_validation.rs"
