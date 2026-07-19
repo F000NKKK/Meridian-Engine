@@ -2,11 +2,13 @@
 //!
 //! Real, backed by `wgpu` (see docs/roadmap.md "Not yet decided" for why:
 //! Vulkan/DX12/Metal in one safe API, not hand-written per-backend FFI).
-//! **Headless only, for now** — [`Device::new`] requests an adapter with
-//! no `compatible_surface`, so there is no window/swapchain here yet;
-//! that's windowing's own concrete decision (`platform-core::Window` is
-//! still a stub) and a separate follow-up, not blocked on anything in
-//! this module.
+//! Both headless ([`Device::new`], no `compatible_surface`) and windowed
+//! ([`Device::new_windowed`], a real swapchain [`Surface`]) construction
+//! exist. This crate stays `winit`-agnostic even for the windowed path —
+//! [`Device::new_windowed`] takes `impl Into<wgpu::SurfaceTarget<'static>>`,
+//! a `wgpu`-defined bound `Arc<winit::window::Window>` already satisfies
+//! — see `platform-core::Window::surface_target` and
+//! [ADR 010](../../../docs/adr/010-windowing-via-winit.md).
 //!
 //! **Async on genuine I/O, not on everything.** This workspace's engine
 //! runs on `tokio`; every operation here whose completion time is
@@ -26,14 +28,18 @@
 //! `tokio::task::spawn_blocking` so it can't stall the async runtime's
 //! worker threads while it waits.
 //!
-//! [`Pipeline`] is compute-only so far: a render pipeline needs a vertex
-//! layout and color-target formats, which need either a real swapchain
-//! surface or a vocabulary for meshes/materials that doesn't exist yet
-//! (`graphics-core`'s job, not this driver's) — see docs/roadmap.md.
-//! Everything else (`Device`, `CommandBuffer`, `Buffer`, `Texture`,
-//! `Shader`) is fully real and exercised end-to-end by this module's own
-//! tests: write a buffer, run a compute shader over it, read the result
-//! back.
+//! [`Pipeline`] (compute) and [`RenderPipeline`] (vertex+fragment, with an
+//! optional depth buffer via [`DepthTexture`]) are both real. Bind groups
+//! are deliberately the simplest shape that's actually useful today —
+//! one bound resource at `@group(0) @binding(0)` — for both kinds of
+//! pipeline (see [`CommandBuffer::dispatch_compute`] and
+//! [`Device::create_uniform_bind_group`]); a general multi-binding bind
+//! group builder is future work once a concrete pipeline needs more than
+//! one bound resource. Meshes/materials/scene vocabulary is
+//! `graphics-core`'s job, not this driver's — see docs/roadmap.md.
+//! Everything here is exercised end-to-end by this module's own tests
+//! (headless compute path) and by the `spinning_cube` example (windowed
+//! render path).
 
 use meridian_platform_core::{BackendCapabilities, CpuCapabilities, GpuCapabilities};
 
@@ -56,6 +62,10 @@ pub enum DeviceError {
     /// `wgpu` has no backend for this platform).
     NoAdapter,
     RequestDevice(wgpu::RequestDeviceError),
+    /// [`Device::new_windowed`] only: the window/display handle couldn't
+    /// be turned into a `wgpu::Surface` (e.g. an unsupported platform
+    /// backend).
+    CreateSurface(wgpu::CreateSurfaceError),
 }
 
 impl std::fmt::Display for DeviceError {
@@ -63,6 +73,7 @@ impl std::fmt::Display for DeviceError {
         match self {
             DeviceError::NoAdapter => write!(f, "no compatible GPU adapter found"),
             DeviceError::RequestDevice(e) => write!(f, "failed to request GPU device: {e}"),
+            DeviceError::CreateSurface(e) => write!(f, "failed to create GPU surface: {e}"),
         }
     }
 }
@@ -107,6 +118,84 @@ impl Device {
             queue,
             adapter_info,
         })
+    }
+
+    /// Requests a windowed GPU device plus its swapchain [`Surface`],
+    /// already configured at `width`x`height`. `target` is anything
+    /// `wgpu` can build a surface from — in practice always
+    /// `Arc<winit::window::Window>` via `platform_core::Window::surface_target`,
+    /// but this crate never names `winit`'s type itself (see the module
+    /// doc). The adapter is requested with `compatible_surface:
+    /// Some(&surface)` (unlike [`Device::new`]'s headless path) so the
+    /// chosen adapter is guaranteed able to present to this specific
+    /// surface. Picks the first sRGB-capable format the surface reports
+    /// (falling back to whatever format is first if none is sRGB) — sRGB
+    /// output is the conventional default for correct-looking color
+    /// without every shader hand-rolling its own gamma correction.
+    pub async fn new_windowed(
+        target: impl Into<wgpu::SurfaceTarget<'static>>,
+        width: u32,
+        height: u32,
+    ) -> Result<(Self, Surface), DeviceError> {
+        let instance =
+            wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle_from_env());
+        let surface = instance
+            .create_surface(target)
+            .map_err(DeviceError::CreateSurface)?;
+        let adapter = instance
+            .request_adapter(&wgpu::RequestAdapterOptions {
+                power_preference: wgpu::PowerPreference::HighPerformance,
+                compatible_surface: Some(&surface),
+                force_fallback_adapter: false,
+                apply_limit_buckets: true,
+            })
+            .await
+            .map_err(|_| DeviceError::NoAdapter)?;
+        let adapter_info = adapter.get_info();
+        let (device, queue) = adapter
+            .request_device(&wgpu::DeviceDescriptor {
+                label: Some("meridian-graphics-driver windowed device"),
+                required_features: wgpu::Features::empty(),
+                required_limits: wgpu::Limits::default(),
+                memory_hints: wgpu::MemoryHints::default(),
+                trace: wgpu::Trace::Off,
+                experimental_features: wgpu::ExperimentalFeatures::default(),
+            })
+            .await
+            .map_err(DeviceError::RequestDevice)?;
+
+        let capabilities = surface.get_capabilities(&adapter);
+        let format = capabilities
+            .formats
+            .iter()
+            .copied()
+            .find(|f| f.is_srgb())
+            .unwrap_or(capabilities.formats[0]);
+        let config = wgpu::SurfaceConfiguration {
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            format,
+            color_space: wgpu::SurfaceColorSpace::Auto,
+            width: width.max(1),
+            height: height.max(1),
+            present_mode: capabilities.present_modes[0],
+            desired_maximum_frame_latency: 2,
+            alpha_mode: capabilities.alpha_modes[0],
+            view_formats: Vec::new(),
+        };
+        surface.configure(&device, &config);
+
+        let device = Self {
+            device,
+            queue,
+            adapter_info,
+        };
+        Ok((
+            device,
+            Surface {
+                raw: surface,
+                config,
+            },
+        ))
     }
 
     /// The adapter's reported name (e.g. `"NVIDIA GeForce RTX 4050
@@ -245,6 +334,127 @@ impl Device {
         Pipeline { raw }
     }
 
+    /// A depth/stencil-comparable texture (`Depth32Float`, the standard
+    /// choice — full float precision, no stencil since nothing here uses
+    /// one yet) sized to match a [`Surface`], for
+    /// [`CommandBuffer::begin_render_pass`]'s `depth` parameter.
+    pub fn create_depth_texture(&self, width: u32, height: u32) -> DepthTexture {
+        let raw = self.device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("meridian-graphics-driver depth texture"),
+            size: wgpu::Extent3d {
+                width: width.max(1),
+                height: height.max(1),
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Depth32Float,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            view_formats: &[],
+        });
+        let view = raw.create_view(&wgpu::TextureViewDescriptor::default());
+        DepthTexture { raw, view }
+    }
+
+    /// Builds a render pipeline: `vertex_entry`/`fragment_entry` are two
+    /// entry points in the same `shader` module (a WGSL convention, not a
+    /// `wgpu` requirement — nothing stops a caller passing the same
+    /// `Shader` twice with different entry point names). `vertex_layout`
+    /// describes one vertex buffer's attributes (see [`VertexLayout`]);
+    /// `surface` supplies the color target format so the pipeline matches
+    /// what it will actually render into; `depth_enabled` adds a
+    /// `Depth32Float` depth-test/write stage matching
+    /// [`Device::create_depth_texture`]'s format. Like
+    /// [`Device::create_compute_pipeline`], the bind group layout is
+    /// auto-derived from the shader's own `@group`/`@binding`
+    /// declarations rather than hand-specified — see that method's doc
+    /// comment for why, and [`Device::create_uniform_bind_group`] for the
+    /// matching bind group constructor.
+    pub fn create_render_pipeline(
+        &self,
+        shader: &Shader,
+        vertex_entry: &str,
+        fragment_entry: &str,
+        vertex_layout: &VertexLayout,
+        surface: &Surface,
+        depth_enabled: bool,
+    ) -> RenderPipeline {
+        let wgpu_attributes: Vec<wgpu::VertexAttribute> = vertex_layout
+            .attributes
+            .iter()
+            .map(|a| wgpu::VertexAttribute {
+                format: a.format.to_wgpu(),
+                offset: a.offset,
+                shader_location: a.location,
+            })
+            .collect();
+        let buffer_layout = wgpu::VertexBufferLayout {
+            array_stride: vertex_layout.stride,
+            step_mode: wgpu::VertexStepMode::Vertex,
+            attributes: &wgpu_attributes,
+        };
+
+        let raw = self
+            .device
+            .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: None,
+                layout: None,
+                vertex: wgpu::VertexState {
+                    module: &shader.raw,
+                    entry_point: Some(vertex_entry),
+                    compilation_options: wgpu::PipelineCompilationOptions::default(),
+                    buffers: &[Some(buffer_layout)],
+                },
+                fragment: Some(wgpu::FragmentState {
+                    module: &shader.raw,
+                    entry_point: Some(fragment_entry),
+                    compilation_options: wgpu::PipelineCompilationOptions::default(),
+                    targets: &[Some(wgpu::ColorTargetState {
+                        format: surface.config.format,
+                        blend: Some(wgpu::BlendState::REPLACE),
+                        write_mask: wgpu::ColorWrites::ALL,
+                    })],
+                }),
+                primitive: wgpu::PrimitiveState {
+                    topology: wgpu::PrimitiveTopology::TriangleList,
+                    strip_index_format: None,
+                    front_face: wgpu::FrontFace::Ccw,
+                    cull_mode: Some(wgpu::Face::Back),
+                    ..Default::default()
+                },
+                depth_stencil: depth_enabled.then(|| wgpu::DepthStencilState {
+                    format: wgpu::TextureFormat::Depth32Float,
+                    depth_write_enabled: Some(true),
+                    depth_compare: Some(wgpu::CompareFunction::Less),
+                    stencil: wgpu::StencilState::default(),
+                    bias: wgpu::DepthBiasState::default(),
+                }),
+                multisample: wgpu::MultisampleState::default(),
+                multiview_mask: None,
+                cache: None,
+            });
+        RenderPipeline { raw }
+    }
+
+    /// Builds a bind group binding `buffer` (typically a `Uniform`
+    /// buffer — a per-frame MVP matrix, for instance) at `@group(0)
+    /// @binding(0)` of `pipeline` — the same single-binding shape
+    /// [`Device::create_render_pipeline`]'s auto-derived layout expects;
+    /// see that method's doc comment.
+    pub fn create_uniform_bind_group(&self, pipeline: &RenderPipeline, buffer: &Buffer) -> BindGroup {
+        let layout = pipeline.raw.get_bind_group_layout(0);
+        let raw = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: None,
+            layout: &layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: buffer.raw.as_entire_binding(),
+            }],
+        });
+        BindGroup { raw }
+    }
+
     /// Opens a new [`CommandBuffer`] for recording. Nothing reaches the
     /// GPU until [`CommandBuffer::submit`] is called.
     pub fn create_command_buffer(&self) -> CommandBuffer<'_> {
@@ -339,9 +549,88 @@ impl<'a> CommandBuffer<'a> {
         pass.dispatch_workgroups(workgroups, 1, 1);
     }
 
+    /// Opens a render pass targeting `color_target` (typically a
+    /// [`SurfaceFrame::view`]), cleared to `clear_color` (RGBA, `0.0..=1.0`)
+    /// before anything is drawn, with an optional `depth` attachment
+    /// (cleared to `1.0` — the far plane — matching
+    /// [`Device::create_render_pipeline`]'s `depth_enabled` +
+    /// `CompareFunction::Less` convention: closer geometry has a *smaller*
+    /// depth value). Recording ends when the returned [`RenderPass`] is
+    /// dropped.
+    pub fn begin_render_pass<'pass>(
+        &'pass mut self,
+        color_target: &'pass wgpu::TextureView,
+        clear_color: [f64; 4],
+        depth: Option<&'pass DepthTexture>,
+    ) -> RenderPass<'pass> {
+        let [r, g, b, a] = clear_color;
+        let raw = self.encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: None,
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: color_target,
+                depth_slice: None,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(wgpu::Color { r, g, b, a }),
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: depth.map(|d| wgpu::RenderPassDepthStencilAttachment {
+                view: &d.view,
+                depth_ops: Some(wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(1.0),
+                    store: wgpu::StoreOp::Store,
+                }),
+                stencil_ops: None,
+            }),
+            timestamp_writes: None,
+            occlusion_query_set: None,
+            multiview_mask: None,
+        });
+        RenderPass { raw }
+    }
+
     /// Submits every recorded command to the device's queue.
     pub fn submit(self) {
         self.device.queue.submit(Some(self.encoder.finish()));
+    }
+}
+
+/// A single recorded render pass, opened by
+/// [`CommandBuffer::begin_render_pass`]. Ends (and its draw calls become
+/// part of the owning [`CommandBuffer`]) when dropped.
+#[derive(Debug)]
+pub struct RenderPass<'pass> {
+    raw: wgpu::RenderPass<'pass>,
+}
+
+impl RenderPass<'_> {
+    pub fn set_pipeline(&mut self, pipeline: &RenderPipeline) {
+        self.raw.set_pipeline(&pipeline.raw);
+    }
+
+    pub fn set_bind_group(&mut self, group_index: u32, bind_group: &BindGroup) {
+        self.raw.set_bind_group(group_index, &bind_group.raw, &[]);
+    }
+
+    pub fn set_vertex_buffer(&mut self, slot: u32, buffer: &Buffer) {
+        self.raw.set_vertex_buffer(slot, buffer.raw.slice(..));
+    }
+
+    /// `u16` indices — the common case for a mesh with under 65536
+    /// vertices; a `u32` variant is additive future work if a mesh ever
+    /// needs more.
+    pub fn set_index_buffer_u16(&mut self, buffer: &Buffer) {
+        self.raw
+            .set_index_buffer(buffer.raw.slice(..), wgpu::IndexFormat::Uint16);
+    }
+
+    pub fn draw(&mut self, vertices: core::ops::Range<u32>) {
+        self.raw.draw(vertices, 0..1);
+    }
+
+    pub fn draw_indexed(&mut self, indices: core::ops::Range<u32>) {
+        self.raw.draw_indexed(indices, 0, 0..1);
     }
 }
 
@@ -372,10 +661,186 @@ pub struct Shader {
 }
 
 /// A configured GPU pipeline (shaders + fixed-function state).
-/// Compute-only so far — see the module doc.
+/// Compute-only — see [`RenderPipeline`] for the render-pass equivalent.
 #[derive(Debug)]
 pub struct Pipeline {
     raw: wgpu::ComputePipeline,
+}
+
+/// A configured render pipeline — vertex + fragment stages, primitive/
+/// culling state, and an optional depth-test stage. Built by
+/// [`Device::create_render_pipeline`], bound via
+/// [`RenderPass::set_pipeline`].
+#[derive(Debug)]
+pub struct RenderPipeline {
+    raw: wgpu::RenderPipeline,
+}
+
+/// A bound resource group — today, always the single-buffer shape
+/// [`Device::create_uniform_bind_group`] builds. Bound via
+/// [`RenderPass::set_bind_group`].
+#[derive(Debug)]
+pub struct BindGroup {
+    raw: wgpu::BindGroup,
+}
+
+/// A swapchain: the sequence of textures a windowed [`Device`] presents
+/// to the screen. Built by [`Device::new_windowed`]; call
+/// [`Surface::resize`] whenever the window's size changes (skipping a
+/// stale-sized frame is worse than briefly rendering at the old size, but
+/// never configuring a `0`x`0` surface — [`Surface::resize`] guards that),
+/// and [`Surface::acquire_frame`] once per frame to get something to
+/// render into.
+#[derive(Debug)]
+pub struct Surface {
+    raw: wgpu::Surface<'static>,
+    config: wgpu::SurfaceConfiguration,
+}
+
+impl Surface {
+    /// The color format frames from this surface are in — what
+    /// [`Device::create_render_pipeline`]'s color target must match.
+    pub fn format(&self) -> wgpu::TextureFormat {
+        self.config.format
+    }
+
+    /// Reconfigures the surface for a new size. A no-op if either
+    /// dimension is `0` (a minimized window reports this on some
+    /// platforms) — configuring a zero-sized surface is a `wgpu` panic,
+    /// not a recoverable error, so this guards it here rather than
+    /// pushing that footgun onto every caller.
+    pub fn resize(&mut self, device: &Device, width: u32, height: u32) {
+        if width == 0 || height == 0 {
+            return;
+        }
+        self.config.width = width;
+        self.config.height = height;
+        self.raw.configure(&device.device, &self.config);
+    }
+
+    /// Acquires the next frame to render into. `Err` on a transient
+    /// swapchain problem (e.g. the surface was resized by the OS but not
+    /// yet reconfigured via [`Surface::resize`], or the window is
+    /// currently occluded/minimized) — a caller should treat that as
+    /// "skip this frame," not a fatal error.
+    pub fn acquire_frame(&self) -> Result<SurfaceFrame, AcquireFrameError> {
+        match self.raw.get_current_texture() {
+            wgpu::CurrentSurfaceTexture::Success(output)
+            | wgpu::CurrentSurfaceTexture::Suboptimal(output) => {
+                let view = output
+                    .texture
+                    .create_view(&wgpu::TextureViewDescriptor::default());
+                Ok(SurfaceFrame { output, view })
+            }
+            wgpu::CurrentSurfaceTexture::Timeout => Err(AcquireFrameError::Timeout),
+            wgpu::CurrentSurfaceTexture::Occluded => Err(AcquireFrameError::Occluded),
+            wgpu::CurrentSurfaceTexture::Outdated => Err(AcquireFrameError::Outdated),
+            wgpu::CurrentSurfaceTexture::Lost => Err(AcquireFrameError::Lost),
+            wgpu::CurrentSurfaceTexture::Validation => Err(AcquireFrameError::Validation),
+        }
+    }
+}
+
+/// Why [`Surface::acquire_frame`] didn't return a frame this call. Every
+/// variant is a real, expected transient condition (see
+/// `wgpu::CurrentSurfaceTexture`'s own variant docs) — a caller should
+/// skip the frame and try again next time, not treat this as fatal,
+/// except [`AcquireFrameError::Lost`] (needs the whole surface, not just
+/// a frame, recreated) which is rare enough in practice not to warrant
+/// its own recovery path here yet.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AcquireFrameError {
+    Timeout,
+    Occluded,
+    Outdated,
+    Lost,
+    Validation,
+}
+
+impl std::fmt::Display for AcquireFrameError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AcquireFrameError::Timeout => write!(f, "timed out acquiring the next swapchain frame"),
+            AcquireFrameError::Occluded => write!(f, "surface is occluded (minimized or hidden)"),
+            AcquireFrameError::Outdated => write!(f, "surface configuration is outdated, call Surface::resize"),
+            AcquireFrameError::Lost => write!(f, "surface was lost and needs to be recreated"),
+            AcquireFrameError::Validation => write!(f, "validation error acquiring the next swapchain frame"),
+        }
+    }
+}
+
+impl std::error::Error for AcquireFrameError {}
+
+/// One acquired swapchain frame: render into [`SurfaceFrame::view`], then
+/// [`SurfaceFrame::present`] to hand it back to the OS compositor.
+#[derive(Debug)]
+pub struct SurfaceFrame {
+    output: wgpu::SurfaceTexture,
+    view: wgpu::TextureView,
+}
+
+impl SurfaceFrame {
+    pub fn view(&self) -> &wgpu::TextureView {
+        &self.view
+    }
+
+    /// Presents this frame via `device`'s queue — `wgpu` moved
+    /// presentation onto `Queue::present` (it used to be a method on the
+    /// surface texture itself in older `wgpu` versions), so this needs
+    /// the owning [`Device`], not just `self`.
+    pub fn present(self, device: &Device) {
+        device.queue.present(self.output);
+    }
+}
+
+/// A depth/stencil-comparable texture — see [`Device::create_depth_texture`].
+#[derive(Debug)]
+pub struct DepthTexture {
+    #[allow(dead_code)]
+    raw: wgpu::Texture,
+    view: wgpu::TextureView,
+}
+
+/// One vertex attribute's shape within a [`VertexLayout`]: which
+/// `@location` it binds to in the shader, its component format, and its
+/// byte offset within one vertex.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct VertexAttributeDesc {
+    pub location: u32,
+    pub format: VertexFormat,
+    pub offset: u64,
+}
+
+/// A vertex attribute's component format. Not an exhaustive mirror of
+/// `wgpu::VertexFormat` (which has ~30 variants for formats this
+/// workspace has no use for yet, e.g. packed/normalized integer types) —
+/// extending this is additive as a concrete need shows up, the same
+/// policy [`KeyCode`](meridian_platform_core::KeyCode) uses for its own
+/// deliberately-partial enumeration.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VertexFormat {
+    Float32x2,
+    Float32x3,
+    Float32x4,
+}
+
+impl VertexFormat {
+    fn to_wgpu(self) -> wgpu::VertexFormat {
+        match self {
+            VertexFormat::Float32x2 => wgpu::VertexFormat::Float32x2,
+            VertexFormat::Float32x3 => wgpu::VertexFormat::Float32x3,
+            VertexFormat::Float32x4 => wgpu::VertexFormat::Float32x4,
+        }
+    }
+}
+
+/// Describes one vertex buffer's layout for
+/// [`Device::create_render_pipeline`]: `stride` is the byte size of one
+/// vertex, `attributes` is where each field lives within it.
+#[derive(Debug, Clone)]
+pub struct VertexLayout {
+    pub stride: u64,
+    pub attributes: Vec<VertexAttributeDesc>,
 }
 
 #[cfg(test)]
