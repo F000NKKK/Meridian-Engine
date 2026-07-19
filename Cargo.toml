@@ -31,7 +31,7 @@ meridian-graphics-core = { path = "crates/meridian-graphics-core", version = "0.
 meridian-physics-driver = { path = "crates/meridian-physics-driver", version = "0.4" }
 meridian-physics-core = { path = "crates/meridian-physics-core", version = "0.10" }
 meridian-audio-core = { path = "crates/meridian-audio-core", version = "0.7" }
-meridian-engine-core = { path = "crates/meridian-engine-core", version = "0.11" }
+meridian-engine-core = { path = "crates/meridian-engine-core", version = "0.12" }
 
 [profile.release]
 lto = true
