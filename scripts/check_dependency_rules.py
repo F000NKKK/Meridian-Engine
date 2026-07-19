@@ -54,6 +54,7 @@ ALLOWED = {
     "meridian-physics-core": {
         "meridian-gac-core",
         "meridian-gac-compute",
+        "meridian-numeric-core",
         "meridian-ecs-core",
         "meridian-compute-runtime",
         "meridian-physics-driver",
