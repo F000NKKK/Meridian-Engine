@@ -5,10 +5,19 @@
 //! owns real instances of the driver-independent subsystems that exist
 //! today: an `ecs-core` [`World`], `physics-core`'s body list and
 //! pipeline, and `audio-core`'s listener/mixer. `graphics-core` isn't
-//! wired into [`Runtime::tick`] yet: rendering has nothing to submit to
-//! without a real `graphics-driver` backend (blocked on the `wgpu`
-//! decision — see docs/roadmap.md), so there's no frame in the render
-//! sense to schedule.
+//! wired into [`Runtime::tick`] yet: `graphics-driver` has a real
+//! windowed `wgpu` device now (see docs/roadmap.md's `winit`/windowing
+//! entry), but `graphics-core` itself has no scene/material vocabulary or
+//! GPU-submission bridge yet to turn its `RenderGraph` into actual draw
+//! calls, so there's no frame in the render sense for `Runtime::tick` to
+//! schedule. This crate deliberately doesn't depend on `graphics-driver`
+//! directly (see docs/dependency-rules.md: `engine-core` depends on
+//! `graphics-core`, not drivers) — a windowed app composes
+//! [`platform_core::run_windowed_app`](meridian_platform_core::run_windowed_app)
+//! with its own `graphics-driver::Device`/`Surface` and reuses
+//! [`Runtime::tick`]'s [`Time`] for animation/physics timing (see the
+//! `spinning_cube` example), rather than `Runtime` gaining rendering
+//! awareness before `graphics-core` has anything to submit.
 //!
 //! [`Runtime::tick`] advances physics, then recomputes audio gains from
 //! the physics-updated emitter frames, in that order — not through
