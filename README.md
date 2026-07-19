@@ -13,6 +13,7 @@ meridian-foundation      zero-dependency shared primitives (errors, feature dete
 meridian-numeric-core    scalar types, SIMD helpers, numeric traits
 meridian-gac-core        geometric algebra: vectors, rotors, motors, transforms
 meridian-memory-core     arenas, resource pools, generational handles
+meridian-resource-core   typed resource handles, versioning, dependency tracking
 meridian-task-core       job graph scheduler
 meridian-platform-core   window, input, filesystem, time, threading
 meridian-compute-driver  low-level CPU-SIMD / GPU-compute dispatch abstraction
@@ -54,6 +55,7 @@ are documented in [`docs/dependency-rules.md`](docs/dependency-rules.md).
 ```sh
 ./build.sh build              # whole workspace
 ./build.sh test                # cargo test --workspace
+./build.sh check-deps          # verify the crate graph matches docs/dependency-rules.md
 ./build.sh run hello_engine -- --foo bar   # run an example, forwarding args
 ./build.sh list-examples
 ./build.sh clean
