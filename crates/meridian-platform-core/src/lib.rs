@@ -72,12 +72,19 @@ pub enum KeyCode {
     Alt,
 }
 
-/// A mouse button.
+/// A mouse button. `Left`/`Right`/`Middle` plus the common `Back`/`Forward`
+/// side buttons are named; anything beyond that (extra numbered buttons
+/// some mice expose) is `Other(n)`, matching how X11/Windows/winit report
+/// them — a raw button index, not a name, because there's no universal
+/// naming past the first five.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MouseButton {
     Left,
     Right,
     Middle,
+    Back,
+    Forward,
+    Other(u16),
 }
 
 /// Polled keyboard/mouse state for one frame. Decoupled from any actual
@@ -302,6 +309,25 @@ mod tests {
         assert!(input.is_mouse_button_down(MouseButton::Left));
         input.release_mouse_button(MouseButton::Left);
         assert!(!input.is_mouse_button_down(MouseButton::Left));
+    }
+
+    #[test]
+    fn extra_numbered_mouse_buttons_are_tracked_independently() {
+        let mut input = InputState::new();
+        input.press_mouse_button(MouseButton::Back);
+        input.press_mouse_button(MouseButton::Other(6));
+
+        assert!(input.is_mouse_button_down(MouseButton::Back));
+        assert!(input.is_mouse_button_down(MouseButton::Other(6)));
+        assert!(!input.is_mouse_button_down(MouseButton::Forward));
+        assert!(
+            !input.is_mouse_button_down(MouseButton::Other(7)),
+            "different Other indices must not alias"
+        );
+
+        input.release_mouse_button(MouseButton::Other(6));
+        assert!(!input.is_mouse_button_down(MouseButton::Other(6)));
+        assert!(input.is_mouse_button_down(MouseButton::Back), "releasing Other(6) must not affect Back");
     }
 
     #[test]
