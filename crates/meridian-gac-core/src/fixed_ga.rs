@@ -19,36 +19,21 @@
 //! `float_ga` counterpart function-for-function so the two stay easy to
 //! compare and keep in sync by inspection.
 //!
-//! This is `physics-core`'s deterministic simulation path
-//! (`DeterministicBody`) only — opt-in, not the default. `float_ga`'s
-//! `Motor3` (`f32`) remains the everyday, GPU-dispatchable pose type for
-//! everything else (rendering, ECS, audio, and physics-core's own
-//! default `RigidBody`).
+//! This is deterministic-simulation opt-in, not the default —
+//! `float_ga`'s `Motor3` (`f32`) remains the everyday, GPU-dispatchable
+//! pose type for everything else (rendering, ECS, audio, and
+//! `physics-core`'s own default `RigidBody`). But it's *usable by any
+//! crate* that needs CPU-deterministic geometry (`physics-core`'s
+//! `DeterministicBody` today, potentially a deterministic
+//! `graphics-core` CPU path or a large precise CPU/GPU-emulated
+//! simulation later) — that reusability is exactly why the primitives
+//! below live here in `gac-core`, not inside `physics-core`, the same
+//! reason `float_ga`'s primitives aren't `physics-core`-local either.
 
 use core::ops::{Add, Mul, Neg, Sub};
 use meridian_numeric_core::Fixed;
 
-/// Same blade encoding as [`crate::blade`] — see that module's doc
-/// comment for the full explanation. Duplicated, not imported: the blade
-/// indices themselves don't depend on the scalar type, but keeping this
-/// module self-contained keeps `fixed_ga` easy to read/verify in
-/// isolation from `float_ga`.
-mod blade {
-    pub const S: usize = 0b0000;
-    pub const E1: usize = 0b0010;
-    pub const E2: usize = 0b0100;
-    pub const E3: usize = 0b1000;
-    pub const E01: usize = 0b0011;
-    pub const E02: usize = 0b0101;
-    pub const E03: usize = 0b1001;
-    pub const E12: usize = 0b0110;
-    pub const E13: usize = 0b1010;
-    pub const E23: usize = 0b1100;
-    pub const E123: usize = 0b1110;
-    pub const E023: usize = 0b1101;
-    pub const E013: usize = 0b1011;
-    pub const E012: usize = 0b0111;
-}
+use crate::blade;
 
 /// A small tolerance a few Q16.16 steps above zero, used the same way
 /// [`meridian_numeric_core::EPSILON`] is used in [`crate::float_ga`] —
