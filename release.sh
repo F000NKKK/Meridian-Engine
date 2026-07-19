@@ -2,16 +2,25 @@
 # release.sh — bump, publish, и обновить ссылки в воркспейсе.
 # Использование: ./release.sh <crate-name> --patch|--minor|--major [--dry-run] [--no-publish] [--no-cascade]
 #                ./release.sh <crate-name> --publish-only
+#                ./release.sh --publish-all [--patch|--minor|--major] [--no-bump] [--dry-run] [--no-publish]
 #
 # При --minor/--major все зависимые крейты воркспейса тоже бампятся (минор) и
 # публикуются следом в порядке зависимостей — иначе на crates.io остаются
 # версии, собранные против старого минора (в 0.x каждый минор несовместим),
 # и verify следующего крейта падает на «two different versions of crate».
 #
+# --publish-all заменяет <crate-name>: план строится из всех крейтов
+# воркспейса (топологически), а не из каскада зависимых одного корня.
+# --no-bump публикует текущие версии как есть, без изменения version —
+# работает и с одним крейтом, и с --publish-all (в отличие от --publish-only,
+# которое не умеет каскад/весь воркспейс).
+#
 # Примеры:
 #   ./release.sh meridian-gac-core --minor      # каскад: gac-core → ecs-core → ... → engine-core
 #   ./release.sh meridian-engine-core --patch   # patch: ссылки совместимы, каскада нет
 #   ./release.sh meridian-gac-core --publish-only
+#   ./release.sh --publish-all --no-bump        # опубликовать весь воркспейс как есть
+#   ./release.sh --publish-all --patch          # patch-бамп + публикация всех крейтов
 
 set -euo pipefail
 
@@ -32,6 +41,7 @@ dryrun()  { echo -e "${YELLOW}[dry-run]${RESET} $*"; }
 # ── Аргументы ─────────────────────────────────────────────────────────────────
 usage() {
     echo -e "${BOLD}Использование:${RESET} $0 <crate-name> --patch|--minor|--major [--dry-run] [--no-publish] [--no-cascade]"
+    echo -e "           $0 --publish-all [--patch|--minor|--major] [--no-bump] [--dry-run] [--no-publish]"
     echo ""
     echo "  --patch          0.1.3 → 0.1.4  (ссылки не меняются — semver совместимость)"
     echo "  --minor          0.1.3 → 0.2.0  (обновит ссылки и каскадно сбампит зависимые крейты)"
@@ -39,7 +49,9 @@ usage() {
     echo "  --dry-run        только показать, что изменится"
     echo "  --no-publish     сбампить и обновить ссылки без публикации"
     echo "  --no-cascade     не трогать зависимые крейты"
-    echo "  --publish-only   только опубликовать текущую версию крейта"
+    echo "  --publish-only   только опубликовать текущую версию крейта (без бампа, без каскада)"
+    echo "  --publish-all    заменяет <crate-name>: план — все крейты воркспейса, топологически"
+    echo "  --no-bump        не менять version — опубликовать план как есть (крейт, каскад или всё)"
     exit 1
 }
 
@@ -48,6 +60,8 @@ BUMP=""
 DRY_RUN=false
 NO_PUBLISH=false
 PUBLISH_ONLY=false
+PUBLISH_ALL=false
+NO_BUMP=false
 CASCADE=true
 
 for arg in "$@"; do
@@ -56,6 +70,8 @@ for arg in "$@"; do
         --dry-run)      DRY_RUN=true ;;
         --no-publish)   NO_PUBLISH=true ;;
         --publish-only) PUBLISH_ONLY=true ;;
+        --publish-all)  PUBLISH_ALL=true ;;
+        --no-bump)      NO_BUMP=true ;;
         --no-cascade)   CASCADE=false ;;
         --*) die "Неизвестный флаг: $arg"; ;;
         *)
@@ -65,9 +81,14 @@ for arg in "$@"; do
     esac
 done
 
-[[ -z "$CRATE" ]] && { echo "Не указано имя крейта."; usage; }
-if ! $PUBLISH_ONLY && [[ -z "$BUMP" ]]; then
-    echo "Не указан тип бампа."; usage
+if $PUBLISH_ALL; then
+    [[ -n "$CRATE" ]] && die "--publish-all нельзя сочетать с именем крейта ($CRATE)"
+    $PUBLISH_ONLY && die "--publish-all нельзя сочетать с --publish-only — используйте --no-bump"
+else
+    [[ -z "$CRATE" ]] && { echo "Не указано имя крейта (или используйте --publish-all)."; usage; }
+fi
+if ! $PUBLISH_ONLY && ! $NO_BUMP && [[ -z "$BUMP" ]]; then
+    echo "Не указан тип бампа (или используйте --no-bump)."; usage
 fi
 # patch-бамп совместим по ссылкам — каскад не нужен
 [[ "$BUMP" == "--patch" ]] && CASCADE=false
@@ -78,7 +99,7 @@ crate_version() {
     grep -m1 '^version *= *"' "$(crate_toml "$1")" | sed 's/.*"\([^"]*\)".*/\1/'
 }
 
-[[ -f "$(crate_toml "$CRATE")" ]] || die "Крейт не найден: $(crate_toml "$CRATE")"
+$PUBLISH_ALL || { [[ -f "$(crate_toml "$CRATE")" ]] || die "Крейт не найден: $(crate_toml "$CRATE")"; }
 
 # ── Публикация с ретраями ─────────────────────────────────────────────────────
 # Без фиксированного ожидания индексации: cargo сам ждёт появления крейта в
@@ -198,11 +219,13 @@ bump_crate() {
     echo "$new_version"
 }
 
-# ── Каскад: зависимые крейты в порядке публикации ─────────────────────────────
-# Печатает "<crate> <crate> ..." — сам корень + все транзитивные зависимые,
-# топологически (зависимости раньше зависящих).
-cascade_order() {
-    python3 - "$WS" "$CRATE" "$CRATE_PREFIX" <<'PY'
+# ── Порядок публикации ─────────────────────────────────────────────────────────
+# Печатает "<crate> <crate> ..." топологически (зависимости раньше зависящих).
+# root="" → весь воркспейс (--publish-all); root=<crate> → сам корень + все
+# транзитивные зависящие от него (обычный каскад).
+resolve_order() {
+    local root="$1"
+    python3 - "$WS" "$root" "$CRATE_PREFIX" <<'PY'
 import sys, re, glob, os
 ws, root, prefix = sys.argv[1], sys.argv[2], sys.argv[3]
 deps = {}
@@ -214,21 +237,26 @@ for toml in glob.glob(os.path.join(ws, "crates", "*", "Cargo.toml")):
     name = m.group(1)
     ds = set(re.findall(rf'^({re.escape(prefix)}[a-z0-9_-]+) *=', text, re.M)) - {name}
     deps[name] = ds
-if root not in deps:
-    sys.exit(f"crate {root} not found in workspace")
-# Транзитивные зависимые от root
-dependents = set()
-changed = True
-while changed:
-    changed = False
-    for c, ds in deps.items():
-        if c == root or c in dependents:
-            continue
-        if root in ds or (ds & dependents):
-            dependents.add(c)
-            changed = True
-# Топологический порядок внутри {root} ∪ dependents
-sel = dependents | {root}
+
+if root:
+    if root not in deps:
+        sys.exit(f"crate {root} not found in workspace")
+    # Транзитивные зависящие от root
+    dependents = set()
+    changed = True
+    while changed:
+        changed = False
+        for c, ds in deps.items():
+            if c == root or c in dependents:
+                continue
+            if root in ds or (ds & dependents):
+                dependents.add(c)
+                changed = True
+    sel = dependents | {root}
+else:
+    sel = set(deps.keys())
+
+# Топологический порядок внутри sel
 order, placed = [], set()
 while len(order) < len(sel):
     progressed = False
@@ -246,24 +274,36 @@ PY
 }
 
 # ── Составляем план ───────────────────────────────────────────────────────────
-if $CASCADE; then
-    PLAN="$(cascade_order)" || die "не удалось построить каскад"
+if $PUBLISH_ALL; then
+    PLAN="$(resolve_order "")" || die "не удалось построить план для --publish-all"
+elif $CASCADE; then
+    PLAN="$(resolve_order "$CRATE")" || die "не удалось построить каскад"
 else
     PLAN="$CRATE"
 fi
 
 echo ""
-echo -e "${BOLD}Крейт:${RESET}    $CRATE ($BUMP)"
-if [[ "$PLAN" != "$CRATE" ]]; then
-    echo -e "${BOLD}Каскад:${RESET}   $PLAN"
-    echo -e "          (зависимые бампятся минором и публикуются следом)"
+if $PUBLISH_ALL; then
+    echo -e "${BOLD}Режим:${RESET}    --publish-all (весь воркспейс)"
+else
+    echo -e "${BOLD}Крейт:${RESET}    $CRATE"
+fi
+if $NO_BUMP; then
+    echo -e "${BOLD}Бамп:${RESET}     нет (--no-bump)"
+else
+    echo -e "${BOLD}Бамп:${RESET}     $BUMP"
+fi
+if $PUBLISH_ALL || [[ "$PLAN" != "$CRATE" ]]; then
+    echo -e "${BOLD}Порядок:${RESET}  $PLAN"
 fi
 echo ""
 
 # ── Шаг 1: бампы + обновление ссылок, в порядке зависимостей ──────────────────
 declare -A NEW_VERSIONS
 for c in $PLAN; do
-    if [[ "$c" == "$CRATE" ]]; then
+    if $NO_BUMP; then
+        NEW_VERSIONS[$c]="$(crate_version "$c")"
+    elif $PUBLISH_ALL || [[ "$c" == "$CRATE" ]]; then
         NEW_VERSIONS[$c]="$(bump_crate "$c" "$BUMP" | tail -1)"
     else
         NEW_VERSIONS[$c]="$(bump_crate "$c" --minor | tail -1)"
