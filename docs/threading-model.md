@@ -55,6 +55,22 @@ itself depends on `task-core` for CPU-side scheduling of that compute work,
 but the two are not the same layer: `task-core` doesn't know what a compute
 buffer is, and `compute-runtime` doesn't schedule general application logic.
 
+## `engine-core`'s `FrameScheduler`
+
+`meridian-engine-core::FrameScheduler` is the engine-layer application of
+`Scheduler` above — real and tested on its own terms, sized by default to
+the real detected CPU thread count (`platform-core::CpuCapabilities`), not
+a hardcoded guess. `Runtime::tick`, however, does *not* run physics and
+audio through it: those are the only two real per-frame systems today, and
+they have a genuine sequential data dependency (audio reads the emitter
+frames physics just updated), not two independent branches like the
+Physics/Audio split in the "shape of a frame" diagram above implies once
+more systems exist. Wrapping a strictly sequential two-step in a job graph
+would be decorative, not functional. `FrameScheduler` becomes load-bearing
+once a second real per-frame system exists that's genuinely independent of
+physics (animation, particles, ...) to run alongside it — see
+`meridian-engine-core`'s module doc.
+
 ## Determinism note
 
 Job graph *ordering* is not currently guaranteed to be identical across
