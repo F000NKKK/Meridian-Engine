@@ -107,11 +107,28 @@ every one of them implements — so `Plane::contains`/
 `ConvexVolume::intersects` (the generalization of `graphics-core`'s
 6-plane `Frustum` to any number of planes) are written once, generically,
 instead of once per shape pair. All real and tested (`cargo test -p
-meridian-gac-core`). `physics-core`'s `ColliderShape::Sphere` isn't
-rewritten to use `gac-core::Sphere` yet (it stores only a radius; its
-center comes from `RigidBody::frame` — see docs/physics-design.md) since
-there's only one collider shape to test against itself today; that's the
-natural point to revisit once a second collider shape exists.
+meridian-gac-core`). `Motor3::transform_vector` (rotation-only action on a
+direction, computed as `transform_point(v) - transform_point(ZERO)`, which
+cancels translation exactly) was added alongside this, and `Obb` was
+changed to store `frame: Motor3` instead of a separate center/orientation
+pair — the same pose convention every rigid body in the workspace already
+used, so a physics `RigidBody`'s own `frame` builds an `Obb` directly.
+
+`physics-core` grew a second collider shape, `ColliderShape::Cuboid`
+(`half_extents` only; orientation comes from the owning `RigidBody`'s
+`frame` via `RigidBody::as_obb`) — the point docs/gac-design.md's `Shape`
+section anticipated. `NarrowPhase` now handles sphere-sphere,
+sphere-cuboid (closest-point-on-box) and cuboid-cuboid (the separating
+axis theorem, exactly the "SAT once more shapes exist" this document
+already named as the plan), each still producing a single `Contact` point
+(no multi-point manifold, matching the existing simplification).
+`RigidBody::moment_of_inertia` for `Cuboid` is the average of the box's
+three true principal moments, not a full anisotropic tensor — disclosed on
+that method's doc comment, forced by `ConstraintSolver` only having a
+single scalar `inverse_inertia`. All real and tested, including a
+rotated-box SAT case and a full box-settles-on-box-floor integration test
+(`cargo test -p meridian-physics-core`). See docs/physics-design.md for
+the full breakdown.
 
 Step 9 (`meridian-engine-core`) is real: `SubsystemManager` owns real
 `ecs-core`/`physics-core`/`audio-core` instances (the one place in the
