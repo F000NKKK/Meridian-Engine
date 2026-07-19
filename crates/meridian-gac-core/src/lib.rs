@@ -1381,6 +1381,6 @@ mod tests {
             radius: 0.5,
         }));
         assert!(volume.intersects(&Aabb::cube(Vec3::new(0.9, 0.0, 0.0), 0.5)));
-        assert!(volume.intersects(&Obb::cube(Vec3::ZERO, 0.5, Rotor::identity())));
+        assert!(volume.intersects(&Obb::cube(Motor3::identity(), 0.5)));
     }
 }
