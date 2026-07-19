@@ -442,7 +442,11 @@ impl Device {
     /// @binding(0)` of `pipeline` — the same single-binding shape
     /// [`Device::create_render_pipeline`]'s auto-derived layout expects;
     /// see that method's doc comment.
-    pub fn create_uniform_bind_group(&self, pipeline: &RenderPipeline, buffer: &Buffer) -> BindGroup {
+    pub fn create_uniform_bind_group(
+        &self,
+        pipeline: &RenderPipeline,
+        buffer: &Buffer,
+    ) -> BindGroup {
         let layout = pipeline.raw.get_bind_group_layout(0);
         let raw = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: None,
@@ -762,9 +766,13 @@ impl std::fmt::Display for AcquireFrameError {
         match self {
             AcquireFrameError::Timeout => write!(f, "timed out acquiring the next swapchain frame"),
             AcquireFrameError::Occluded => write!(f, "surface is occluded (minimized or hidden)"),
-            AcquireFrameError::Outdated => write!(f, "surface configuration is outdated, call Surface::resize"),
+            AcquireFrameError::Outdated => {
+                write!(f, "surface configuration is outdated, call Surface::resize")
+            }
             AcquireFrameError::Lost => write!(f, "surface was lost and needs to be recreated"),
-            AcquireFrameError::Validation => write!(f, "validation error acquiring the next swapchain frame"),
+            AcquireFrameError::Validation => {
+                write!(f, "validation error acquiring the next swapchain frame")
+            }
         }
     }
 }

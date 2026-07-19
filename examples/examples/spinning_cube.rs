@@ -19,8 +19,8 @@ use meridian_engine_core::{Runtime, SubsystemManager};
 use meridian_gac_core::{Motor3, Rotor, Vec3};
 use meridian_graphics_core::Camera;
 use meridian_graphics_driver::{
-    BindGroup, Buffer, BufferUsage, DepthTexture, Device, RenderPipeline, Surface, VertexAttributeDesc,
-    VertexFormat, VertexLayout,
+    BindGroup, Buffer, BufferUsage, DepthTexture, Device, RenderPipeline, Surface,
+    VertexAttributeDesc, VertexFormat, VertexLayout,
 };
 use meridian_platform_core::{AppHandler, InputState, Window, run_windowed_app};
 
@@ -83,12 +83,60 @@ fn cube_mesh() -> (Vec<CubeVertex>, Vec<u16>) {
     }
 
     let faces = [
-        face([0.0, 0.0, 1.0], [[-1.0, -1.0, 1.0], [1.0, -1.0, 1.0], [1.0, 1.0, 1.0], [-1.0, 1.0, 1.0]]),
-        face([0.0, 0.0, -1.0], [[-1.0, -1.0, -1.0], [-1.0, 1.0, -1.0], [1.0, 1.0, -1.0], [1.0, -1.0, -1.0]]),
-        face([1.0, 0.0, 0.0], [[1.0, -1.0, -1.0], [1.0, 1.0, -1.0], [1.0, 1.0, 1.0], [1.0, -1.0, 1.0]]),
-        face([-1.0, 0.0, 0.0], [[-1.0, -1.0, -1.0], [-1.0, -1.0, 1.0], [-1.0, 1.0, 1.0], [-1.0, 1.0, -1.0]]),
-        face([0.0, 1.0, 0.0], [[-1.0, 1.0, -1.0], [-1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, -1.0]]),
-        face([0.0, -1.0, 0.0], [[-1.0, -1.0, -1.0], [-1.0, -1.0, 1.0], [1.0, -1.0, 1.0], [1.0, -1.0, -1.0]]),
+        face(
+            [0.0, 0.0, 1.0],
+            [
+                [-1.0, -1.0, 1.0],
+                [1.0, -1.0, 1.0],
+                [1.0, 1.0, 1.0],
+                [-1.0, 1.0, 1.0],
+            ],
+        ),
+        face(
+            [0.0, 0.0, -1.0],
+            [
+                [-1.0, -1.0, -1.0],
+                [-1.0, 1.0, -1.0],
+                [1.0, 1.0, -1.0],
+                [1.0, -1.0, -1.0],
+            ],
+        ),
+        face(
+            [1.0, 0.0, 0.0],
+            [
+                [1.0, -1.0, -1.0],
+                [1.0, 1.0, -1.0],
+                [1.0, 1.0, 1.0],
+                [1.0, -1.0, 1.0],
+            ],
+        ),
+        face(
+            [-1.0, 0.0, 0.0],
+            [
+                [-1.0, -1.0, -1.0],
+                [-1.0, -1.0, 1.0],
+                [-1.0, 1.0, 1.0],
+                [-1.0, 1.0, -1.0],
+            ],
+        ),
+        face(
+            [0.0, 1.0, 0.0],
+            [
+                [-1.0, 1.0, -1.0],
+                [-1.0, 1.0, 1.0],
+                [1.0, 1.0, 1.0],
+                [1.0, 1.0, -1.0],
+            ],
+        ),
+        face(
+            [0.0, -1.0, 0.0],
+            [
+                [-1.0, -1.0, -1.0],
+                [-1.0, -1.0, 1.0],
+                [1.0, -1.0, 1.0],
+                [1.0, -1.0, -1.0],
+            ],
+        ),
     ];
 
     let mut vertices = Vec::with_capacity(24);
@@ -213,8 +261,14 @@ impl AppHandler for App {
                 },
             ],
         };
-        let pipeline =
-            device.create_render_pipeline(&shader, "vs_main", "fs_main", &vertex_layout, &surface, true);
+        let pipeline = device.create_render_pipeline(
+            &shader,
+            "vs_main",
+            "fs_main",
+            &vertex_layout,
+            &surface,
+            true,
+        );
 
         let (vertices, indices) = cube_mesh();
         let vertex_bytes = vertices_to_bytes(&vertices);
@@ -262,7 +316,8 @@ impl AppHandler for App {
 
         let spin = time.total_seconds as f32;
         let model = Motor3::rotation(Vec3::new(0.3, 1.0, 0.15).normalize(), spin);
-        let mvp = meridian_gac_core::float_ga::mat4_mul(camera.view_projection_matrix(), model.to_mat4());
+        let mvp =
+            meridian_gac_core::float_ga::mat4_mul(camera.view_projection_matrix(), model.to_mat4());
 
         let mut uniform_bytes = Vec::with_capacity(128);
         uniform_bytes.extend_from_slice(&mat4_to_bytes(mvp));
@@ -279,7 +334,8 @@ impl AppHandler for App {
 
         let mut commands = gpu.device.create_command_buffer();
         {
-            let mut pass = commands.begin_render_pass(frame.view(), [0.05, 0.05, 0.08, 1.0], Some(&gpu.depth));
+            let mut pass =
+                commands.begin_render_pass(frame.view(), [0.05, 0.05, 0.08, 1.0], Some(&gpu.depth));
             pass.set_pipeline(&gpu.pipeline);
             pass.set_bind_group(0, &gpu.bind_group);
             pass.set_vertex_buffer(0, &gpu.vertex_buffer);
