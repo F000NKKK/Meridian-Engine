@@ -477,7 +477,7 @@ mod tests {
         // azimuth = atan2(z, x). -60 degrees => z = -sin(60), x = cos(60).
         let angle = (-60.0_f32).to_radians();
         let emitter = emitter_at(Vec3::new(angle.cos() * 5.0, 0.0, angle.sin() * 5.0));
-        let attenuation = AttenuationModel::default();
+        let attenuation = no_attenuation();
 
         let headphone_gains = spatial_gains(&listener, &emitter, &SpeakerLayout::stereo_headphones(), &attenuation);
         let speaker_gains = spatial_gains(&listener, &emitter, &SpeakerLayout::stereo_speakers(), &attenuation);
