@@ -132,6 +132,13 @@ on `meridian-gac-core` and `meridian-audio-driver`; see each crate's own
     depending on that domain's `*-core` plus `compute-runtime`, per rule 10.
     This is what keeps `compute-runtime` small and stable as new domains
     adopt it instead of each one adding its own edge into its internals.
+    The same boundary applies to memory, not just algorithms:
+    `compute-runtime` owns untyped buffers (`Buffer`, byte length,
+    dispatch/sync state); it must never define a domain-shaped buffer type
+    (`MotorBuffer`, `ParticleBuffer`, ...). Interpreting bytes as a
+    `Motor3` or a particle is the adapter crate's job — same split as rule 4
+    (`asset-core` decodes, it doesn't manage) and rule 8 (`resource-core` is
+    identity, not policy).
 
 ## How to check locally
 
