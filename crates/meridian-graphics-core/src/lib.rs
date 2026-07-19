@@ -2,7 +2,7 @@
 
 use std::collections::{HashMap, VecDeque};
 
-use meridian_gac_core::float_ga::FloatFlavor;
+use meridian_gac_core::float_ga::{FloatFlavor, mat4_mul};
 use meridian_gac_core::generic::Shape;
 use meridian_gac_core::{ConvexVolume, Motor3, Plane, Projection, Vec3};
 use meridian_resource_core::ResourceId;
@@ -161,23 +161,6 @@ const LOCAL_TO_VIEW_REMAP: [[f32; 4]; 4] = [
     [1.0, 0.0, 0.0, 0.0],
     [0.0, 0.0, 0.0, 1.0],
 ];
-
-/// Column-major 4x4 matrix multiply (`lhs * rhs`, column-vector
-/// convention). Kept local to `graphics-core` rather than promoted to
-/// `gac-core`/`numeric-core`: it's plain matrix arithmetic on the raw
-/// arrays `Motor3::to_mat4`/`Projection` already return, needed here to
-/// compose a view-projection matrix. If a second crate needs generic mat4
-/// multiply, that's the signal to move it down into `numeric-core`, not
-/// before.
-fn mat4_mul(lhs: [[f32; 4]; 4], rhs: [[f32; 4]; 4]) -> [[f32; 4]; 4] {
-    let mut out = [[0.0; 4]; 4];
-    for (col, rhs_col) in rhs.iter().enumerate() {
-        for row in 0..4 {
-            out[col][row] = (0..4).map(|k| lhs[k][row] * rhs_col[k]).sum();
-        }
-    }
-    out
-}
 
 /// A camera's view + projection: `frame` is the camera's world transform
 /// (local-forward `+X`, see `LOCAL_TO_VIEW_REMAP`'s doc comment below),
