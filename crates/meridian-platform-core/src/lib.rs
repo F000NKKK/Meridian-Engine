@@ -52,15 +52,18 @@ impl CpuCapabilities {
     }
 }
 
-/// GPU-side capability info. Empty for now — nothing in the workspace
-/// constructs a `Some(GpuCapabilities { .. })` anywhere yet, since no
-/// `*-driver` crate has a real GPU backend (see `compute-driver`'s module
-/// doc). Real fields (device name, VRAM, max workgroup size, ...) land
-/// here once a backend exists to report them; adding fields to this
-/// struct then is additive, not a redesign of the `Option`-based shape
-/// above it.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub struct GpuCapabilities {}
+/// GPU-side capability info. `device_name` is real, populated by
+/// `graphics-driver::Device` (the first `*-driver` crate with an actual
+/// GPU backend — see that crate's module doc for the `wgpu` details);
+/// `compute-driver`/`physics-driver`/`audio-driver` still report `gpu:
+/// None` since none of them dispatch to a GPU yet. More fields (VRAM, max
+/// workgroup size, ...) land here once a backend needs to report them —
+/// additive, not a redesign of the `Option`-based shape in
+/// [`BackendCapabilities`].
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct GpuCapabilities {
+    pub device_name: String,
+}
 
 /// Detects the current machine's CPU thread count. Called by
 /// [`CpuCapabilities::detect`]; exposed directly too in case a caller

@@ -114,15 +114,18 @@ order, not a hand-written sequence of system calls. See
 
 ## Current state
 
-Every crate except the GPU/audio-device driver backends (blocked on the
-`wgpu` decision, see [roadmap.md](roadmap.md)) now has a real
-implementation, up through `meridian-engine-core`: `Runtime` owns a
-`SubsystemManager` (real `ecs-core`/`physics-core`/`audio-core` instances)
-and an `EventSystem` (type-erased pub/sub, the mechanism rule 7 exists
-for — subsystems communicate through it instead of depending on each
-other), and `Runtime::tick` advances physics then recomputes audio from
-the result each frame. `graphics-core`'s render graph/camera/culling are
-real too, but not wired into `Runtime::tick` — rendering has nothing to
-submit to without a real `graphics-driver` backend. See
-[roadmap.md](roadmap.md) for the exact state of each crate and what's
+Every crate except the audio-device driver backend (blocked on the same
+`Window`/`DynamicLibrary`-class OS-device decision as `platform-core::Window`,
+see [roadmap.md](roadmap.md)) now has a real implementation, up through
+`meridian-engine-core`: `Runtime` owns a `SubsystemManager` (real
+`ecs-core`/`physics-core`/`audio-core` instances) and an `EventSystem`
+(type-erased pub/sub, the mechanism rule 7 exists for — subsystems
+communicate through it instead of depending on each other), and
+`Runtime::tick` advances physics then recomputes audio from the result
+each frame. `graphics-driver` has a real, headless `wgpu` `Device` (see
+[roadmap.md](roadmap.md)'s `wgpu` entry), and `graphics-core`'s render
+graph/camera/culling are real too, but neither is wired into
+`Runtime::tick` yet — rendering has nothing to present a frame to without
+a window/swapchain surface. See [roadmap.md](roadmap.md) for the exact
+state of each crate and what's
 still a scaffold.

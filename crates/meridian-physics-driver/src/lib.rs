@@ -12,7 +12,7 @@ use meridian_platform_core::{BackendCapabilities, CpuCapabilities, GpuCapabiliti
 /// `compute-driver::ComputeCapabilities` and future `graphics-driver`/
 /// `audio-driver` equivalents) rather than redeclaring `threads`; `gpu`
 /// is `None` until a real GPU backend exists.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct PhysicsBackend {
     pub cpu: CpuCapabilities,
     pub gpu: Option<GpuCapabilities>,
@@ -42,7 +42,7 @@ impl BackendCapabilities for PhysicsBackend {
     }
 
     fn gpu(&self) -> Option<GpuCapabilities> {
-        self.gpu
+        self.gpu.clone()
     }
 }
 

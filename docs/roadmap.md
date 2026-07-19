@@ -51,11 +51,12 @@ Step 8's physics half (`physics-driver`/`physics-core`) is real: AABB
 broad phase, sphere-sphere/sphere-cuboid/cuboid-cuboid (SAT) narrow phase
 (see below for the `Cuboid` collider shape), an impulse-based constraint
 solver (linear *and* angular — see below), semi-implicit Euler
-integration. `graphics-driver`/`audio-driver` are still scaffolds —
-blocked on the GPU backend decision below (audio doesn't strictly need a
-GPU, but a real *output device* is the same class of OS-boundary problem
-as `Window`, so `audio-driver` is deferred alongside it; `audio-core`
-itself doesn't need `audio-driver` to be real to be useful — see next).
+integration. `graphics-driver` is real now, headless-only — see "Not yet
+decided" below for the `wgpu` details. `audio-driver` is still a
+scaffold: a real *output device* is the same class of OS-boundary problem
+as `Window` (not a GPU problem — it doesn't need `wgpu`), so it's
+deferred alongside `Window` on its own hand-written-FFI track; `audio-core`
+itself doesn't need `audio-driver` to be real to be useful — see next.
 
 **GA is used in physics where it actually matters, not decoratively**:
 angular velocity/torque are `gac-core::Bivector3` (angular quantities
@@ -95,8 +96,9 @@ dependencies), rejecting write conflicts and cycles rather than guessing
 (`cargo test -p meridian-graphics-core`; human-readable version via
 `./build.sh run graphics_validation`). Scene extraction, lighting,
 materials-as-shading-inputs, animation and post processing remain scaffolds
-— they need an actual GPU resource to shade against, which is blocked on
-`graphics-driver`/`wgpu` below.
+— they need an actual GPU resource to shade against, `graphics-driver`
+now has real headless `wgpu` resources (see "Not yet decided" below) but
+no window/swapchain yet, so nothing to present a shaded frame to.
 
 `meridian-gac-core` also grew a small shared geometric-primitives set:
 `Aabb` (moved here after it turned out `physics-core` and `graphics-core`
@@ -271,8 +273,11 @@ priority before writing implementations is keeping that document and the
    narrow phase, impulse solver, GA-native integration; see "Current
    state" above). `meridian-audio-core` — **done** (`SpeakerLayout`/
    `Mixer`/`AttenuationModel`/`DspGraph`; see "Current state" above).
-   `meridian-graphics-driver` and `meridian-audio-driver` are blocked on
-   the GPU/device backend decision (`wgpu`, see "Not yet decided").
+   `meridian-graphics-driver` — **done, headless only**: real `wgpu`
+   `Device`/`Buffer`/`Texture`/`Shader`/compute `Pipeline`/`CommandBuffer`,
+   no window/surface yet (see "Not yet decided" below). `meridian-audio-driver`
+   is still blocked on the `Window`/`DynamicLibrary`-class OS-device
+   decision (not a GPU problem, so not unblocked by the above).
    `meridian-graphics-core`'s driver-independent half — **done**: render
    graph pass ordering, `Camera`'s `Motor3` -> view/projection matrix
    bridge, and frustum culling (see "Current state" above). This was the
@@ -281,12 +286,13 @@ priority before writing implementations is keeping that document and the
    graphics APIs actually need, where `audio-core` could stay entirely in
    GA/`Vec3` terms throughout. Scene extraction, lighting, materials, and
    post-processing are the parts of `graphics-core` still blocked on a
-   concrete GPU resource existing (`graphics-driver`/`wgpu`).
+   window/swapchain surface and a mesh/material vocabulary, neither of
+   which exist yet.
 9. `meridian-engine-core` — **done** for the driver-independent
    subsystems: `Runtime`/`SubsystemManager`/`EventSystem` wire
    `ecs-core`/`physics-core`/`audio-core` into a real per-frame loop (see
-   "Current state" above). `graphics-core` joins once `graphics-driver`
-   has a real backend to submit to.
+   "Current state" above). `graphics-core` joins once a window/swapchain
+   exists for `graphics-driver` to submit frames to.
 
 ## Explicitly out of scope for now
 
@@ -329,12 +335,29 @@ priority before writing implementations is keeping that document and the
   for one call. `graphics-driver`'s existing stub shape (`Device`,
   `CommandBuffer`, `Buffer`, `Texture`, `Shader`, `Pipeline`) already maps
   onto `wgpu`'s own vocabulary, so this doesn't force a redesign, just a
-  real implementation of what's already stubbed. Not started — deferred
-  until `graphics-driver` actually needs it (step 8's remaining half).
-  `platform-core`'s `Window`/`DynamicLibrary` are a separate, smaller
-  decision (below) and keep their own hand-written-FFI answer; GPU is the
-  one deliberate exception to zero-deps, not a reversal of the policy in
-  general.
+  real implementation of what's already stubbed. `platform-core`'s
+  `Window`/`DynamicLibrary` are a separate, smaller decision (below) and
+  keep their own hand-written-FFI answer; GPU is the one deliberate
+  exception to zero-deps, not a reversal of the policy in general.
+
+  **`graphics-driver` is real now, headless-only.** `Device::new`
+  requests a real `wgpu` adapter/device with no `compatible_surface` (the
+  `async` acquisition bridged via `pollster::block_on`, the one place
+  this crate's otherwise-sync API needs it), and `Buffer`/`Texture`/
+  `Shader`/`CommandBuffer` are real `wgpu` resource wrappers — proven by
+  an actual end-to-end test that writes a buffer, runs a WGSL compute
+  shader over it on the GPU, and reads the doubled values back (`cargo
+  test -p meridian-graphics-driver`). `Pipeline` is compute-only so far:
+  a render pipeline needs a vertex layout and color-target formats, which
+  need either a real swapchain surface or a mesh/material vocabulary that
+  doesn't exist yet — both a separate follow-up, not blocked on anything
+  here. `platform-core::GpuCapabilities` gained its first real field
+  (`device_name`), populated by `Device`'s `BackendCapabilities` impl;
+  `compute-driver`/`physics-driver`/`audio-driver` still report `gpu:
+  None` since none of them dispatch to a GPU yet. Windowing/swapchain
+  (winit or hand-written platform window creation, wiring a real surface
+  into `Device`, and an example that renders to screen) is deliberately
+  not part of this pass — see "Suggested implementation order" step 8.
 - **`meridian-audio-effects` (heavier DSP effects as a separate crate)** —
   decided: not yet, and only split it out when a concrete effect actually
   needs an external dependency. `meridian-audio-core` already owns basic,

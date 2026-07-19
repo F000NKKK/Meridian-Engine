@@ -33,6 +33,13 @@ meridian-physics-core = { path = "crates/meridian-physics-core", version = "0.12
 meridian-audio-core = { path = "crates/meridian-audio-core", version = "0.9" }
 meridian-engine-core = { path = "crates/meridian-engine-core", version = "0.14" }
 
+# External dependencies shared by more than one crate go here too, same
+# reasoning: one place to bump a version instead of drifting per-crate
+# copies. `wgpu`/`pollster` are `graphics-driver`'s GPU backend — see
+# docs/roadmap.md's "Not yet decided" wgpu entry.
+wgpu = "30.0.0"
+pollster = "1.0.1"
+
 [profile.release]
 lto = true
 codegen-units = 1

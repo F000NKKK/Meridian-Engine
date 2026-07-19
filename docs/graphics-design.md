@@ -31,9 +31,14 @@ Post Processing
 `Camera`, frustum culling, and render graph pass ordering are real and
 tested (`cargo test -p meridian-graphics-core`; human-readable version via
 `./build.sh run graphics_validation`) — see below for how each works.
-Scene extraction, lighting, materials-as-shading-inputs, animation and post
-processing are still scaffolds, blocked on `graphics-driver`/`wgpu` (see
-[roadmap.md](roadmap.md)) since they need an actual GPU resource to shade.
+`graphics-driver` itself is real now too: a headless `wgpu` `Device`
+(`Buffer`/`Texture`/`Shader`/compute `Pipeline`/`CommandBuffer`, no
+window/surface — see [roadmap.md](roadmap.md)'s `wgpu` entry). Scene
+extraction, lighting, materials-as-shading-inputs, animation and post
+processing are still scaffolds: they need a window/swapchain surface to
+present to and a mesh/material vocabulary, neither of which exists yet —
+not blocked on `graphics-driver` having a GPU device anymore, just on
+those two separate follow-ups.
 
 ## `Motor3` to view/projection matrix
 
