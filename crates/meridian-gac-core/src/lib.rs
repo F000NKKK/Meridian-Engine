@@ -576,6 +576,42 @@ impl Aabb {
     }
 }
 
+/// A half-space `normal . p + d >= 0` — a point satisfying this is on the
+/// plane's "inside". Another plain geometric primitive with no domain
+/// meaning of its own (`graphics-core`'s `Frustum` is six of these; a
+/// future physics ground plane or clipping pass would be another
+/// consumer), so it lives here rather than being redefined per subsystem —
+/// see [`Aabb`]'s doc comment for the same reasoning.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Plane {
+    pub normal: Vec3,
+    pub d: Scalar,
+}
+
+impl Plane {
+    /// Rescales `normal`/`d` so `normal` is unit length, without changing
+    /// which half-space the plane represents. Needed before
+    /// [`distance`](Self::distance) is a true Euclidean distance rather
+    /// than just a correctly-signed value.
+    pub fn normalize(self) -> Self {
+        let len = self.normal.length();
+        Plane {
+            normal: Vec3::new(
+                self.normal.x / len,
+                self.normal.y / len,
+                self.normal.z / len,
+            ),
+            d: self.d / len,
+        }
+    }
+
+    /// Signed distance from `p` to the plane: positive on the "inside"
+    /// half-space, negative on the other side.
+    pub fn distance(&self, p: Vec3) -> Scalar {
+        self.normal.dot(p) + self.d
+    }
+}
+
 /// A camera/projective mapping: view-space (right-handed, looking down
 /// `-Z`, `+X` right, `+Y` up) to clip space. Column-major, column-vector
 /// convention (`M * v`), depth range `[0, 1]` — matches wgpu/DX12/Metal,

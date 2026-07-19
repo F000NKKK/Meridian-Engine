@@ -2,7 +2,7 @@
 
 use std::collections::{HashMap, VecDeque};
 
-use meridian_gac_core::{Aabb, Motor3, Projection, Vec3};
+use meridian_gac_core::{Aabb, Motor3, Plane, Projection, Vec3};
 use meridian_resource_core::ResourceId;
 
 /// Marker types distinguishing `ResourceId`s of different graphics resource
@@ -199,32 +199,6 @@ impl Camera {
     /// World-space to clip-space matrix: `projection * view`.
     pub fn view_projection_matrix(&self) -> [[f32; 4]; 4] {
         mat4_mul(self.projection.0, self.view_matrix())
-    }
-}
-
-/// A half-space `normal . p + d >= 0` — a point satisfying this is on the
-/// frustum's inside of the plane.
-#[derive(Debug, Clone, Copy)]
-struct Plane {
-    normal: Vec3,
-    d: f32,
-}
-
-impl Plane {
-    fn normalize(self) -> Self {
-        let len = self.normal.length();
-        Plane {
-            normal: Vec3::new(
-                self.normal.x / len,
-                self.normal.y / len,
-                self.normal.z / len,
-            ),
-            d: self.d / len,
-        }
-    }
-
-    fn distance(&self, p: Vec3) -> f32 {
-        self.normal.dot(p) + self.d
     }
 }
 
