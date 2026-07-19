@@ -25,24 +25,32 @@ priority before writing implementations is keeping that document and the
    layer can be meaningfully tested without it.
 3. `meridian-memory-core`, `meridian-task-core`, `meridian-platform-core` —
    in parallel, no interdependency.
-4. `meridian-ecs-core` — archetype storage, `Transform` as a component.
-5. `meridian-compute-driver` → `meridian-compute-core` — needed before
+4. `meridian-resource-core` — typed handles on top of `memory-core`'s
+   generic `Handle`, needed before any subsystem below can hold a
+   `TextureHandle`/`MeshHandle`/etc.
+5. `meridian-ecs-core` — archetype storage, `Transform` as a component.
+6. `meridian-compute-driver` → `meridian-compute-core` — needed before
    physics or graphics can use compute.
-6. `meridian-asset-core` — decoders, independent of the above once
+7. `meridian-asset-core` — decoders, independent of the above once
    `platform-core` exists.
-7. `meridian-graphics-driver` → `meridian-graphics-core`, and
+8. `meridian-graphics-driver` → `meridian-graphics-core`, and
    `meridian-physics-driver` → `meridian-physics-core`, and
    `meridian-audio-driver` → `meridian-audio-core` — in parallel across
-   subsystems once their shared dependencies (steps 1-6) exist.
-8. `meridian-engine-core` — wires everything into the main loop last, once
+   subsystems once their shared dependencies (steps 1-7) exist.
+9. `meridian-engine-core` — wires everything into the main loop last, once
    there's something real to schedule.
 
 ## Explicitly out of scope for now
 
-`animation-core`, `particles-core`, `ai-core` — referenced in
-[dependency-rules.md](dependency-rules.md) as future consumers of
-`compute-core`, but not part of the current workspace. Add them only when
-there's a concrete subsystem to build, not speculatively.
+- `animation-core`, `particles-core`, `ai-core` — referenced in
+  [dependency-rules.md](dependency-rules.md) as future consumers of
+  `compute-core`, but not part of the current workspace. Add them only when
+  there's a concrete subsystem to build, not speculatively.
+- Splitting `graphics-driver` into a separately-named RHI crate plus backend
+  crates (`vulkan-driver`, etc.) — `graphics-driver` already plays the RHI
+  role today (see [graphics-design.md](graphics-design.md)); a rename or
+  further split is only worth doing once a second concrete backend actually
+  exists to justify it.
 
 ## Not yet decided
 
