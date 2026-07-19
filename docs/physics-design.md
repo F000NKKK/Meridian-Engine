@@ -13,14 +13,15 @@ BVH/spatial-hashing are how physics *reasons about space*, not how it
 [ADR 005](adr/005-driver-core-separation.md) and
 [dependency-rules.md](dependency-rules.md) rule 2.
 
-`physics-core` owns the actual simulation, including its own broad-phase:
+`physics-core` owns the actual simulation, including its own broad-phase.
+Real, tested (not stub) as of this writing:
 
 ```text
-Geometry
-Broad Phase          BVH, spatial hashing — owned here, not in physics-driver
-Narrow Phase          GJK, EPA, SAT
-Constraint Solver     impulse-based
-Integration
+Geometry              Sphere only (ColliderShape) — box/capsule/mesh later
+Broad Phase           Naive O(n²) AABB sweep — spatial hash/BVH once profiling calls for it
+Narrow Phase          Sphere-sphere exact test — GJK/EPA/SAT once more shapes exist
+Constraint Solver     Impulse-based + positional correction against sinking
+Integration           Semi-implicit Euler
 ```
 
 ## `RigidBody` uses the GAC frame, not a bespoke transform
@@ -49,7 +50,20 @@ Broad-phase and constraint solving are natural candidates for SIMD/GPU
 parallelism at scale. `physics-core` reaches that through
 `meridian-compute-runtime`, not by depending on `compute-driver` directly or
 building its own scheduler — see
-[dependency-rules.md](dependency-rules.md) rule 5.
+[dependency-rules.md](dependency-rules.md) rule 5. Not wired in yet: the
+current `BroadPhase`/`NarrowPhase`/`ConstraintSolver`/`Integrator` are
+correct sequential CPU implementations, called once per pair/body.
+Batching them through `compute-runtime` (the same way
+`gac-compute::MotorTransformKernel` batches `Motor3` composition) is
+additive later — the same algorithm, called per-pair via a
+`ComputeKernel` instead of a loop — not a rewrite.
+
+`physics-driver`'s `PhysicsBackend` reports real CPU thread count (via
+`platform-core::DeviceCapabilities`, the same shared shape
+`compute-driver::ComputeCapabilities` uses) and `PhysicsSync` is a real
+monotonic generation counter consumers can poll to know physics has
+advanced — both implemented, neither wired into `physics-core`'s pipeline
+yet.
 
 ## Determinism
 
