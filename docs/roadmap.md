@@ -8,10 +8,25 @@ real implementations: `Vec3`, `Rotor`, `Motor3`, and the underlying 16-blade
 rotation against an independent Rodrigues-formula oracle and validates the
 parent/child transform-hierarchy milestone below (`cargo test -p
 meridian-gac-core`; runnable end to end via `./build.sh run
-gac_validation`). Every other crate is still a scaffold: correct name,
-correct dependency edges, a one-line doc comment, no implementation. This
-staged order is intentional — see "Why implementation is deliberately last"
-below.
+gac_validation`).
+
+Step 3 (`memory-core`/`task-core`/`platform-core`) is also real and tested:
+- `meridian-memory-core` — generational `ResourcePool<T>` (stale-handle
+  detection via generation bump on reuse) and `FrameArena<T>`/
+  `PersistentArena<T>` (safe bump-style lists, `reset()` retains capacity).
+- `meridian-task-core` — `JobGraph`/`Scheduler`: dependency-ordered
+  execution across worker threads, panics on a cycle instead of hanging.
+  Deliberately a shared mutex-guarded ready-queue rather than per-worker
+  lock-free work-stealing deques — see docs/threading-model.md for why
+  that's a first step, not the final design.
+- `meridian-platform-core` — `Time`/`Clock` and `InputState` (held/
+  pressed-this-frame/released-this-frame key state, mouse position+delta)
+  are real; `Window` and `DynamicLibrary` are deliberately still stubs —
+  see "Not yet decided" below.
+
+Every other crate is still a scaffold: correct name, correct dependency
+edges, a one-line doc comment, no implementation. This staged order is
+intentional — see "Why implementation is deliberately last" below.
 
 ## Why implementation is deliberately last
 
@@ -84,3 +99,13 @@ priority before writing implementations is keeping that document and the
   needed for physics replay/networking, tracked but unspecified.
 - Concrete graphics backend(s) beneath `graphics-driver` (Vulkan first,
   per [ADR 005](adr/005-driver-core-separation.md), but not started).
+- **`meridian-platform-core`'s `Window` and `DynamicLibrary`** — the
+  workspace's first candidates for either an external dependency (`winit`,
+  `libloading`) or hand-written unsafe FFI. Decided: hand-written unsafe
+  FFI (`dlopen`/`LoadLibrary` for `DynamicLibrary`, per-platform window
+  creation for `Window`), not an external crate — the workspace stays at
+  zero external dependencies for now. Deliberately deferred: `Window` and
+  `DynamicLibrary` aren't needed until `graphics-driver` (step 8), and
+  `Time`/`InputState` (implemented, step 3) cover what `resource-core`/
+  `ecs-core` (steps 4-5) actually need from `platform-core` in the
+  meantime.

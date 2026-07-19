@@ -2,12 +2,12 @@
 //!
 //! `Time`/`Clock` and `InputState` are implemented and tested below — pure
 //! state machines with no OS dependency, so they need no external crate.
-//! `Window` and `DynamicLibrary` are still stubs: a real window needs
-//! either an external windowing crate (e.g. `winit`) or hand-written
-//! per-platform unsafe FFI, and a real dynamic-library loader needs either
-//! `libloading` or raw `dlopen`/`LoadLibrary` FFI — both are the
-//! workspace's first external-dependency decision, deliberately not made
-//! here without discussing it first (see docs/roadmap.md).
+//! `Window` and `DynamicLibrary` are still stubs, deliberately deferred
+//! until `graphics-driver` (step 8) actually needs them — see
+//! docs/roadmap.md "Not yet decided". Decision already made for when that
+//! happens: hand-written unsafe FFI (`dlopen`/`LoadLibrary`, per-platform
+//! window creation), not an external crate like `winit`/`libloading` — the
+//! workspace stays at zero external dependencies.
 
 use std::collections::HashSet;
 use std::time::Instant;
