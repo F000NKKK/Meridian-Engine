@@ -16,8 +16,8 @@
 use core::ops::{Add, Div, Mul, Neg, Sub};
 
 /// A scalar type usable throughout the generic (non-GPU-dispatch-bound)
-/// half of this crate — implemented for [`float_ga::Scalar`] (`f32`) and
-/// [`fixed_ga::Fixed`]. Every method is a thin forward to that type's own
+/// half of this crate — implemented for [`crate::float_ga::Scalar`] (`f32`) and
+/// [`crate::fixed_ga::Fixed`]. Every method is a thin forward to that type's own
 /// inherent method (Rust resolves an inherent method over a
 /// same-named trait method, so `self.sqrt()` inside `impl ScalarLike for
 /// Scalar` calls `f32::sqrt`, not itself) — this trait exists to *name*
@@ -60,7 +60,7 @@ pub trait ScalarLike:
 }
 
 /// A 3D vector type usable generically — implemented for
-/// [`float_ga::Vec3`] and [`fixed_ga::FixedVec3`]. See [`ScalarLike`]'s
+/// [`crate::float_ga::Vec3`] and [`crate::fixed_ga::FixedVec3`]. See [`ScalarLike`]'s
 /// doc comment for why every method is a thin forward, not a
 /// reimplementation.
 pub trait VectorLike:
@@ -88,8 +88,8 @@ pub trait VectorLike:
 }
 
 /// A rotation-generator bivector type usable generically —
-/// implemented for [`float_ga::Bivector3`] and
-/// [`fixed_ga::FixedBivector3`].
+/// implemented for [`crate::float_ga::Bivector3`] and
+/// [`crate::fixed_ga::FixedBivector3`].
 pub trait BivectorLike:
     Copy
     + core::fmt::Debug
@@ -109,7 +109,7 @@ pub trait BivectorLike:
 }
 
 /// A pure-rotation type usable generically — implemented for
-/// [`float_ga::Rotor`] and [`fixed_ga::FixedRotor`].
+/// [`crate::float_ga::Rotor`] and [`crate::fixed_ga::FixedRotor`].
 pub trait RotorLike: Copy + core::fmt::Debug {
     type Scalar: ScalarLike;
     type Vector: VectorLike<Scalar = Self::Scalar>;
@@ -122,7 +122,7 @@ pub trait RotorLike: Copy + core::fmt::Debug {
 }
 
 /// A rigid-motion (rotation + translation) type usable generically —
-/// implemented for [`float_ga::Motor3`] and [`fixed_ga::FixedMotor3`].
+/// implemented for [`crate::float_ga::Motor3`] and [`crate::fixed_ga::FixedMotor3`].
 pub trait MotorLike: Copy + core::fmt::Debug {
     type Scalar: ScalarLike;
     type Vector: VectorLike<Scalar = Self::Scalar>;
@@ -140,8 +140,8 @@ pub trait MotorLike: Copy + core::fmt::Debug {
 /// One complete "flavor" of the algebra — the associated-type bundle
 /// that lets generic code (this crate's own primitives below,
 /// `physics-core`'s engine, ...) be written once against `F: GaFlavor`
-/// instead of once per scalar type. [`float_ga::FloatFlavor`] and
-/// [`fixed_ga::FixedFlavor`] are the two flavors that exist today; a
+/// instead of once per scalar type. [`crate::float_ga::FloatFlavor`] and
+/// [`crate::fixed_ga::FixedFlavor`] are the two flavors that exist today; a
 /// third is exactly as easy to add as implementing this trait (plus the
 /// five component traits above) for a new scalar/vector/bivector/rotor/
 /// motor set.
