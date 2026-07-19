@@ -544,13 +544,37 @@ pub struct Frame {
     pub motor: Motor3,
 }
 
+/// A convex shape describable by its support function: the point of the
+/// shape farthest along a given direction. This is the standard
+/// convex-geometry interface (the same one GJK/EPA-style algorithms are
+/// built on) that lets a plane or [`ConvexVolume`] test *any* shape without
+/// a hardcoded list of shape variants, and lets a new shape (a capsule, a
+/// convex hull, ...) work with every existing plane/volume test for free
+/// just by implementing this one method — no double-dispatch, no shape x
+/// shape combinatorial explosion.
+pub trait Shape {
+    fn support(&self, direction: Vec3) -> Vec3;
+}
+
+/// A single point, treated as a degenerate shape: its own support point
+/// regardless of direction. Lets a single position be tested against a
+/// [`Plane`]/[`ConvexVolume`] with the same generic code as any other
+/// [`Shape`].
+impl Shape for Vec3 {
+    fn support(&self, _direction: Vec3) -> Vec3 {
+        *self
+    }
+}
+
 /// An axis-aligned bounding box: plain spatial-extent math with no domain
 /// meaning of its own, shared by every subsystem that needs a cheap
 /// overlap/culling test (`physics-core`'s broad phase, `graphics-core`'s
 /// frustum culling, ...). Lives here rather than in one of those crates so
 /// neither re-derives it independently — the same reason `Vec3`/`Motor3`
 /// live here instead of in whichever subsystem needed them first (see
-/// "Consumers" above).
+/// "Consumers" above). The axis-aligned of the two box variants — see
+/// [`Obb`] for the oriented one; a cube is either with equal extents on
+/// every axis, not a separate type.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Aabb {
     pub min: Vec3,
@@ -566,6 +590,11 @@ impl Aabb {
         }
     }
 
+    /// An axis-aligned cube: equal half-extent on every axis.
+    pub fn cube(center: Vec3, half_extent: Scalar) -> Self {
+        Self::from_sphere(center, half_extent)
+    }
+
     pub fn overlaps(&self, other: &Aabb) -> bool {
         self.min.x <= other.max.x
             && self.max.x >= other.min.x
@@ -576,12 +605,130 @@ impl Aabb {
     }
 }
 
+impl Shape for Aabb {
+    /// Picks the corner furthest along `direction` per axis independently
+    /// — this is the exact "positive vertex" trick frustum/AABB tests use
+    /// by hand; expressing it as a support function is what lets the same
+    /// trick generalize to [`ConvexVolume::intersects`] for every shape.
+    fn support(&self, direction: Vec3) -> Vec3 {
+        Vec3::new(
+            if direction.x >= 0.0 {
+                self.max.x
+            } else {
+                self.min.x
+            },
+            if direction.y >= 0.0 {
+                self.max.y
+            } else {
+                self.min.y
+            },
+            if direction.z >= 0.0 {
+                self.max.z
+            } else {
+                self.min.z
+            },
+        )
+    }
+}
+
+/// A sphere: center + radius. The simplest curved primitive, and the one
+/// most subsystems reach for first — `physics-core`'s only collider shape
+/// today, a natural bounding volume for `graphics-core` culling later.
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct Sphere {
+    pub center: Vec3,
+    pub radius: Scalar,
+}
+
+impl Shape for Sphere {
+    fn support(&self, direction: Vec3) -> Vec3 {
+        self.center + direction.normalize() * self.radius
+    }
+}
+
+/// An oriented (rotated) box — the other of the two box variants; see
+/// [`Aabb`] for the axis-aligned one. A cube is either with equal
+/// `half_extents` on every axis, not a separate type.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Obb {
+    pub center: Vec3,
+    pub half_extents: Vec3,
+    pub orientation: Rotor,
+}
+
+impl Obb {
+    /// An oriented cube: equal half-extent on every axis.
+    pub fn cube(center: Vec3, half_extent: Scalar, orientation: Rotor) -> Self {
+        Self {
+            center,
+            half_extents: Vec3::new(half_extent, half_extent, half_extent),
+            orientation,
+        }
+    }
+}
+
+impl Shape for Obb {
+    fn support(&self, direction: Vec3) -> Vec3 {
+        // Rotate the query direction into the box's local (axis-aligned)
+        // space, pick the local corner, then rotate that corner back out
+        // to world space — the same idea as Aabb::support, done in a
+        // frame where the box actually is axis-aligned.
+        let local_direction = self.orientation.reverse().transform_vector(direction);
+        let local_support = Vec3::new(
+            self.half_extents.x * local_direction.x.signum(),
+            self.half_extents.y * local_direction.y.signum(),
+            self.half_extents.z * local_direction.z.signum(),
+        );
+        self.center + self.orientation.transform_vector(local_support)
+    }
+}
+
+/// A right circular cone: apex at `apex`, opening toward `apex + axis *
+/// height` (`axis` must be unit length), `half_angle` (radians) between
+/// the axis and the cone's slanted surface.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Cone {
+    pub apex: Vec3,
+    pub axis: Vec3,
+    pub half_angle: Scalar,
+    pub height: Scalar,
+}
+
+impl Shape for Cone {
+    /// A cone's convex hull is its apex plus its base disk's rim; the
+    /// support point is whichever of {apex, the rim point closest to
+    /// `direction`} is farther along `direction`. The rim point is found
+    /// by projecting `direction` onto the base plane (perpendicular to
+    /// `axis`) and walking out to the base radius in that direction —
+    /// exactly how a disk's own support function works.
+    fn support(&self, direction: Vec3) -> Vec3 {
+        let base_center = self.apex + self.axis * self.height;
+        let base_radius = self.height * self.half_angle.tan();
+
+        let along_axis = direction.dot(self.axis);
+        let perpendicular = direction - self.axis * along_axis;
+        let perpendicular_len = perpendicular.length();
+
+        let rim_point = if perpendicular_len > meridian_numeric_core::EPSILON {
+            base_center + perpendicular * (base_radius / perpendicular_len)
+        } else {
+            base_center
+        };
+
+        if direction.dot(self.apex) >= direction.dot(rim_point) {
+            self.apex
+        } else {
+            rim_point
+        }
+    }
+}
+
 /// A half-space `normal . p + d >= 0` — a point satisfying this is on the
 /// plane's "inside". Another plain geometric primitive with no domain
-/// meaning of its own (`graphics-core`'s `Frustum` is six of these; a
-/// future physics ground plane or clipping pass would be another
-/// consumer), so it lives here rather than being redefined per subsystem —
-/// see [`Aabb`]'s doc comment for the same reasoning.
+/// meaning of its own (`graphics-core`'s `Frustum`/[`ConvexVolume`] is a
+/// handful of these; a future physics ground plane or clipping pass would
+/// be another consumer), so it lives here rather than being redefined per
+/// subsystem — see [`Aabb`]'s doc comment for the same reasoning.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Plane {
     pub normal: Vec3,
@@ -609,6 +756,44 @@ impl Plane {
     /// half-space, negative on the other side.
     pub fn distance(&self, p: Vec3) -> Scalar {
         self.normal.dot(p) + self.d
+    }
+
+    /// Whether `shape` is at least partially on this plane's "inside"
+    /// half-space: `false` only when `shape` is entirely on the outside.
+    /// A shape is fully outside iff *every* point of it has negative
+    /// distance, i.e. iff even its best-case point — the one farthest
+    /// *along* the normal, `shape.support(normal)` — is still outside; if
+    /// that best-case point is inside, the shape can't be fully excluded.
+    /// Generic over any [`Shape`], not just [`Aabb`] — this is what makes
+    /// [`ConvexVolume::intersects`] work for every shape without the plane
+    /// needing to know what kind of shape it's testing.
+    pub fn contains<S: Shape>(&self, shape: &S) -> bool {
+        self.distance(shape.support(self.normal)) >= 0.0
+    }
+}
+
+/// An arbitrary convex region defined as an intersection of half-spaces —
+/// the generalization of a camera frustum (always exactly 6 planes) to any
+/// number of planes, so it can describe *any* convex bounding volume, not
+/// just a camera's view volume. Works against any [`Shape`] via
+/// [`Plane::contains`], not a hardcoded shape list.
+#[derive(Debug, Clone, Default)]
+pub struct ConvexVolume {
+    pub planes: Vec<Plane>,
+}
+
+impl ConvexVolume {
+    pub fn new(planes: Vec<Plane>) -> Self {
+        Self { planes }
+    }
+
+    /// Conservative test: `false` means `shape` is fully outside at least
+    /// one plane (definitely not overlapping this volume); `true` means
+    /// it's on the inside half-space of every plane (overlapping, or a
+    /// false positive near a corner — the standard convex-volume trade-off,
+    /// cheaper than exact separation).
+    pub fn intersects<S: Shape>(&self, shape: &S) -> bool {
+        self.planes.iter().all(|plane| plane.contains(shape))
     }
 }
 
@@ -972,5 +1157,198 @@ mod tests {
         assert!((far_corner[0] - 1.0).abs() < 1e-5);
         assert!((far_corner[1] - 1.0).abs() < 1e-5);
         assert!((far_corner[2] - 1.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn point_support_is_always_itself() {
+        let p = Vec3::new(3.0, -2.0, 7.0);
+        assert_eq!(p.support(Vec3::X), p);
+        assert_eq!(p.support(-Vec3::Z), p);
+    }
+
+    #[test]
+    fn sphere_support_is_center_plus_radius_along_direction() {
+        let sphere = Sphere {
+            center: Vec3::new(1.0, 2.0, 3.0),
+            radius: 5.0,
+        };
+        assert_vec3_approx(sphere.support(Vec3::X), Vec3::new(6.0, 2.0, 3.0));
+        assert_vec3_approx(sphere.support(-Vec3::X), Vec3::new(-4.0, 2.0, 3.0));
+    }
+
+    #[test]
+    fn sphere_support_degenerate_direction_returns_center() {
+        // Vec3::normalize's documented behavior for a near-zero vector is
+        // to return it unchanged, so a zero query direction degenerates to
+        // "no displacement" rather than a divide-by-zero.
+        let sphere = Sphere {
+            center: Vec3::new(1.0, 2.0, 3.0),
+            radius: 5.0,
+        };
+        assert_vec3_approx(sphere.support(Vec3::ZERO), sphere.center);
+    }
+
+    #[test]
+    fn aabb_cube_has_equal_half_extents() {
+        let cube = Aabb::cube(Vec3::new(1.0, 1.0, 1.0), 2.0);
+        assert_vec3_approx(cube.min, Vec3::new(-1.0, -1.0, -1.0));
+        assert_vec3_approx(cube.max, Vec3::new(3.0, 3.0, 3.0));
+    }
+
+    #[test]
+    fn aabb_support_matches_frustum_style_positive_vertex() {
+        let aabb = Aabb {
+            min: Vec3::new(-1.0, -2.0, -3.0),
+            max: Vec3::new(4.0, 5.0, 6.0),
+        };
+        assert_vec3_approx(aabb.support(Vec3::new(1.0, 1.0, 1.0)), aabb.max);
+        assert_vec3_approx(aabb.support(Vec3::new(-1.0, -1.0, -1.0)), aabb.min);
+    }
+
+    #[test]
+    fn obb_with_identity_orientation_matches_aabb_support() {
+        let center = Vec3::new(2.0, 0.0, -1.0);
+        let half_extents = Vec3::new(1.0, 2.0, 3.0);
+        let obb = Obb {
+            center,
+            half_extents,
+            orientation: Rotor::identity(),
+        };
+        let aabb = Aabb {
+            min: center - half_extents,
+            max: center + half_extents,
+        };
+        for direction in [Vec3::X, -Vec3::X, Vec3::Y, Vec3::new(1.0, 1.0, 1.0)] {
+            assert_vec3_approx(obb.support(direction), aabb.support(direction));
+        }
+    }
+
+    #[test]
+    fn obb_rotated_90_degrees_about_z_swaps_x_and_y_extents() {
+        // A box rotated 90 degrees about Z: its local +X half-extent
+        // (3.0) now points along world +Y, so querying support along
+        // world +Y must reach out by 3.0, not the local y half-extent
+        // (1.0). Checking only the Y component deliberately: a query
+        // exactly along one local axis lands on a box *edge* (every
+        // combination of the other two axes' signs is an equally valid
+        // support point there), so the other components are a tie-break
+        // detail, not a claim this test should make.
+        let obb = Obb {
+            center: Vec3::ZERO,
+            half_extents: Vec3::new(3.0, 1.0, 1.0),
+            orientation: Rotor::from_axis_angle(Vec3::Z, PI / 2.0),
+        };
+        assert!((obb.support(Vec3::Y).y - 3.0).abs() < 1e-4);
+    }
+
+    #[test]
+    fn obb_cube_has_equal_half_extents() {
+        let obb = Obb::cube(Vec3::ZERO, 2.0, Rotor::identity());
+        assert_vec3_approx(obb.half_extents, Vec3::new(2.0, 2.0, 2.0));
+    }
+
+    fn test_cone() -> Cone {
+        // Apex at the origin, opening toward +Z, half-angle 45 degrees
+        // (tan == 1, so base_radius == height — easy to check by hand).
+        Cone {
+            apex: Vec3::ZERO,
+            axis: Vec3::Z,
+            half_angle: PI / 4.0,
+            height: 2.0,
+        }
+    }
+
+    #[test]
+    fn cone_support_backward_along_axis_is_the_apex() {
+        let cone = test_cone();
+        assert_vec3_approx(cone.support(-Vec3::Z), Vec3::ZERO);
+    }
+
+    #[test]
+    fn cone_support_forward_along_axis_is_on_the_base_rim() {
+        let cone = test_cone();
+        // Zero lateral component: Cone::support's degenerate branch
+        // returns the base center itself, which is the farthest point
+        // straight down the axis.
+        assert_vec3_approx(cone.support(Vec3::Z), Vec3::new(0.0, 0.0, 2.0));
+    }
+
+    #[test]
+    fn cone_support_sideways_reaches_the_base_rim_not_the_apex() {
+        let cone = test_cone();
+        // base_radius = height * tan(45deg) = 2.0, so straight sideways
+        // (+X) the support point is the rim point (2, 0, 2), clearly
+        // farther along +X than the apex at the origin.
+        assert_vec3_approx(cone.support(Vec3::X), Vec3::new(2.0, 0.0, 2.0));
+    }
+
+    #[test]
+    fn plane_contains_uses_the_shapes_best_case_point() {
+        // Inside is x >= 0.
+        let plane = Plane {
+            normal: Vec3::X,
+            d: 0.0,
+        };
+        assert!(plane.contains(&Vec3::new(5.0, 0.0, 0.0)));
+        assert!(!plane.contains(&Vec3::new(-5.0, 0.0, 0.0)));
+
+        // A sphere straddling the plane (center just behind it, radius
+        // large enough to poke through) must count as "contained" —
+        // conservative, not "fully inside".
+        let straddling = Sphere {
+            center: Vec3::new(-0.5, 0.0, 0.0),
+            radius: 1.0,
+        };
+        assert!(plane.contains(&straddling));
+
+        // A sphere entirely on the excluded side must not.
+        let excluded = Sphere {
+            center: Vec3::new(-5.0, 0.0, 0.0),
+            radius: 1.0,
+        };
+        assert!(!plane.contains(&excluded));
+    }
+
+    #[test]
+    fn convex_volume_generalizes_intersects_to_any_shape() {
+        // A 2x2x2 cube volume centered at the origin, one plane per face,
+        // each normal pointing inward.
+        let volume = ConvexVolume::new(vec![
+            Plane {
+                normal: Vec3::X,
+                d: 1.0,
+            },
+            Plane {
+                normal: -Vec3::X,
+                d: 1.0,
+            },
+            Plane {
+                normal: Vec3::Y,
+                d: 1.0,
+            },
+            Plane {
+                normal: -Vec3::Y,
+                d: 1.0,
+            },
+            Plane {
+                normal: Vec3::Z,
+                d: 1.0,
+            },
+            Plane {
+                normal: -Vec3::Z,
+                d: 1.0,
+            },
+        ]);
+
+        assert!(volume.intersects(&Sphere {
+            center: Vec3::ZERO,
+            radius: 0.5,
+        }));
+        assert!(!volume.intersects(&Sphere {
+            center: Vec3::new(10.0, 0.0, 0.0),
+            radius: 0.5,
+        }));
+        assert!(volume.intersects(&Aabb::cube(Vec3::new(0.9, 0.0, 0.0), 0.5)));
+        assert!(volume.intersects(&Obb::cube(Vec3::ZERO, 0.5, Rotor::identity())));
     }
 }
