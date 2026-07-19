@@ -31,7 +31,7 @@ makes each of them reusable outside this one use case.
 
 A third crate, `meridian-gac-compute`, is the adapter: it depends on both
 `meridian-gac-core` and `meridian-compute-runtime` and is the *only* crate
-allowed to (rule 10). It defines the batch kernels —
+allowed to depend on both (rule 10). It defines the batch kernels —
 `MotorTransformKernel`, `MotorComposeKernel` — that implement
 `compute-runtime`'s `ComputeKernel` interface for `gac-core`'s `Motor3`.
 `gac-core` and `compute-runtime` never depend on each other, in either

@@ -16,6 +16,5 @@ pub struct MotorTransformKernel {
 /// Batch-composes pairs of `Motor3`s (parent * child) as one dispatch.
 #[derive(Debug, Clone, Default)]
 pub struct MotorComposeKernel {
-    pub parents: Vec<Motor3>,
-    pub children: Vec<Motor3>,
+    pub pairs: Vec<(Motor3, Motor3)>,
 }

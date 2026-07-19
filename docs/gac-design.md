@@ -82,25 +82,22 @@ transforms possible, so the batch path lives in a third crate,
                         MotorTransformKernel
                         MotorComposeKernel
                                     |
-                      +-------------+--------------+
-                      |                             |
-                 CPU path                    GPU compute
-             scalar/SIMD direct           via compute-driver
-             against Motor3                  dispatch
-                      |                             |
-                 gameplay,                   physics-core,
-              small batches                 graphics-core,
-                                            large batches
+                          GPU / CPU-SIMD dispatch
+                             via compute-driver
+                                    |
+                         physics-core, graphics-core
+                                (large batches)
 ```
 
-Small transform counts (gameplay code touching a handful of entities) can
-skip `gac-compute` entirely and call `gac-core`'s `Motor3` math directly —
-that's still the cheapest path. `gac-compute`'s kernels exist for the batch
-case: `physics-core`/`graphics-core` hand a `Vec<Motor3>` to
-`MotorTransformKernel`, and it dispatches through `compute-runtime` on
-whichever backend the scheduler picks. Either way the math is the same
-`Motor3` geometric product — `gac-core` and `compute-runtime` never have to
-know about each other for it to work.
+The diagram above is the batch path only. Small transform counts (gameplay
+code touching a handful of entities) skip `gac-compute` entirely and call
+`gac-core`'s `Motor3` math directly (`motor * local`) — that's still the
+cheapest path, and it never touches `compute-runtime`. `gac-compute`'s
+kernels exist for the batch case: `physics-core`/`graphics-core` hand a
+`Vec<Motor3>` to `MotorTransformKernel`, and it dispatches through
+`compute-runtime` on whichever backend the scheduler picks. Either way the
+math is the same `Motor3` geometric product — `gac-core` and
+`compute-runtime` never have to know about each other for it to work.
 
 See [ADR 001](adr/001-geometric-algebra-as-spatial-model.md) for why PGA was
 chosen over quaternions + matrices.

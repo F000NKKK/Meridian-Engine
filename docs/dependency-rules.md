@@ -41,8 +41,8 @@ between them is its own crate:
 meridian-gac-core   meridian-compute-runtime
         |                     |
         +----------+----------+
-                    |
-          meridian-gac-compute
+                   |
+         meridian-gac-compute
                     |
         +-----------+-----------+
         |                       |
