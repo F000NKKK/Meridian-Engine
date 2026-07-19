@@ -8,27 +8,25 @@
 //! work across real OS threads via `std::thread::scope`, safe, no
 //! `unsafe`.
 
-use meridian_platform_core::BackendCapabilities;
+use meridian_platform_core::{BackendCapabilities, CpuCapabilities};
 
-/// Backend capability flags (CPU SIMD width, GPU compute support).
-/// Implements `platform-core`'s [`BackendCapabilities`] — the shape shared
-/// with `physics-driver::PhysicsBackend` and future `graphics-driver`/
-/// `audio-driver` equivalents; `gpu_compute` is this crate's
-/// domain-specific name for the shared "is a GPU backend available" bit.
+/// Backend capability flags. Embeds `platform-core`'s [`CpuCapabilities`]
+/// (the fields shared with `physics-driver::PhysicsBackend` and future
+/// `graphics-driver`/`audio-driver` equivalents) rather than redeclaring
+/// `gpu`/`cpu_threads`; add compute-specific fields (SIMD width, ...)
+/// alongside `cpu`, not by duplicating it.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct ComputeCapabilities {
-    pub gpu_compute: bool,
-    /// Worker thread count the CPU backend will fan a dispatch out across.
-    pub cpu_threads: usize,
+    pub cpu: CpuCapabilities,
 }
 
 impl BackendCapabilities for ComputeCapabilities {
     fn gpu_available(&self) -> bool {
-        self.gpu_compute
+        self.cpu.gpu_available()
     }
 
     fn cpu_threads(&self) -> usize {
-        self.cpu_threads
+        self.cpu.cpu_threads()
     }
 }
 
@@ -83,12 +81,7 @@ impl Default for ComputeDevice {
 
 impl ComputeDevice {
     pub fn new() -> Self {
-        Self {
-            capabilities: ComputeCapabilities {
-                gpu_compute: false,
-                cpu_threads: meridian_platform_core::detect_cpu_threads(),
-            },
-        }
+        Self { capabilities: ComputeCapabilities { cpu: CpuCapabilities::detect() } }
     }
 
     pub fn capabilities(&self) -> ComputeCapabilities {

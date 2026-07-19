@@ -16,19 +16,45 @@ use std::time::Instant;
 /// capability type (`compute-driver::ComputeCapabilities`,
 /// `physics-driver::PhysicsBackend`, and future `graphics-driver`/
 /// `audio-driver` equivalents): whether a GPU backend is available, and
-/// how many CPU worker threads a parallel dispatch can use. Each driver
-/// implements this on its own concrete type rather than duplicating the
-/// detection logic — domain-specific fields (SIMD width, audio latency,
-/// ...) go on that concrete type, not here.
+/// how many CPU worker threads a parallel dispatch can use.
 pub trait BackendCapabilities {
     fn gpu_available(&self) -> bool;
     fn cpu_threads(&self) -> usize;
 }
 
-/// Detects the current machine's CPU thread count. Every `*-driver`
-/// backend's capability constructor should call this instead of calling
-/// `std::thread::available_parallelism()` directly, so the "no threads
-/// reported -> assume 1" fallback stays in one place.
+/// The shared fields themselves. Rust has no struct inheritance, so each
+/// driver's capability type embeds this (`pub cpu: CpuCapabilities`)
+/// instead of redeclaring `gpu_available`/`cpu_threads` itself, and adds
+/// its own domain-specific fields (SIMD width, audio latency, ...)
+/// alongside it, not by duplicating these two.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct CpuCapabilities {
+    pub gpu_available: bool,
+    pub cpu_threads: usize,
+}
+
+impl CpuCapabilities {
+    /// No GPU backend exists anywhere in the workspace yet (see
+    /// `compute-driver`'s module doc), so `gpu_available` is always
+    /// `false` here — real detection lands once a first GPU backend does.
+    pub fn detect() -> Self {
+        Self { gpu_available: false, cpu_threads: detect_cpu_threads() }
+    }
+}
+
+impl BackendCapabilities for CpuCapabilities {
+    fn gpu_available(&self) -> bool {
+        self.gpu_available
+    }
+
+    fn cpu_threads(&self) -> usize {
+        self.cpu_threads
+    }
+}
+
+/// Detects the current machine's CPU thread count. Called by
+/// [`CpuCapabilities::detect`]; exposed directly too in case a caller
+/// needs the thread count without a full `CpuCapabilities`.
 pub fn detect_cpu_threads() -> usize {
     std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1)
 }
@@ -260,6 +286,13 @@ mod tests {
     #[test]
     fn detect_cpu_threads_reports_at_least_one() {
         assert!(detect_cpu_threads() >= 1);
+    }
+
+    #[test]
+    fn cpu_capabilities_detect_reports_no_gpu_and_at_least_one_thread() {
+        let caps = CpuCapabilities::detect();
+        assert!(!caps.gpu_available());
+        assert!(caps.cpu_threads() >= 1);
     }
 
     #[test]
