@@ -67,16 +67,24 @@ convention).
 ## Releasing
 
 ```sh
-./release.sh meridian-gac-core --minor          # bump + cascade + publish
-./release.sh meridian-engine-core --patch       # no cascade, patch is link-compatible
-./release.sh meridian-gac-core --publish-only   # publish current version as-is
-./release.sh --publish-all --patch              # bump + publish every crate in the workspace
-./release.sh --publish-all --no-bump            # publish every crate at its current version
+./release.sh meridian-gac-core --minor    # bump + cascade + publish
+./release.sh meridian-engine-core --patch # no cascade, patch is link-compatible
+./release.sh meridian-gac-core            # no bump: publish current version if not already on crates.io
+./release.sh --publish-all --patch        # bump + publish every crate in the workspace
+./release.sh --publish-all                # publish whatever isn't already on crates.io, no bump
 ```
 
 `--publish-all` replaces `<crate-name>` and builds the plan from the whole
-workspace (topologically) instead of one crate's cascade. `--no-bump` skips
-the version bump and publishes the plan as-is — works with a single crate,
-its cascade, or `--publish-all`.
+workspace (topologically) instead of one crate's cascade. A bump type
+(`--patch`/`--minor`/`--major`) is always optional — omitting it (or passing
+`--no-bump` explicitly) means "don't change the version," and for each crate
+in the plan the script checks crates.io and publishes only what isn't
+already there.
+
+Before bumping a "round" version (patch bump is never round; a minor bump is
+round when `patch == 0`; a major bump is round when `minor == 0 && patch ==
+0`) the script checks whether that version is actually published — if not,
+it publishes the current version as-is instead of skipping past an
+unreleased one. `--no-check-ver` disables this and bumps/publishes blindly.
 
 Add `--dry-run` to preview, `--no-publish` to bump without publishing.
