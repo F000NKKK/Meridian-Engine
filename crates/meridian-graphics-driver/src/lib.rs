@@ -63,9 +63,9 @@ impl Device {
         width: u32,
         height: u32,
     ) -> Result<(Self, Surface), DeviceError> {
-        let (device, surface) = meridian_gpu_driver::Device::new_windowed(target).await?;
+        let (device, surface, adapter) = meridian_gpu_driver::Device::new_windowed(target).await?;
 
-        let capabilities = surface.get_capabilities(&find_adapter_for(&device));
+        let capabilities = surface.get_capabilities(&adapter);
         let format = capabilities
             .formats
             .iter()

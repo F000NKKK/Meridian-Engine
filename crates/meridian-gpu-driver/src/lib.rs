@@ -74,7 +74,10 @@ impl Device {
     /// adapter it picks (`compatible_surface: None`), then the logical
     /// device off that adapter. A real `async fn` — see the module doc.
     pub async fn new() -> Result<Self, DeviceError> {
-        let (device, queue, adapter_info) = Self::request(None).await?;
+        let instance =
+            wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle_from_env());
+        let (device, queue, adapter_info, _adapter) =
+            Self::request_from_instance(&instance, None).await?;
         Ok(Self {
             device,
             queue,
@@ -83,18 +86,23 @@ impl Device {
     }
 
     /// Requests a device compatible with presenting to `target`, and
-    /// hands back the raw `wgpu::Surface` alongside it — see the module
-    /// doc for why surface *configuration*/lifecycle isn't this crate's
-    /// job.
+    /// hands back the raw `wgpu::Surface` plus the `wgpu::Adapter` it was
+    /// chosen against alongside it. The adapter is returned (unlike
+    /// [`Device::new`], which discards it) because `wgpu` ties a
+    /// surface's format/present-mode capabilities to the adapter, not the
+    /// device — `graphics-driver`'s own surface configuration needs it
+    /// for `Surface::get_capabilities`, and this is the only place that
+    /// adapter is ever available; see the module doc for why surface
+    /// *configuration*/lifecycle isn't otherwise this crate's job.
     pub async fn new_windowed(
         target: impl Into<wgpu::SurfaceTarget<'static>>,
-    ) -> Result<(Self, wgpu::Surface<'static>), DeviceError> {
+    ) -> Result<(Self, wgpu::Surface<'static>, wgpu::Adapter), DeviceError> {
         let instance =
             wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle_from_env());
         let surface = instance
             .create_surface(target)
             .map_err(DeviceError::CreateSurface)?;
-        let (device, queue, adapter_info) =
+        let (device, queue, adapter_info, adapter) =
             Self::request_from_instance(&instance, Some(&surface)).await?;
         Ok((
             Self {
@@ -103,21 +111,14 @@ impl Device {
                 adapter_info,
             },
             surface,
+            adapter,
         ))
-    }
-
-    async fn request(
-        compatible_surface: Option<&wgpu::Surface<'_>>,
-    ) -> Result<(wgpu::Device, wgpu::Queue, wgpu::AdapterInfo), DeviceError> {
-        let instance =
-            wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle_from_env());
-        Self::request_from_instance(&instance, compatible_surface).await
     }
 
     async fn request_from_instance(
         instance: &wgpu::Instance,
         compatible_surface: Option<&wgpu::Surface<'_>>,
-    ) -> Result<(wgpu::Device, wgpu::Queue, wgpu::AdapterInfo), DeviceError> {
+    ) -> Result<(wgpu::Device, wgpu::Queue, wgpu::AdapterInfo, wgpu::Adapter), DeviceError> {
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::HighPerformance,
@@ -139,7 +140,7 @@ impl Device {
             })
             .await
             .map_err(DeviceError::RequestDevice)?;
-        Ok((device, queue, adapter_info))
+        Ok((device, queue, adapter_info, adapter))
     }
 
     /// The adapter's reported name (e.g. `"NVIDIA GeForce RTX 4050
