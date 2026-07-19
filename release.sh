@@ -10,7 +10,9 @@
 # и verify следующего крейта падает на «two different versions of crate».
 #
 # --publish-all заменяет <crate-name>: план строится из всех крейтов
-# воркспейса (топологически), а не из каскада зависимых одного корня.
+# воркспейса (топологически), а не из каскада зависимых одного корня. Без
+# явного --patch/--minor/--major это равносильно --no-bump — просто
+# публикует DAG как есть, последовательно по зависимостям.
 # --no-bump публикует текущие версии как есть, без изменения version —
 # работает и с одним крейтом, и с --publish-all (в отличие от --publish-only,
 # которое не умеет каскад/весь воркспейс).
@@ -19,7 +21,7 @@
 #   ./release.sh meridian-gac-core --minor      # каскад: gac-core → ecs-core → ... → engine-core
 #   ./release.sh meridian-engine-core --patch   # patch: ссылки совместимы, каскада нет
 #   ./release.sh meridian-gac-core --publish-only
-#   ./release.sh --publish-all --no-bump        # опубликовать весь воркспейс как есть
+#   ./release.sh --publish-all                  # опубликовать весь воркспейс как есть, по DAG
 #   ./release.sh --publish-all --patch          # patch-бамп + публикация всех крейтов
 
 set -euo pipefail
@@ -51,6 +53,7 @@ usage() {
     echo "  --no-cascade     не трогать зависимые крейты"
     echo "  --publish-only   только опубликовать текущую версию крейта (без бампа, без каскада)"
     echo "  --publish-all    заменяет <crate-name>: план — все крейты воркспейса, топологически"
+    echo "                   (без бампа по умолчанию — как --no-bump, если не указан --patch/--minor/--major)"
     echo "  --no-bump        не менять version — опубликовать план как есть (крейт, каскад или всё)"
     exit 1
 }
@@ -88,7 +91,12 @@ else
     [[ -z "$CRATE" ]] && { echo "Не указано имя крейта (или используйте --publish-all)."; usage; }
 fi
 if ! $PUBLISH_ONLY && ! $NO_BUMP && [[ -z "$BUMP" ]]; then
-    echo "Не указан тип бампа (или используйте --no-bump)."; usage
+    if $PUBLISH_ALL; then
+        # --publish-all без явного бампа: просто опубликовать DAG как есть.
+        NO_BUMP=true
+    else
+        echo "Не указан тип бампа (или используйте --no-bump)."; usage
+    fi
 fi
 # patch-бамп совместим по ссылкам — каскад не нужен
 [[ "$BUMP" == "--patch" ]] && CASCADE=false
