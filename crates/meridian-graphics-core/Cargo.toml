@@ -9,6 +9,7 @@ description = "High-level rendering: render graph, scene extraction, visibility/
 
 [dependencies]
 meridian-gac-core = { workspace = true }
+meridian-gac-compute = { workspace = true }
 meridian-memory-core = { workspace = true }
 meridian-ecs-core = { workspace = true }
 meridian-asset-core = { workspace = true }
