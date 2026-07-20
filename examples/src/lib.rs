@@ -290,19 +290,19 @@ impl FlyCamera {
         );
 
         let forward = self.forward();
-        let right = forward.cross(Vec3::Y).normalize();
+        let right = Vec3::Y.cross(forward).normalize();
         let mut movement = Vec3::ZERO;
         if input.is_key_down(KeyCode::W) {
-            movement = movement - forward;
-        }
-        if input.is_key_down(KeyCode::S) {
             movement = movement + forward;
         }
+        if input.is_key_down(KeyCode::S) {
+            movement = movement - forward;
+        }
         if input.is_key_down(KeyCode::D) {
-            movement = movement - right;
+            movement = movement + right;
         }
         if input.is_key_down(KeyCode::A) {
-            movement = movement + right;
+            movement = movement - right;
         }
         if input.is_key_down(KeyCode::Space) {
             movement = movement + Vec3::Y;
