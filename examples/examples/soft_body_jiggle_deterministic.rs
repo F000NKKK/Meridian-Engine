@@ -17,18 +17,20 @@
 //! integration test for cross-backend determinism, not just a demo of
 //! it.
 //!
+//! Camera is a free-fly `meridian_examples::FlyCamera` (WASD + hold right
+//! mouse button to look, Space/Ctrl for up/down, Shift to move faster).
+//!
 //! Run with:
 //!   ./build.sh run soft_body_jiggle_deterministic
 
 use meridian_examples::{
-    GROUND_SHADER, SOFT_BODY_SHADER, ground_quad_buffers, look_at_rotor, mat4_to_bytes,
+    FlyCamera, GROUND_SHADER, SOFT_BODY_SHADER, ground_quad_buffers, mat4_to_bytes,
     soft_body_render_buffers, soft_body_vertex_layout,
 };
+use meridian_gac_core::Vec3;
 use meridian_gac_core::fixed_ga::{FixedVec3, fixed_icosphere};
 use meridian_gac_core::generic::Plane;
-use meridian_gac_core::{Motor3, Vec3};
 use meridian_gpu_driver::{BindGroup, Buffer};
-use meridian_graphics_core::Camera;
 use meridian_graphics_driver::{BufferUsage, DepthTexture, Device, RenderPipeline, Surface};
 use meridian_numeric_core::Fixed;
 use meridian_physics_compute::fixed::FixedSoftBodyGpuKernel;
@@ -126,6 +128,7 @@ struct App {
     kernel: FixedSoftBodyGpuKernel,
     integrator: FixedSoftBodyIntegrator,
     balls: Vec<Ball>,
+    camera: FlyCamera,
     shadow_gpu: FixedSoftBody,
     shadow_cpu: FixedSoftBody,
     accumulator_seconds: f64,
@@ -157,6 +160,7 @@ impl App {
             kernel,
             integrator,
             balls: spawn_balls(),
+            camera: FlyCamera::new(Vec3::new(0.0, 2.0, 6.0)),
             shadow_gpu: shadow_seed.clone(),
             shadow_cpu: shadow_seed,
             accumulator_seconds: 0.0,
@@ -229,7 +233,7 @@ impl AppHandler for App {
         });
     }
 
-    fn on_redraw(&mut self, window: &Window, _input: &InputState) {
+    fn on_redraw(&mut self, window: &Window, input: &InputState) {
         let Some(gpu) = &self.gpu else {
             return;
         };
@@ -238,6 +242,7 @@ impl AppHandler for App {
         let frame_dt = (now - self.last_frame).as_secs_f64().min(0.1);
         self.last_frame = now;
         self.accumulator_seconds += frame_dt;
+        self.camera.update(input, frame_dt as f32);
         let dt = Fixed::from_num(PHYSICS_DT_SECONDS);
 
         let mut substeps = 0;
@@ -294,18 +299,9 @@ impl AppHandler for App {
             }
         }
 
-        let camera = Camera {
-            frame: Motor3::from_rotation_translation(
-                look_at_rotor(Vec3::new(0.0, 2.0, 6.0), Vec3::new(0.0, 1.5, 0.0)),
-                Vec3::new(0.0, 2.0, 6.0),
-            ),
-            projection: meridian_gac_core::Projection::perspective(
-                55.0_f32.to_radians(),
-                window.width() as f32 / window.height().max(1) as f32,
-                0.1,
-                100.0,
-            ),
-        };
+        let camera = self
+            .camera
+            .camera(window.width() as f32 / window.height().max(1) as f32);
         gpu.device.write_buffer(
             &gpu.uniform_buffer,
             &mat4_to_bytes(camera.view_projection_matrix()),

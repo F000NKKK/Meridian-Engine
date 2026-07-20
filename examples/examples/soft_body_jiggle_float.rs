@@ -15,17 +15,19 @@
 //! demonstration: both look similar at a glance, only one of them is
 //! actually reproducible.
 //!
+//! Camera is a free-fly `meridian_examples::FlyCamera` (WASD + hold right
+//! mouse button to look, Space/Ctrl for up/down, Shift to move faster).
+//!
 //! Run with:
 //!   ./build.sh run soft_body_jiggle_float
 
 use meridian_examples::{
-    GROUND_SHADER, SOFT_BODY_SHADER, ground_quad_buffers, look_at_rotor, mat4_to_bytes,
+    FlyCamera, GROUND_SHADER, SOFT_BODY_SHADER, ground_quad_buffers, mat4_to_bytes,
     soft_body_render_buffers, soft_body_vertex_layout,
 };
 use meridian_gac_core::generic::Plane;
-use meridian_gac_core::{Motor3, Vec3, icosphere};
+use meridian_gac_core::{Vec3, icosphere};
 use meridian_gpu_driver::{BindGroup, Buffer};
-use meridian_graphics_core::Camera;
 use meridian_graphics_driver::{BufferUsage, DepthTexture, Device, RenderPipeline, Surface};
 use meridian_physics_compute::float::SoftBodyGpuKernel;
 use meridian_physics_core::soft_body::float_softbody::{

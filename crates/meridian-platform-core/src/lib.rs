@@ -127,6 +127,31 @@ impl Window {
     pub fn surface_target(&self) -> Arc<winit::window::Window> {
         self.inner.clone()
     }
+
+    /// Locks the OS cursor to the window and hides it (`true`), or
+    /// releases/shows it again (`false`) — the standard "free-look
+    /// camera" input mode (mouse movement steers the view instead of
+    /// moving a visible cursor), used by `examples::FlyCamera`. Tries
+    /// `CursorGrabMode::Locked` (the cursor stays fixed in place, which
+    /// is what a free-look camera actually wants) first, falling back to
+    /// `Confined` (cursor can move but stays inside the window) since
+    /// `Locked` isn't supported on every platform winit runs on — either
+    /// way the caller only sees `Ok`/`Err`, never a `winit` type, per
+    /// this crate's winit-agnostic public API (see
+    /// [ADR 010](../../../docs/adr/010-windowing-via-winit.md)).
+    pub fn set_cursor_grabbed(&self, grabbed: bool) {
+        let mode = if grabbed {
+            winit::window::CursorGrabMode::Locked
+        } else {
+            winit::window::CursorGrabMode::None
+        };
+        if self.inner.set_cursor_grab(mode).is_err() && grabbed {
+            let _ = self
+                .inner
+                .set_cursor_grab(winit::window::CursorGrabMode::Confined);
+        }
+        self.inner.set_cursor_visible(!grabbed);
+    }
 }
 
 /// A keyboard key. Not an exhaustive enumeration of every possible key —
