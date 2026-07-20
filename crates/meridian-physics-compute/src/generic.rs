@@ -35,7 +35,7 @@
 //! truncation involved). The fix: both endpoints compute the *same*
 //! canonical `a`-to-`b` direction and `total` (via `is_a`-conditional
 //! subtraction order, still exact), and only the non-`a` endpoint
-//! negates the finished `total` vector — an exact [`Neg`], never a
+//! negates the finished `total` vector — an exact negation, never a
 //! multiply — reproducing `SoftBodyIntegrator::step` bit-for-bit. See
 //! [`crate::fixed`]'s kernel for where this canonicalization happens.
 
