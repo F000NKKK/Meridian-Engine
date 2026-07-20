@@ -42,9 +42,15 @@
 //! for lockstep networking/replay — see that module's doc comment.
 //! Nothing about `float`'s types changes when `fixed` exists; it's a
 //! parallel API, not a mode switch.
+//!
+//! [`soft_body`] is a separate domain, deformable bodies (mass-spring),
+//! not glob-exported at this crate's root — see that module's own doc
+//! comment for why it's a genuinely different problem from the rigid-body
+//! engine above, and its own float/fixed split.
 
 pub mod fixed;
 pub mod float;
 pub mod generic;
+pub mod soft_body;
 
 pub use float::*;
