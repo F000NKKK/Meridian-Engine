@@ -56,18 +56,20 @@ fn fv3(x: f64, y: f64, z: f64) -> FixedVec3 {
 }
 
 /// Builds one small ball at `center`, its center particle pinned
-/// (`inverse_mass = 0`) and every surface particle given a small
-/// outward radial velocity impulse — the "pluck" that starts it
-/// jiggling, since a soft body at rest with zero gravity would
-/// otherwise just sit motionless.
+/// (`inverse_mass = 0`) and a *single* surface particle given a small
+/// outward velocity impulse — the "pluck" that starts it jiggling, since
+/// a soft body at rest with zero gravity would otherwise just sit
+/// motionless. Deliberately not a simultaneous push on every surface
+/// particle: that's a much harsher transient (every spoke spring
+/// stretches at once instead of the disturbance propagating outward
+/// through the mesh) and overflowed `Fixed` even with `physics-core`'s
+/// own proven-stable stiffness/mass/damping below.
 fn spawn_ball(center: FixedVec3) -> FixedSoftBody {
     // Same stiffness/mass/damping `physics-core::soft_body::fixed_softbody`'s
     // own tests proved stable at `dt = 1/240` (see that module's
     // `identical_inputs_produce_bit_identical_output_after_many_steps`
     // comment on why: explicit-Euler mass-spring integration is only
-    // conditionally stable, `omega * dt` has to stay small) — a stiffer/
-    // lighter/more-energetic first attempt here overflowed `Fixed`
-    // within a few frames.
+    // conditionally stable, `omega * dt` has to stay small).
     let mut body = fixed_icosphere_soft_body(
         center,
         Fixed::from_num(0.35),
@@ -80,11 +82,8 @@ fn spawn_ball(center: FixedVec3) -> FixedSoftBody {
     );
     let center_index = body.particle_count() - 1;
     body.inverse_masses[center_index] = Fixed::ZERO;
-    let impulse = Fixed::from_num(0.4);
-    for i in 0..center_index {
-        let direction = (body.positions[i] - body.positions[center_index]).normalize();
-        body.velocities[i] = direction * impulse;
-    }
+    let direction = (body.positions[0] - body.positions[center_index]).normalize();
+    body.velocities[0] = direction * Fixed::from_num(0.6);
     body
 }
 
