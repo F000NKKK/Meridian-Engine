@@ -1333,4 +1333,44 @@ mod tests {
         assert!(volume.intersects(&Aabb::cube(Vec3::new(0.9, 0.0, 0.0), 0.5)));
         assert!(volume.intersects(&Obb::cube(Motor3::identity(), 0.5)));
     }
+
+    #[test]
+    fn icosphere_vertices_lie_on_the_unit_sphere() {
+        let mesh = icosphere(1);
+        for v in &mesh.vertices {
+            assert!(
+                (v.length() - 1.0).abs() < 1e-4,
+                "every icosphere vertex must be unit length, got {v:?} (length {})",
+                v.length()
+            );
+        }
+    }
+
+    #[test]
+    fn icosphere_unique_edges_has_no_duplicate_or_self_edges() {
+        let mesh = icosphere(1);
+        let edges = mesh.unique_edges();
+        for &(a, b) in &edges {
+            assert_ne!(a, b, "an edge must connect two distinct vertices");
+            assert!(a < mesh.vertices.len() && b < mesh.vertices.len());
+        }
+        let mut sorted = edges.clone();
+        sorted.sort_unstable();
+        sorted.dedup();
+        assert_eq!(
+            sorted.len(),
+            edges.len(),
+            "unique_edges must not report the same edge twice"
+        );
+    }
+
+    #[test]
+    fn icosphere_subdivision_increases_vertex_and_face_count() {
+        let base = icosphere(0);
+        let subdivided = icosphere(1);
+        assert_eq!(base.vertices.len(), 12);
+        assert_eq!(base.faces.len(), 20);
+        assert!(subdivided.vertices.len() > base.vertices.len());
+        assert_eq!(subdivided.faces.len(), base.faces.len() * 4);
+    }
 }
