@@ -58,22 +58,17 @@ fn fv3(x: f64, y: f64, z: f64) -> FixedVec3 {
     FixedVec3::new(Fixed::from_num(x), Fixed::from_num(y), Fixed::from_num(z))
 }
 
-/// Builds one small ball at `center`, its center particle pinned
-/// (`inverse_mass = 0`) and a *single* surface particle given a small
-/// outward velocity impulse — the "pluck" that starts it jiggling, since
-/// a soft body at rest with zero gravity would otherwise just sit
-/// motionless. Deliberately not a simultaneous push on every surface
-/// particle: that's a much harsher transient (every spoke spring
-/// stretches at once instead of the disturbance propagating outward
-/// through the mesh) and overflowed `Fixed` even with `physics-core`'s
-/// own proven-stable stiffness/mass/damping below.
+/// Builds one small ball at `center` — real gravity/ground physics (not
+/// pinned-in-place), so it visibly falls, deforms on landing, and
+/// settles jiggling, the same behavior `soft_body_rubber_balls`
+/// demonstrates at a larger scale. Same stiffness/mass/damping
+/// `physics-core::soft_body::fixed_softbody`'s own tests proved stable
+/// at `dt = 1/240` (see that module's
+/// `identical_inputs_produce_bit_identical_output_after_many_steps`
+/// comment on why: explicit-Euler mass-spring integration is only
+/// conditionally stable, `omega * dt` has to stay small).
 fn spawn_ball(center: FixedVec3) -> FixedSoftBody {
-    // Same stiffness/mass/damping `physics-core::soft_body::fixed_softbody`'s
-    // own tests proved stable at `dt = 1/240` (see that module's
-    // `identical_inputs_produce_bit_identical_output_after_many_steps`
-    // comment on why: explicit-Euler mass-spring integration is only
-    // conditionally stable, `omega * dt` has to stay small).
-    let mut body = fixed_icosphere_soft_body(
+    fixed_icosphere_soft_body(
         center,
         Fixed::from_num(0.35),
         1,
@@ -82,12 +77,7 @@ fn spawn_ball(center: FixedVec3) -> FixedSoftBody {
         Fixed::from_num(2.0),
         Fixed::from_num(150.0),
         Fixed::from_num(1.0),
-    );
-    let center_index = body.particle_count() - 1;
-    body.inverse_masses[center_index] = Fixed::ZERO;
-    let direction = (body.positions[0] - body.positions[center_index]).normalize();
-    body.velocities[0] = direction * Fixed::from_num(0.6);
-    body
+    )
 }
 
 /// Re-applies [`spawn_ball`]'s initial pluck to an already-running body
