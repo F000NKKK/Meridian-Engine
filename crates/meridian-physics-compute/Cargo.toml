@@ -1,0 +1,19 @@
+[package]
+name = "meridian-physics-compute"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "GPU compute adapter for physics-core: WGSL soft-body (mass-spring) integration kernels, float and Fixed flavors. The adapter between physics-core's domain model and compute-runtime's dispatch interface — mirrors meridian-gac-compute's role for GAC batch ops (see docs/dependency-rules.md rule 11)."
+
+[dependencies]
+meridian-physics-core = { workspace = true }
+meridian-gac-core = { workspace = true }
+meridian-gac-compute = { workspace = true }
+meridian-compute-runtime = { workspace = true }
+meridian-numeric-core = { workspace = true }
+meridian-gpu-driver = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true }

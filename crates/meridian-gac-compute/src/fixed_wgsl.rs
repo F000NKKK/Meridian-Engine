@@ -32,14 +32,19 @@ use meridian_gpu_driver::{BufferUsage, ComputePipeline, Shader};
 use meridian_numeric_core::Fixed;
 
 /// The shared WGSL library: 32x32->64 unsigned multiply (via 16-bit limb
-/// splitting), a 64-bit-by-32-bit unsigned long division, and
-/// `fixed_add`/`fixed_sub`/`fixed_mul`/`fixed_div` built on them,
-/// matching `meridian_numeric_core::Fixed`'s own `Add`/`Sub`/`Mul`/`Div`
-/// impls operation-for-operation (see each function's comment for the
-/// exact correspondence). Concatenated with a small dispatch-entry-point
-/// suffix per operation in [`FixedArithmeticKernels::new`] — this
-/// constant is the part shared across all four.
-const FIXED_ARITHMETIC_LIB_WGSL: &str = r#"
+/// splitting), a 64-bit-by-64-bit unsigned long division, and
+/// `fixed_add`/`fixed_sub`/`fixed_mul`/`fixed_div`/`fixed_sqrt` built on
+/// them, matching `meridian_numeric_core::Fixed`'s own `Add`/`Sub`/`Mul`/
+/// `Div`/`sqrt` impls operation-for-operation (see each function's
+/// comment for the exact correspondence). Concatenated with a small
+/// dispatch-entry-point suffix per operation in
+/// [`FixedArithmeticKernels::new`] — this constant is the part shared
+/// across all five, and `pub` so other GPU-dispatching adapter crates
+/// (e.g. `meridian-physics-compute`'s deterministic soft-body kernel,
+/// which needs `fixed_add`/`fixed_mul`/`fixed_sqrt` for spring-length
+/// math) can concatenate it into their own WGSL modules instead of
+/// re-deriving the same emulation.
+pub const FIXED_ARITHMETIC_LIB_WGSL: &str = r#"
 // A 64-bit unsigned integer as two 32-bit words (WGSL has no native
 // 64-bit integer type).
 struct U64 {
