@@ -106,6 +106,126 @@ adding a pass without manually re-threading every pass after it. Resource
 isn't derived yet — ordering is the real, tested piece; lifetime tracking
 is future work once there's a concrete GPU backend to allocate against.
 
+## Scene vocabulary: 2D scenes, 3D scenes, and UI
+
+*Design accepted; implementation staged — see "Implementation order"
+below and roadmap.md for current status.*
+
+### One spatial model, two scene kinds
+
+The workspace's core commitment is **one spatial model** (`Motor3`,
+ADR 001) — so a 2D scene is *not* a parallel 2D math stack (no separate
+`Transform2D`/`Rotor2` universe to keep in sync). Both scene kinds use
+`Motor3` frames; what differs is the camera and the conventions layered
+on top:
+
+- **`Scene3D`** — the world: perspective (or orthographic) [`Camera`],
+  entities at arbitrary `Motor3` frames, frustum culling, lights,
+  depth-tested.
+- **`Scene2D`** — a plane: entities constrained to the local `z = 0`
+  plane of the scene (position = `x`/`y` of the frame's translation,
+  rotation = rotation about the plane normal, the remaining `Motor3`
+  degrees of freedom simply unused), rendered with an orthographic
+  camera at a fixed distance. Painter's-order sorting by an explicit
+  integer `layer` (plus `y`/submission order within a layer), no
+  perspective, no lights in the first cut. Units are whatever the
+  orthographic camera says they are: world units for 2D gameplay,
+  logical pixels for screen-space UI — the camera, not the entity,
+  decides.
+
+A frame renders an ordered list of **views** — each view is one scene +
+one camera + one target. The common compositions: `[Scene3D]` (a pure 3D
+game), `[Scene2D]` (a pure 2D game), `[Scene3D, Scene2D-as-UI-overlay]`
+(the usual case). Views later in the list draw over earlier ones.
+
+### UI is a role, not a third scene kind
+
+UI does not get its own rendering vocabulary. A UI is either:
+
+- **Screen-space UI (2D)** — a `Scene2D` whose orthographic camera is
+  derived from the surface size (units = logical pixels, origin
+  top-left, `y` down — the convention every windowing/UI system shares),
+  composed as the last view of the frame, undepthed, drawn over the 3D
+  world. This is the HUD/menu case.
+- **World-space UI (3D)** — renderables *inside* the `Scene3D` whose
+  content happens to be interface (a health bar above a unit, a control
+  panel in a cockpit/VR): a quad at a `Motor3` frame like any other
+  mesh, optionally flagged `billboard` (re-oriented to face the camera
+  at extraction time) and/or `unlit`/`always_on_top` in its material.
+  It's culled, depth-tested and lit (or not, per material) by the same
+  3D pipeline — no special UI pass.
+
+What UI adds over plain scenes is *content*, not rendering: widgets,
+layout, text, input routing. All of that is deliberately out of
+`graphics-core` — a future `ui-core` consumes this vocabulary (it emits
+`Scene2D`/`Scene3D` renderables) the same way `physics-core` consumes
+`gac-core` shapes. Text/font rendering (glyph atlases, shaping) is its
+own future decision with its own ADR; nothing in this vocabulary blocks
+on it — a text run will extract to textured quads like everything else.
+
+### The types
+
+All CPU-side, plain data, in `graphics-core`:
+
+- **`Mesh`** — a `MeshHandle` identity (resource-core) plus CPU-side
+  layout info (vertex count, index count, bounds `Aabb` for culling).
+  The actual GPU buffers live behind the submission bridge; `Mesh`
+  never owns driver objects.
+- **`Material`** (extending the existing stub) — shading inputs only:
+  base color factor, optional `TextureHandle` albedo, `unlit: bool`,
+  `always_on_top: bool` (world-space UI), blend mode
+  (`Opaque`/`AlphaBlend`). Not a manager, not a shader: the submission
+  bridge maps materials onto pipelines.
+- **`Light`** — `Directional { direction, color, intensity }` and
+  `Point { position, color, intensity, range }`. First lighting model is
+  Blinn-Phong forward; PBR is a material/shader upgrade later, not a
+  vocabulary change.
+- **`Renderable3D`** — `{ mesh, material, frame: Motor3, billboard:
+  bool }`; **`Sprite`** (the 2D renderable) — `{ texture, source_rect,
+  size, tint, frame: Motor3, layer: i32 }`.
+- **`Scene3D`** — `{ camera: Camera, renderables: Vec<Renderable3D>,
+  lights: Vec<Light> }`; **`Scene2D`** — `{ camera: Camera2D, sprites:
+  Vec<Sprite> }` where `Camera2D` is a thin orthographic wrapper
+  (`from_surface_size` for pixel-space UI, `from_world_extent` for 2D
+  gameplay).
+- **`FrameScene`** — the per-frame extraction output: an ordered
+  `Vec<View>` where `View` is `Three(Scene3D)` or `Two(Scene2D)`.
+  Frame-scoped plain data, rebuilt every frame (extraction output, ADR
+  004's data-oriented stance) — *not* a retained scene graph.
+
+### Extraction and ownership
+
+Persistent state stays where it already lives: the application/ECS owns
+entities (`Transform` + render components), `engine-core` orchestrates.
+Per frame: **extract** (walk the ECS `World`, build `FrameScene` —
+`graphics-core` provides the component types and extraction functions;
+it may depend on `ecs-core` per the existing graph, and `ecs-core`
+learns nothing about graphics, per rule 6) → **cull** (frustum vs.
+`Mesh` bounds for 3D; camera-rect vs. sprite bounds for 2D) →
+**submit** (the bridge turns the culled `FrameScene` into render-graph
+passes and `graphics-driver` draw calls). Extraction is pure
+CPU-testable data flow; the bridge is the only place that touches the
+driver.
+
+### Implementation order
+
+1. Vocabulary + `FrameScene` + extraction + culling — CPU-only, fully
+   tested without a GPU.
+2. Submission bridge over `graphics-driver` (mesh/texture upload from
+   `asset-core` data, per-view passes) — the windowed examples converge
+   on it and stop hand-rolling pipelines. This step is also where two
+   standing follow-ups fire naturally: real texture assets trigger the
+   PNG/JPEG decoders (glTF once real meshes ship — the ADR 013
+   when-a-concrete-asset-needs-it pattern), and the GPU compute path
+   (`compute-driver::GpuComputeDevice`, device-type/capability
+   detection) gets audited under a real rendering workload rather than
+   assumed finished.
+3. Lighting (directional + point, Blinn-Phong) and real material
+   handling.
+4. `Runtime::tick` integration (step 9 closes).
+5. `ui-core` (widgets/layout/input) and text rendering — separate,
+   ADR-gated.
+
 ## GPU-driven rendering
 
 The long-term direction is minimizing CPU-side per-object work: the CPU
