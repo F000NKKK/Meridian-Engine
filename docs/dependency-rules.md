@@ -167,6 +167,14 @@ on `meridian-gac-core` and `meridian-audio-driver`; see each crate's own
     (`asset-core` decodes, it doesn't manage) and rule 8 (`resource-core` is
     identity, not policy).
 
+12. **`meridian-gpu-driver` owns `wgpu` device/buffer/shader/compute-pipeline
+    mechanics only — not rendering policy, not compute-dispatch
+    scheduling.** It must never know what a render pass, a swapchain, a
+    `ComputeKernel`, or a scheduling threshold is; `graphics-driver` and
+    `compute-driver` (the only two crates allowed to depend on it) each
+    add their own domain-specific layer on top. See
+    [ADR 011](adr/011-shared-gpu-driver-crate.md).
+
 ## How to check locally
 
 ```sh
