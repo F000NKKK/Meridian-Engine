@@ -361,9 +361,12 @@ mod binaural_tests {
         // An impulse after warmup silence; find each ear's peak time.
         let mut source = vec![0.0f32; 256];
         source[64] = 1.0;
+        // ~70 deg right: strongly lateral but neither ear is muted (a
+        // hard-side source zeroes the far ear's gain, making its peak
+        // index meaningless).
         let out = r.render(
             &listener(),
-            &[(emitter_at(Vec3::new(0.0, 0.0, 3.0)), &source)],
+            &[(emitter_at(Vec3::new(1.03, 0.0, 2.82)), &source)],
             256,
         );
         let peak_index = |it: &mut dyn Iterator<Item = f32>| {
@@ -502,9 +505,10 @@ mod binaural_tests {
         let peak_offset = |renderer: &mut BinauralRenderer| {
             let mut source = vec![0.0f32; 256];
             source[64] = 1.0;
+            // ~70 deg right: strongly lateral but neither ear is muted.
             let out = renderer.render(
                 &listener(),
-                &[(emitter_at(Vec3::new(0.0, 0.0, 3.0)), &source)],
+                &[(emitter_at(Vec3::new(1.03, 0.0, 2.82)), &source)],
                 256,
             );
             let peak = |ear: usize| {
