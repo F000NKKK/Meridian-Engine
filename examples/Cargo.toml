@@ -9,6 +9,7 @@ publish = false
 
 [dependencies]
 meridian-engine-core = { workspace = true }
+meridian-foundation = { workspace = true, features = ["file-logging"] }
 meridian-gac-core = { workspace = true }
 meridian-ecs-core = { workspace = true }
 meridian-memory-core = { workspace = true }
