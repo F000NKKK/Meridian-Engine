@@ -12,4 +12,5 @@ meridian-compute-driver = { workspace = true }
 meridian-task-core = { workspace = true }
 meridian-memory-core = { workspace = true }
 
+[dev-dependencies]
 tokio = { workspace = true }

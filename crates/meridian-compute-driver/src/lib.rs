@@ -318,7 +318,9 @@ mod tests {
         };
         let caps = device.capabilities();
         assert!(caps.cpu.threads >= 1);
-        let gpu = caps.gpu.expect("a constructed GpuComputeDevice always has a real adapter");
+        let gpu = caps
+            .gpu
+            .expect("a constructed GpuComputeDevice always has a real adapter");
         assert!(!gpu.device_name.is_empty());
     }
 

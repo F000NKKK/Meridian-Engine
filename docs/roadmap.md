@@ -40,7 +40,14 @@ Steps 4-6 are real and tested:
   — a real CPU-parallel dispatch pipeline (`std::thread::scope`, no
   `unsafe`), with `MotorTransformKernel`/`MotorComposeKernel` batching
   `Motor3` composition, cross-checked against direct `gac-core` calls at
-  2000+/500+ item batches. No GPU backend — see "Not yet decided" below.
+  2000+/500+ item batches. `compute-driver` also has a real GPU backend
+  now (`GpuComputeDevice`, shared `wgpu` mechanics with `graphics-driver`
+  via `meridian-gpu-driver`), reachable through
+  `compute-runtime::ComputeContext::with_gpu` — see "Not yet decided"
+  below ([ADR 011](adr/011-shared-gpu-driver-crate.md)). `gac-compute`'s
+  own kernels don't dispatch through it yet (still CPU/`compute-runtime`'s
+  `parallel_for` only) — wiring a GPU-dispatching `ComputeKernel` is
+  tracked follow-up, not done in this pass.
 
 Step 7 (`asset-core`) is real: BMP (uncompressed 24/32-bit), WAV (PCM
 16-bit), and a minimal OBJ (positions + triangles) decoder — formats
@@ -348,23 +355,25 @@ priority before writing implementations is keeping that document and the
   keep their own hand-written-FFI answer; GPU is the one deliberate
   exception to zero-deps, not a reversal of the policy in general.
 
-  **`graphics-driver` is real now, headless-only.** `Device::new`
-  requests a real `wgpu` adapter/device with no `compatible_surface`, and
-  `Buffer`/`Texture`/`Shader`/`CommandBuffer` are real `wgpu` resource
-  wrappers — proven by an actual end-to-end test that writes a buffer,
-  runs a WGSL compute shader over it on the GPU, and reads the doubled
-  values back (`cargo test -p meridian-graphics-driver`). `Pipeline` is
-  compute-only so far: a render pipeline needs a vertex layout and
-  color-target formats, which need either a real swapchain surface or a
-  mesh/material vocabulary that doesn't exist yet — both a separate
-  follow-up, not blocked on anything here. `platform-core::GpuCapabilities`
-  gained its first real field
-  (`device_name`), populated by `Device`'s `BackendCapabilities` impl;
-  `compute-driver`/`physics-driver`/`audio-driver` still report `gpu:
-  None` since none of them dispatch to a GPU yet. Windowing/swapchain
-  (a real surface into `Device`, and an example that renders to screen)
-  was deliberately not part of this pass — see the `winit` entry below
-  ([ADR 010](adr/010-windowing-via-winit.md)) for that follow-up.
+  **`graphics-driver` and `compute-driver` are both real now**, sharing
+  their `wgpu` device/buffer/shader/compute-pipeline mechanics through a
+  third crate, `meridian-gpu-driver` — see
+  [ADR 011](adr/011-shared-gpu-driver-crate.md). `graphics-driver::Device`
+  supports both headless (`Device::new`) and windowed
+  (`Device::new_windowed`, a real swapchain `Surface`) construction, with
+  a real render pipeline (`RenderPipeline`, `DepthTexture`,
+  `VertexLayout`) — proven end-to-end by the `spinning_cube` example (a
+  rotating, lit cube rendered to a real window). `compute-driver` gained
+  `GpuComputeDevice`, a second backend alongside its existing CPU
+  `ComputeDevice`, and `compute-runtime::ComputeContext::with_gpu` is the
+  real dispatch path domain crates reach it through (per rule 5) — proven
+  by a compute-shader round-trip test reachable through
+  `compute-runtime` itself, not just `compute-driver` in isolation.
+  `platform-core::GpuCapabilities` gained its first real field
+  (`device_name`), populated by both drivers' `BackendCapabilities` impls
+  (via `meridian_gpu_driver::Device`'s own impl); `physics-driver`/
+  `audio-driver` still report `gpu: None` since neither dispatches to a
+  GPU yet.
 - **Async I/O — decided: `tokio`, scoped to genuine I/O only, not applied
   uniformly.** `graphics-driver::Device::new`/`read_buffer` (an OS/driver
   handshake and waiting on in-flight GPU work — both genuinely unbounded
