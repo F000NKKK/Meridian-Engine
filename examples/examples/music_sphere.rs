@@ -369,7 +369,7 @@ impl AppHandler for App {
     }
 
     fn on_redraw(&mut self, window: &Window, input: &InputState) {
-        let Some(gpu) = &self.gpu else {
+        let Some(gpu) = &mut self.gpu else {
             return;
         };
 
@@ -404,7 +404,14 @@ impl AppHandler for App {
         let frame = match gpu.surface.acquire_frame() {
             Ok(frame) => frame,
             Err(err) => {
-                eprintln!("skipping frame: {err}");
+                // A lost/outdated swapchain (another GPU client appearing,
+                // a display change) must be reconfigured, not just skipped
+                // — skipping forever is the "silent gray window" failure.
+                meridian_foundation::log_warn!(
+                    "swapchain frame unavailable ({err}); reconfiguring surface"
+                );
+                gpu.surface
+                    .resize(&gpu.device, window.width(), window.height());
                 return;
             }
         };
@@ -441,6 +448,12 @@ impl AppHandler for App {
 }
 
 fn main() {
+    meridian_foundation::crash_reporting::install(meridian_foundation::CrashReportConfig::new(
+        "music_sphere",
+    ));
+    meridian_foundation::logging::file::init(
+        meridian_foundation::logging::file::FileLogConfig::new("music_sphere"),
+    );
     run_windowed_app("Meridian Engine — Music Sphere", 1024, 768, App::new())
         .expect("windowed app exited with an error");
 }

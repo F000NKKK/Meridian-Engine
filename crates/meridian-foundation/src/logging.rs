@@ -1,7 +1,9 @@
 //! The workspace's one logging system: leveled, targeted, zero-dependency.
 //!
-//! Every crate logs through the same sink via the [`log_error!`],
-//! [`log_warn!`], [`log_info!`], [`log_debug!`] and [`log_trace!`]
+//! Every crate logs through the same sink via the
+//! [`log_error!`](crate::log_error), [`log_warn!`](crate::log_warn),
+//! [`log_info!`](crate::log_info), [`log_debug!`](crate::log_debug) and
+//! [`log_trace!`](crate::log_trace)
 //! macros (the target is the calling module's path, automatically) —
 //! no more scattered `eprintln!`s that vanish when no terminal is
 //! attached. Output goes to stderr; the last messages are additionally
