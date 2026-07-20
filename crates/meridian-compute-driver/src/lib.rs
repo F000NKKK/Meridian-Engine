@@ -149,6 +149,84 @@ impl ComputeDevice {
     }
 }
 
+/// The GPU compute backend: a real headless `wgpu` device (via
+/// `meridian_gpu_driver::Device`), independent of [`ComputeDevice`]'s CPU
+/// path — a caller constructs whichever backend(s) it needs (see
+/// `compute-runtime::ComputeContext::with_gpu`, the intended caller).
+/// `Clone` is cheap — see `meridian_gpu_driver::Device`'s own doc comment.
+#[derive(Debug, Clone)]
+pub struct GpuComputeDevice {
+    device: meridian_gpu_driver::Device,
+}
+
+impl GpuComputeDevice {
+    /// Requests a headless GPU device — see
+    /// `meridian_gpu_driver::Device::new`. A real `async fn`; see the
+    /// module doc.
+    pub async fn new() -> Result<Self, meridian_gpu_driver::DeviceError> {
+        Ok(Self {
+            device: meridian_gpu_driver::Device::new().await?,
+        })
+    }
+
+    pub fn capabilities(&self) -> ComputeCapabilities {
+        ComputeCapabilities {
+            cpu: CpuCapabilities::detect(),
+            gpu: self.device.gpu(),
+        }
+    }
+
+    pub fn allocate_buffer(
+        &self,
+        byte_len: usize,
+        usage: meridian_gpu_driver::BufferUsage,
+    ) -> meridian_gpu_driver::Buffer {
+        self.device.create_buffer(byte_len, usage)
+    }
+
+    pub fn write_buffer(&self, buffer: &meridian_gpu_driver::Buffer, data: &[u8]) {
+        self.device.write_buffer(buffer, data);
+    }
+
+    /// Reads `buffer` back to the CPU — waits on in-flight GPU work, a
+    /// real `async fn`; see the module doc.
+    pub async fn read_buffer(&self, buffer: &meridian_gpu_driver::Buffer) -> Vec<u8> {
+        self.device.read_buffer(buffer).await
+    }
+
+    pub fn create_shader(&self, label: &str, wgsl_source: &str) -> meridian_gpu_driver::Shader {
+        self.device.create_shader(label, wgsl_source)
+    }
+
+    pub fn create_compute_pipeline(
+        &self,
+        shader: &meridian_gpu_driver::Shader,
+        entry_point: &str,
+    ) -> meridian_gpu_driver::ComputePipeline {
+        self.device.create_compute_pipeline(shader, entry_point)
+    }
+
+    /// Records and submits a single compute dispatch over `buffer` — a
+    /// one-shot convenience over `meridian_gpu_driver`'s own
+    /// `CommandBuffer` for the common "one pipeline, one buffer, submit"
+    /// case; a caller that needs to batch multiple dispatches into one
+    /// submission can still reach `meridian_gpu_driver::Device` directly
+    /// for that (not exposed through this crate, since batching multiple
+    /// dispatches together is dispatch *scheduling* policy —
+    /// `compute-runtime`'s job per rule 11 in docs/dependency-rules.md,
+    /// not this crate's).
+    pub fn dispatch(
+        &self,
+        pipeline: &meridian_gpu_driver::ComputePipeline,
+        buffer: &meridian_gpu_driver::Buffer,
+        workgroups: u32,
+    ) {
+        let mut commands = self.device.create_command_buffer();
+        commands.dispatch_compute(pipeline, buffer, workgroups);
+        commands.submit();
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
