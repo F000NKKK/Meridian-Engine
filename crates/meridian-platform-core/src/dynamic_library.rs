@@ -33,6 +33,8 @@ impl std::fmt::Display for DynamicLibraryError {
 
 impl std::error::Error for DynamicLibraryError {}
 
+impl meridian_foundation::EngineError for DynamicLibraryError {}
+
 #[cfg(unix)]
 mod dynamic_library_ffi {
     use std::os::raw::{c_char, c_int, c_void};

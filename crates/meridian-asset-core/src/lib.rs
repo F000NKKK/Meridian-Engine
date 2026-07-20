@@ -93,6 +93,10 @@ impl core::fmt::Display for DecodeError {
     }
 }
 
+impl std::error::Error for DecodeError {}
+
+impl meridian_foundation::EngineError for DecodeError {}
+
 pub(crate) fn need(bytes: &[u8], len: usize) -> Result<(), DecodeError> {
     if bytes.len() < len {
         Err(DecodeError::TooShort {

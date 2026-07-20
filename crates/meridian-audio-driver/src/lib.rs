@@ -60,6 +60,8 @@ impl std::fmt::Display for AudioDeviceError {
 
 impl std::error::Error for AudioDeviceError {}
 
+impl meridian_foundation::EngineError for AudioDeviceError {}
+
 /// Desired audio output stream configuration.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct AudioStreamConfig {
@@ -246,7 +248,7 @@ impl AudioDevice {
                         }
                     },
                     move |err| {
-                        eprintln!("audio stream error: {err}");
+                        meridian_foundation::log_error!("audio stream error: {err}");
                         err_flag.store(true, Ordering::SeqCst);
                     },
                     None,

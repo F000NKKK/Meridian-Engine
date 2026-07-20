@@ -8,6 +8,7 @@ repository.workspace = true
 description = "Loading and decoding of images, meshes, audio, shaders and binary formats. Does not manage ownership or lifetime of loaded data."
 
 [dependencies]
+meridian-foundation = { workspace = true }
 meridian-platform-core = { workspace = true }
 symphonia = { workspace = true }
 symphonia-adapter-libopus = { workspace = true }

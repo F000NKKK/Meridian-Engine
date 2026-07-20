@@ -8,6 +8,7 @@ repository.workspace = true
 description = "Shared low-level wgpu device/buffer/shader/compute-pipeline mechanics underneath graphics-driver and compute-driver. Knows nothing about scenes, materials, or compute-dispatch scheduling policy."
 
 [dependencies]
+meridian-foundation = { workspace = true }
 meridian-platform-core = { workspace = true }
 wgpu = { workspace = true }
 tokio = { workspace = true }

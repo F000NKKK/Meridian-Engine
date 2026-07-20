@@ -441,6 +441,8 @@ impl std::fmt::Display for AcquireFrameError {
 
 impl std::error::Error for AcquireFrameError {}
 
+impl meridian_foundation::EngineError for AcquireFrameError {}
+
 /// One acquired swapchain frame: render into [`SurfaceFrame::view`], then
 /// [`SurfaceFrame::present`] to hand it back to the OS compositor.
 #[derive(Debug)]

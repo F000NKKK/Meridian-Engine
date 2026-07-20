@@ -8,6 +8,7 @@ repository.workspace = true
 description = "Low-level audio device abstraction: output streams, buffers and platform audio backends."
 
 [dependencies]
+meridian-foundation = { workspace = true }
 meridian-platform-core = { workspace = true }
 cpal = { workspace = true }
 crossbeam-channel = { workspace = true }

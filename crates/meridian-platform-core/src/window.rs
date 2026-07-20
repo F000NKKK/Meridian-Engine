@@ -136,6 +136,8 @@ impl std::fmt::Display for WindowError {
 
 impl std::error::Error for WindowError {}
 
+impl meridian_foundation::EngineError for WindowError {}
+
 /// Translates a `winit` physical key into this crate's own [`KeyCode`].
 /// Deliberately partial (`None` for keys [`KeyCode`] doesn't name yet,
 /// e.g. function keys, numpad, punctuation) — extending [`KeyCode`] to

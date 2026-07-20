@@ -72,6 +72,8 @@ impl std::fmt::Display for DeviceError {
 
 impl std::error::Error for DeviceError {}
 
+impl meridian_foundation::EngineError for DeviceError {}
+
 impl Device {
     /// Requests a headless (no-surface) GPU device: an `Instance` with
     /// every backend `wgpu` supports on this platform enabled, the

@@ -8,6 +8,7 @@ repository.workspace = true
 description = "Low-level GPU abstraction (device, command queues, buffers, textures, shaders, pipelines, synchronization). Knows nothing about scenes or materials."
 
 [dependencies]
+meridian-foundation = { workspace = true }
 meridian-platform-core = { workspace = true }
 meridian-gpu-driver = { workspace = true }
 tokio = { workspace = true }
