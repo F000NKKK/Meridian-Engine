@@ -923,4 +923,3 @@ mod tests {
         assert!((fold_to_front_hemisphere(-90.0) - fold_to_front_hemisphere(-90.001)).abs() < 0.01);
     }
 }
-

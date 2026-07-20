@@ -68,10 +68,9 @@ impl BinauralSourceState {
     fn new(sample_rate: u32) -> Self {
         // Longest ITD at 48 kHz is ~30 samples; 256 leaves headroom for
         // any sample rate this crate will realistically see.
-        let capacity = ((EAR_SEPARATION_METERS / SPEED_OF_SOUND_M_PER_S * sample_rate as f32)
-            as usize
-            + 8)
-        .max(64);
+        let capacity =
+            ((EAR_SEPARATION_METERS / SPEED_OF_SOUND_M_PER_S * sample_rate as f32) as usize + 8)
+                .max(64);
         Self {
             history: HistoryRing::new(capacity),
             lpf: [0.0; 2],
@@ -158,8 +157,7 @@ impl BinauralRenderer {
         let rear_cutoff_scale = 1.0 - 0.55 * rear;
 
         // ITD: a source to the right (+sin_az) reaches the left ear later.
-        let itd_samples =
-            EAR_SEPARATION_METERS / SPEED_OF_SOUND_M_PER_S * self.sample_rate as f32;
+        let itd_samples = EAR_SEPARATION_METERS / SPEED_OF_SOUND_M_PER_S * self.sample_rate as f32;
         let delay_l = (sin_az * itd_samples).max(0.0);
         let delay_r = (-sin_az * itd_samples).max(0.0);
 
@@ -198,7 +196,8 @@ impl BinauralRenderer {
         frames: usize,
     ) -> Vec<f32> {
         while self.sources.len() < sources.len() {
-            self.sources.push(BinauralSourceState::new(self.sample_rate));
+            self.sources
+                .push(BinauralSourceState::new(self.sample_rate));
         }
 
         let mut out = vec![0.0f32; frames * 2];
@@ -339,7 +338,9 @@ mod binaural_tests {
         // can carry; compare each ear's response to it against its
         // response to a constant, per ear — the far (shadowed) ear must
         // pass proportionally far less of the high frequency.
-        let high: Vec<f32> = (0..4096).map(|i| if i % 2 == 0 { 0.5 } else { -0.5 }).collect();
+        let high: Vec<f32> = (0..4096)
+            .map(|i| if i % 2 == 0 { 0.5 } else { -0.5 })
+            .collect();
         let low = vec![0.5f32; 4096];
         let position = Vec3::new(1.03, 0.0, 2.82); // ~70° right — left ear shadowed but not silent
 
