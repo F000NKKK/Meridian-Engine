@@ -94,6 +94,27 @@ resource-type-naming reason — see
 [ADR 011](adr/011-shared-gpu-driver-crate.md). See
 [ADR 007](adr/007-batch-transforms-via-compute.md).
 
+`meridian-physics-compute` is rule 11's first concrete
+`meridian-<domain>-compute` adapter: `physics-core`'s deterministic
+soft-body GPU kernels (mass-spring integration), mirroring
+`gac-compute`'s shape one layer up:
+
+```text
+meridian-physics-core   meridian-compute-runtime
+        |                        |
+        +-----------+------------+
+                     |
+          meridian-physics-compute
+```
+
+Same reasoning as `gac-compute` throughout: `physics-compute` depends
+directly on `meridian-gpu-driver` for the same resource-type-naming
+reason, and also on `meridian-gac-core` (the `GaFlavor`/`Plane`/`Vec3`
+types its kernels' signatures are expressed in) and `meridian-gac-compute`
+(its `Fixed`-flavor kernel reuses `fixed_wgsl::FIXED_ARITHMETIC_LIB_WGSL`
+rather than re-deriving the same Q16.16 emulation — see
+`meridian-physics-compute`'s own module doc).
+
 ## Rules
 
 1. **A `*-core` crate never depends on the `*-driver` crate of a *different*
