@@ -7,6 +7,13 @@ use meridian_gac_core::generic::Shape;
 use meridian_gac_core::{ConvexVolume, Motor3, Plane, Projection, Vec3};
 use meridian_resource_core::ResourceId;
 
+pub mod scene;
+
+pub use scene::{
+    BlendMode, Camera2D, FrameScene, Light, LightKind, Material, MaterialHandle, Mesh,
+    Renderable3D, Scene2D, Scene3D, Sprite, View,
+};
+
 /// Marker types distinguishing `ResourceId`s of different graphics resource
 /// kinds — see docs/adr/006-resource-core-separation.md.
 pub struct TextureMarker;
@@ -69,6 +76,28 @@ pub enum RenderGraphError {
     /// reads what A writes) — no valid execution order exists.
     Cycle,
 }
+
+impl core::fmt::Display for RenderGraphError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            RenderGraphError::MultipleWriters {
+                resource,
+                first_writer,
+                second_writer,
+            } => {
+                write!(
+                    f,
+                    "multiple passes ({first_writer}, {second_writer}) writing resource {resource:?}"
+                )
+            }
+            RenderGraphError::Cycle => write!(f, "render graph has a read/write cycle"),
+        }
+    }
+}
+
+impl std::error::Error for RenderGraphError {}
+
+impl meridian_foundation::EngineError for RenderGraphError {}
 
 /// An automatically-ordered set of render passes for one frame. Passes
 /// declare resource reads/writes ([`RenderPass::reading`]/
@@ -242,12 +271,6 @@ impl Frustum {
     pub fn intersects<S: Shape<FloatFlavor>>(&self, shape: &S) -> bool {
         self.volume.intersects(shape)
     }
-}
-
-/// A surface's shading inputs.
-#[derive(Debug, Clone, Copy)]
-pub struct Material {
-    pub albedo: TextureHandle,
 }
 
 #[cfg(test)]
