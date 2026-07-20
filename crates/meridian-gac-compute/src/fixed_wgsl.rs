@@ -468,6 +468,45 @@ impl FixedArithmeticKernels {
             .map(|c| Fixed::from_bits(i32::from_le_bytes(c.try_into().unwrap())))
             .collect()
     }
+
+    /// Runs `sqrt` element-wise over `values` on the GPU, returning one
+    /// [`Fixed`] result per value, in order. Every `value` must be
+    /// non-negative — the same precondition `Fixed::sqrt` asserts on the
+    /// CPU side; WGSL has no panic, so passing a negative value here
+    /// produces a nonsensical (not merely wrong-sign) result rather than
+    /// erroring, and callers are responsible for upholding it themselves.
+    pub async fn dispatch_sqrt(&self, context: &ComputeContext, values: &[Fixed]) -> Vec<Fixed> {
+        let gpu = context.gpu().expect(
+            "FixedArithmeticKernels::dispatch_sqrt requires a ComputeContext with a GPU backend",
+        );
+
+        let mut operand_bytes = Vec::with_capacity(values.len() * 4);
+        for value in values {
+            operand_bytes.extend_from_slice(&value.to_bits().to_le_bytes());
+        }
+        let operands = gpu.allocate_buffer(operand_bytes.len(), BufferUsage::Storage);
+        gpu.write_buffer(&operands, &operand_bytes);
+
+        let results = gpu.allocate_buffer(values.len() * 4, BufferUsage::Storage);
+
+        let device = gpu.gpu_driver_device();
+        let bind_group =
+            device.create_bind_group(&self.sqrt.bind_group_layout(), &[&operands, &results]);
+
+        let mut commands = device.create_command_buffer();
+        commands.dispatch_compute_with_bind_group(
+            &self.sqrt,
+            &bind_group,
+            (values.len() as u32).div_ceil(64).max(1),
+        );
+        commands.submit();
+
+        let result_bytes = gpu.read_buffer(&results).await;
+        result_bytes
+            .chunks_exact(4)
+            .map(|c| Fixed::from_bits(i32::from_le_bytes(c.try_into().unwrap())))
+            .collect()
+    }
 }
 
 #[cfg(test)]
