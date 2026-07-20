@@ -64,6 +64,18 @@ winit = "0.30.13"
 cpal = "0.18"
 crossbeam-channel = "0.5"
 
+# Compressed-audio decoding for `asset-core` — the same class of decision
+# as `cpal`/`winit`/`wgpu` (see docs/adr/013-compressed-audio-codecs.md):
+# hand-rolling an MP3/Vorbis/FLAC/Opus decoder is a multi-month DSP
+# undertaking per codec. `symphonia` is the pure-Rust ecosystem standard
+# for MP3/OGG-Vorbis/FLAC; Opus has no mature pure-Rust decoder, so it
+# uses the reference `libopus` via the `opus` FFI binding plus the `ogg`
+# crate for its container. Formats are detected by leading magic bytes,
+# never by file extension.
+symphonia = { version = "0.6", default-features = false, features = ["mp3", "ogg", "vorbis", "flac"] }
+ogg = "0.9"
+opus = "0.3"
+
 [profile.release]
 lto = true
 codegen-units = 1
