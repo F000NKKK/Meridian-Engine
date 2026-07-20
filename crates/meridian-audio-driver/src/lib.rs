@@ -233,14 +233,16 @@ impl AudioDevice {
             buffer_size: cpal::BufferSize::Default,
         };
 
+        let mut anti_click = AntiClick::new(channels);
         let stream = match resolved.sample_format() {
             cpal::SampleFormat::F32 => self
                 .device
                 .build_output_stream(
                     stream_config,
                     move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
-                        for output_sample in data.iter_mut() {
-                            *output_sample = sample_rx.try_recv().unwrap_or(0.0);
+                        for (index, output_sample) in data.iter_mut().enumerate() {
+                            *output_sample =
+                                anti_click.process(sample_rx.try_recv().ok(), index % channels);
                         }
                     },
                     move |err| {
@@ -271,6 +273,61 @@ impl AudioDevice {
     }
 }
 
+/// Keeps the output waveform continuous when the ring buffer starves.
+///
+/// Without this, a starved callback jumps from the last delivered sample
+/// straight to `0.0` — a full-scale step discontinuity heard as a click
+/// every time the producer misses a deadline (dropped frame, moved
+/// window, scheduler hiccup). Instead, starvation exponentially fades
+/// the last value toward silence (inaudible over ~1 ms) and recovery
+/// ramps the incoming signal back in over ~5 ms — no output sample ever
+/// steps discontinuously, no matter what the producer does.
+///
+/// This lives in the driver deliberately: it's a property of the stream
+/// transport ("the device never emits a discontinuity"), not a domain
+/// effect — domain-side de-clicking (e.g. between DSP stages) is
+/// `audio-core`'s business.
+struct AntiClick {
+    /// Last emitted sample per channel — the fade-out source.
+    last: Vec<f32>,
+    /// Recovery gain: dropped to 0 by starvation, ramped back to 1.
+    gain: f32,
+}
+
+impl AntiClick {
+    /// Starvation decay per sample: silence (−40 dB) within ~1 ms at 48 kHz.
+    const FADE_OUT: f32 = 0.91;
+    /// Recovery ramp: full volume ~5 ms after samples resume at 48 kHz.
+    const FADE_IN_STEP: f32 = 1.0 / 256.0;
+
+    fn new(channels: usize) -> Self {
+        Self {
+            last: vec![0.0; channels.max(1)],
+            // Starts at zero so the stream's very first samples ramp in
+            // instead of stepping from silence to full scale — the
+            // start-of-stream click.
+            gain: 0.0,
+        }
+    }
+
+    fn process(&mut self, sample: Option<f32>, channel: usize) -> f32 {
+        match sample {
+            Some(sample) => {
+                self.gain = (self.gain + Self::FADE_IN_STEP).min(1.0);
+                let out = sample * self.gain;
+                self.last[channel] = out;
+                out
+            }
+            None => {
+                self.gain = 0.0;
+                let out = self.last[channel] * Self::FADE_OUT;
+                self.last[channel] = out;
+                out
+            }
+        }
+    }
+}
+
 impl BackendCapabilities for AudioDevice {
     fn cpu(&self) -> CpuCapabilities {
         CpuCapabilities::detect()
@@ -284,6 +341,56 @@ impl BackendCapabilities for AudioDevice {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn anti_click_never_steps_on_starvation_or_recovery() {
+        let mut anti = AntiClick::new(1);
+        let mut previous = 0.0f32;
+        let mut max_step = 0.0f32;
+        let mut track = |out: f32, max_step: &mut f32| {
+            *max_step = max_step.max((out - previous).abs());
+            previous = out;
+        };
+
+        // Steady loud signal, then sudden starvation, then recovery —
+        // the exact sequence that used to click.
+        for _ in 0..64 {
+            track(anti.process(Some(0.9), 0), &mut max_step);
+        }
+        for _ in 0..128 {
+            track(anti.process(None, 0), &mut max_step);
+        }
+        for _ in 0..512 {
+            track(anti.process(Some(0.9), 0), &mut max_step);
+        }
+        assert!(
+            max_step < 0.1,
+            "output stepped by {max_step}; a raw gap would step by 0.9"
+        );
+    }
+
+    #[test]
+    fn anti_click_fades_to_silence_while_starved() {
+        let mut anti = AntiClick::new(1);
+        anti.process(Some(1.0), 0);
+        let mut out = 1.0;
+        for _ in 0..96 {
+            out = anti.process(None, 0);
+        }
+        assert!(out.abs() < 1e-3, "still audible after ~2 ms: {out}");
+    }
+
+    #[test]
+    fn anti_click_is_transparent_in_steady_state() {
+        let mut anti = AntiClick::new(2);
+        // After the ramp, samples must pass through untouched.
+        for _ in 0..600 {
+            anti.process(Some(0.5), 0);
+            anti.process(Some(-0.5), 1);
+        }
+        assert_eq!(anti.process(Some(0.123), 0), 0.123);
+        assert_eq!(anti.process(Some(-0.321), 1), -0.321);
+    }
 
     async fn device_or_skip() -> Option<AudioDevice> {
         match AudioDevice::new().await {
