@@ -97,12 +97,11 @@ struct BinauralSourceState {
 }
 
 impl BinauralSourceState {
-    fn new(sample_rate: u32) -> Self {
-        // Longest ITD at 48 kHz is ~30 samples; 256 leaves headroom for
-        // any sample rate this crate will realistically see.
-        let capacity =
-            ((EAR_SEPARATION_METERS / SPEED_OF_SOUND_M_PER_S * sample_rate as f32) as usize + 8)
-                .max(64);
+    fn new(max_itd_samples: f32) -> Self {
+        // Enough history for the medium's worst-case ITD plus headroom
+        // (slow media like air need ~30 samples at 48 kHz; water far
+        // fewer — sound crosses the head faster).
+        let capacity = (max_itd_samples as usize + 8).max(64);
         Self {
             history: HistoryRing::new(capacity),
             lpf: [0.0; 2],
@@ -125,7 +124,15 @@ impl BinauralSourceState {
 ///   both ears) — the pinna-less approximation of a rear source; unlike
 ///   [`fold_to_front_hemisphere`] the rear is *not* folded onto the
 ///   front, so front and back genuinely differ.
-/// - **Distance**: the same [`AttenuationModel`] as the mixer.
+/// - **Distance**: the same [`AttenuationModel`] as the mixer, plus the
+///   medium's high-frequency absorption — far sources sound duller, and
+///   how much duller depends on what the sound travels through.
+///
+/// The propagation medium ([`AcousticMedium`] — air at sea level by
+/// default, altitude/water presets, or fully custom) sets the speed of
+/// sound (and with it the ITD) and the absorption; head geometry and
+/// every filter bound live in [`BinauralConfig`]. Nothing is a
+/// hard-coded constant.
 ///
 /// All parameters ramp linearly across each rendered block from the
 /// previous block's values, so a moving listener produces smooth gain/
@@ -139,6 +146,8 @@ impl BinauralSourceState {
 pub struct BinauralRenderer {
     sample_rate: u32,
     pub attenuation: AttenuationModel,
+    pub medium: AcousticMedium,
+    pub config: BinauralConfig,
     sources: Vec<BinauralSourceState>,
 }
 
@@ -147,6 +156,8 @@ impl BinauralRenderer {
         Self {
             sample_rate,
             attenuation: AttenuationModel::default(),
+            medium: AcousticMedium::default(),
+            config: BinauralConfig::default(),
             sources: Vec::new(),
         }
     }
@@ -154,6 +165,26 @@ impl BinauralRenderer {
     pub fn with_attenuation(mut self, attenuation: AttenuationModel) -> Self {
         self.attenuation = attenuation;
         self
+    }
+
+    /// Sets the propagation medium. Existing per-source delay lines are
+    /// rebuilt on the next render if the new medium needs more history.
+    pub fn with_medium(mut self, medium: AcousticMedium) -> Self {
+        self.medium = medium;
+        self.sources.clear();
+        self
+    }
+
+    pub fn with_config(mut self, config: BinauralConfig) -> Self {
+        self.config = config;
+        self.sources.clear();
+        self
+    }
+
+    /// The medium's worst-case interaural delay, in samples.
+    fn max_itd_samples(&self) -> f32 {
+        self.config.ear_separation_m / self.medium.speed_of_sound_m_s.max(1.0)
+            * self.sample_rate as f32
     }
 
     /// One-pole coefficient for a cutoff frequency at this sample rate.
@@ -165,7 +196,8 @@ impl BinauralRenderer {
     /// per-ear gain/delay/filter targets.
     fn targets(&self, listener: &Listener, emitter: &Emitter) -> EarTargets {
         let local = listener.frame.inverse().transform_point(emitter.position());
-        let distance_gain = self.attenuation.gain(local.length());
+        let distance = local.length();
+        let distance_gain = self.attenuation.gain(distance);
 
         // Horizontal plane only, like the rest of this crate: forward
         // +X, right +Z (see the module doc).
@@ -185,22 +217,31 @@ impl BinauralRenderer {
 
         // Behind: mildly quieter and duller on both ears.
         let rear = (-cos_az).max(0.0);
-        let rear_gain = 1.0 - 0.25 * rear;
-        let rear_cutoff_scale = 1.0 - 0.55 * rear;
+        let rear_gain = 1.0 - self.config.rear_gain_reduction * rear;
+        let rear_cutoff_scale = 1.0 - self.config.rear_cutoff_reduction * rear;
 
-        // ITD: a source to the right (+sin_az) reaches the left ear later.
-        let itd_samples = EAR_SEPARATION_METERS / SPEED_OF_SOUND_M_PER_S * self.sample_rate as f32;
+        // The medium absorbs high frequencies with distance —
+        // exponential cutoff decay, stronger in air than in water.
+        let absorption_scale = (-self.medium.high_freq_absorption_per_m * distance).exp();
+
+        // ITD: a source to the right (+sin_az) reaches the left ear
+        // later. The medium's speed of sound sets how much later.
+        let itd_samples = self.max_itd_samples();
         let delay_l = (sin_az * itd_samples).max(0.0);
         let delay_r = (-sin_az * itd_samples).max(0.0);
 
         // Head shadow: the ear opposite the source loses highs. Cutoff
-        // slides from "transparent" toward ~900 Hz as the source moves
-        // fully to the other side.
+        // slides from the open bound toward the closed bound as the
+        // source moves fully to the other side.
         let shadow_l = sin_az.max(0.0); // source right -> left ear shadowed
         let shadow_r = (-sin_az).max(0.0);
         let cutoff = |shadow: f32| {
-            let open = 18_000.0_f32.min(self.sample_rate as f32 * 0.45);
-            (open + (900.0 - open) * shadow) * rear_cutoff_scale
+            let open = self
+                .config
+                .shadow_open_cutoff_hz
+                .min(self.sample_rate as f32 * 0.45);
+            let closed = self.config.shadow_closed_cutoff_hz.min(open);
+            (open + (closed - open) * shadow) * rear_cutoff_scale * absorption_scale
         };
 
         EarTargets {
@@ -229,7 +270,7 @@ impl BinauralRenderer {
     ) -> Vec<f32> {
         while self.sources.len() < sources.len() {
             self.sources
-                .push(BinauralSourceState::new(self.sample_rate));
+                .push(BinauralSourceState::new(self.max_itd_samples()));
         }
 
         let mut out = vec![0.0f32; frames * 2];
