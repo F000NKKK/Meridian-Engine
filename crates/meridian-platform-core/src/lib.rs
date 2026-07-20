@@ -238,6 +238,7 @@ pub struct InputState {
     mouse_buttons_down: HashSet<MouseButton>,
     mouse_position: (f32, f32),
     mouse_delta: (f32, f32),
+    raw_mouse_delta: (f32, f32),
 }
 
 impl InputState {
@@ -300,20 +301,44 @@ impl InputState {
     }
 
     /// Movement accumulated since the last
-    /// [`advance_frame`](Self::advance_frame) call.
+    /// [`advance_frame`](Self::advance_frame) call, derived from
+    /// consecutive absolute [`set_mouse_position`](Self::set_mouse_position)
+    /// calls. Not what a free-look camera wants once the cursor is
+    /// grabbed/locked (a locked cursor stops moving, so this goes to
+    /// zero) — see [`raw_mouse_delta`](Self::raw_mouse_delta) for that.
     pub fn mouse_delta(&self) -> (f32, f32) {
         self.mouse_delta
     }
 
+    /// Accumulates a relative mouse-motion sample (OS-reported raw
+    /// device delta, independent of cursor position — keeps working
+    /// under `Window::set_cursor_grabbed(true)`, unlike
+    /// [`mouse_delta`](Self::mouse_delta)). A future OS backend calls
+    /// this once per raw motion event, separately from
+    /// [`set_mouse_position`](Self::set_mouse_position).
+    pub fn accumulate_mouse_motion(&mut self, dx: f32, dy: f32) {
+        self.raw_mouse_delta.0 += dx;
+        self.raw_mouse_delta.1 += dy;
+    }
+
+    /// Raw relative mouse movement accumulated since the last
+    /// [`advance_frame`](Self::advance_frame) call — see
+    /// [`accumulate_mouse_motion`](Self::accumulate_mouse_motion). What
+    /// a free-look camera (`examples::FlyCamera`) should read.
+    pub fn raw_mouse_delta(&self) -> (f32, f32) {
+        self.raw_mouse_delta
+    }
+
     /// Call once per frame after systems have read this frame's input:
     /// clears the "pressed this frame"/"released this frame" transition
-    /// sets and the mouse delta. `is_key_down`/mouse-button-down state
+    /// sets and both mouse deltas. `is_key_down`/mouse-button-down state
     /// (what's currently held) is untouched — it persists until the
     /// matching release event.
     pub fn advance_frame(&mut self) {
         self.keys_pressed_this_frame.clear();
         self.keys_released_this_frame.clear();
         self.mouse_delta = (0.0, 0.0);
+        self.raw_mouse_delta = (0.0, 0.0);
     }
 }
 
@@ -551,6 +576,22 @@ pub fn run_windowed_app<A: AppHandler>(
                     window.request_redraw();
                 }
                 _ => {}
+            }
+        }
+
+        /// Raw device motion, not tied to cursor position — the only
+        /// source `InputState::raw_mouse_delta` still gets fed from once
+        /// the cursor is grabbed/locked (`Window::set_cursor_grabbed`),
+        /// since a locked cursor stops generating `CursorMoved` deltas.
+        fn device_event(
+            &mut self,
+            _event_loop: &winit::event_loop::ActiveEventLoop,
+            _device_id: winit::event::DeviceId,
+            event: winit::event::DeviceEvent,
+        ) {
+            if let winit::event::DeviceEvent::MouseMotion { delta } = event {
+                self.input
+                    .accumulate_mouse_motion(delta.0 as f32, delta.1 as f32);
             }
         }
     }
