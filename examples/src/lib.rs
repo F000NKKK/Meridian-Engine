@@ -218,3 +218,108 @@ pub fn look_at_rotor(eye: Vec3, target: Vec3) -> meridian_gac_core::Rotor {
     let axis = local_forward.cross(forward).normalize();
     Rotor::from_axis_angle(axis, cos_angle.acos())
 }
+
+/// A free-fly camera: WASD to move (relative to the way it's currently
+/// looking, not world axes), Space/Ctrl for up/down, hold the right
+/// mouse button and move the mouse to look around. Exists because a
+/// fixed `look_at_rotor(eye, target)` camera (`spinning_cube`'s
+/// approach) gives no way to inspect a scene from angles the author
+/// didn't hardcode — the soft-body examples need that inspection more
+/// than a spinning cube does, since "is this ball actually deforming/
+/// jiggling or just sitting there" is exactly the kind of thing you want
+/// to walk around and look at.
+pub struct FlyCamera {
+    pub position: Vec3,
+    /// Radians, measured from `+X` toward `+Z` (matches `Vec3::X` being
+    /// `gac-core`'s local-forward convention — see [`look_at_rotor`]).
+    pub yaw: f32,
+    /// Radians, clamped just short of &plusmn;90&deg; to avoid a gimbal
+    /// flip at the poles.
+    pub pitch: f32,
+    pub move_speed: f32,
+    pub look_sensitivity: f32,
+}
+
+impl FlyCamera {
+    pub fn new(position: Vec3) -> Self {
+        // Facing roughly toward -Z (a scene's contents in these examples
+        // sit near the origin along -Z from a positive-Z starting eye
+        // point) with a slight downward tilt, a reasonable default that
+        // doesn't start looking at empty sky.
+        Self {
+            position,
+            yaw: -core::f32::consts::FRAC_PI_2,
+            pitch: -0.2,
+            move_speed: 3.0,
+            look_sensitivity: 0.003,
+        }
+    }
+
+    fn forward(&self) -> Vec3 {
+        Vec3::new(
+            self.pitch.cos() * self.yaw.cos(),
+            self.pitch.sin(),
+            self.pitch.cos() * self.yaw.sin(),
+        )
+        .normalize()
+    }
+
+    /// Advances the camera by one frame of `input`/`dt`. Call once per
+    /// `on_redraw`, after computing `dt` and before building this
+    /// frame's [`Camera`] via [`Self::camera`].
+    pub fn update(&mut self, input: &InputState, dt: f32) {
+        if input.is_mouse_button_down(MouseButton::Right) {
+            let (dx, dy) = input.mouse_delta();
+            self.yaw += dx * self.look_sensitivity;
+            self.pitch = (self.pitch - dy * self.look_sensitivity).clamp(
+                -core::f32::consts::FRAC_PI_2 + 0.01,
+                core::f32::consts::FRAC_PI_2 - 0.01,
+            );
+        }
+
+        let forward = self.forward();
+        let right = forward.cross(Vec3::Y).normalize();
+        let mut movement = Vec3::ZERO;
+        if input.is_key_down(KeyCode::W) {
+            movement = movement + forward;
+        }
+        if input.is_key_down(KeyCode::S) {
+            movement = movement - forward;
+        }
+        if input.is_key_down(KeyCode::D) {
+            movement = movement + right;
+        }
+        if input.is_key_down(KeyCode::A) {
+            movement = movement - right;
+        }
+        if input.is_key_down(KeyCode::Space) {
+            movement = movement + Vec3::Y;
+        }
+        if input.is_key_down(KeyCode::ControlLeft) {
+            movement = movement - Vec3::Y;
+        }
+        if movement.length() > 1e-5 {
+            let speed = if input.is_key_down(KeyCode::ShiftLeft) {
+                self.move_speed * 3.0
+            } else {
+                self.move_speed
+            };
+            self.position = self.position + movement.normalize() * speed * dt;
+        }
+    }
+
+    pub fn camera(&self, aspect_ratio: f32) -> Camera {
+        Camera {
+            frame: Motor3::from_rotation_translation(
+                look_at_rotor(self.position, self.position + self.forward()),
+                self.position,
+            ),
+            projection: meridian_gac_core::Projection::perspective(
+                55.0_f32.to_radians(),
+                aspect_ratio,
+                0.1,
+                100.0,
+            ),
+        }
+    }
+}
