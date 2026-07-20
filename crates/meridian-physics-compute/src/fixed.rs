@@ -65,10 +65,21 @@ fn fvec3_length(v: FVec3) -> i32 {
     return fixed_sqrt(fvec3_dot(v, v));
 }
 
+// Flat scalar fields, not nested `FVec3` members: WGSL's uniform
+// address-space layout rules pad a struct-typed member up to a 16-byte
+// boundary (the same "struct boundaries align to 16" rule that gives
+// `vec3<f32>` its 16-byte alignment), which `gravity`/`ground_normal`
+// being a custom 3xi32 struct tripped on real hardware. Flat `i32`
+// fields have ordinary 4-byte alignment, so this packs tightly with no
+// surprise padding; `soft_body_step` below reassembles `FVec3`s locally.
 struct Params {
-    gravity: FVec3,
+    gravity_x: i32,
+    gravity_y: i32,
+    gravity_z: i32,
     dt: i32,
-    ground_normal: FVec3,
+    ground_normal_x: i32,
+    ground_normal_y: i32,
+    ground_normal_z: i32,
     ground_d: i32,
     restitution: i32,
     particle_count: u32,
@@ -76,17 +87,19 @@ struct Params {
     _pad1: u32,
 };
 
+// Bound at 8 storage buffers total (the spec-guaranteed minimum for
+// `max_storage_buffers_per_shader_stage`) — see `crate::float`'s
+// `edge_params` binding comment for why the three per-half-edge arrays
+// are packed into one buffer instead of three separate bindings.
 @group(0) @binding(0) var<uniform> params: Params;
 @group(0) @binding(1) var<storage, read> positions_in: array<i32>;
 @group(0) @binding(2) var<storage, read> velocities_in: array<i32>;
 @group(0) @binding(3) var<storage, read> inverse_masses: array<i32>;
 @group(0) @binding(4) var<storage, read> edge_offsets: array<u32>;
 @group(0) @binding(5) var<storage, read> edge_neighbor: array<u32>;
-@group(0) @binding(6) var<storage, read> edge_rest_length: array<i32>;
-@group(0) @binding(7) var<storage, read> edge_stiffness: array<i32>;
-@group(0) @binding(8) var<storage, read> edge_damping: array<i32>;
-@group(0) @binding(9) var<storage, read_write> positions_out: array<i32>;
-@group(0) @binding(10) var<storage, read_write> velocities_out: array<i32>;
+@group(0) @binding(6) var<storage, read> edge_params: array<i32>;
+@group(0) @binding(7) var<storage, read_write> positions_out: array<i32>;
+@group(0) @binding(8) var<storage, read_write> velocities_out: array<i32>;
 
 fn read_position_in(i: u32) -> FVec3 {
     return FVec3(positions_in[3u * i], positions_in[3u * i + 1u], positions_in[3u * i + 2u]);
@@ -114,6 +127,9 @@ fn soft_body_step(@builtin(global_invocation_id) id: vec3<u32>) {
     if (i >= params.particle_count) {
         return;
     }
+
+    let gravity = FVec3(params.gravity_x, params.gravity_y, params.gravity_z);
+    let ground_normal = FVec3(params.ground_normal_x, params.ground_normal_y, params.ground_normal_z);
 
     let pos_i = read_position_in(i);
     let vel_i = read_velocity_in(i);
