@@ -489,4 +489,172 @@ mod tests {
             .filter(|s| s.a == particle || s.b == particle)
             .count()
     }
+
+    /// Pure-Rust replica of the GPU kernel's per-particle gather
+    /// algorithm (no WGSL, no GPU) — isolates whether the gather
+    /// reformulation itself (vs. its WGSL/GPU execution) is where a
+    /// divergence from `FixedSoftBodyIntegrator::step`'s scatter
+    /// algorithm originates.
+    fn rust_gather_step(
+        body: &FixedSoftBody,
+        gravity: FixedVec3,
+        ground: Plane<FixedFlavor>,
+        restitution: Fixed,
+        dt: Fixed,
+    ) -> FixedSoftBody {
+        let adjacency = build_adjacency(body);
+        let mut out = body.clone();
+        for i in 0..body.particle_count() {
+            let inverse_mass = body.inverse_masses[i];
+            if inverse_mass <= Fixed::ZERO {
+                continue;
+            }
+            let mut force = FixedVec3::ZERO;
+            let start = adjacency.offsets[i] as usize;
+            let end = adjacency.offsets[i + 1] as usize;
+            for e in start..end {
+                let j = adjacency.neighbor[e] as usize;
+                let delta = body.positions[j] - body.positions[i];
+                let dist = delta.length();
+                let direction = if dist > Fixed::from_bits(4) {
+                    delta * (Fixed::ONE / dist)
+                } else {
+                    FixedVec3::new(Fixed::ONE, Fixed::ZERO, Fixed::ZERO)
+                };
+                let rest_length = adjacency.rest_length[e];
+                let stiffness = adjacency.stiffness[e];
+                let damping = adjacency.damping[e];
+                let stretch = dist - rest_length;
+                let spring_force = direction * (stiffness * stretch);
+                let relative_velocity = body.velocities[j] - body.velocities[i];
+                let closing_speed = relative_velocity.dot(direction);
+                let damping_force = direction * (damping * closing_speed);
+                force = force + spring_force + damping_force;
+            }
+            let acceleration = force * inverse_mass + gravity;
+            let mut velocity = body.velocities[i] + acceleration * dt;
+            let mut position = body.positions[i] + velocity * dt;
+            let separation = ground.distance(position);
+            if separation < Fixed::ZERO {
+                position = position - ground.normal * separation;
+                let normal_speed = velocity.dot(ground.normal);
+                if normal_speed < Fixed::ZERO {
+                    velocity =
+                        velocity - ground.normal * (normal_speed * (Fixed::ONE + restitution));
+                }
+            }
+            out.positions[i] = position;
+            out.velocities[i] = velocity;
+        }
+        out
+    }
+
+    #[test]
+    fn diagnose_step48_particle36() {
+        let mut cpu_body = ball(fv3(0.3, 0.7, -0.2), 0.5);
+        let integrator =
+            FixedSoftBodyIntegrator::new(fv3(0.0, -9.81, 0.0), ground(), Fixed::from_num(0.3));
+        let dt = Fixed::from_num(1.0 / 240.0);
+        for _ in 0..48 {
+            integrator.step(&mut cpu_body, dt);
+        }
+        // cpu_body is now the state entering step 48 (0-indexed the 49th
+        // step call) -- reproduce SoftBodyIntegrator::step's force pass
+        // manually (scatter) and the gather pass manually, dump every
+        // term touching particle 36.
+        let adjacency = build_adjacency(&cpu_body);
+        let start = adjacency.offsets[36] as usize;
+        let end = adjacency.offsets[36 + 1] as usize;
+        eprintln!("particle 36 half-edges: {start}..{end}");
+        for e in start..end {
+            let j = adjacency.neighbor[e] as usize;
+            let delta = cpu_body.positions[j] - cpu_body.positions[36];
+            let dist = delta.length();
+            let direction = if dist > Fixed::from_bits(4) {
+                delta * (Fixed::ONE / dist)
+            } else {
+                FixedVec3::new(Fixed::ONE, Fixed::ZERO, Fixed::ZERO)
+            };
+            let rest_length = adjacency.rest_length[e];
+            let stiffness = adjacency.stiffness[e];
+            let damping = adjacency.damping[e];
+            let stretch = dist - rest_length;
+            let spring_force = direction * (stiffness * stretch);
+            let relative_velocity = cpu_body.velocities[j] - cpu_body.velocities[36];
+            let closing_speed = relative_velocity.dot(direction);
+            let damping_force = direction * (damping * closing_speed);
+            eprintln!(
+                "  half-edge to {j}: dist={dist:?} direction={direction:?} stretch={stretch:?} spring_force={spring_force:?} closing_speed={closing_speed:?} damping_force={damping_force:?}"
+            );
+        }
+
+        // Now scatter-compute forces[36] the way SoftBodyIntegrator::step
+        // actually does, by walking body.springs directly.
+        let mut forces36 = FixedVec3::ZERO;
+        for spring in &cpu_body.springs {
+            if spring.a != 36 && spring.b != 36 {
+                continue;
+            }
+            let pa = cpu_body.positions[spring.a];
+            let pb = cpu_body.positions[spring.b];
+            let delta = pb - pa;
+            let dist = delta.length();
+            let direction = if dist > Fixed::from_bits(4) {
+                delta * (Fixed::ONE / dist)
+            } else {
+                FixedVec3::new(Fixed::ONE, Fixed::ZERO, Fixed::ZERO)
+            };
+            let stretch = dist - spring.rest_length;
+            let spring_force = direction * (spring.stiffness * stretch);
+            let relative_velocity = cpu_body.velocities[spring.b] - cpu_body.velocities[spring.a];
+            let closing_speed = relative_velocity.dot(direction);
+            let damping_force = direction * (spring.damping * closing_speed);
+            let total = spring_force + damping_force;
+            eprintln!(
+                "  spring a={} b={}: dist={dist:?} direction={direction:?} total={total:?} (applied to 36 as {})",
+                spring.a,
+                spring.b,
+                if spring.a == 36 { "+total" } else { "-total" }
+            );
+            if spring.a == 36 {
+                forces36 = forces36 + total;
+            }
+            if spring.b == 36 {
+                forces36 = forces36 - total;
+            }
+        }
+        eprintln!("scatter forces[36] = {forces36:?}");
+    }
+
+    #[test]
+    fn rust_gather_matches_cpu_scatter_bit_exact() {
+        let mut gather_body = ball(fv3(0.3, 0.7, -0.2), 0.5);
+        let mut cpu_body = gather_body.clone();
+        let integrator =
+            FixedSoftBodyIntegrator::new(fv3(0.0, -9.81, 0.0), ground(), Fixed::from_num(0.3));
+        let dt = Fixed::from_num(1.0 / 240.0);
+
+        for step in 0..60 {
+            gather_body = rust_gather_step(
+                &gather_body,
+                integrator.gravity,
+                integrator.ground,
+                integrator.restitution,
+                dt,
+            );
+            integrator.step(&mut cpu_body, dt);
+
+            for (idx, (g, c)) in gather_body
+                .velocities
+                .iter()
+                .zip(cpu_body.velocities.iter())
+                .enumerate()
+            {
+                assert_eq!(
+                    g, c,
+                    "step {step} particle {idx}: gather vs scatter velocity diverged"
+                );
+            }
+        }
+    }
 }
