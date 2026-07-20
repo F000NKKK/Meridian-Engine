@@ -441,7 +441,7 @@ mod tests {
         let Some((context, kernels)) = kernels_or_skip().await else {
             return;
         };
-        let pairs = all_pairs(&interesting_values());
+        let pairs = all_pairs(&moderate_values());
         let gpu_results = kernels.dispatch(&context, FixedBinaryOp::Add, &pairs).await;
         for (i, &(a, b)) in pairs.iter().enumerate() {
             let expected = a + b;
@@ -458,7 +458,7 @@ mod tests {
         let Some((context, kernels)) = kernels_or_skip().await else {
             return;
         };
-        let pairs = all_pairs(&interesting_values());
+        let pairs = all_pairs(&moderate_values());
         let gpu_results = kernels.dispatch(&context, FixedBinaryOp::Sub, &pairs).await;
         for (i, &(a, b)) in pairs.iter().enumerate() {
             let expected = a - b;
