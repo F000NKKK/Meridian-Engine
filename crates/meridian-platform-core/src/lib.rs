@@ -721,7 +721,11 @@ mod dynamic_library_ffi {
         if msg.is_null() {
             None
         } else {
-            Some(unsafe { std::ffi::CStr::from_ptr(msg) }.to_string_lossy().into_owned())
+            Some(
+                unsafe { std::ffi::CStr::from_ptr(msg) }
+                    .to_string_lossy()
+                    .into_owned(),
+            )
         }
     }
 }
@@ -770,8 +774,9 @@ impl DynamicLibrary {
                 .map_err(|_| DynamicLibraryError::InvalidName(path.to_string()))?;
             // Clear any stale error state before the call.
             unsafe { dynamic_library_ffi::take_error() };
-            let handle =
-                unsafe { dynamic_library_ffi::dlopen(c_path.as_ptr(), dynamic_library_ffi::RTLD_NOW) };
+            let handle = unsafe {
+                dynamic_library_ffi::dlopen(c_path.as_ptr(), dynamic_library_ffi::RTLD_NOW)
+            };
             if handle.is_null() {
                 let msg = unsafe { dynamic_library_ffi::take_error() }
                     .unwrap_or_else(|| path.to_string());
