@@ -104,8 +104,20 @@ fn soft_body_step(@builtin(global_invocation_id) id: vec3<u32>) {
     let start = edge_offsets[i];
     let end = edge_offsets[i + 1u];
     for (var e: u32 = start; e < end; e = e + 1u) {
-        let j = edge_neighbor[e];
-        let delta = read_position_in(j) - pos_i;
+        // `edge_neighbor[e]`'s top bit is the `is_a` flag `crate::generic`
+        // encodes (see that module's doc) — mask it off for the real
+        // index. The canonical a-to-b direction/`total`-then-negate
+        // shape below isn't load-bearing for `f32` (IEEE-754 multiply is
+        // exactly negation-symmetric, unlike `Fixed::mul` — see
+        // `crate::generic`'s doc for the flavor this *does* matter for),
+        // kept identical to `crate::fixed`'s kernel anyway for one
+        // less structural difference between the two.
+        let encoded = edge_neighbor[e];
+        let j = encoded & 0x7FFFFFFFu;
+        let is_a = (encoded & 0x80000000u) != 0u;
+
+        let pos_j = read_position_in(j);
+        let delta = select(pos_i - pos_j, pos_j - pos_i, is_a);
         let dist = length(delta);
         var direction = vec3<f32>(1.0, 0.0, 0.0);
         if (dist > DIRECTION_EPSILON) {
@@ -118,11 +130,13 @@ fn soft_body_step(@builtin(global_invocation_id) id: vec3<u32>) {
         let stretch = dist - rest_length;
         let spring_force = direction * (stiffness * stretch);
 
-        let relative_velocity = read_velocity_in(j) - vel_i;
+        let vel_j = read_velocity_in(j);
+        let relative_velocity = select(vel_i - vel_j, vel_j - vel_i, is_a);
         let closing_speed = dot(relative_velocity, direction);
         let damping_force = direction * (damping * closing_speed);
 
-        force = force + spring_force + damping_force;
+        let total = spring_force + damping_force;
+        force = force + select(-total, total, is_a);
     }
 
     let acceleration = force * inverse_mass + params.gravity;

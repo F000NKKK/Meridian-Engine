@@ -157,7 +157,10 @@ fn soft_body_step(@builtin(global_invocation_id) id: vec3<u32>) {
         // negating the *direction* before multiplying is not bit-exact,
         // and why negating the finished `total` instead is.
         let pos_j = read_position_in(j);
-        let delta = select(fvec3_sub(pos_i, pos_j), fvec3_sub(pos_j, pos_i), is_a);
+        var delta = fvec3_sub(pos_i, pos_j);
+        if (is_a) {
+            delta = fvec3_sub(pos_j, pos_i);
+        }
         let dist = fvec3_length(delta);
         var direction = FVec3(ONE_BITS, 0, 0);
         if (dist > DIRECTION_EPSILON_BITS) {
@@ -504,10 +507,13 @@ mod tests {
     }
 
     /// Pure-Rust replica of the GPU kernel's per-particle gather
-    /// algorithm (no WGSL, no GPU) — isolates whether the gather
-    /// reformulation itself (vs. its WGSL/GPU execution) is where a
-    /// divergence from `FixedSoftBodyIntegrator::step`'s scatter
-    /// algorithm originates.
+    /// algorithm (no WGSL, no GPU) — proves the *reformulation itself*
+    /// (independent of its WGSL/GPU execution) is bit-exact with
+    /// `FixedSoftBodyIntegrator::step`. See `crate::generic`'s module doc
+    /// for why this needs the `is_a`-conditional canonical direction
+    /// (an earlier version that recomputed direction/`total` naively per
+    /// endpoint failed this exact test, diverging by one raw bit at step
+    /// 48 — this is the regression test for that bug).
     fn rust_gather_step(
         body: &FixedSoftBody,
         gravity: FixedVec3,
@@ -526,8 +532,12 @@ mod tests {
             let start = adjacency.offsets[i] as usize;
             let end = adjacency.offsets[i + 1] as usize;
             for e in start..end {
-                let j = adjacency.neighbor[e] as usize;
-                let delta = body.positions[j] - body.positions[i];
+                let (j, is_a) = crate::generic::decode_neighbor(adjacency.neighbor[e]);
+                let delta = if is_a {
+                    body.positions[j] - body.positions[i]
+                } else {
+                    body.positions[i] - body.positions[j]
+                };
                 let dist = delta.length();
                 let direction = if dist > Fixed::from_bits(4) {
                     delta * (Fixed::ONE / dist)
@@ -539,10 +549,15 @@ mod tests {
                 let damping = adjacency.damping[e];
                 let stretch = dist - rest_length;
                 let spring_force = direction * (stiffness * stretch);
-                let relative_velocity = body.velocities[j] - body.velocities[i];
+                let relative_velocity = if is_a {
+                    body.velocities[j] - body.velocities[i]
+                } else {
+                    body.velocities[i] - body.velocities[j]
+                };
                 let closing_speed = relative_velocity.dot(direction);
                 let damping_force = direction * (damping * closing_speed);
-                force = force + spring_force + damping_force;
+                let total = spring_force + damping_force;
+                force = force + if is_a { total } else { -total };
             }
             let acceleration = force * inverse_mass + gravity;
             let mut velocity = body.velocities[i] + acceleration * dt;
@@ -560,83 +575,6 @@ mod tests {
             out.velocities[i] = velocity;
         }
         out
-    }
-
-    #[test]
-    fn diagnose_step48_particle36() {
-        let mut cpu_body = ball(fv3(0.3, 0.7, -0.2), 0.5);
-        let integrator =
-            FixedSoftBodyIntegrator::new(fv3(0.0, -9.81, 0.0), ground(), Fixed::from_num(0.3));
-        let dt = Fixed::from_num(1.0 / 240.0);
-        for _ in 0..48 {
-            integrator.step(&mut cpu_body, dt);
-        }
-        // cpu_body is now the state entering step 48 (0-indexed the 49th
-        // step call) -- reproduce SoftBodyIntegrator::step's force pass
-        // manually (scatter) and the gather pass manually, dump every
-        // term touching particle 36.
-        let adjacency = build_adjacency(&cpu_body);
-        let start = adjacency.offsets[36] as usize;
-        let end = adjacency.offsets[36 + 1] as usize;
-        eprintln!("particle 36 half-edges: {start}..{end}");
-        for e in start..end {
-            let j = adjacency.neighbor[e] as usize;
-            let delta = cpu_body.positions[j] - cpu_body.positions[36];
-            let dist = delta.length();
-            let direction = if dist > Fixed::from_bits(4) {
-                delta * (Fixed::ONE / dist)
-            } else {
-                FixedVec3::new(Fixed::ONE, Fixed::ZERO, Fixed::ZERO)
-            };
-            let rest_length = adjacency.rest_length[e];
-            let stiffness = adjacency.stiffness[e];
-            let damping = adjacency.damping[e];
-            let stretch = dist - rest_length;
-            let spring_force = direction * (stiffness * stretch);
-            let relative_velocity = cpu_body.velocities[j] - cpu_body.velocities[36];
-            let closing_speed = relative_velocity.dot(direction);
-            let damping_force = direction * (damping * closing_speed);
-            eprintln!(
-                "  half-edge to {j}: dist={dist:?} direction={direction:?} stretch={stretch:?} spring_force={spring_force:?} closing_speed={closing_speed:?} damping_force={damping_force:?}"
-            );
-        }
-
-        // Now scatter-compute forces[36] the way SoftBodyIntegrator::step
-        // actually does, by walking body.springs directly.
-        let mut forces36 = FixedVec3::ZERO;
-        for spring in &cpu_body.springs {
-            if spring.a != 36 && spring.b != 36 {
-                continue;
-            }
-            let pa = cpu_body.positions[spring.a];
-            let pb = cpu_body.positions[spring.b];
-            let delta = pb - pa;
-            let dist = delta.length();
-            let direction = if dist > Fixed::from_bits(4) {
-                delta * (Fixed::ONE / dist)
-            } else {
-                FixedVec3::new(Fixed::ONE, Fixed::ZERO, Fixed::ZERO)
-            };
-            let stretch = dist - spring.rest_length;
-            let spring_force = direction * (spring.stiffness * stretch);
-            let relative_velocity = cpu_body.velocities[spring.b] - cpu_body.velocities[spring.a];
-            let closing_speed = relative_velocity.dot(direction);
-            let damping_force = direction * (spring.damping * closing_speed);
-            let total = spring_force + damping_force;
-            eprintln!(
-                "  spring a={} b={}: dist={dist:?} direction={direction:?} total={total:?} (applied to 36 as {})",
-                spring.a,
-                spring.b,
-                if spring.a == 36 { "+total" } else { "-total" }
-            );
-            if spring.a == 36 {
-                forces36 = forces36 + total;
-            }
-            if spring.b == 36 {
-                forces36 = forces36 - total;
-            }
-        }
-        eprintln!("scatter forces[36] = {forces36:?}");
     }
 
     #[test]
