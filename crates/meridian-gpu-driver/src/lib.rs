@@ -499,6 +499,15 @@ impl ComputePipeline {
     pub fn bind_group_layout(&self) -> wgpu::BindGroupLayout {
         self.raw.get_bind_group_layout(0)
     }
+
+    /// The raw `wgpu::ComputePipeline` — an escape hatch for callers
+    /// recording their own compute pass with a bind group shape beyond
+    /// [`Device::create_single_buffer_bind_group`]'s single-binding one
+    /// (see [`CommandBuffer::encoder_mut`]'s doc comment for the same
+    /// pattern applied to command recording).
+    pub fn wgpu_pipeline(&self) -> &wgpu::ComputePipeline {
+        &self.raw
+    }
 }
 
 /// A bound resource group — today, always the single-buffer shape

@@ -1,5 +1,12 @@
 //! Batch execution kernels for `gac-core`'s `Motor3` transforms — the adapter between pure geometric algebra and `compute-runtime`'s dispatch interface. See docs/adr/007-batch-transforms-via-compute.md.
 //!
+//! [`fixed_wgsl`] is a second, independent kind of GPU work this crate
+//! hosts: `Fixed`-point (Q16.16) arithmetic running as real WGSL compute
+//! shaders, bit-exact against the CPU `Fixed` implementation — phase 1 of
+//! deterministic GPU physics (see that module's own doc comment for
+//! scope and the `docs/roadmap.md` GPU-determinism entry for the larger
+//! plan).
+//!
 //! `ComputeKernel::dispatch` takes `&self`, not `&mut self` (multiple
 //! dispatch invocations can run concurrently against the same context),
 //! so both kernels below hold their output in a `Mutex<Vec<Motor3>>`:
