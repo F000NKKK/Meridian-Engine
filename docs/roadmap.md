@@ -155,7 +155,17 @@ facing `+X` with sources placed front/back/left/right and checked across
 every layout (`cargo test -p meridian-audio-core`; human-readable version
 via `./build.sh run audio_spatialization`) — including the front/back
 ambiguity stereo genuinely can't resolve without HRTF (not implemented;
-documented as a real, known limitation, not hidden). With `audio-driver`
+documented as a real, known limitation, not hidden). On top of the
+`Mixer` path, `audio-core::effects` (one effect per file:
+`Gain`/`LowPassFilter`/`DspGraph`/`BinauralRenderer`) adds the
+physically-motivated headphone spatializer: ITD via fractional-sample
+delay lines, azimuth-dependent head-shadow low-pass on the far ear, rear
+damping (no front-fold on this path), and per-block parameter ramps that
+eliminate zipper/crackle when the listener moves — deliberately CPU-side:
+per block it's a few thousand samples of inherently serial IIR work,
+orders of magnitude below GPU dispatch+readback cost; batched
+FFT/HRTF-convolution over many sources is the future
+`audio-effects`/`*-compute` trigger. With `audio-driver`
 real, `audio-core` also owns the output bridge: `Mixer::render_interleaved`
 (block rendering to interleaved speaker-order samples) and `AudioOutput`
 (opens the default device with one stream channel per speaker) — audible

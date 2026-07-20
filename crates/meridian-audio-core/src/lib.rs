@@ -21,14 +21,14 @@
 //!
 //! No elevation/height channels (Dolby Atmos-style object audio) —
 //! standard consumer speaker layouts are one horizontal plane, and
-//! panning here only ever looks at horizontal azimuth. No HRTF — that
-//! needs a measured impulse-response database this crate doesn't have;
-//! "headphones" here means amplitude-only stereo panning across the full
-//! front hemisphere, which is a real, well-known simplification (real
-//! HRTF-based headphone audio can distinguish elevation and has sharper
-//! front/back cues; simple amplitude panning can't, hence why front and
-//! back collapse to the same centered pan — see
-//! [`fold_to_front_hemisphere`]'s doc comment).
+//! panning here only ever looks at horizontal azimuth. No measured HRTF —
+//! that needs an impulse-response database this crate doesn't have. The
+//! [`Mixer`] path is amplitude-only panning (front/back collapse on
+//! headphones — see [`fold_to_front_hemisphere`]); the
+//! [`effects::BinauralRenderer`] path is the physically-motivated
+//! headphone upgrade: interaural time difference, head-shadow filtering
+//! and rear damping, so front and back genuinely differ there. Effects
+//! live one-per-file under [`effects`].
 
 use meridian_gac_core::{Motor3, Vec3};
 
