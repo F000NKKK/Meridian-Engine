@@ -76,6 +76,7 @@ struct App {
     integrator: SoftBodyIntegrator,
     balls: Vec<Ball>,
     camera: FlyCamera,
+    cursor_grabbed: bool,
     accumulator: f32,
     last_frame: std::time::Instant,
     faces: Vec<meridian_gac_core::generic::Face>,
@@ -104,6 +105,7 @@ impl App {
             integrator,
             balls: spawn_balls(),
             camera: FlyCamera::new(Vec3::new(0.0, 2.5, 6.0)),
+            cursor_grabbed: true,
             accumulator: 0.0,
             last_frame: std::time::Instant::now(),
             faces: icosphere(1).faces,
@@ -174,11 +176,18 @@ impl AppHandler for App {
             return;
         };
 
+        if input.was_key_pressed(KeyCode::Escape) {
+            self.cursor_grabbed = !self.cursor_grabbed;
+            window.set_cursor_grabbed(self.cursor_grabbed);
+        }
+
         let now = std::time::Instant::now();
         let frame_dt = (now - self.last_frame).as_secs_f32().min(0.1);
         self.last_frame = now;
         self.accumulator += frame_dt;
-        self.camera.update(input, frame_dt);
+        if self.cursor_grabbed {
+            self.camera.update(input, frame_dt);
+        }
 
         let mut substeps = 0;
         while self.accumulator >= PHYSICS_DT && substeps < MAX_SUBSTEPS_PER_FRAME {

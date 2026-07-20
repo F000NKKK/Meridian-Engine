@@ -15,8 +15,9 @@
 //! demonstration: both look similar at a glance, only one of them is
 //! actually reproducible.
 //!
-//! Camera is a free-fly `meridian_examples::FlyCamera` (WASD + hold right
-//! mouse button to look, Space/Ctrl for up/down, Shift to move faster).
+//! Camera is a free-fly `meridian_examples::FlyCamera` (WASD to move,
+//! mouse to look — the cursor is grabbed on launch — Space/Ctrl for up/
+//! down, Shift to move faster; Escape releases/re-grabs the cursor).
 //!
 //! Run with:
 //!   ./build.sh run soft_body_jiggle_float
@@ -33,7 +34,7 @@ use meridian_physics_compute::float::SoftBodyGpuKernel;
 use meridian_physics_core::soft_body::float_softbody::{
     SoftBody, SoftBodyIntegrator, icosphere_soft_body,
 };
-use meridian_platform_core::{AppHandler, InputState, Window, run_windowed_app};
+use meridian_platform_core::{AppHandler, InputState, KeyCode, Window, run_windowed_app};
 
 const PHYSICS_DT: f32 = 1.0 / 240.0;
 const MAX_SUBSTEPS_PER_FRAME: u32 = 8;
@@ -61,6 +62,14 @@ fn spawn_ball(center: Vec3) -> SoftBody {
         body.velocities[i] = direction * impulse;
     }
     body
+}
+
+/// Re-applies `spawn_ball`'s initial pluck to an already-running body —
+/// see the periodic call site's own comment for why.
+fn repluck(body: &mut SoftBody) {
+    let center_index = body.particle_count() - 1;
+    let direction = (body.positions[0] - body.positions[center_index]).normalize();
+    body.velocities[0] = body.velocities[0] + direction * 0.4;
 }
 
 fn spawn_balls() -> Vec<Ball> {
@@ -102,9 +111,12 @@ struct App {
     kernel: SoftBodyGpuKernel,
     integrator: SoftBodyIntegrator,
     balls: Vec<Ball>,
+    camera: FlyCamera,
+    cursor_grabbed: bool,
     accumulator: f32,
     last_frame: std::time::Instant,
     faces: Vec<meridian_gac_core::generic::Face>,
+    frame_counter: u64,
     gpu: Option<GpuState>,
 }
 
@@ -129,9 +141,12 @@ impl App {
             kernel,
             integrator,
             balls: spawn_balls(),
+            camera: FlyCamera::new(Vec3::new(0.0, 2.0, 6.0)),
+            cursor_grabbed: true,
             accumulator: 0.0,
             last_frame: std::time::Instant::now(),
             faces: icosphere(1).faces,
+            frame_counter: 0,
             gpu: None,
         }
     }
@@ -139,6 +154,7 @@ impl App {
 
 impl AppHandler for App {
     fn on_ready(&mut self, window: &Window) {
+        window.set_cursor_grabbed(true);
         let target = window.surface_target();
         let (width, height) = (window.width(), window.height());
         let (device, surface) = self
@@ -195,15 +211,23 @@ impl AppHandler for App {
         });
     }
 
-    fn on_redraw(&mut self, window: &Window, _input: &InputState) {
+    fn on_redraw(&mut self, window: &Window, input: &InputState) {
         let Some(gpu) = &self.gpu else {
             return;
         };
+
+        if input.was_key_pressed(KeyCode::Escape) {
+            self.cursor_grabbed = !self.cursor_grabbed;
+            window.set_cursor_grabbed(self.cursor_grabbed);
+        }
 
         let now = std::time::Instant::now();
         let frame_dt = (now - self.last_frame).as_secs_f32().min(0.1);
         self.last_frame = now;
         self.accumulator += frame_dt;
+        if self.cursor_grabbed {
+            self.camera.update(input, frame_dt);
+        }
 
         let mut substeps = 0;
         while self.accumulator >= PHYSICS_DT && substeps < MAX_SUBSTEPS_PER_FRAME {
@@ -226,20 +250,21 @@ impl AppHandler for App {
             }
             self.accumulator -= PHYSICS_DT;
             substeps += 1;
+            self.frame_counter += 1;
+            if self.frame_counter % 240 == 0 {
+                // Re-pluck every second — see `soft_body_jiggle_deterministic`'s
+                // identical comment for why (damping would otherwise
+                // settle the jiggle to a standstill within a few
+                // seconds).
+                for ball in &mut self.balls {
+                    repluck(&mut ball.body);
+                }
+            }
         }
 
-        let camera = Camera {
-            frame: Motor3::from_rotation_translation(
-                look_at_rotor(Vec3::new(0.0, 2.0, 6.0), Vec3::new(0.0, 1.5, 0.0)),
-                Vec3::new(0.0, 2.0, 6.0),
-            ),
-            projection: meridian_gac_core::Projection::perspective(
-                55.0_f32.to_radians(),
-                window.width() as f32 / window.height().max(1) as f32,
-                0.1,
-                100.0,
-            ),
-        };
+        let camera = self
+            .camera
+            .camera(window.width() as f32 / window.height().max(1) as f32);
         gpu.device.write_buffer(
             &gpu.uniform_buffer,
             &mat4_to_bytes(camera.view_projection_matrix()),

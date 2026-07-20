@@ -17,8 +17,9 @@
 //! integration test for cross-backend determinism, not just a demo of
 //! it.
 //!
-//! Camera is a free-fly `meridian_examples::FlyCamera` (WASD + hold right
-//! mouse button to look, Space/Ctrl for up/down, Shift to move faster).
+//! Camera is a free-fly `meridian_examples::FlyCamera` (WASD to move,
+//! mouse to look — the cursor is grabbed on launch — Space/Ctrl for up/
+//! down, Shift to move faster; Escape releases/re-grabs the cursor).
 //!
 //! Run with:
 //!   ./build.sh run soft_body_jiggle_deterministic
@@ -37,7 +38,7 @@ use meridian_physics_compute::fixed::FixedSoftBodyGpuKernel;
 use meridian_physics_core::soft_body::fixed_softbody::{
     FixedSoftBody, FixedSoftBodyIntegrator, fixed_icosphere_soft_body,
 };
-use meridian_platform_core::{AppHandler, InputState, Window, run_windowed_app};
+use meridian_platform_core::{AppHandler, InputState, KeyCode, Window, run_windowed_app};
 
 const PHYSICS_DT_SECONDS: f64 = 1.0 / 240.0;
 const MAX_SUBSTEPS_PER_FRAME: u32 = 8;
@@ -89,6 +90,14 @@ fn spawn_ball(center: FixedVec3) -> FixedSoftBody {
     body
 }
 
+/// Re-applies [`spawn_ball`]'s initial pluck to an already-running body
+/// — see the periodic call site's own comment for why.
+fn repluck(body: &mut FixedSoftBody) {
+    let center_index = body.particle_count() - 1;
+    let direction = (body.positions[0] - body.positions[center_index]).normalize();
+    body.velocities[0] = body.velocities[0] + direction * Fixed::from_num(0.6);
+}
+
 fn spawn_balls() -> Vec<Ball> {
     let mut balls = Vec::with_capacity(BALL_COUNT);
     for i in 0..BALL_COUNT {
@@ -129,6 +138,7 @@ struct App {
     integrator: FixedSoftBodyIntegrator,
     balls: Vec<Ball>,
     camera: FlyCamera,
+    cursor_grabbed: bool,
     shadow_gpu: FixedSoftBody,
     shadow_cpu: FixedSoftBody,
     accumulator_seconds: f64,
@@ -161,6 +171,7 @@ impl App {
             integrator,
             balls: spawn_balls(),
             camera: FlyCamera::new(Vec3::new(0.0, 2.0, 6.0)),
+            cursor_grabbed: true,
             shadow_gpu: shadow_seed.clone(),
             shadow_cpu: shadow_seed,
             accumulator_seconds: 0.0,
@@ -174,6 +185,7 @@ impl App {
 
 impl AppHandler for App {
     fn on_ready(&mut self, window: &Window) {
+        window.set_cursor_grabbed(true);
         let target = window.surface_target();
         let (width, height) = (window.width(), window.height());
         let (device, surface) = self
@@ -238,11 +250,18 @@ impl AppHandler for App {
             return;
         };
 
+        if input.was_key_pressed(KeyCode::Escape) {
+            self.cursor_grabbed = !self.cursor_grabbed;
+            window.set_cursor_grabbed(self.cursor_grabbed);
+        }
+
         let now = std::time::Instant::now();
         let frame_dt = (now - self.last_frame).as_secs_f64().min(0.1);
         self.last_frame = now;
         self.accumulator_seconds += frame_dt;
-        self.camera.update(input, frame_dt as f32);
+        if self.cursor_grabbed {
+            self.camera.update(input, frame_dt as f32);
+        }
         let dt = Fixed::from_num(PHYSICS_DT_SECONDS);
 
         let mut substeps = 0;
@@ -292,6 +311,19 @@ impl AppHandler for App {
             substeps += 1;
             self.frame_counter += 1;
             if self.frame_counter % 240 == 0 {
+                // Re-pluck everything every second — damping (see
+                // `spawn_ball`'s comment) would otherwise settle the
+                // jiggle to a standstill within a few seconds, which
+                // reads as "nothing is happening" rather than "the
+                // oscillation decayed as designed." Applied identically
+                // to both shadow bodies (same deterministic impulse) so
+                // the determinism check above keeps holding.
+                for ball in &mut self.balls {
+                    repluck(&mut ball.body);
+                }
+                repluck(&mut self.shadow_gpu);
+                repluck(&mut self.shadow_cpu);
+
                 println!(
                     "[frame {}] GPU/CPU determinism check: OK ({BALL_COUNT} balls, 50/50 split)",
                     self.frame_counter
