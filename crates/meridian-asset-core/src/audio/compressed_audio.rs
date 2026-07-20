@@ -13,7 +13,8 @@
 //! [`AudioData`] — the same bytes-in/CPU-data-out contract as every other
 //! decoder in this crate (no streaming, no I/O, no lifetime policy).
 
-use crate::{AudioData, DecodeError, Decoder, WavDecoder};
+use super::wav::WavDecoder;
+use crate::{AudioData, DecodeError, Decoder};
 
 use symphonia::core::codecs::audio::AudioDecoderOptions;
 use symphonia::core::codecs::registry::CodecRegistry;
