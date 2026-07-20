@@ -44,10 +44,20 @@ Steps 4-6 are real and tested:
   now (`GpuComputeDevice`, shared `wgpu` mechanics with `graphics-driver`
   via `meridian-gpu-driver`), reachable through
   `compute-runtime::ComputeContext::with_gpu` — see "Not yet decided"
-  below ([ADR 011](adr/011-shared-gpu-driver-crate.md)). `gac-compute`'s
-  own kernels don't dispatch through it yet (still CPU/`compute-runtime`'s
-  `parallel_for` only) — wiring a GPU-dispatching `ComputeKernel` is
-  tracked follow-up, not done in this pass.
+  below ([ADR 011](adr/011-shared-gpu-driver-crate.md)). `MotorTransformKernel`/
+  `MotorComposeKernel` themselves still only dispatch through
+  `compute-runtime`'s CPU `parallel_for` path — wiring their own
+  GPU-dispatching variant is separate follow-up. What *does* dispatch on
+  GPU today: `gac-compute::fixed_wgsl`, real Q16.16 `Fixed`-point
+  `+`/`-`/`*`/`/` running as WGSL compute shaders (32x32->64 multiply/
+  divide emulated from 32-bit words — WGSL has no native `i64`), proven
+  bit-for-bit identical to the CPU `Fixed` implementation across ~1000
+  operand pairs per operation, not just numerically close (`cargo test -p
+  meridian-gac-compute fixed_wgsl`). This is phase 1 of deterministic GPU
+  physics: `Fixed::sqrt` and the CORDIC `sin_cos`/`atan2` aren't ported
+  yet (tracked follow-up, `fixed_wgsl`'s own module doc has the scope
+  note), and no domain kernel (a real physics step, not just raw
+  arithmetic) dispatches through it yet either.
 
 Step 7 (`asset-core`) is real: BMP (uncompressed 24/32-bit), WAV (PCM
 16-bit), and a minimal OBJ (positions + triangles) decoder — formats
