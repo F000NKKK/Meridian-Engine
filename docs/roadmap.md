@@ -110,8 +110,14 @@ Steps 4-6 are real and tested:
 
 Step 7 (`asset-core`) is real: BMP (uncompressed 24/32-bit), WAV (PCM
 16-bit), and a minimal OBJ (positions + triangles) decoder — formats
-simple enough to hand-roll without an external crate; PNG/JPEG/glTF need
-one, added when a concrete asset needs it, not speculatively.
+simple enough to hand-roll without an external crate. Compressed audio
+is real too: MP3/OGG-Vorbis/FLAC via `symphonia` and Opus via the
+reference `libopus` in the same symphonia pipeline, with formats
+identified by leading magic bytes (`AudioFormat::detect` /
+`AnyAudioDecoder`), never by file extension — the concrete asset that
+justified the external codec crates is `examples/assets/audio/`; see
+[ADR 013](adr/013-compressed-audio-codecs.md). PNG/JPEG/glTF stay on
+the same when-a-concrete-asset-needs-it trigger.
 
 Step 8's physics half (`physics-driver`/`physics-core`) is real: AABB
 broad phase, sphere-sphere/sphere-cuboid/cuboid-cuboid (SAT) narrow phase
