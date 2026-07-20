@@ -3,15 +3,22 @@
 //! This crate must never define an `AssetManager`, `ResourceManager`, or
 //! `CacheManager` type — see `docs/dependency-rules.md` rule 4.
 //!
-//! Real decoders, not stubs, for formats simple enough to hand-roll
-//! without an external crate (workspace stays at zero, same call as
-//! `platform-core`/`compute-driver`): uncompressed BMP for images, PCM
-//! WAV for audio, plain-text OBJ (positions + triangle indices only, no
-//! normals/UVs/materials) for meshes. Real image/audio/mesh pipelines
-//! need PNG/JPEG, compressed WAV/OGG, and glTF — those need either an
-//! external decoder crate or a lot more hand-written parsing than is
-//! worth taking on speculatively; add them when a concrete asset actually
-//! needs one.
+//! Real decoders, not stubs. Hand-rolled for formats simple enough to
+//! not need an external crate: uncompressed BMP for images, PCM WAV for
+//! audio, plain-text OBJ (positions + triangle indices only, no
+//! normals/UVs/materials) for meshes. Compressed audio (MP3, OGG/Vorbis,
+//! FLAC, OGG/Opus) uses external codec crates — the concrete asset that
+//! justified them exists now; see [`compressed_audio`] and
+//! docs/adr/013-compressed-audio-codecs.md. Audio formats are identified
+//! by leading magic bytes ([`AudioFormat::detect`]), never by file
+//! extension. PNG/JPEG and glTF remain future work on the same
+//! when-a-concrete-asset-needs-it trigger.
+
+mod compressed_audio;
+
+pub use compressed_audio::{
+    AnyAudioDecoder, AudioFormat, FlacDecoder, Mp3Decoder, OpusDecoder, VorbisDecoder,
+};
 
 /// Decodes raw file bytes into a CPU-side representation of `T`. Does not
 /// decide where `T` lives afterward or when it's dropped.
@@ -59,6 +66,9 @@ pub enum DecodeError {
     BadMagic { expected: &'static str },
     Unsupported(&'static str),
     Malformed(&'static str),
+    /// An external codec library rejected the data — the message is the
+    /// library's own (dynamic) error text.
+    Codec(String),
 }
 
 impl core::fmt::Display for DecodeError {
@@ -70,6 +80,7 @@ impl core::fmt::Display for DecodeError {
             DecodeError::BadMagic { expected } => write!(f, "bad magic bytes, expected {expected}"),
             DecodeError::Unsupported(what) => write!(f, "unsupported: {what}"),
             DecodeError::Malformed(what) => write!(f, "malformed: {what}"),
+            DecodeError::Codec(what) => write!(f, "codec error: {what}"),
         }
     }
 }
