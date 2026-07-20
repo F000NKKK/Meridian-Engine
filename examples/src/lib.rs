@@ -265,12 +265,11 @@ impl FlyCamera {
     }
 
     fn forward(&self) -> Vec3 {
-        Vec3::new(
-            self.pitch.cos() * self.yaw.cos(),
-            self.pitch.sin(),
-            self.pitch.cos() * self.yaw.sin(),
-        )
-        .normalize()
+        let cp = self.pitch.cos();
+        let sp = self.pitch.sin();
+        let cy = self.yaw.cos();
+        let sy = self.yaw.sin();
+        Vec3::new(cp * cy, sp, cp * sy)
     }
 
     /// Advances the camera by one frame of `input`/`dt`. Call once per
@@ -289,21 +288,22 @@ impl FlyCamera {
             core::f32::consts::FRAC_PI_2 - 0.01,
         );
 
-        let look = self.forward();
-        let forward_horiz = Vec3::new(look.x, 0.0, look.z).normalize();
-        let right = Vec3::Y.cross(forward_horiz).normalize();
+        let cy = self.yaw.cos();
+        let sy = self.yaw.sin();
+        let forward_horiz = Vec3::new(cy, 0.0, sy);
+        let right = Vec3::new(-sy, 0.0, cy);
         let mut movement = Vec3::ZERO;
         if input.is_key_down(KeyCode::W) {
-            movement = movement - forward_horiz;
-        }
-        if input.is_key_down(KeyCode::S) {
             movement = movement + forward_horiz;
         }
+        if input.is_key_down(KeyCode::S) {
+            movement = movement - forward_horiz;
+        }
         if input.is_key_down(KeyCode::D) {
-            movement = movement - right;
+            movement = movement + right;
         }
         if input.is_key_down(KeyCode::A) {
-            movement = movement + right;
+            movement = movement - right;
         }
         if input.is_key_down(KeyCode::Space) {
             movement = movement + Vec3::Y;
@@ -351,5 +351,105 @@ impl FlyCamera {
                 100.0,
             ),
         }
+    }
+}
+
+#[cfg(test)]
+mod fly_camera_tests {
+    use super::*;
+    use meridian_platform_core::{InputState, KeyCode};
+
+    #[test]
+    fn forward_vector_uses_sign_aware_sin_cos() {
+        let cam = FlyCamera::new(Vec3::ZERO);
+        let f = cam.forward();
+        let cp = cam.pitch.cos();
+        let cy = cam.yaw.cos();
+        let sp = cam.pitch.sin();
+        let sy = cam.yaw.sin();
+        assert!((f.x - cp * cy).abs() < 1e-5);
+        assert!((f.y - sp).abs() < 1e-5);
+        assert!((f.z - cp * sy).abs() < 1e-5);
+    }
+
+    #[test]
+    fn yaw_plus_pi_does_not_change_pitch_forward_basis() {
+        let mut cam = FlyCamera::new(Vec3::ZERO);
+        cam.yaw = FlyCamera::new(Vec3::ZERO).yaw + std::f32::consts::PI;
+        let f = cam.forward();
+        let base = FlyCamera::new(Vec3::ZERO).forward();
+        assert_eq!(f.y, base.y, "pitch component must survive yaw+pi");
+        assert!((f.x + base.x).abs() < 1e-4);
+        assert!((f.z + base.z).abs() < 1e-4);
+    }
+
+    #[test]
+    fn movement_vectors_are_consistent_at_zero_pitch() {
+        let cases = [
+            (0.0, Vec3::new(1.0, 0.0, 0.0), Vec3::new(0.0, 0.0, 1.0)),
+            (
+                std::f32::consts::FRAC_PI_2,
+                Vec3::new(0.0, 0.0, 1.0),
+                Vec3::new(-1.0, 0.0, 0.0),
+            ),
+            (
+                -std::f32::consts::FRAC_PI_2,
+                Vec3::new(0.0, 0.0, -1.0),
+                Vec3::new(1.0, 0.0, 0.0),
+            ),
+        ];
+        for (yaw, expected_forward_horiz, expected_right) in cases {
+            let mut cam = FlyCamera::new(Vec3::ZERO);
+            cam.yaw = yaw;
+            cam.pitch = 0.0;
+            let mut input = InputState::new();
+            input.press_key(KeyCode::W);
+            cam.update(&input, 1.0);
+            let expected = expected_forward_horiz.normalize() * cam.move_speed;
+            assert!(
+                (cam.position - expected).length() < 1e-5,
+                "W yaw={} got {:?}",
+                yaw,
+                cam.position
+            );
+
+            let mut cam = FlyCamera::new(Vec3::ZERO);
+            cam.yaw = yaw;
+            cam.pitch = 0.0;
+            let mut input = InputState::new();
+            input.press_key(KeyCode::D);
+            cam.update(&input, 1.0);
+            let expected = expected_right.normalize() * cam.move_speed;
+            assert!(
+                (cam.position - expected).length() < 1e-5,
+                "D yaw={} got {:?}",
+                yaw,
+                cam.position
+            );
+        }
+    }
+
+    #[test]
+    fn s_and_a_are_inverse_of_w_and_d_at_zero_pitch() {
+        let mut cam = FlyCamera::new(Vec3::ZERO);
+        cam.pitch = 0.0;
+        let mut input = InputState::new();
+        input.press_key(KeyCode::S);
+        input.press_key(KeyCode::A);
+        let before = cam.position;
+        cam.update(&input, 1.0);
+        let delta = cam.position - before;
+
+        let mut cam2 = FlyCamera::new(Vec3::ZERO);
+        cam2.yaw = cam.yaw;
+        cam2.pitch = 0.0;
+        let mut input2 = InputState::new();
+        input2.press_key(KeyCode::W);
+        input2.press_key(KeyCode::D);
+        let before2 = cam2.position;
+        cam2.update(&input2, 1.0);
+        let delta2 = cam2.position - before2;
+
+        assert!((delta + delta2).length() < 1e-4, "S/A should oppose W/D");
     }
 }
