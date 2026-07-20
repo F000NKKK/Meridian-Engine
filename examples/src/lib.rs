@@ -283,7 +283,7 @@ impl FlyCamera {
         let cy = self.yaw.cos();
         let sy = self.yaw.sin();
         let forward_horiz = Vec3::new(cy, 0.0, sy);
-        let right = Vec3::new(-sy, 0.0, cy);
+        let right = Vec3::new(sy, 0.0, -cy);
         let mut movement = Vec3::ZERO;
         if input.is_key_down(KeyCode::W) {
             movement = movement + forward_horiz;
@@ -327,7 +327,7 @@ impl FlyCamera {
     /// at every pitch).
     fn rotor(&self) -> meridian_gac_core::Rotor {
         use meridian_gac_core::Rotor;
-        let yaw_rotor = Rotor::from_axis_angle(Vec3::Y, self.yaw);
+        let yaw_rotor = Rotor::from_axis_angle(Vec3::Y, -self.yaw);
         let right_after_yaw = yaw_rotor.transform_vector(Vec3::Z);
         let pitch_rotor = Rotor::from_axis_angle(right_after_yaw, self.pitch);
         yaw_rotor.compose(pitch_rotor)
@@ -355,7 +355,58 @@ mod fly_camera_tests {
     fn expected_basis(yaw: f32) -> (Vec3, Vec3, Vec3) {
         let cy = yaw.cos();
         let sy = yaw.sin();
-        (Vec3::new(cy, 0.0, sy), Vec3::new(-sy, 0.0, cy), Vec3::Y)
+        (Vec3::new(cy, 0.0, sy), Vec3::new(sy, 0.0, -cy), Vec3::Y)
+    }
+
+    #[test]
+    fn rotor_and_forward_horiz_agree() {
+        // Verify that the ad-hoc forward_horiz computation matches
+        // what rotor() actually produces for the horizontal component.
+        let yaws = [
+            0.0,
+            core::f32::consts::FRAC_PI_4,
+            core::f32::consts::FRAC_PI_2,
+            3.0 * core::f32::consts::FRAC_PI_4,
+            core::f32::consts::PI,
+            -core::f32::consts::FRAC_PI_4,
+            -core::f32::consts::FRAC_PI_2,
+            -3.0 * core::f32::consts::FRAC_PI_4,
+        ];
+        for &yaw in &yaws {
+            let cam = FlyCamera {
+                position: Vec3::ZERO,
+                yaw,
+                pitch: 0.0,
+                move_speed: 3.0,
+                look_sensitivity: 0.003,
+            };
+            let rotor_forward = cam.rotor().transform_vector(Vec3::X);
+            let cy = yaw.cos();
+            let sy = yaw.sin();
+            let expected_forward_horiz = Vec3::new(cy, 0.0, sy);
+            // Compare XZ components (Y may differ if pitch were non-zero, but pitch=0 here)
+            assert!(
+                (rotor_forward.x - expected_forward_horiz.x).abs() < 1e-6,
+                "X mismatch at yaw={}: rotor_forward.x={} expected={}",
+                yaw,
+                rotor_forward.x,
+                expected_forward_horiz.x
+            );
+            assert!(
+                (rotor_forward.z - expected_forward_horiz.z).abs() < 1e-6,
+                "Z mismatch at yaw={}: rotor_forward.z={} expected={}",
+                yaw,
+                rotor_forward.z,
+                expected_forward_horiz.z
+            );
+            // Y should be 0 at pitch=0
+            assert!(
+                rotor_forward.y.abs() < 1e-6,
+                "Y should be 0 at pitch=0, yaw={}, got {}",
+                yaw,
+                rotor_forward.y
+            );
+        }
     }
 
     fn simulate(dt: f32, speed: f32, keys: &[KeyCode]) -> Vec3 {
@@ -482,7 +533,7 @@ mod fly_camera_tests {
     #[test]
     fn diagonal_movement_preserves_length() {
         let pos = simulate_at(0.0, 1.0, 3.0, &[KeyCode::W, KeyCode::D]);
-        let expected = (Vec3::X + Vec3::Z).normalize() * 3.0;
+        let expected = (Vec3::X - Vec3::Z).normalize() * 3.0;
         assert!((pos - expected).length() < 1e-5, "W+D diagonal got {:?}", pos);
     }
 
