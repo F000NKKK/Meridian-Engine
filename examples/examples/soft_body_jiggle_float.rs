@@ -50,10 +50,10 @@ struct Ball {
 /// See `soft_body_jiggle_deterministic::spawn_ball` — identical
 /// construction, `f32` instead of `Fixed`.
 fn spawn_ball(center: Vec3) -> SoftBody {
-    let mut body = icosphere_soft_body(center, 0.35, 1, 0.03, 500.0, 3.0, 200.0, 1.5);
+    let mut body = icosphere_soft_body(center, 0.35, 1, 0.05, 400.0, 2.0, 150.0, 1.0);
     let center_index = body.particle_count() - 1;
     body.inverse_masses[center_index] = 0.0;
-    let impulse = 1.2;
+    let impulse = 0.4;
     for i in 0..center_index {
         let direction = (body.positions[i] - body.positions[center_index]).normalize();
         body.velocities[i] = direction * impulse;

@@ -61,19 +61,26 @@ fn fv3(x: f64, y: f64, z: f64) -> FixedVec3 {
 /// jiggling, since a soft body at rest with zero gravity would
 /// otherwise just sit motionless.
 fn spawn_ball(center: FixedVec3) -> FixedSoftBody {
+    // Same stiffness/mass/damping `physics-core::soft_body::fixed_softbody`'s
+    // own tests proved stable at `dt = 1/240` (see that module's
+    // `identical_inputs_produce_bit_identical_output_after_many_steps`
+    // comment on why: explicit-Euler mass-spring integration is only
+    // conditionally stable, `omega * dt` has to stay small) — a stiffer/
+    // lighter/more-energetic first attempt here overflowed `Fixed`
+    // within a few frames.
     let mut body = fixed_icosphere_soft_body(
         center,
         Fixed::from_num(0.35),
         1,
-        Fixed::from_num(0.03),
-        Fixed::from_num(500.0),
-        Fixed::from_num(3.0),
-        Fixed::from_num(200.0),
-        Fixed::from_num(1.5),
+        Fixed::from_num(0.05),
+        Fixed::from_num(400.0),
+        Fixed::from_num(2.0),
+        Fixed::from_num(150.0),
+        Fixed::from_num(1.0),
     );
     let center_index = body.particle_count() - 1;
     body.inverse_masses[center_index] = Fixed::ZERO;
-    let impulse = Fixed::from_num(1.2);
+    let impulse = Fixed::from_num(0.4);
     for i in 0..center_index {
         let direction = (body.positions[i] - body.positions[center_index]).normalize();
         body.velocities[i] = direction * impulse;
