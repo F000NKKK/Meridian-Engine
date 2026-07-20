@@ -14,10 +14,10 @@
 
 pub mod fly_camera;
 
-pub use fly_camera::{look_at_rotor, FlyCamera};
+pub use fly_camera::{FlyCamera, look_at_rotor};
 
-use meridian_gac_core::generic::Face;
 use meridian_gac_core::Vec3;
+use meridian_gac_core::generic::Face;
 use meridian_graphics_driver::{VertexAttributeDesc, VertexFormat, VertexLayout};
 
 pub const SOFT_BODY_SHADER: &str = r#"

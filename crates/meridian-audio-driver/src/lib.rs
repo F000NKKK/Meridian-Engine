@@ -29,8 +29,8 @@
 //! `graphics-driver::Device::new` — see ADR 009). Stream creation and
 //! sample pushing are synchronous (bounded, local work).
 
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use meridian_platform_core::{BackendCapabilities, CpuCapabilities, GpuCapabilities};
 
@@ -364,7 +364,10 @@ mod tests {
         let stream = device.open_stream(config).unwrap();
         // Buffer is 256 frames * 1 channel = 256 samples minimum,
         // but with hw_buffer_frames*4 floor it'll be at least 1024.
-        assert!(stream.available_capacity() > 0, "buffer should have capacity");
+        assert!(
+            stream.available_capacity() > 0,
+            "buffer should have capacity"
+        );
         assert!(stream.can_push(128));
     }
 }

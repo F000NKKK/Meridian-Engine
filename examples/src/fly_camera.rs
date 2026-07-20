@@ -288,7 +288,11 @@ mod fly_camera_tests {
         for &yaw in &yaws {
             let fwd = simulate_at(yaw, 1.0, 3.0, &[KeyCode::W]);
             let bwd = simulate_at(yaw, 1.0, 3.0, &[KeyCode::S]);
-            assert!((fwd + bwd).length() < 1e-5, "S should oppose W at yaw={}", yaw);
+            assert!(
+                (fwd + bwd).length() < 1e-5,
+                "S should oppose W at yaw={}",
+                yaw
+            );
         }
     }
 
@@ -346,7 +350,11 @@ mod fly_camera_tests {
     fn diagonal_movement_preserves_length() {
         let pos = simulate_at(0.0, 1.0, 3.0, &[KeyCode::W, KeyCode::D]);
         let expected = (Vec3::X + Vec3::Z).normalize() * 3.0;
-        assert!((pos - expected).length() < 1e-5, "W+D diagonal got {:?}", pos);
+        assert!(
+            (pos - expected).length() < 1e-5,
+            "W+D diagonal got {:?}",
+            pos
+        );
     }
 
     #[test]
@@ -359,12 +367,7 @@ mod fly_camera_tests {
         ];
         for &yaw in &yaws {
             let (fwd, right, _) = expected_basis(yaw);
-            let pos = simulate_at(
-                yaw,
-                1.0,
-                3.0,
-                &[KeyCode::W, KeyCode::D, KeyCode::Space],
-            );
+            let pos = simulate_at(yaw, 1.0, 3.0, &[KeyCode::W, KeyCode::D, KeyCode::Space]);
             let expected = (fwd.normalize() + right.normalize() + Vec3::Y).normalize() * 3.0;
             assert!(
                 (pos - expected).length() < 1e-5,
@@ -464,7 +467,12 @@ mod fly_camera_tests {
         let yaws = [0.0, core::f32::consts::FRAC_PI_2, core::f32::consts::PI];
         for &yaw in &yaws {
             for &pitch in &[0.3, -0.5] {
-                let pos = simulate_at(yaw, 1.0, 3.0, &[KeyCode::W, KeyCode::S, KeyCode::D, KeyCode::A]);
+                let pos = simulate_at(
+                    yaw,
+                    1.0,
+                    3.0,
+                    &[KeyCode::W, KeyCode::S, KeyCode::D, KeyCode::A],
+                );
                 // All four buttons cancel out → no movement regardless of pitch
                 assert!(
                     pos.length() < 1e-5,
