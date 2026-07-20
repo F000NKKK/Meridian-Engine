@@ -689,4 +689,28 @@ mod tests {
             );
         }
     }
+
+    /// [`isqrt_u64`]'s Newton loop iterates a variable number of times
+    /// depending on `n`, so this is the test that actually validates the
+    /// WGSL port converges to the same fixed point as the CPU version,
+    /// not just that it terminates for a couple of easy inputs.
+    #[tokio::test]
+    async fn gpu_sqrt_matches_cpu_bit_exact() {
+        let Some((context, kernels)) = kernels_or_skip().await else {
+            return;
+        };
+        let values: Vec<Fixed> = interesting_values()
+            .into_iter()
+            .filter(|v| v.to_bits() >= 0) // Fixed::sqrt panics on negative
+            .collect();
+        let gpu_results = kernels.dispatch_sqrt(&context, &values).await;
+        for (i, &v) in values.iter().enumerate() {
+            let expected = v.sqrt();
+            assert_eq!(
+                gpu_results[i], expected,
+                "sqrt mismatch for {v:?}: cpu={expected:?} gpu={:?}",
+                gpu_results[i]
+            );
+        }
+    }
 }
