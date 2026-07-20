@@ -27,7 +27,8 @@
 
 use meridian_asset_core::{AnyAudioDecoder, Decoder};
 use meridian_audio_core::{
-    AcousticMedium, AudioOutput, BinauralRenderer, Emitter, Listener, SpeakerLayout,
+    AcousticMedium, AudioOutput, BinauralRenderer, Declicker, DspNode, Emitter, Listener,
+    SpeakerLayout,
 };
 use meridian_examples::{
     FlyCamera, GROUND_SHADER, SOFT_BODY_SHADER, ground_quad_buffers, mat4_to_bytes,
@@ -47,18 +48,25 @@ const SPHERE_RADIUS: f32 = 0.75;
 /// 10 ms of audio per mixed block — the listener pose is re-sampled at
 /// 100 Hz, well past the point where parameter updates read as steps.
 const CHUNK_SECONDS: f32 = 0.01;
-/// Requested ring buffer: ~45 ms. Together with the 10 ms block this
-/// bounds pose-to-ear latency at ~55 ms (the driver may clamp the ring
-/// up to what the hardware needs to run underrun-free). The previous
-/// 50 ms blocks into an ~85 ms default ring put pose changes ~135 ms
-/// late and in coarse steps — the "jerky volume" complaint.
-const RING_SECONDS: f32 = 0.045;
+/// Requested ring buffer: ~80 ms. Together with the 10 ms block this
+/// bounds pose-to-ear latency at ~90 ms — deliberately generous so a
+/// dropped render frame or a grabbed window never drains the ring (an
+/// empty ring is a starvation dip; the driver's anti-click fade keeps
+/// even that from *clicking*, but headroom keeps it from happening at
+/// all). Pose *updates* still land every 10 ms block, so panning stays
+/// smooth; only the absolute lag grows, which the ear tolerates far
+/// more readily than steps.
+const RING_SECONDS: f32 = 0.08;
 
 /// The looping music track, mixed spatially against the current
 /// listener pose and topped up into the output stream without blocking.
 struct MusicSource {
     output: AudioOutput,
     renderer: BinauralRenderer,
+    /// Post-processing safety net: slew-limits the final stereo stream
+    /// so no step discontinuity from anywhere in the chain survives as
+    /// a click.
+    declicker: Declicker,
     /// The decoded track, downmixed to mono — the emitter is a point
     /// source; its spatialization *is* the stereo image.
     mono: Vec<f32>,
@@ -101,13 +109,25 @@ impl MusicSource {
             );
 
             let channels = audio.channels.max(1) as usize;
-            let mono: Vec<f32> = audio
+            let mut mono: Vec<f32> = audio
                 .samples
                 .chunks_exact(channels)
                 .map(|frame| {
                     frame.iter().map(|&s| s as f32 / 32768.0).sum::<f32>() / channels as f32
                 })
                 .collect();
+
+            // The track loops: its last sample flows straight into its
+            // first, an arbitrary waveform discontinuity — a click every
+            // pass. Fading both edges over ~10 ms makes the seam pass
+            // through silence instead.
+            let fade = (audio.sample_rate as usize / 100).min(mono.len() / 2);
+            for i in 0..fade {
+                let ramp = i as f32 / fade as f32;
+                mono[i] *= ramp;
+                let end = mono.len() - 1 - i;
+                mono[end] *= ramp;
+            }
 
             let renderer = BinauralRenderer::new(audio.sample_rate)
                 .with_medium(AcousticMedium::air_sea_level());
@@ -122,6 +142,7 @@ impl MusicSource {
             return Ok(Self {
                 output,
                 renderer,
+                declicker: Declicker::new(2),
                 mono,
                 cursor: 0,
                 chunk_frames: (audio.sample_rate as f32 * CHUNK_SECONDS) as usize,
@@ -143,9 +164,10 @@ impl MusicSource {
                 chunk.push(self.mono[self.cursor]);
                 self.cursor = (self.cursor + 1) % self.mono.len(); // loop the track
             }
-            let interleaved =
+            let mut interleaved =
                 self.renderer
                     .render(listener, &[(emitter, &chunk)], self.chunk_frames);
+            self.declicker.process(&mut interleaved);
             self.output.push_interleaved(&interleaved);
         }
     }
