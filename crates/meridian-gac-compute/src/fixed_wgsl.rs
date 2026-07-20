@@ -298,9 +298,9 @@ impl FixedArithmeticKernels {
         op: FixedBinaryOp,
         pairs: &[(Fixed, Fixed)],
     ) -> Vec<Fixed> {
-        let gpu = context
-            .gpu()
-            .expect("FixedArithmeticKernels::dispatch requires a ComputeContext with a GPU backend");
+        let gpu = context.gpu().expect(
+            "FixedArithmeticKernels::dispatch requires a ComputeContext with a GPU backend",
+        );
 
         let mut operand_bytes = Vec::with_capacity(pairs.len() * 8);
         for (a, b) in pairs {
@@ -320,10 +320,15 @@ impl FixedArithmeticKernels {
         // exactly this shape.
         let pipeline = self.pipeline(op);
         let device = gpu.gpu_driver_device();
-        let bind_group = device.create_bind_group(&pipeline.bind_group_layout(), &[&operands, &results]);
+        let bind_group =
+            device.create_bind_group(&pipeline.bind_group_layout(), &[&operands, &results]);
 
         let mut commands = device.create_command_buffer();
-        commands.dispatch_compute_with_bind_group(pipeline, &bind_group, (pairs.len() as u32).div_ceil(64).max(1));
+        commands.dispatch_compute_with_bind_group(
+            pipeline,
+            &bind_group,
+            (pairs.len() as u32).div_ceil(64).max(1),
+        );
         commands.submit();
 
         let result_bytes = gpu.read_buffer(&results).await;
