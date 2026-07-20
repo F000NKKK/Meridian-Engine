@@ -289,21 +289,20 @@ impl FlyCamera {
             core::f32::consts::FRAC_PI_2 - 0.01,
         );
 
-        let forward_horiz =
-            Vec3::new(self.yaw.cos(), 0.0, self.yaw.sin()).normalize();
-        let right = Vec3::Y.cross(forward_horiz).normalize();
+        let forward = self.forward();
+        let right = forward.cross(Vec3::Y).normalize();
         let mut movement = Vec3::ZERO;
         if input.is_key_down(KeyCode::W) {
-            movement = movement + forward_horiz;
+            movement = movement - forward;
         }
         if input.is_key_down(KeyCode::S) {
-            movement = movement - forward_horiz;
+            movement = movement + forward;
         }
         if input.is_key_down(KeyCode::D) {
-            movement = movement + right;
+            movement = movement - right;
         }
         if input.is_key_down(KeyCode::A) {
-            movement = movement - right;
+            movement = movement + right;
         }
         if input.is_key_down(KeyCode::Space) {
             movement = movement + Vec3::Y;
