@@ -13,19 +13,19 @@ repository = "https://github.com/F000NKKK/Meridian-Engine"
 # repeating path/version — bump a version once here and it's correct both
 # for local builds (path) and for `cargo publish` (version).
 [workspace.dependencies]
-meridian-foundation = { path = "crates/meridian-foundation", version = "0.5" }
-meridian-numeric-core = { path = "crates/meridian-numeric-core", version = "0.6" }
-meridian-gac-core = { path = "crates/meridian-gac-core", version = "0.10" }
-meridian-memory-core = { path = "crates/meridian-memory-core", version = "0.6" }
-meridian-resource-core = { path = "crates/meridian-resource-core", version = "0.6" }
-meridian-task-core = { path = "crates/meridian-task-core", version = "0.5" }
+meridian-foundation = { path = "crates/meridian-foundation", version = "0.6" }
+meridian-numeric-core = { path = "crates/meridian-numeric-core", version = "0.7" }
+meridian-gac-core = { path = "crates/meridian-gac-core", version = "0.11" }
+meridian-memory-core = { path = "crates/meridian-memory-core", version = "0.7" }
+meridian-resource-core = { path = "crates/meridian-resource-core", version = "0.7" }
+meridian-task-core = { path = "crates/meridian-task-core", version = "0.6" }
 meridian-platform-core = { path = "crates/meridian-platform-core", version = "0.10" }
 meridian-gpu-driver = { path = "crates/meridian-gpu-driver", version = "0.4" }
 meridian-compute-driver = { path = "crates/meridian-compute-driver", version = "0.14" }
 meridian-compute-runtime = { path = "crates/meridian-compute-runtime", version = "0.16" }
 meridian-gac-compute = { path = "crates/meridian-gac-compute", version = "0.19" }
 meridian-asset-core = { path = "crates/meridian-asset-core", version = "0.10" }
-meridian-ecs-core = { path = "crates/meridian-ecs-core", version = "0.12" }
+meridian-ecs-core = { path = "crates/meridian-ecs-core", version = "0.13" }
 meridian-graphics-driver = { path = "crates/meridian-graphics-driver", version = "0.11" }
 meridian-audio-driver = { path = "crates/meridian-audio-driver", version = "0.10" }
 meridian-graphics-core = { path = "crates/meridian-graphics-core", version = "0.21" }
