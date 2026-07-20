@@ -602,6 +602,12 @@ pub type FixedObb = crate::generic::Obb<FixedFlavor>;
 pub type FixedCone = crate::generic::Cone<FixedFlavor>;
 pub type FixedPlane = crate::generic::Plane<FixedFlavor>;
 pub type FixedConvexVolume = crate::generic::ConvexVolume<FixedFlavor>;
+pub type FixedMesh = crate::generic::Mesh<FixedFlavor>;
+
+/// See [`crate::generic::icosphere`].
+pub fn fixed_icosphere(subdivisions: u32) -> FixedMesh {
+    crate::generic::icosphere::<FixedFlavor>(subdivisions)
+}
 
 // ---- Cross-flavor interop with `crate::float_ga` ----
 //

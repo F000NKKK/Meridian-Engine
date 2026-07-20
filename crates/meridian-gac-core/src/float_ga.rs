@@ -740,6 +740,12 @@ pub type Cone = crate::generic::Cone<FloatFlavor>;
 pub type Plane = crate::generic::Plane<FloatFlavor>;
 pub type ConvexVolume = crate::generic::ConvexVolume<FloatFlavor>;
 pub type Projection = crate::generic::Projection<FloatFlavor>;
+pub type Mesh = crate::generic::Mesh<FloatFlavor>;
+
+/// See [`crate::generic::icosphere`].
+pub fn icosphere(subdivisions: u32) -> Mesh {
+    crate::generic::icosphere::<FloatFlavor>(subdivisions)
+}
 
 // ---- Cross-flavor interop with `crate::fixed_ga` ----
 //
