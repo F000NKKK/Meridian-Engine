@@ -5,5 +5,4 @@ Cargo.lock
 *.pdb
 
 # Runtime diagnostics output (unified logging / crash reporting)
-logs/
 crashes/
