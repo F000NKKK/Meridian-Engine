@@ -34,7 +34,9 @@ use meridian_gac_core::{Motor3, Vec3};
 
 pub mod effects;
 
-pub use effects::{BinauralRenderer, DspGraph, DspNode, Gain, LowPassFilter};
+pub use effects::{
+    AcousticMedium, BinauralConfig, BinauralRenderer, DspGraph, DspNode, Gain, LowPassFilter,
+};
 
 /// The listener's spatial frame for 3D audio.
 #[derive(Debug, Clone, Copy, Default)]
@@ -458,15 +460,24 @@ impl AudioOutput {
     /// `layout`. Async because device enumeration is genuine I/O
     /// (`audio-driver::AudioDevice::new`, ADR 009); everything after the
     /// device exists is synchronous.
+    ///
+    /// `buffer_frames` bounds the stream's ring buffer (`None` = the
+    /// driver's default, several hardware buffers deep). The ring is the
+    /// audio's *latency*: samples mixed against a listener pose sit in
+    /// it until the hardware drains them, so an interactive scene that
+    /// re-mixes against a moving listener should request a small ring
+    /// (the driver still clamps to what the hardware needs to run
+    /// underrun-free).
     pub async fn open(
         layout: &SpeakerLayout,
         sample_rate: u32,
+        buffer_frames: Option<u32>,
     ) -> Result<Self, meridian_audio_driver::AudioDeviceError> {
         let device = meridian_audio_driver::AudioDevice::new().await?;
         let stream = device.open_stream(meridian_audio_driver::AudioStreamConfig {
             sample_rate,
             channels: layout.speakers.len() as u16,
-            buffer_frames: None,
+            buffer_frames,
         })?;
         Ok(Self { stream })
     }
@@ -545,7 +556,7 @@ mod render_and_output_tests {
     #[tokio::test]
     async fn audio_output_opens_for_every_layout_or_skips() {
         for layout in [SpeakerLayout::mono(), SpeakerLayout::stereo_headphones()] {
-            match AudioOutput::open(&layout, 48000).await {
+            match AudioOutput::open(&layout, 48000, None).await {
                 Ok(output) => {
                     let silence = vec![0.0f32; 64 * layout.speakers.len()];
                     output.push_interleaved(&silence);

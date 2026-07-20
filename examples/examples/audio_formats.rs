@@ -27,7 +27,7 @@ fn layout_for(channels: u16) -> Option<SpeakerLayout> {
 async fn play(audio: &AudioData) -> Result<(), String> {
     let layout = layout_for(audio.channels)
         .ok_or_else(|| format!("{} channels: no playback layout", audio.channels))?;
-    let output = AudioOutput::open(&layout, audio.sample_rate)
+    let output = AudioOutput::open(&layout, audio.sample_rate, None)
         .await
         .map_err(|e| e.to_string())?;
 

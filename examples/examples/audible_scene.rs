@@ -31,7 +31,7 @@ const AMPLITUDE: f32 = 0.3;
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
     let mixer = Mixer::new(SpeakerLayout::stereo_speakers());
-    let output = match AudioOutput::open(&mixer.layout, SAMPLE_RATE).await {
+    let output = match AudioOutput::open(&mixer.layout, SAMPLE_RATE, None).await {
         Ok(output) => output,
         Err(err) => {
             println!("skipping: no audio output device available ({err})");

@@ -18,6 +18,13 @@ impl LowPassFilter {
     pub fn new(alpha: f32) -> Self {
         Self { alpha, state: 0.0 }
     }
+
+    /// A filter for a cutoff frequency at a sample rate — the flexible
+    /// front door when "alpha" is not the unit you think in:
+    /// `alpha = 1 - exp(-2π * cutoff / rate)`.
+    pub fn from_cutoff(cutoff_hz: f32, sample_rate: u32) -> Self {
+        Self::new(1.0 - (-std::f32::consts::TAU * cutoff_hz / sample_rate.max(1) as f32).exp())
+    }
 }
 
 impl DspNode for LowPassFilter {

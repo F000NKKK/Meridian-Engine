@@ -26,7 +26,9 @@
 //!   ./build.sh run music_sphere
 
 use meridian_asset_core::{AnyAudioDecoder, Decoder};
-use meridian_audio_core::{AudioOutput, BinauralRenderer, Emitter, Listener, SpeakerLayout};
+use meridian_audio_core::{
+    AcousticMedium, AudioOutput, BinauralRenderer, Emitter, Listener, SpeakerLayout,
+};
 use meridian_examples::{
     FlyCamera, GROUND_SHADER, SOFT_BODY_SHADER, ground_quad_buffers, mat4_to_bytes,
     soft_body_render_buffers, soft_body_vertex_layout,
@@ -42,8 +44,15 @@ const SPHERE_CENTER: Vec3 = Vec3 {
     z: 0.0,
 };
 const SPHERE_RADIUS: f32 = 0.75;
-/// ~50 ms of audio per mixed block.
-const CHUNK_SECONDS: f32 = 0.05;
+/// 10 ms of audio per mixed block — the listener pose is re-sampled at
+/// 100 Hz, well past the point where parameter updates read as steps.
+const CHUNK_SECONDS: f32 = 0.01;
+/// Requested ring buffer: ~45 ms. Together with the 10 ms block this
+/// bounds pose-to-ear latency at ~55 ms (the driver may clamp the ring
+/// up to what the hardware needs to run underrun-free). The previous
+/// 50 ms blocks into an ~85 ms default ring put pose changes ~135 ms
+/// late and in coarse steps — the "jerky volume" complaint.
+const RING_SECONDS: f32 = 0.045;
 
 /// The looping music track, mixed spatially against the current
 /// listener pose and topped up into the output stream without blocking.
@@ -100,10 +109,16 @@ impl MusicSource {
                 })
                 .collect();
 
-            let renderer = BinauralRenderer::new(audio.sample_rate);
-            let output = AudioOutput::open(&SpeakerLayout::stereo_headphones(), audio.sample_rate)
-                .await
-                .map_err(|e| e.to_string())?;
+            let renderer = BinauralRenderer::new(audio.sample_rate)
+                .with_medium(AcousticMedium::air_sea_level());
+            let ring_frames = (audio.sample_rate as f32 * RING_SECONDS) as u32;
+            let output = AudioOutput::open(
+                &SpeakerLayout::stereo_headphones(),
+                audio.sample_rate,
+                Some(ring_frames),
+            )
+            .await
+            .map_err(|e| e.to_string())?;
             return Ok(Self {
                 output,
                 renderer,
