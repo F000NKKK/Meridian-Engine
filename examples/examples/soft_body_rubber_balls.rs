@@ -9,9 +9,10 @@
 //! Windowing/render scaffolding mirrors `spinning_cube`; the
 //! mesh-topology-to-vertex-buffer conversion is shared with the other two
 //! soft-body examples via `meridian_examples` (see that crate's module
-//! doc). Camera is a free-fly `meridian_examples::FlyCamera` (WASD +
-//! hold right mouse button to look, Space/Ctrl for up/down, Shift to
-//! move faster) — see that type's own doc comment.
+//! doc). Camera is a free-fly `meridian_examples::FlyCamera` (WASD to
+//! move, mouse to look — the cursor is grabbed on launch — Space/Ctrl
+//! for up/down, Shift to move faster; Escape or Alt-Tab to release the
+//! cursor) — see that type's own doc comment.
 //!
 //! Run with:
 //!   ./build.sh run soft_body_rubber_balls
@@ -28,7 +29,7 @@ use meridian_physics_compute::float::SoftBodyGpuKernel;
 use meridian_physics_core::soft_body::float_softbody::{
     SoftBody, SoftBodyIntegrator, icosphere_soft_body,
 };
-use meridian_platform_core::{AppHandler, InputState, Window, run_windowed_app};
+use meridian_platform_core::{AppHandler, InputState, KeyCode, Window, run_windowed_app};
 
 /// Fixed physics timestep — matches `float_softbody`'s own stability
 /// note (`dt = 1/240`, not `1/60`; explicit-Euler mass-spring
@@ -113,6 +114,7 @@ impl App {
 
 impl AppHandler for App {
     fn on_ready(&mut self, window: &Window) {
+        window.set_cursor_grabbed(true);
         let target = window.surface_target();
         let (width, height) = (window.width(), window.height());
         let (device, surface) = self
