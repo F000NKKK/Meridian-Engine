@@ -455,14 +455,34 @@ mod tests {
                 .await;
             integrator.step(&mut cpu_body, dt);
 
-            assert_eq!(
-                gpu_body.positions, cpu_body.positions,
-                "step {step}: gpu/cpu positions diverged"
-            );
-            assert_eq!(
-                gpu_body.velocities, cpu_body.velocities,
-                "step {step}: gpu/cpu velocities diverged"
-            );
+            for (idx, (g, c)) in gpu_body
+                .positions
+                .iter()
+                .zip(cpu_body.positions.iter())
+                .enumerate()
+            {
+                assert_eq!(g, c, "step {step} particle {idx}: position diverged");
+            }
+            for (idx, (g, c)) in gpu_body
+                .velocities
+                .iter()
+                .zip(cpu_body.velocities.iter())
+                .enumerate()
+            {
+                if g != c {
+                    let degree = (gpu_body_adjacency_degree(&gpu_body, idx), idx, gpu_body.particle_count());
+                    panic!(
+                        "step {step} particle {idx}: velocity diverged gpu={g:?} cpu={c:?} degree/idx/count={degree:?}"
+                    );
+                }
+            }
         }
+    }
+
+    fn gpu_body_adjacency_degree(body: &FixedSoftBody, particle: usize) -> usize {
+        body.springs
+            .iter()
+            .filter(|s| s.a == particle || s.b == particle)
+            .count()
     }
 }
