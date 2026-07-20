@@ -16,7 +16,7 @@ use meridian_gac_core::generic::Face;
 use meridian_gac_core::{Motor3, Vec3};
 use meridian_graphics_core::Camera;
 use meridian_graphics_driver::{VertexAttributeDesc, VertexFormat, VertexLayout};
-use meridian_platform_core::{InputState, KeyCode, MouseButton};
+use meridian_platform_core::{InputState, KeyCode};
 
 pub const SOFT_BODY_SHADER: &str = r#"
 struct Uniforms {
@@ -227,14 +227,16 @@ pub fn look_at_rotor(eye: Vec3, target: Vec3) -> meridian_gac_core::Rotor {
 }
 
 /// A free-fly camera: WASD to move (relative to the way it's currently
-/// looking, not world axes), Space/Ctrl for up/down, hold the right
-/// mouse button and move the mouse to look around. Exists because a
-/// fixed `look_at_rotor(eye, target)` camera (`spinning_cube`'s
-/// approach) gives no way to inspect a scene from angles the author
-/// didn't hardcode — the soft-body examples need that inspection more
-/// than a spinning cube does, since "is this ball actually deforming/
-/// jiggling or just sitting there" is exactly the kind of thing you want
-/// to walk around and look at.
+/// looking, not world axes), Space/Ctrl for up/down, mouse to look
+/// around — the caller is expected to grab the cursor
+/// (`Window::set_cursor_grabbed(true)` once in `on_ready`) so the mouse
+/// steers the view directly instead of a visible cursor wandering off
+/// the window. Exists because a fixed `look_at_rotor(eye, target)`
+/// camera (`spinning_cube`'s approach) gives no way to inspect a scene
+/// from angles the author didn't hardcode — the soft-body examples need
+/// that inspection more than a spinning cube does, since "is this ball
+/// actually deforming/jiggling or just sitting there" is exactly the
+/// kind of thing you want to walk around and look at.
 pub struct FlyCamera {
     pub position: Vec3,
     /// Radians, measured from `+X` toward `+Z` (matches `Vec3::X` being
@@ -273,16 +275,19 @@ impl FlyCamera {
 
     /// Advances the camera by one frame of `input`/`dt`. Call once per
     /// `on_redraw`, after computing `dt` and before building this
-    /// frame's [`Camera`] via [`Self::camera`].
+    /// frame's [`Camera`] via [`Self::camera`]. Reads
+    /// [`InputState::raw_mouse_delta`] (device-relative motion, not
+    /// cursor-position-based) so this keeps working once the caller
+    /// grabs the cursor via `Window::set_cursor_grabbed(true)` in
+    /// `on_ready` (the expected setup — see this type's own doc comment)
+    /// — a locked cursor stops generating position deltas entirely.
     pub fn update(&mut self, input: &InputState, dt: f32) {
-        if input.is_mouse_button_down(MouseButton::Right) {
-            let (dx, dy) = input.mouse_delta();
-            self.yaw += dx * self.look_sensitivity;
-            self.pitch = (self.pitch - dy * self.look_sensitivity).clamp(
-                -core::f32::consts::FRAC_PI_2 + 0.01,
-                core::f32::consts::FRAC_PI_2 - 0.01,
-            );
-        }
+        let (dx, dy) = input.raw_mouse_delta();
+        self.yaw += dx * self.look_sensitivity;
+        self.pitch = (self.pitch - dy * self.look_sensitivity).clamp(
+            -core::f32::consts::FRAC_PI_2 + 0.01,
+            core::f32::consts::FRAC_PI_2 - 0.01,
+        );
 
         let forward = self.forward();
         let right = forward.cross(Vec3::Y).normalize();
