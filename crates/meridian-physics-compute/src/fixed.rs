@@ -470,7 +470,11 @@ mod tests {
                 .enumerate()
             {
                 if g != c {
-                    let degree = (gpu_body_adjacency_degree(&gpu_body, idx), idx, gpu_body.particle_count());
+                    let degree = (
+                        gpu_body_adjacency_degree(&gpu_body, idx),
+                        idx,
+                        gpu_body.particle_count(),
+                    );
                     panic!(
                         "step {step} particle {idx}: velocity diverged gpu={g:?} cpu={c:?} degree/idx/count={degree:?}"
                     );
