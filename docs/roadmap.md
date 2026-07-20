@@ -59,6 +59,31 @@ Steps 4-6 are real and tested:
   note), and no domain kernel (a real physics step, not just raw
   arithmetic) dispatches through it yet either.
 
+  `compute-runtime` also has a real hybrid CPU+GPU dispatch mechanism now:
+  `HybridKernel` (`run_cpu`/`run_gpu`, one method per backend, each
+  covering an index range) plus `ComputeContext::run_hybrid`, which
+  splits `count` work items between both per a `BackendSplit` policy
+  (`Ratio(0.5)` for an even split, `CpuOnly`/`GpuOnly` for either
+  extreme) and runs both halves **concurrently** — the CPU half on
+  `tokio::task::spawn_blocking`'s thread pool, the GPU half awaited
+  directly, real overlap rather than sequential CPU-then-GPU. Proven by a
+  real doubling kernel (CPU doubles in Rust, GPU doubles via WGSL, both
+  write into the same shared output buffer by index) that checks every
+  index landed correct regardless of which backend processed it, plus a
+  no-GPU-backend fallback test (`cargo test -p meridian-compute-runtime`).
+  This is deliberately *not* an automatic "run this same code on either
+  backend" switch — there's no such thing for an arbitrary Rust closure,
+  since it has no WGSL equivalent a compiler can derive; a kernel author
+  has to write both implementations by hand, same as `fixed_wgsl` does.
+  Known follow-up, not built yet: `run_gpu`/`dispatch` currently
+  (re)allocate GPU buffers and rebuild bind groups on every call — the
+  *pipeline* is built once and reused (`FixedArithmeticKernels::new`,
+  `DoublingKernel::new` in the hybrid test), but buffer/bind-group reuse
+  across repeated calls (persistent buffers sized once, rewritten per
+  call) is not, which would matter for a kernel dispatched every frame on
+  cheap/simple operations — deliberately deferred rather than built
+  speculatively ahead of a concrete caller that needs it.
+
 Step 7 (`asset-core`) is real: BMP (uncompressed 24/32-bit), WAV (PCM
 16-bit), and a minimal OBJ (positions + triangles) decoder — formats
 simple enough to hand-roll without an external crate; PNG/JPEG/glTF need
