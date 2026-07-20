@@ -105,8 +105,8 @@ enum StreamBackend {
 
 /// Incremental audio decoder: identifies the format by signature (never
 /// by extension), then yields interleaved-`i16` blocks of at most the
-/// configured size via [`next_block`](Self::next_block). [`rewind`]
-/// (Self::rewind) restarts from the beginning without re-copying the
+/// configured size via [`next_block`](Self::next_block);
+/// [`rewind`](Self::rewind) restarts from the beginning without re-copying the
 /// compressed bytes (they're shared, not cloned) — the loop-playback
 /// primitive.
 pub struct StreamingAudioDecoder {
