@@ -81,7 +81,6 @@ impl Decoder<AudioData> for WavDecoder {
 mod tests {
     use super::*;
 
-
     fn make_wav(sample_rate: u32, channels: u16, samples: &[i16]) -> Vec<u8> {
         let data_bytes: Vec<u8> = samples.iter().flat_map(|s| s.to_le_bytes()).collect();
         let fmt_body_len = 16u32;

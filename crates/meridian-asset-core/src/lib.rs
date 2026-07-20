@@ -19,8 +19,8 @@
 pub mod audio;
 
 pub use audio::{
-    AnyAudioDecoder, AudioAsset, AudioFormat, DecodeMode, DecodeStrategy, FlacDecoder,
-    Mp3Decoder, OpusDecoder, StreamingAudioDecoder, VorbisDecoder, WavDecoder, open_audio,
+    AnyAudioDecoder, AudioAsset, AudioFormat, DecodeMode, DecodeStrategy, FlacDecoder, Mp3Decoder,
+    OpusDecoder, StreamingAudioDecoder, VorbisDecoder, WavDecoder, open_audio,
 };
 
 /// Decodes raw file bytes into a CPU-side representation of `T`. Does not

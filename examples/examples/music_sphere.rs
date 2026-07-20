@@ -25,7 +25,9 @@
 //! Run with:
 //!   ./build.sh run music_sphere
 
-use meridian_asset_core::{AnyAudioDecoder, Decoder};
+use meridian_asset_core::{
+    AnyAudioDecoder, AudioAsset, DecodeStrategy, StreamingAudioDecoder, open_audio,
+};
 use meridian_audio_core::{
     AcousticMedium, AudioOutput, BinauralRenderer, Declicker, DspNode, Emitter, Listener,
     SpeakerLayout,
@@ -58,6 +60,72 @@ const CHUNK_SECONDS: f32 = 0.01;
 /// more readily than steps.
 const RING_SECONDS: f32 = 0.08;
 
+/// Where the looping track's mono samples come from — the two arms of
+/// `asset-core::AudioAsset`, behind one `next_mono_chunk` face.
+enum Track {
+    /// Small tracks (`Auto` decided eager): the whole downmixed track
+    /// in memory, looped by cursor wrap, seam pre-faded.
+    Memory { mono: Vec<f32>, cursor: usize },
+    /// Large tracks (`Auto` decided streaming — the 91 s demo track's
+    /// ~17 MB of PCM qualifies): blocks decoded on demand, rewound at
+    /// the end to loop. The loop seam is an unfaded discontinuity here;
+    /// the `Declicker` downstream is what absorbs it.
+    Streamed {
+        decoder: StreamingAudioDecoder,
+        channels: usize,
+        queue: std::collections::VecDeque<f32>,
+    },
+}
+
+impl Track {
+    /// The next `frames` mono samples, looping seamlessly forever.
+    fn next_mono_chunk(&mut self, frames: usize) -> Vec<f32> {
+        let mut chunk = Vec::with_capacity(frames);
+        match self {
+            Track::Memory { mono, cursor } => {
+                for _ in 0..frames {
+                    chunk.push(mono[*cursor]);
+                    *cursor = (*cursor + 1) % mono.len();
+                }
+            }
+            Track::Streamed {
+                decoder,
+                channels,
+                queue,
+            } => {
+                while chunk.len() < frames {
+                    if let Some(sample) = queue.pop_front() {
+                        chunk.push(sample);
+                        continue;
+                    }
+                    match decoder.next_block() {
+                        Ok(Some(block)) => {
+                            for frame in block.chunks_exact(*channels) {
+                                let sum: f32 = frame.iter().map(|&s| s as f32 / 32768.0).sum();
+                                queue.push_back(sum / *channels as f32);
+                            }
+                        }
+                        Ok(None) => {
+                            // End of track: loop by rewinding the shared
+                            // compressed bytes — no re-read, no copy.
+                            if decoder.rewind().is_err() {
+                                chunk.resize(frames, 0.0);
+                                break;
+                            }
+                        }
+                        Err(err) => {
+                            eprintln!("stream decode error: {err}");
+                            chunk.resize(frames, 0.0);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        chunk
+    }
+}
+
 /// The looping music track, mixed spatially against the current
 /// listener pose and topped up into the output stream without blocking.
 struct MusicSource {
@@ -67,17 +135,15 @@ struct MusicSource {
     /// so no step discontinuity from anywhere in the chain survives as
     /// a click.
     declicker: Declicker,
-    /// The decoded track, downmixed to mono — the emitter is a point
-    /// source; its spatialization *is* the stereo image.
-    mono: Vec<f32>,
-    cursor: usize,
+    track: Track,
     chunk_frames: usize,
 }
 
 impl MusicSource {
-    /// Decodes the first playable file in `examples/assets/audio/` (by
-    /// signature, not extension) and opens a stereo output at the
-    /// track's own sample rate.
+    /// Opens the first playable file in `examples/assets/audio/` (by
+    /// signature, not extension) through `asset-core::open_audio`'s
+    /// strategy-driven front door: `Auto` decodes small tracks eagerly
+    /// and streams large ones — this example handles both arms.
     async fn load() -> Result<Self, String> {
         let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/assets/audio");
         let mut entries: Vec<_> = std::fs::read_dir(dir)
@@ -94,47 +160,58 @@ impl MusicSource {
             let Some(format) = AnyAudioDecoder.sniff(&bytes) else {
                 continue;
             };
-            let audio = match AnyAudioDecoder.decode(&bytes) {
-                Ok(audio) => audio,
+            let asset = match open_audio(&bytes, &DecodeStrategy::default()) {
+                Ok(asset) => asset,
                 Err(err) => {
                     eprintln!("  {}: {err}", path.display());
                     continue;
                 }
             };
-            println!(
-                "playing {} ({format:?}, {} Hz, {} ch)",
-                path.display(),
-                audio.sample_rate,
-                audio.channels
-            );
+            let (sample_rate, channels) = (asset.sample_rate(), asset.channels().max(1) as usize);
+            let track = match asset {
+                AudioAsset::Decoded(audio) => {
+                    let mut mono: Vec<f32> = audio
+                        .samples
+                        .chunks_exact(channels)
+                        .map(|frame| {
+                            frame.iter().map(|&s| s as f32 / 32768.0).sum::<f32>() / channels as f32
+                        })
+                        .collect();
+                    // The loop seam (last sample -> first) is an arbitrary
+                    // discontinuity; fade both edges over ~10 ms so it
+                    // passes through silence.
+                    let fade = (sample_rate as usize / 100).min(mono.len() / 2);
+                    for i in 0..fade {
+                        let ramp = i as f32 / fade as f32;
+                        mono[i] *= ramp;
+                        let end = mono.len() - 1 - i;
+                        mono[end] *= ramp;
+                    }
+                    println!(
+                        "playing {} ({format:?}, {sample_rate} Hz, {channels} ch, eager)",
+                        path.display()
+                    );
+                    Track::Memory { mono, cursor: 0 }
+                }
+                AudioAsset::Streaming(decoder) => {
+                    println!(
+                        "playing {} ({format:?}, {sample_rate} Hz, {channels} ch, streaming)",
+                        path.display()
+                    );
+                    Track::Streamed {
+                        decoder,
+                        channels,
+                        queue: std::collections::VecDeque::new(),
+                    }
+                }
+            };
 
-            let channels = audio.channels.max(1) as usize;
-            let mut mono: Vec<f32> = audio
-                .samples
-                .chunks_exact(channels)
-                .map(|frame| {
-                    frame.iter().map(|&s| s as f32 / 32768.0).sum::<f32>() / channels as f32
-                })
-                .collect();
-
-            // The track loops: its last sample flows straight into its
-            // first, an arbitrary waveform discontinuity — a click every
-            // pass. Fading both edges over ~10 ms makes the seam pass
-            // through silence instead.
-            let fade = (audio.sample_rate as usize / 100).min(mono.len() / 2);
-            for i in 0..fade {
-                let ramp = i as f32 / fade as f32;
-                mono[i] *= ramp;
-                let end = mono.len() - 1 - i;
-                mono[end] *= ramp;
-            }
-
-            let renderer = BinauralRenderer::new(audio.sample_rate)
-                .with_medium(AcousticMedium::air_sea_level());
-            let ring_frames = (audio.sample_rate as f32 * RING_SECONDS) as u32;
+            let renderer =
+                BinauralRenderer::new(sample_rate).with_medium(AcousticMedium::air_sea_level());
+            let ring_frames = (sample_rate as f32 * RING_SECONDS) as u32;
             let output = AudioOutput::open(
                 &SpeakerLayout::stereo_headphones(),
-                audio.sample_rate,
+                sample_rate,
                 Some(ring_frames),
             )
             .await
@@ -143,9 +220,8 @@ impl MusicSource {
                 output,
                 renderer,
                 declicker: Declicker::new(2),
-                mono,
-                cursor: 0,
-                chunk_frames: (audio.sample_rate as f32 * CHUNK_SECONDS) as usize,
+                track,
+                chunk_frames: (sample_rate as f32 * CHUNK_SECONDS) as usize,
             });
         }
         Err(format!("no decodable audio file in {dir}"))
@@ -159,11 +235,7 @@ impl MusicSource {
             frame: Motor3::translation(SPHERE_CENTER),
         };
         while self.output.can_push(self.chunk_frames * 2) {
-            let mut chunk = Vec::with_capacity(self.chunk_frames);
-            for _ in 0..self.chunk_frames {
-                chunk.push(self.mono[self.cursor]);
-                self.cursor = (self.cursor + 1) % self.mono.len(); // loop the track
-            }
+            let chunk = self.track.next_mono_chunk(self.chunk_frames);
             let mut interleaved =
                 self.renderer
                     .render(listener, &[(emitter, &chunk)], self.chunk_frames);
