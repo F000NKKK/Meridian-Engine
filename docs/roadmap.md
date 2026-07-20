@@ -309,7 +309,12 @@ a blanket "every other crate is a scaffold." Audio is wired end-to-end:
 samples into `audio-driver`'s real stream (the declared
 core→own-driver edge, used for the first time), composed with `Runtime`
 by the `audible_scene` example the same way `spinning_cube` composes
-`graphics-driver` — `Runtime` itself stays driver-free. Every crate not named above
+`graphics-driver` — `Runtime` itself stays driver-free. On top of that,
+`audio_formats` plays real compressed assets decoded by signature (ADR
+013), and `music_sphere` is the full loop: a windowed scene where a
+sphere emits the decoded music and the `FlyCamera` pose doubles as the
+`audio-core` listener (same local-forward-`+X` `Motor3` convention), so
+panning and distance attenuation track the camera live. Every crate not named above
 has a real, tested implementation; see each crate's own section above
 for specifics. This staged order is intentional — see "Why implementation
 is deliberately last" below.

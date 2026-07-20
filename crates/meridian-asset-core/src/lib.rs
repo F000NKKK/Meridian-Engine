@@ -62,8 +62,13 @@ pub struct ShaderSource {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DecodeError {
-    TooShort { needed: usize, got: usize },
-    BadMagic { expected: &'static str },
+    TooShort {
+        needed: usize,
+        got: usize,
+    },
+    BadMagic {
+        expected: &'static str,
+    },
     Unsupported(&'static str),
     Malformed(&'static str),
     /// An external codec library rejected the data — the message is the

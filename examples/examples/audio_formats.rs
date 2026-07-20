@@ -31,8 +31,7 @@ async fn play(audio: &AudioData) -> Result<(), String> {
         .await
         .map_err(|e| e.to_string())?;
 
-    let total = ((PLAY_SECONDS * audio.sample_rate as f32) as usize
-        * audio.channels as usize)
+    let total = ((PLAY_SECONDS * audio.sample_rate as f32) as usize * audio.channels as usize)
         .min(audio.samples.len());
     // Push in ~50 ms chunks; push_interleaved's blocking-on-full paces
     // the loop at the hardware's real playback rate.
