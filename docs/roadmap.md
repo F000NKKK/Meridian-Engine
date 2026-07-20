@@ -116,7 +116,15 @@ reference `libopus` in the same symphonia pipeline, with formats
 identified by leading magic bytes (`AudioFormat::detect` /
 `AnyAudioDecoder`), never by file extension — the concrete asset that
 justified the external codec crates is `examples/assets/audio/`; see
-[ADR 013](adr/013-compressed-audio-codecs.md). PNG/JPEG/glTF stay on
+[ADR 013](adr/013-compressed-audio-codecs.md). Audio decoding lives in
+the `audio/` barrel module (`wav`/`compressed_audio`/`audio_streaming`),
+and `open_audio(bytes, &DecodeStrategy)` is its thin loading interface:
+full decode vs. incremental streaming resolved entirely by
+configuration (force either, or `Auto` by estimated decoded size), with
+`StreamingAudioDecoder` shaped as a standard `Iterator` — see
+[ADR 014](adr/014-streaming-audio-decode.md), including why no generic
+"asset stream" trait is invented before a second streamed asset type
+(video would be a sibling `video/` module) exists. PNG/JPEG/glTF stay on
 the same when-a-concrete-asset-needs-it trigger.
 
 Step 8's physics half (`physics-driver`/`physics-core`) is real: AABB
