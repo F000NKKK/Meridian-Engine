@@ -10,5 +10,4 @@ description = "Loading and decoding of images, meshes, audio, shaders and binary
 [dependencies]
 meridian-platform-core = { workspace = true }
 symphonia = { workspace = true }
-ogg = { workspace = true }
-opus = { workspace = true }
+symphonia-adapter-libopus = { workspace = true }

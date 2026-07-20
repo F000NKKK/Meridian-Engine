@@ -1,6 +1,6 @@
 //! Compressed-audio decoding: MP3, OGG/Vorbis and FLAC via `symphonia`
-//! (pure Rust), Opus via the reference `libopus` (`opus` FFI binding)
-//! plus the `ogg` container crate — see
+//! (pure Rust), Opus via the reference `libopus` plugged into the same
+//! symphonia pipeline (`symphonia-adapter-libopus`) — see
 //! docs/adr/013-compressed-audio-codecs.md for the dependency decision.
 //!
 //! Formats are identified by leading magic bytes ([`AudioFormat::detect`]),
@@ -16,10 +16,25 @@
 use crate::{AudioData, DecodeError, Decoder, WavDecoder};
 
 use symphonia::core::codecs::audio::AudioDecoderOptions;
+use symphonia::core::codecs::registry::CodecRegistry;
 use symphonia::core::formats::probe::Hint;
 use symphonia::core::formats::{FormatOptions, TrackType};
 use symphonia::core::io::MediaSourceStream;
 use symphonia::core::meta::MetadataOptions;
+
+/// One codec registry for every compressed format this module decodes:
+/// symphonia's own enabled codecs (MP3/Vorbis/FLAC) plus libopus via the
+/// adapter — so Opus rides the exact same probe/demux/decode pipeline
+/// instead of a hand-written OGG parse.
+fn codec_registry() -> &'static CodecRegistry {
+    static REGISTRY: std::sync::OnceLock<CodecRegistry> = std::sync::OnceLock::new();
+    REGISTRY.get_or_init(|| {
+        let mut registry = CodecRegistry::new();
+        symphonia::default::register_enabled_codecs(&mut registry);
+        registry.register_audio_decoder::<symphonia_adapter_libopus::OpusDecoder>();
+        registry
+    })
+}
 
 /// An audio container/codec identified from leading magic bytes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -108,7 +123,7 @@ fn decode_with_symphonia(bytes: &[u8]) -> Result<AudioData, DecodeError> {
         .and_then(|p| p.audio())
         .ok_or(DecodeError::Unsupported("no audio codec parameters"))?;
 
-    let mut decoder = symphonia::default::get_codecs()
+    let mut decoder = codec_registry()
         .make_audio_decoder(params, &AudioDecoderOptions::default())
         .map_err(|e| DecodeError::Codec(e.to_string()))?;
 
