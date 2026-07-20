@@ -48,6 +48,10 @@ name = "graphics_validation"
 path = "examples/graphics_validation.rs"
 
 [[example]]
+name = "music_sphere"
+path = "examples/music_sphere.rs"
+
+[[example]]
 name = "audio_formats"
 path = "examples/audio_formats.rs"
 
