@@ -193,6 +193,24 @@ All CPU-side, plain data, in `graphics-core`:
   Frame-scoped plain data, rebuilt every frame (extraction output, ADR
   004's data-oriented stance) — *not* a retained scene graph.
 
+### Handles are the identity mechanism — 100% compliance target
+
+Everything a renderable references crosses the vocabulary by **typed
+`resource-core` handle** (`MeshHandle`, `TextureHandle`, and a new
+`MaterialHandle`), never by value, index, or driver object — ADR 002 is
+a hard requirement of this design, not a suggestion. The submission
+bridge owns the handle→GPU-resource resolution, backed by
+`memory-core`'s generational pools (a stale handle after an asset
+reload resolves to "not resident", never to someone else's mesh — the
+exact bug class generational handles exist to kill). Existing spots
+where the workspace under-complies (examples holding raw
+`graphics-driver` buffers, `Material` embedding its texture reference
+directly) are acceptable *below* this vocabulary or *before* it lands,
+but the extract→cull→submit path itself ships handle-clean from day
+one, and the examples converge onto it in step 2 — driving the whole
+tree toward full ADR 002/003/006 compliance rather than accreting more
+exceptions.
+
 ### Extraction and ownership
 
 Persistent state stays where it already lives: the application/ECS owns
