@@ -14,17 +14,20 @@
 //! Run with:
 //!   ./build.sh run soft_body_rubber_balls
 
-use meridian_examples::{look_at_rotor, mat4_to_bytes, soft_body_render_buffers, soft_body_vertex_layout, SOFT_BODY_SHADER};
+use meridian_examples::{
+    SOFT_BODY_SHADER, look_at_rotor, mat4_to_bytes, soft_body_render_buffers,
+    soft_body_vertex_layout,
+};
 use meridian_gac_core::generic::Plane;
-use meridian_gac_core::{icosphere, Motor3, Vec3};
+use meridian_gac_core::{Motor3, Vec3, icosphere};
 use meridian_gpu_driver::{BindGroup, Buffer};
 use meridian_graphics_core::Camera;
 use meridian_graphics_driver::{BufferUsage, DepthTexture, Device, RenderPipeline, Surface};
-use meridian_physics_core::soft_body::float_softbody::{
-    icosphere_soft_body, SoftBody, SoftBodyIntegrator,
-};
 use meridian_physics_compute::float::SoftBodyGpuKernel;
-use meridian_platform_core::{run_windowed_app, AppHandler, InputState, Window};
+use meridian_physics_core::soft_body::float_softbody::{
+    SoftBody, SoftBodyIntegrator, icosphere_soft_body,
+};
+use meridian_platform_core::{AppHandler, InputState, Window, run_windowed_app};
 
 /// Fixed physics timestep — matches `float_softbody`'s own stability
 /// note (`dt = 1/240`, not `1/60`; explicit-Euler mass-spring
@@ -202,9 +205,13 @@ impl AppHandler for App {
                 let (vertex_bytes, index_bytes, index_count) =
                     soft_body_render_buffers(surface_positions, &self.faces);
 
-                let vertex_buffer = gpu.device.create_buffer(vertex_bytes.len(), BufferUsage::Vertex);
+                let vertex_buffer = gpu
+                    .device
+                    .create_buffer(vertex_bytes.len(), BufferUsage::Vertex);
                 gpu.device.write_buffer(&vertex_buffer, &vertex_bytes);
-                let index_buffer = gpu.device.create_buffer(index_bytes.len(), BufferUsage::Index);
+                let index_buffer = gpu
+                    .device
+                    .create_buffer(index_bytes.len(), BufferUsage::Index);
                 gpu.device.write_buffer(&index_buffer, &index_bytes);
 
                 (vertex_buffer, index_buffer, index_count)
@@ -239,6 +246,11 @@ impl AppHandler for App {
 }
 
 fn main() {
-    run_windowed_app("Meridian Engine — Soft-Body Rubber Balls (GPU)", 1024, 768, App::new())
-        .expect("windowed app exited with an error");
+    run_windowed_app(
+        "Meridian Engine — Soft-Body Rubber Balls (GPU)",
+        1024,
+        768,
+        App::new(),
+    )
+    .expect("windowed app exited with an error");
 }
