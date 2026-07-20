@@ -119,8 +119,15 @@ pub fn ground_quad_buffers(size: f32, y: f32) -> (Vec<u8>, Vec<u8>, u32) {
             vertex_bytes.extend_from_slice(&component.to_le_bytes());
         }
     }
+    // Winding matters: `Device::create_render_pipeline` culls back faces
+    // (`FrontFace::Ccw`, see `spinning_cube`'s identical note on its own
+    // cube mesh) — [0,1,2, 0,2,3] here would wind counter-clockwise as
+    // seen from *below* the ground (normal pointing -Y), invisible to a
+    // camera looking down at it from above. [0,2,1, 0,3,2] is the
+    // reversed winding that's front-facing from +Y instead — this was
+    // the actual reason the ground plane never rendered.
     let mut index_bytes = Vec::new();
-    for i in [0u16, 1, 2, 0, 2, 3] {
+    for i in [0u16, 2, 1, 0, 3, 2] {
         index_bytes.extend_from_slice(&i.to_le_bytes());
     }
     (vertex_bytes, index_bytes, 6)
