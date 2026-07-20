@@ -251,7 +251,7 @@ impl AppHandler for App {
             self.accumulator -= PHYSICS_DT;
             substeps += 1;
             self.frame_counter += 1;
-            if self.frame_counter % 240 == 0 {
+            if self.frame_counter.is_multiple_of(240) {
                 // Re-pluck every second — see `soft_body_jiggle_deterministic`'s
                 // identical comment for why (damping would otherwise
                 // settle the jiggle to a standstill within a few

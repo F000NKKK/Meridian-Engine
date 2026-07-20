@@ -310,7 +310,7 @@ impl AppHandler for App {
             self.accumulator_seconds -= PHYSICS_DT_SECONDS;
             substeps += 1;
             self.frame_counter += 1;
-            if self.frame_counter % 240 == 0 {
+            if self.frame_counter.is_multiple_of(240) {
                 // Re-pluck everything every second — damping (see
                 // `spawn_ball`'s comment) would otherwise settle the
                 // jiggle to a standstill within a few seconds, which

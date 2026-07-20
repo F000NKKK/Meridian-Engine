@@ -320,12 +320,29 @@ impl FlyCamera {
         }
     }
 
+    /// The view rotor: yaw around world `+Y`, *then* pitch around the
+    /// yaw-rotated local-right axis — not [`look_at_rotor`]. That
+    /// helper picks the shortest-arc rotation from local-forward to a
+    /// target direction, which is ambiguous about roll (many rotations
+    /// take `+X` to a given `forward`, and the shortest-arc choice drifts
+    /// between them as pitch changes) — it visibly rolled the view
+    /// clockwise/counter-clockwise while pitching up/down. Composing an
+    /// explicit yaw-then-pitch instead is standard FPS-camera
+    /// construction: rotating around a horizontal axis that's itself
+    /// already been yawed never introduces roll, by construction (the
+    /// world-up direction stays consistently "up" in the resulting view
+    /// at every pitch).
+    fn rotor(&self) -> meridian_gac_core::Rotor {
+        use meridian_gac_core::Rotor;
+        let yaw_rotor = Rotor::from_axis_angle(Vec3::Y, self.yaw);
+        let right_after_yaw = yaw_rotor.transform_vector(Vec3::Z);
+        let pitch_rotor = Rotor::from_axis_angle(right_after_yaw, self.pitch);
+        yaw_rotor.compose(pitch_rotor)
+    }
+
     pub fn camera(&self, aspect_ratio: f32) -> Camera {
         Camera {
-            frame: Motor3::from_rotation_translation(
-                look_at_rotor(self.position, self.position + self.forward()),
-                self.position,
-            ),
+            frame: Motor3::from_rotation_translation(self.rotor(), self.position),
             projection: meridian_gac_core::Projection::perspective(
                 55.0_f32.to_radians(),
                 aspect_ratio,
