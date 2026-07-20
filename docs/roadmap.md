@@ -149,7 +149,11 @@ facing `+X` with sources placed front/back/left/right and checked across
 every layout (`cargo test -p meridian-audio-core`; human-readable version
 via `./build.sh run audio_spatialization`) — including the front/back
 ambiguity stereo genuinely can't resolve without HRTF (not implemented;
-documented as a real, known limitation, not hidden).
+documented as a real, known limitation, not hidden). With `audio-driver`
+real, `audio-core` also owns the output bridge: `Mixer::render_interleaved`
+(block rendering to interleaved speaker-order samples) and `AudioOutput`
+(opens the default device with one stream channel per speaker) — audible
+end-to-end via `./build.sh run audible_scene`.
 
 `meridian-graphics-core`'s driver-independent half is real: `Camera`
 bridges a `Motor3` world frame into a classical view/projection matrix
@@ -292,12 +296,14 @@ without one would be decorative.
 
 The remaining incomplete areas are, specifically: `graphics-core`'s
 scene/material/lighting layers (window/swapchain presentation they
-needed is real now — see the `wgpu` entry below), routing
-`engine-core`'s mixed audio into `audio-driver`'s real output stream
-(both halves exist; nothing connects `Mixer` output to
-`AudioStream::push_samples` yet), and `DynamicLibrary` (still a stub, on
-the original hand-written-FFI plan per ADR 010) — not a
-blanket "every other crate is a scaffold." Every crate not named above
+needed is real now — see the `wgpu` entry below) and `DynamicLibrary`
+(still a stub, on the original hand-written-FFI plan per ADR 010) — not
+a blanket "every other crate is a scaffold." Audio is wired end-to-end:
+`audio-core::AudioOutput` + `Mixer::render_interleaved` bridge mixed
+samples into `audio-driver`'s real stream (the declared
+core→own-driver edge, used for the first time), composed with `Runtime`
+by the `audible_scene` example the same way `spinning_cube` composes
+`graphics-driver` — `Runtime` itself stays driver-free. Every crate not named above
 has a real, tested implementation; see each crate's own section above
 for specifics. This staged order is intentional — see "Why implementation
 is deliberately last" below.

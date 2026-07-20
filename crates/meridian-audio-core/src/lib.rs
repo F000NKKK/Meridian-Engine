@@ -407,6 +407,79 @@ impl Mixer {
         }
         output
     }
+
+    /// Renders `frames` output frames as interleaved samples in this
+    /// layout's speaker order — the format `audio-driver`'s
+    /// `AudioStream::push_samples` (and [`AudioOutput`]) consumes.
+    ///
+    /// The block-sized counterpart of [`mix`](Self::mix): each emitter's
+    /// spatial gains are computed once for the whole block (emitter and
+    /// listener frames don't move mid-frame; per-sample re-panning would
+    /// recompute the identical gains `frames` times), then every mono
+    /// source sample is gain-weighted into each output channel. A source
+    /// shorter than `frames` is padded with silence.
+    pub fn render_interleaved(
+        &self,
+        listener: &Listener,
+        sources: &[(Emitter, &[f32])],
+        frames: usize,
+    ) -> Vec<f32> {
+        let channels = self.layout.speakers.len();
+        let mut out = vec![0.0f32; frames * channels];
+        for (emitter, samples) in sources {
+            let gains = spatial_gains(listener, emitter, &self.layout, &self.attenuation);
+            for (frame, sample) in samples.iter().take(frames).copied().enumerate() {
+                for (ch, (_, gain)) in gains.iter().enumerate() {
+                    out[frame * channels + ch] += gain * sample;
+                }
+            }
+        }
+        out
+    }
+}
+
+/// A real audio output for a [`SpeakerLayout`]: the bridge from this
+/// crate's mixed samples to `audio-driver`'s device stream (the one
+/// dependency edge a `*-core` is allowed on its own `*-driver` — see
+/// docs/dependency-rules.md rule 1). Owns an open
+/// `audio-driver::AudioStream` with one stream channel per speaker, in
+/// speaker order — exactly the interleaving [`Mixer::render_interleaved`]
+/// produces.
+pub struct AudioOutput {
+    stream: meridian_audio_driver::AudioStream,
+}
+
+impl AudioOutput {
+    /// Opens the default output device with one channel per speaker in
+    /// `layout`. Async because device enumeration is genuine I/O
+    /// (`audio-driver::AudioDevice::new`, ADR 009); everything after the
+    /// device exists is synchronous.
+    pub async fn open(
+        layout: &SpeakerLayout,
+        sample_rate: u32,
+    ) -> Result<Self, meridian_audio_driver::AudioDeviceError> {
+        let device = meridian_audio_driver::AudioDevice::new().await?;
+        let stream = device.open_stream(meridian_audio_driver::AudioStreamConfig {
+            sample_rate,
+            channels: layout.speakers.len() as u16,
+            buffer_frames: None,
+        })?;
+        Ok(Self { stream })
+    }
+
+    /// Pushes interleaved samples (as produced by
+    /// [`Mixer::render_interleaved`]) for playback. Blocks when the
+    /// stream's ring buffer is full — the intended backpressure: a loop
+    /// that renders a block and pushes it runs at the hardware's real
+    /// playback rate.
+    pub fn push_interleaved(&self, samples: &[f32]) {
+        self.stream.push_samples(samples);
+    }
+
+    /// `true` if `sample_count` more samples fit without blocking.
+    pub fn can_push(&self, sample_count: usize) -> bool {
+        self.stream.can_push(sample_count)
+    }
 }
 
 /// A single DSP effect: mutates a buffer of samples in place.
@@ -470,6 +543,80 @@ impl DspGraph {
     pub fn process(&mut self, samples: &mut [f32]) {
         for node in &mut self.nodes {
             node.process(samples);
+        }
+    }
+}
+
+#[cfg(test)]
+mod render_and_output_tests {
+    use super::*;
+
+    fn listener() -> Listener {
+        Listener {
+            frame: Motor3::identity(),
+        }
+    }
+
+    fn emitter_at(position: Vec3) -> Emitter {
+        Emitter {
+            frame: Motor3::translation(position),
+        }
+    }
+
+    #[test]
+    fn render_interleaved_matches_mix_per_frame() {
+        let mixer = Mixer::new(SpeakerLayout::stereo_headphones());
+        let emitter = emitter_at(Vec3::new(1.0, 0.0, 2.0));
+        let source = [0.25f32, -0.5, 1.0];
+
+        let out = mixer.render_interleaved(&listener(), &[(emitter, &source)], source.len());
+        assert_eq!(out.len(), source.len() * 2);
+
+        for (frame, sample) in source.iter().enumerate() {
+            let per_channel = mixer.mix(&listener(), &[(emitter, *sample)]);
+            assert!((out[frame * 2] - per_channel[0].1).abs() < 1e-6);
+            assert!((out[frame * 2 + 1] - per_channel[1].1).abs() < 1e-6);
+        }
+    }
+
+    #[test]
+    fn render_interleaved_sums_multiple_sources() {
+        let mixer = Mixer::new(SpeakerLayout::mono());
+        let a = emitter_at(Vec3::new(1.0, 0.0, 0.0));
+        let b = emitter_at(Vec3::new(1.0, 0.0, 0.0));
+        let source = [0.5f32];
+
+        let one = mixer.render_interleaved(&listener(), &[(a, &source)], 1);
+        let two = mixer.render_interleaved(&listener(), &[(a, &source), (b, &source)], 1);
+        assert!((two[0] - 2.0 * one[0]).abs() < 1e-6);
+    }
+
+    #[test]
+    fn render_interleaved_pads_short_sources_with_silence() {
+        let mixer = Mixer::new(SpeakerLayout::stereo_headphones());
+        let emitter = emitter_at(Vec3::new(1.0, 0.0, 0.0));
+        let source = [1.0f32];
+
+        let out = mixer.render_interleaved(&listener(), &[(emitter, &source)], 3);
+        assert_eq!(out.len(), 6);
+        assert!(out[0] > 0.0);
+        assert_eq!(&out[2..], &[0.0, 0.0, 0.0, 0.0]);
+    }
+
+    #[tokio::test]
+    async fn audio_output_opens_for_every_layout_or_skips() {
+        for layout in [SpeakerLayout::mono(), SpeakerLayout::stereo_headphones()] {
+            match AudioOutput::open(&layout, 48000).await {
+                Ok(output) => {
+                    let silence = vec![0.0f32; 64 * layout.speakers.len()];
+                    output.push_interleaved(&silence);
+                    assert!(output.can_push(1));
+                }
+                Err(err) => {
+                    eprintln!("skipping: no audio device available ({err})");
+                    return;
+                }
+            }
         }
     }
 }

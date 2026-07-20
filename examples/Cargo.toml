@@ -47,6 +47,10 @@ name = "graphics_validation"
 path = "examples/graphics_validation.rs"
 
 [[example]]
+name = "audible_scene"
+path = "examples/audible_scene.rs"
+
+[[example]]
 name = "runtime_loop"
 path = "examples/runtime_loop.rs"
 

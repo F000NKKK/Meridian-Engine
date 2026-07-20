@@ -4,9 +4,10 @@
 //! `Runtime::tick` advances physics then recomputes audio gains from the
 //! result, and `EventSystem` decouples that from anything downstream that
 //! wants to react to a completed frame. `graphics-core` isn't part of this
-//! loop yet: rendering has nothing to submit to without a real
-//! `graphics-driver` backend (blocked on the `wgpu` decision — see
-//! docs/roadmap.md). The exhaustive numeric checks live in
+//! loop yet: it has no scene/material vocabulary for `Runtime` to submit
+//! (the driver side is real — see `spinning_cube`); for real audio
+//! *output* composed with this same loop, see `audible_scene`. The
+//! exhaustive numeric checks live in
 //! `meridian-engine-core`'s own test suite (`cargo test -p
 //! meridian-engine-core`); this is the human-readable version.
 //!

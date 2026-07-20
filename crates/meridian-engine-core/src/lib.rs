@@ -17,7 +17,12 @@
 //! with its own `graphics-driver::Device`/`Surface` and reuses
 //! [`Runtime::tick`]'s [`Time`] for animation/physics timing (see the
 //! `spinning_cube` example), rather than `Runtime` gaining rendering
-//! awareness before `graphics-core` has anything to submit.
+//! awareness before `graphics-core` has anything to submit. Real audio
+//! *output* follows the same composition pattern: the app owns an
+//! `audio-core::AudioOutput` (the core→own-driver bridge over
+//! `audio-driver`) and feeds it `Mixer::render_interleaved` blocks each
+//! tick — see the `audible_scene` example; `Runtime` itself stays
+//! driver-free on the audio side too.
 //!
 //! [`Runtime::tick`] advances physics, then recomputes audio gains from
 //! the physics-updated emitter frames, in that order — not through

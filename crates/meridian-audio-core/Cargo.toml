@@ -11,3 +11,6 @@ description = "Spatial audio built on the GAC: mixer, DSP graph, listener and em
 meridian-gac-core = { workspace = true }
 meridian-audio-driver = { workspace = true }
 meridian-resource-core = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true }
