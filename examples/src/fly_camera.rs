@@ -79,7 +79,7 @@ impl FlyCamera {
     /// — a locked cursor stops generating position deltas entirely.
     pub fn update(&mut self, input: &InputState, dt: f32) {
         let (dx, dy) = input.raw_mouse_delta();
-        self.yaw -= dx * self.look_sensitivity;
+        self.yaw += dx * self.look_sensitivity;
         self.pitch = (self.pitch - dy * self.look_sensitivity).clamp(
             -core::f32::consts::FRAC_PI_2 + 0.01,
             core::f32::consts::FRAC_PI_2 - 0.01,
@@ -88,7 +88,7 @@ impl FlyCamera {
         let cy = self.yaw.cos();
         let sy = self.yaw.sin();
         let forward_horiz = Vec3::new(cy, 0.0, sy);
-        let right = Vec3::new(sy, 0.0, -cy);
+        let right = Vec3::new(-sy, 0.0, cy);
         let mut movement = Vec3::ZERO;
         if input.is_key_down(KeyCode::W) {
             movement = movement + forward_horiz;
@@ -167,7 +167,7 @@ mod fly_camera_tests {
     fn expected_basis(yaw: f32) -> (Vec3, Vec3, Vec3) {
         let cy = yaw.cos();
         let sy = yaw.sin();
-        (Vec3::new(cy, 0.0, sy), Vec3::new(sy, 0.0, -cy), Vec3::Y)
+        (Vec3::new(cy, 0.0, sy), Vec3::new(-sy, 0.0, cy), Vec3::Y)
     }
 
     #[test]
@@ -345,7 +345,7 @@ mod fly_camera_tests {
     #[test]
     fn diagonal_movement_preserves_length() {
         let pos = simulate_at(0.0, 1.0, 3.0, &[KeyCode::W, KeyCode::D]);
-        let expected = (Vec3::X - Vec3::Z).normalize() * 3.0;
+        let expected = (Vec3::X + Vec3::Z).normalize() * 3.0;
         assert!((pos - expected).length() < 1e-5, "W+D diagonal got {:?}", pos);
     }
 
