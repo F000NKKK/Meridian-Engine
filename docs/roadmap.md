@@ -53,11 +53,35 @@ Steps 4-6 are real and tested:
   divide emulated from 32-bit words — WGSL has no native `i64`), proven
   bit-for-bit identical to the CPU `Fixed` implementation across ~1000
   operand pairs per operation, not just numerically close (`cargo test -p
-  meridian-gac-compute fixed_wgsl`). This is phase 1 of deterministic GPU
-  physics: `Fixed::sqrt` and the CORDIC `sin_cos`/`atan2` aren't ported
-  yet (tracked follow-up, `fixed_wgsl`'s own module doc has the scope
-  note), and no domain kernel (a real physics step, not just raw
-  arithmetic) dispatches through it yet either.
+  meridian-gac-compute fixed_wgsl`) — `sqrt` now included (Newton's
+  method ported from `isqrt_u64`, same bit-exactness proof). The CORDIC
+  `sin_cos`/`atan2` still aren't ported (tracked follow-up,
+  `fixed_wgsl`'s own module doc has the scope note).
+
+  A real domain kernel now dispatches through it: `meridian-physics-compute`
+  (a new `meridian-<domain>-compute` adapter crate per rule 11, mirroring
+  `gac-compute`'s shape one layer up) has a GPU soft-body (mass-spring)
+  integration kernel, both flavors — `float` (numerically close to
+  `SoftBodyIntegrator::step`, not bit-exact — GPU float summation order
+  can differ from the CPU's) and `Fixed` (proven bit-exact against
+  `FixedSoftBodyIntegrator::step` across 60 steps, `cargo test -p
+  meridian-physics-compute fixed::`). The reformulation from "iterate
+  springs, scatter into both endpoints" (the CPU version, a data race if
+  parallelized directly) to "iterate particles, gather from adjacent
+  springs" (the GPU version) turned out to have a real bit-exactness trap
+  for the `Fixed` flavor: `Fixed::mul`'s `>>16` truncation rounds toward
+  negative infinity, so recomputing a spring's direction independently
+  from each endpoint's own sign-flipped position delta and then
+  multiplying is *not* exactly the negation of the other endpoint's
+  result (they can differ by one raw bit whenever the discarded low bits
+  are nonzero — vector subtraction/negation are exact, but multiplication
+  isn't, under this rounding rule). The fix — both endpoints compute the
+  same canonical direction and spring force, and only the non-canonical
+  endpoint negates the *finished* force vector (exact) rather than
+  re-deriving it from a negated direction (not exact) — is documented in
+  `meridian-physics-compute::generic`'s module doc as a worked example of
+  why "provably symmetric on paper" isn't the same as "bit-exact in
+  fixed-point," for the next time this class of reformulation comes up.
 
   `compute-runtime` also has a real hybrid CPU+GPU dispatch mechanism now:
   `HybridKernel` (`run_cpu`/`run_gpu`, one method per backend, each
