@@ -35,6 +35,8 @@
 
 use std::sync::Mutex;
 
+pub mod fixed_wgsl;
+
 use meridian_compute_runtime::{ComputeContext, ComputeKernel, DispatchSize};
 use meridian_gac_core::Motor3;
 use meridian_gac_core::fixed_ga::FixedMotor3;
