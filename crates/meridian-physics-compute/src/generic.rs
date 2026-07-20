@@ -114,7 +114,10 @@ mod tests {
                 let connected = body.springs.iter().any(|s| {
                     (s.a == particle && s.b == neighbor) || (s.b == particle && s.a == neighbor)
                 });
-                assert!(connected, "particle {particle} claims neighbor {neighbor} with no matching spring");
+                assert!(
+                    connected,
+                    "particle {particle} claims neighbor {neighbor} with no matching spring"
+                );
             }
         }
     }

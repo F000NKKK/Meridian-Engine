@@ -204,12 +204,7 @@ impl SoftBodyGpuKernel {
         for component in [gravity.x, gravity.y, gravity.z, dt] {
             params_bytes.extend_from_slice(&component.to_le_bytes());
         }
-        for component in [
-            ground.normal.x,
-            ground.normal.y,
-            ground.normal.z,
-            ground.d,
-        ] {
+        for component in [ground.normal.x, ground.normal.y, ground.normal.z, ground.d] {
             params_bytes.extend_from_slice(&component.to_le_bytes());
         }
         params_bytes.extend_from_slice(&restitution.to_le_bytes());
@@ -265,11 +260,13 @@ impl SoftBodyGpuKernel {
         gpu.write_buffer(&positions_in, &positions_bytes);
         let velocities_in = gpu.allocate_buffer(velocities_bytes.len(), BufferUsage::Storage);
         gpu.write_buffer(&velocities_in, &velocities_bytes);
-        let inverse_masses_buf = gpu.allocate_buffer(inverse_mass_bytes.len(), BufferUsage::Storage);
+        let inverse_masses_buf =
+            gpu.allocate_buffer(inverse_mass_bytes.len(), BufferUsage::Storage);
         gpu.write_buffer(&inverse_masses_buf, &inverse_mass_bytes);
         let edge_offsets_buf = gpu.allocate_buffer(edge_offsets_bytes.len(), BufferUsage::Storage);
         gpu.write_buffer(&edge_offsets_buf, &edge_offsets_bytes);
-        let edge_neighbor_buf = gpu.allocate_buffer(edge_neighbor_bytes.len(), BufferUsage::Storage);
+        let edge_neighbor_buf =
+            gpu.allocate_buffer(edge_neighbor_bytes.len(), BufferUsage::Storage);
         gpu.write_buffer(&edge_neighbor_buf, &edge_neighbor_bytes);
         let edge_rest_length_buf =
             gpu.allocate_buffer(edge_rest_length_bytes.len(), BufferUsage::Storage);

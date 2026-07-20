@@ -55,7 +55,7 @@ ALLOWED = {
         "meridian-resource-core",
     },
     "meridian-physics-compute": {
-        "meridian-graphics-core",
+        "meridian-physics-core",
         "meridian-gac-core",
         "meridian-gac-compute",
         "meridian-compute-runtime",
