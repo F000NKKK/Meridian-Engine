@@ -63,9 +63,14 @@ fn write_report(
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_secs())
         .unwrap_or(0);
-    let path = config
-        .directory
-        .join(format!("crash-{}-{unix_seconds}.txt", config.app_name));
+    // A per-process counter keeps names unique even when several
+    // panics land within the same second (e.g. across threads).
+    static REPORT_INDEX: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    let index = REPORT_INDEX.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let path = config.directory.join(format!(
+        "crash-{}-{unix_seconds}-{index}.txt",
+        config.app_name
+    ));
 
     let mut file = std::fs::File::create(&path)?;
     writeln!(file, "==== Meridian Engine crash report ====")?;
@@ -133,10 +138,13 @@ mod tests {
             .flatten()
             .map(|e| e.path())
             .collect();
-        assert_eq!(reports.len(), 1, "exactly one report expected");
-
-        let content = std::fs::read_to_string(&reports[0]).unwrap();
-        assert!(content.contains("deliberate test panic"));
+        // Other tests' panics also fire the (global) hook, so look for
+        // *this* panic's report rather than assuming it's alone.
+        let content = reports
+            .iter()
+            .map(|p| std::fs::read_to_string(p).unwrap())
+            .find(|c| c.contains("deliberate test panic"))
+            .expect("a report for the deliberate panic must exist");
         assert!(content.contains("location:"));
         assert!(content.contains("backtrace"));
         // The recent-log section exists; its exact contents race with

@@ -271,9 +271,11 @@ pub mod file {
 
             loop {
                 // The producer side is a plain std channel (callers must
-                // never need an async context to log); the async side
-                // polls it with a flush-interval timeout.
-                let message = tokio::task::block_in_place(|| rx.recv_timeout(flush_every));
+                // never need an async context to log). Blocking on it
+                // here is safe: this current-thread runtime exists only
+                // for this loop, and nothing else is pending while we
+                // wait — recv and the awaited writes strictly alternate.
+                let message = rx.recv_timeout(flush_every);
                 match message {
                     Ok(Message::Line { level, line }) => {
                         let _ = writer.write_all(line.as_bytes()).await;
