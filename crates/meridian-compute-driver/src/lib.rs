@@ -159,11 +159,18 @@ pub struct GpuComputeDevice {
     device: meridian_gpu_driver::Device,
 }
 
+/// Why [`GpuComputeDevice::new`] failed — a re-export of
+/// `meridian_gpu_driver::DeviceError` under this crate's own name, so
+/// callers one layer up (`compute-runtime::ComputeContext::with_gpu`)
+/// only ever need to know this crate's error surface, not reach past it
+/// into `gpu-driver` directly for a type name.
+pub type GpuComputeError = meridian_gpu_driver::DeviceError;
+
 impl GpuComputeDevice {
     /// Requests a headless GPU device — see
     /// `meridian_gpu_driver::Device::new`. A real `async fn`; see the
     /// module doc.
-    pub async fn new() -> Result<Self, meridian_gpu_driver::DeviceError> {
+    pub async fn new() -> Result<Self, GpuComputeError> {
         Ok(Self {
             device: meridian_gpu_driver::Device::new().await?,
         })
