@@ -146,8 +146,18 @@ fn soft_body_step(@builtin(global_invocation_id) id: vec3<u32>) {
     let start = edge_offsets[i];
     let end = edge_offsets[i + 1u];
     for (var e: u32 = start; e < end; e = e + 1u) {
-        let j = edge_neighbor[e];
-        let delta = fvec3_sub(read_position_in(j), pos_i);
+        let encoded = edge_neighbor[e];
+        let j = encoded & 0x7FFFFFFFu;
+        let is_a = (encoded & 0x80000000u) != 0u;
+
+        // Canonical a-to-b direction/velocity, computed identically by
+        // both endpoints (subtraction negation is exact, unlike
+        // `Fixed::mul`'s truncating negation) — see this crate's
+        // `generic` module doc for why recomputing per-endpoint and
+        // negating the *direction* before multiplying is not bit-exact,
+        // and why negating the finished `total` instead is.
+        let pos_j = read_position_in(j);
+        let delta = select(fvec3_sub(pos_i, pos_j), fvec3_sub(pos_j, pos_i), is_a);
         let dist = fvec3_length(delta);
         var direction = FVec3(ONE_BITS, 0, 0);
         if (dist > DIRECTION_EPSILON_BITS) {
@@ -160,11 +170,14 @@ fn soft_body_step(@builtin(global_invocation_id) id: vec3<u32>) {
         let stretch = fixed_sub(dist, rest_length);
         let spring_force = fvec3_scale(direction, fixed_mul(stiffness, stretch));
 
-        let relative_velocity = fvec3_sub(read_velocity_in(j), vel_i);
+        let vel_j = read_velocity_in(j);
+        let relative_velocity = select(fvec3_sub(vel_i, vel_j), fvec3_sub(vel_j, vel_i), is_a);
         let closing_speed = fvec3_dot(relative_velocity, direction);
         let damping_force = fvec3_scale(direction, fixed_mul(damping, closing_speed));
 
-        force = fvec3_add(force, fvec3_add(spring_force, damping_force));
+        let total = fvec3_add(spring_force, damping_force);
+        let contribution = select(FVec3(-total.x, -total.y, -total.z), total, is_a);
+        force = fvec3_add(force, contribution);
     }
 
     let acceleration = fvec3_add(fvec3_scale(force, inverse_mass), gravity);
