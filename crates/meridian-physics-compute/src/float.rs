@@ -46,17 +46,21 @@ struct Params {
     _pad1: f32,
 };
 
+// Bound at 8 storage buffers total (the spec-guaranteed minimum for
+// `max_storage_buffers_per_shader_stage`) — `edge_rest_length`/
+// `edge_stiffness`/`edge_damping` are packed into one `edge_params`
+// buffer (`[rest_length, stiffness, damping]` per half-edge) rather than
+// three separate bindings, since 10 separate storage buffers exceeded
+// that limit on real hardware.
 @group(0) @binding(0) var<uniform> params: Params;
 @group(0) @binding(1) var<storage, read> positions_in: array<f32>;
 @group(0) @binding(2) var<storage, read> velocities_in: array<f32>;
 @group(0) @binding(3) var<storage, read> inverse_masses: array<f32>;
 @group(0) @binding(4) var<storage, read> edge_offsets: array<u32>;
 @group(0) @binding(5) var<storage, read> edge_neighbor: array<u32>;
-@group(0) @binding(6) var<storage, read> edge_rest_length: array<f32>;
-@group(0) @binding(7) var<storage, read> edge_stiffness: array<f32>;
-@group(0) @binding(8) var<storage, read> edge_damping: array<f32>;
-@group(0) @binding(9) var<storage, read_write> positions_out: array<f32>;
-@group(0) @binding(10) var<storage, read_write> velocities_out: array<f32>;
+@group(0) @binding(6) var<storage, read> edge_params: array<f32>;
+@group(0) @binding(7) var<storage, read_write> positions_out: array<f32>;
+@group(0) @binding(8) var<storage, read_write> velocities_out: array<f32>;
 
 fn read_position_in(i: u32) -> vec3<f32> {
     return vec3<f32>(positions_in[3u * i], positions_in[3u * i + 1u], positions_in[3u * i + 2u]);
@@ -107,12 +111,16 @@ fn soft_body_step(@builtin(global_invocation_id) id: vec3<u32>) {
         if (dist > DIRECTION_EPSILON) {
             direction = delta / dist;
         }
-        let stretch = dist - edge_rest_length[e];
-        let spring_force = direction * (edge_stiffness[e] * stretch);
+        let rest_length = edge_params[3u * e];
+        let stiffness = edge_params[3u * e + 1u];
+        let damping = edge_params[3u * e + 2u];
+
+        let stretch = dist - rest_length;
+        let spring_force = direction * (stiffness * stretch);
 
         let relative_velocity = read_velocity_in(j) - vel_i;
         let closing_speed = dot(relative_velocity, direction);
-        let damping_force = direction * (edge_damping[e] * closing_speed);
+        let damping_force = direction * (damping * closing_speed);
 
         force = force + spring_force + damping_force;
     }
@@ -229,30 +237,16 @@ impl SoftBodyGpuKernel {
                 .collect(),
             4,
         );
-        let edge_rest_length_bytes: Vec<u8> = pad_or(
-            adjacency
-                .rest_length
-                .iter()
-                .flat_map(|v| v.to_le_bytes())
-                .collect(),
-            4,
-        );
-        let edge_stiffness_bytes: Vec<u8> = pad_or(
-            adjacency
-                .stiffness
-                .iter()
-                .flat_map(|v| v.to_le_bytes())
-                .collect(),
-            4,
-        );
-        let edge_damping_bytes: Vec<u8> = pad_or(
-            adjacency
-                .damping
-                .iter()
-                .flat_map(|v| v.to_le_bytes())
-                .collect(),
-            4,
-        );
+        // Interleaved [rest_length, stiffness, damping] per half-edge —
+        // see the WGSL `edge_params` binding's own comment for why this
+        // is one buffer instead of three.
+        let mut edge_params_bytes = Vec::with_capacity(adjacency.rest_length.len() * 12);
+        for i in 0..adjacency.rest_length.len() {
+            edge_params_bytes.extend_from_slice(&adjacency.rest_length[i].to_le_bytes());
+            edge_params_bytes.extend_from_slice(&adjacency.stiffness[i].to_le_bytes());
+            edge_params_bytes.extend_from_slice(&adjacency.damping[i].to_le_bytes());
+        }
+        let edge_params_bytes = pad_or(edge_params_bytes, 4);
 
         let params_buf = gpu.allocate_buffer(params_bytes.len(), BufferUsage::Uniform);
         gpu.write_buffer(&params_buf, &params_bytes);
@@ -268,14 +262,8 @@ impl SoftBodyGpuKernel {
         let edge_neighbor_buf =
             gpu.allocate_buffer(edge_neighbor_bytes.len(), BufferUsage::Storage);
         gpu.write_buffer(&edge_neighbor_buf, &edge_neighbor_bytes);
-        let edge_rest_length_buf =
-            gpu.allocate_buffer(edge_rest_length_bytes.len(), BufferUsage::Storage);
-        gpu.write_buffer(&edge_rest_length_buf, &edge_rest_length_bytes);
-        let edge_stiffness_buf =
-            gpu.allocate_buffer(edge_stiffness_bytes.len(), BufferUsage::Storage);
-        gpu.write_buffer(&edge_stiffness_buf, &edge_stiffness_bytes);
-        let edge_damping_buf = gpu.allocate_buffer(edge_damping_bytes.len(), BufferUsage::Storage);
-        gpu.write_buffer(&edge_damping_buf, &edge_damping_bytes);
+        let edge_params_buf = gpu.allocate_buffer(edge_params_bytes.len(), BufferUsage::Storage);
+        gpu.write_buffer(&edge_params_buf, &edge_params_bytes);
         let positions_out = gpu.allocate_buffer(positions_bytes.len(), BufferUsage::Storage);
         let velocities_out = gpu.allocate_buffer(velocities_bytes.len(), BufferUsage::Storage);
 
@@ -289,9 +277,7 @@ impl SoftBodyGpuKernel {
                 &inverse_masses_buf,
                 &edge_offsets_buf,
                 &edge_neighbor_buf,
-                &edge_rest_length_buf,
-                &edge_stiffness_buf,
-                &edge_damping_buf,
+                &edge_params_buf,
                 &positions_out,
                 &velocities_out,
             ],
