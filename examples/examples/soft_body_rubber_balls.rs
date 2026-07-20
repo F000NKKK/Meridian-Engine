@@ -15,8 +15,8 @@
 //!   ./build.sh run soft_body_rubber_balls
 
 use meridian_examples::{
-    SOFT_BODY_SHADER, look_at_rotor, mat4_to_bytes, soft_body_render_buffers,
-    soft_body_vertex_layout,
+    GROUND_SHADER, SOFT_BODY_SHADER, ground_quad_buffers, look_at_rotor, mat4_to_bytes,
+    soft_body_render_buffers, soft_body_vertex_layout,
 };
 use meridian_gac_core::generic::Plane;
 use meridian_gac_core::{Motor3, Vec3, icosphere};
@@ -60,6 +60,11 @@ struct GpuState {
     pipeline: RenderPipeline,
     uniform_buffer: Buffer,
     bind_group: BindGroup,
+    ground_pipeline: RenderPipeline,
+    ground_bind_group: BindGroup,
+    ground_vertex_buffer: Buffer,
+    ground_index_buffer: Buffer,
+    ground_index_count: u32,
 }
 
 struct App {
@@ -125,6 +130,25 @@ impl AppHandler for App {
         let uniform_buffer = device.create_buffer(64, BufferUsage::Uniform);
         let bind_group = device.create_uniform_bind_group(&pipeline, &uniform_buffer);
 
+        let ground_shader = device.create_shader("ground", GROUND_SHADER);
+        let ground_pipeline = device.create_render_pipeline(
+            &ground_shader,
+            "vs_main",
+            "fs_main",
+            &soft_body_vertex_layout(),
+            &surface,
+            true,
+        );
+        let ground_bind_group = device.create_uniform_bind_group(&ground_pipeline, &uniform_buffer);
+        let (ground_vertex_bytes, ground_index_bytes, ground_index_count) =
+            ground_quad_buffers(30.0, 0.0);
+        let ground_vertex_buffer =
+            device.create_buffer(ground_vertex_bytes.len(), BufferUsage::Vertex);
+        device.write_buffer(&ground_vertex_buffer, &ground_vertex_bytes);
+        let ground_index_buffer =
+            device.create_buffer(ground_index_bytes.len(), BufferUsage::Index);
+        device.write_buffer(&ground_index_buffer, &ground_index_bytes);
+
         self.gpu = Some(GpuState {
             device,
             surface,
@@ -132,6 +156,11 @@ impl AppHandler for App {
             pipeline,
             uniform_buffer,
             bind_group,
+            ground_pipeline,
+            ground_bind_group,
+            ground_vertex_buffer,
+            ground_index_buffer,
+            ground_index_count,
         });
     }
 
@@ -222,6 +251,13 @@ impl AppHandler for App {
         {
             let mut pass =
                 commands.begin_render_pass(frame.view(), [0.05, 0.05, 0.08, 1.0], Some(&gpu.depth));
+
+            pass.set_pipeline(&gpu.ground_pipeline);
+            pass.set_bind_group(0, &gpu.ground_bind_group);
+            pass.set_vertex_buffer(0, &gpu.ground_vertex_buffer);
+            pass.set_index_buffer_u16(&gpu.ground_index_buffer);
+            pass.draw_indexed(0..gpu.ground_index_count);
+
             pass.set_pipeline(&gpu.pipeline);
             pass.set_bind_group(0, &gpu.bind_group);
 
