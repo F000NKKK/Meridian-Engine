@@ -18,7 +18,7 @@
 //! produces the identical per-particle force `SoftBodyIntegrator::step`
 //! does.
 
-use meridian_gac_core::generic::GaFlavor;
+use meridian_gac_core::generic::{GaFlavor, ScalarLike};
 use meridian_physics_core::soft_body::generic_softbody::SoftBody;
 
 /// The CSR-encoded adjacency `crate::float`/`crate::fixed` upload as GPU
