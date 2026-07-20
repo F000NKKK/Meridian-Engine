@@ -45,6 +45,7 @@ ALLOWED = {
     "meridian-audio-driver": {"meridian-foundation", "meridian-platform-core"},
     "meridian-physics-driver": {"meridian-platform-core"},
     "meridian-graphics-core": {
+        "meridian-foundation",
         "meridian-gac-core",
         "meridian-gac-compute",
         "meridian-memory-core",
