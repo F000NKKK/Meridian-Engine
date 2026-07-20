@@ -391,20 +391,23 @@ mod tests {
             .collect()
     }
 
-    /// [`interesting_values`] minus the extreme bit-pattern values
-    /// (`i32::MAX / 2`, `i32::MIN / 2 + 1`, ...) — those exist
-    /// specifically to stress `fixed_mul`'s 64-bit emulation (which
-    /// legitimately produces a *smaller*-magnitude result after its
-    /// `>> 16`, never overflowing `i32`), but summing two of them
-    /// directly overflows `i32` outright — a real out-of-range condition
-    /// for `Fixed` (and Rust's own debug-mode `Fixed::add`/`Fixed::sub`
-    /// panic on it, same as any other `i32` overflow), not something
-    /// `fixed_add`/`fixed_sub`'s trivial one-instruction WGSL needs
-    /// stress-testing against.
+    /// [`interesting_values`] minus the large-magnitude values — those
+    /// exist specifically to stress `fixed_mul`'s 64-bit emulation
+    /// (which legitimately produces a *smaller*-magnitude result after
+    /// its `>> 16`, never overflowing `i32`), but summing two
+    /// large-enough `Fixed` values overflows `i32` outright (`Fixed`'s
+    /// own doc comment gives the range as "roughly ±32768" — two values
+    /// even moderately close to that limit already overflow when added).
+    /// That's a real out-of-range condition for `Fixed` itself (Rust's
+    /// own debug-mode `Fixed::add`/`Fixed::sub` panic on it, same as any
+    /// other `i32` overflow), not something `fixed_add`/`fixed_sub`'s
+    /// trivial one-instruction WGSL needs stress-testing against — kept
+    /// safely inside range so `a + b`/`a - b` never overflows for any
+    /// pair.
     fn moderate_values() -> Vec<Fixed> {
         interesting_values()
             .into_iter()
-            .filter(|v| v.abs() <= Fixed::from_num(30000.0))
+            .filter(|v| v.abs() <= Fixed::from_num(10000.0))
             .collect()
     }
 
