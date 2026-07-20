@@ -101,8 +101,9 @@ pub fn enabled(level: LogLevel) -> bool {
     (level as u8) <= max_level()
 }
 
-/// The macro back end: formats one line, writes it to stderr and into
-/// the crash-report ring. Use the `log_*!` macros instead of calling
+/// The macro back end: formats one line, writes it to stderr, into the
+/// crash-report ring, and (when [`file::init`] has run) hands it to the
+/// buffered async file sink. Use the `log_*!` macros instead of calling
 /// this directly (they fill in the module path as the target).
 pub fn log(level: LogLevel, target: &str, args: std::fmt::Arguments<'_>) {
     if !enabled(level) {
@@ -112,11 +113,229 @@ pub fn log(level: LogLevel, target: &str, args: std::fmt::Arguments<'_>) {
     let elapsed = sink.start.elapsed().as_secs_f64();
     let line = format!("[{elapsed:9.3}] {} {target}: {args}", level.label());
     eprintln!("{line}");
-    let mut ring = sink.ring.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-    if ring.len() == RING_CAPACITY {
-        ring.pop_front();
+    {
+        let mut ring = sink
+            .ring
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        if ring.len() == RING_CAPACITY {
+            ring.pop_front();
+        }
+        ring.push_back(line.clone());
     }
-    ring.push_back(line);
+    #[cfg(feature = "file-logging")]
+    file::submit(level, line);
+}
+
+/// Buffered, asynchronous file logging (feature `file-logging`; pulls
+/// in `tokio` — the only reason this lives behind a feature is to keep
+/// the crate's zero-dependency default intact for consumers that never
+/// write log files).
+///
+/// [`init`](file::init) spawns one background thread running a
+/// current-thread `tokio` runtime; log lines reach it over a channel
+/// (the game thread never touches the filesystem) and are written
+/// through a buffered writer, flushed on an interval — and immediately
+/// on `Error`, so a crash can't lose the line that explains it. Only
+/// `Error`/`Warn`/`Info` reach the file; `Debug`/`Trace` stay
+/// stderr-only diagnostics.
+///
+/// Retention: on startup and then daily, files matching
+/// `<app_name>-*.log` older than `retention_days` (default 7) are
+/// deleted.
+#[cfg(feature = "file-logging")]
+pub mod file {
+    use super::LogLevel;
+    use std::path::PathBuf;
+    use std::sync::OnceLock;
+
+    /// Configuration for the file sink.
+    #[derive(Debug, Clone)]
+    pub struct FileLogConfig {
+        /// Log file name prefix (typically the binary name).
+        pub app_name: String,
+        /// Directory for log files; created on demand. Default `logs`.
+        pub directory: PathBuf,
+        /// Files older than this are deleted (checked at startup and
+        /// daily). Default 7 days.
+        pub retention_days: u64,
+        /// How often the buffer is flushed to disk. Default 500 ms.
+        pub flush_interval_ms: u64,
+    }
+
+    impl FileLogConfig {
+        pub fn new(app_name: impl Into<String>) -> Self {
+            Self {
+                app_name: app_name.into(),
+                directory: PathBuf::from("logs"),
+                retention_days: 7,
+                flush_interval_ms: 500,
+            }
+        }
+
+        pub fn with_directory(mut self, directory: impl Into<PathBuf>) -> Self {
+            self.directory = directory.into();
+            self
+        }
+
+        pub fn with_retention_days(mut self, days: u64) -> Self {
+            self.retention_days = days;
+            self
+        }
+    }
+
+    enum Message {
+        Line { level: LogLevel, line: String },
+        Flush(std::sync::mpsc::Sender<()>),
+    }
+
+    static FILE_TX: OnceLock<std::sync::mpsc::Sender<Message>> = OnceLock::new();
+
+    /// Starts the async file sink. Second and later calls are no-ops
+    /// (the first configuration wins).
+    pub fn init(config: FileLogConfig) {
+        FILE_TX.get_or_init(|| {
+            let (tx, rx) = std::sync::mpsc::channel::<Message>();
+            std::thread::Builder::new()
+                .name("meridian-log-writer".into())
+                .spawn(move || writer_thread(config, rx))
+                .expect("failed to spawn log writer thread");
+            tx
+        });
+    }
+
+    /// Blocks until every line submitted so far is on disk — call
+    /// before process exit if the last lines matter.
+    pub fn flush() {
+        if let Some(tx) = FILE_TX.get() {
+            let (done_tx, done_rx) = std::sync::mpsc::channel();
+            if tx.send(Message::Flush(done_tx)).is_ok() {
+                let _ = done_rx.recv();
+            }
+        }
+    }
+
+    pub(super) fn submit(level: LogLevel, line: String) {
+        // Debug/Trace never reach the file — Error/Warn/Info only.
+        if level > LogLevel::Info {
+            return;
+        }
+        if let Some(tx) = FILE_TX.get() {
+            let _ = tx.send(Message::Line { level, line });
+        }
+    }
+
+    /// The dedicated writer thread: a current-thread tokio runtime
+    /// draining the channel into a buffered async writer.
+    fn writer_thread(config: FileLogConfig, rx: std::sync::mpsc::Receiver<Message>) {
+        let runtime = match tokio::runtime::Builder::new_current_thread()
+            .enable_time()
+            .build()
+        {
+            Ok(runtime) => runtime,
+            Err(err) => {
+                eprintln!("file logging disabled: failed to start tokio runtime: {err}");
+                return;
+            }
+        };
+        runtime.block_on(async move {
+            use tokio::io::AsyncWriteExt;
+
+            if let Err(err) = tokio::fs::create_dir_all(&config.directory).await {
+                eprintln!(
+                    "file logging disabled: cannot create {:?}: {err}",
+                    config.directory
+                );
+                return;
+            }
+            clean_old_logs(&config).await;
+            let mut last_cleanup = std::time::Instant::now();
+
+            let unix_seconds = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_secs())
+                .unwrap_or(0);
+            let path = config
+                .directory
+                .join(format!("{}-{unix_seconds}.log", config.app_name));
+            let file = match tokio::fs::File::create(&path).await {
+                Ok(file) => file,
+                Err(err) => {
+                    eprintln!("file logging disabled: cannot create {path:?}: {err}");
+                    return;
+                }
+            };
+            let mut writer = tokio::io::BufWriter::new(file);
+            let flush_every = std::time::Duration::from_millis(config.flush_interval_ms.max(1));
+            let mut dirty = false;
+
+            loop {
+                // The producer side is a plain std channel (callers must
+                // never need an async context to log); the async side
+                // polls it with a flush-interval timeout.
+                let message = tokio::task::block_in_place(|| rx.recv_timeout(flush_every));
+                match message {
+                    Ok(Message::Line { level, line }) => {
+                        let _ = writer.write_all(line.as_bytes()).await;
+                        let _ = writer.write_all(b"\n").await;
+                        dirty = true;
+                        // An Error may be the process's last words —
+                        // never leave it sitting in the buffer.
+                        if level == LogLevel::Error {
+                            let _ = writer.flush().await;
+                            dirty = false;
+                        }
+                    }
+                    Ok(Message::Flush(done)) => {
+                        let _ = writer.flush().await;
+                        dirty = false;
+                        let _ = done.send(());
+                    }
+                    Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
+                        if dirty {
+                            let _ = writer.flush().await;
+                            dirty = false;
+                        }
+                        if last_cleanup.elapsed() > std::time::Duration::from_secs(24 * 60 * 60) {
+                            clean_old_logs(&config).await;
+                            last_cleanup = std::time::Instant::now();
+                        }
+                    }
+                    Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
+                        let _ = writer.flush().await;
+                        return;
+                    }
+                }
+            }
+        });
+    }
+
+    /// Deletes `<app_name>-*.log` files older than the retention window.
+    async fn clean_old_logs(config: &FileLogConfig) {
+        let retention = std::time::Duration::from_secs(config.retention_days * 24 * 60 * 60);
+        let prefix = format!("{}-", config.app_name);
+        let Ok(mut entries) = tokio::fs::read_dir(&config.directory).await else {
+            return;
+        };
+        while let Ok(Some(entry)) = entries.next_entry().await {
+            let name = entry.file_name();
+            let Some(name) = name.to_str() else { continue };
+            if !name.starts_with(&prefix) || !name.ends_with(".log") {
+                continue;
+            }
+            let Ok(metadata) = entry.metadata().await else {
+                continue;
+            };
+            let old_enough = metadata
+                .modified()
+                .ok()
+                .and_then(|m| m.elapsed().ok())
+                .is_some_and(|age| age > retention);
+            if old_enough {
+                let _ = tokio::fs::remove_file(entry.path()).await;
+            }
+        }
+    }
 }
 
 /// The most recent formatted log lines (oldest first) — what
