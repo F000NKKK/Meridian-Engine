@@ -32,6 +32,26 @@ meridian-ecs-core <--------+     |        meridian-compute-driver   meridian-gra
                                     meridian-engine-core
 ```
 
+`meridian-graphics-driver` and `meridian-compute-driver` both also depend
+on `meridian-gpu-driver` (omitted from the diagram above for
+readability, the same way the `gac-compute` edges below are) — the crate
+that owns the actual `wgpu` device/buffer/shader/compute-pipeline
+mechanics shared between rendering and general GPU compute, so neither
+driver reimplements it independently or reaches into the other's crate
+to get at it:
+
+```text
+        meridian-platform-core
+                   |
+          meridian-gpu-driver
+                   |
+        +----------+----------+
+        |                     |
+graphics-driver          compute-driver
+```
+
+See [ADR 011](adr/011-shared-gpu-driver-crate.md) for the full decision.
+
 `meridian-gac-core` and `meridian-compute-runtime` never depend on each
 other — geometric algebra ("what to compute") and the compute dispatch
 runtime ("where to compute it") are deliberately independent. The adapter

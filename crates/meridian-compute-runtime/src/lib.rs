@@ -16,8 +16,21 @@
 //! this needs a scoped/borrowing job API that doesn't exist yet, so this
 //! uses `compute-driver`'s own `std::thread::scope`-based dispatch
 //! instead of forcing an awkward fit.
+//!
+//! [`ComputeContext::with_gpu`] adds `compute-driver`'s real GPU backend
+//! (`GpuComputeDevice`, built on `wgpu` via `meridian_gpu_driver` — see
+//! that crate's module doc) alongside the CPU one; [`ComputeContext::gpu`]
+//! is what a [`ComputeKernel`] reaches for when it wants to dispatch on
+//! the GPU specifically (this crate doesn't pick a backend on a kernel's
+//! behalf — that decision belongs to whoever composes the `ComputeContext`
+//! in the first place, e.g. `gac-compute`'s `Fixed` kernels choosing GPU
+//! dispatch explicitly). GPU device acquisition is a genuine I/O
+//! operation, so `with_gpu` is a real `async fn` — see
+//! [ADR 009](../../../docs/adr/009-async-io-via-tokio.md).
 
-use meridian_compute_driver::{ComputeBuffer, ComputeCapabilities, ComputeDevice};
+use meridian_compute_driver::{
+    ComputeBuffer, ComputeCapabilities, ComputeDevice, GpuComputeDevice, GpuComputeError,
+};
 
 /// Device-visible dispatch dimensions for a `ComputeKernel` invocation.
 #[derive(Debug, Clone, Copy, Default)]
@@ -50,6 +63,7 @@ impl DispatchSize {
 #[derive(Debug, Clone)]
 pub struct ComputeContext {
     device: ComputeDevice,
+    gpu: Option<GpuComputeDevice>,
     parallel_threshold: usize,
 }
 
@@ -63,6 +77,7 @@ impl ComputeContext {
     pub fn new() -> Self {
         Self {
             device: ComputeDevice::new(),
+            gpu: None,
             parallel_threshold: 1024,
         }
     }
@@ -72,8 +87,28 @@ impl ComputeContext {
         self
     }
 
+    /// Adds `compute-driver`'s real GPU backend to this context — see the
+    /// module doc. A real `async fn` (GPU device acquisition is genuine
+    /// I/O); returns the `wgpu`/driver error as-is if no adapter is
+    /// available rather than silently falling back to CPU-only, so a
+    /// caller that specifically wants GPU dispatch finds out immediately.
+    pub async fn with_gpu(mut self) -> Result<Self, GpuComputeError> {
+        self.gpu = Some(GpuComputeDevice::new().await?);
+        Ok(self)
+    }
+
+    /// The GPU backend, if [`ComputeContext::with_gpu`] added one — what
+    /// a [`ComputeKernel`] reaches for to dispatch on the GPU specifically
+    /// (see the module doc).
+    pub fn gpu(&self) -> Option<&GpuComputeDevice> {
+        self.gpu.as_ref()
+    }
+
     pub fn capabilities(&self) -> ComputeCapabilities {
-        self.device.capabilities()
+        match &self.gpu {
+            Some(gpu) => gpu.capabilities(),
+            None => self.device.capabilities(),
+        }
     }
 
     pub fn allocate_buffer(&self, byte_len: usize) -> ComputeBuffer {
@@ -170,8 +205,28 @@ mod tests {
     }
 
     #[test]
-    fn context_capabilities_report_no_gpu_yet() {
+    fn context_capabilities_report_no_gpu_by_default() {
         assert!(ComputeContext::new().capabilities().gpu.is_none());
+    }
+
+    /// Needs a real adapter; some CI/sandboxed environments have none —
+    /// skip rather than fail, matching every other GPU-touching test in
+    /// this workspace.
+    #[tokio::test]
+    async fn context_with_gpu_reports_a_real_device_name() {
+        let ctx = match ComputeContext::new().with_gpu().await {
+            Ok(ctx) => ctx,
+            Err(err) => {
+                eprintln!("skipping: no GPU device available ({err})");
+                return;
+            }
+        };
+        assert!(ctx.gpu().is_some());
+        let gpu = ctx
+            .capabilities()
+            .gpu
+            .expect("with_gpu succeeded, so capabilities().gpu must be Some");
+        assert!(!gpu.device_name.is_empty());
     }
 
     #[test]
