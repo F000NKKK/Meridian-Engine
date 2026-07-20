@@ -392,6 +392,41 @@ macro_rules! log_trace {
 mod tests {
     use super::*;
 
+    #[cfg(feature = "file-logging")]
+    #[test]
+    fn file_sink_writes_flushes_and_cleans_old_logs() {
+        let dir = std::env::temp_dir().join(format!("meridian-log-test-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+
+        // A stale log that the retention pass must delete: mtime can't
+        // be set portably without external crates, so use retention of
+        // zero days — everything pre-existing is "too old".
+        let stale = dir.join("file-log-test-1.log");
+        std::fs::write(&stale, "old").unwrap();
+
+        set_max_level(LogLevel::Info);
+        file::init(
+            file::FileLogConfig::new("file-log-test")
+                .with_directory(&dir)
+                .with_retention_days(0),
+        );
+        crate::log_info!("file sink info line");
+        crate::log_error!("file sink error line");
+        crate::log_debug!("file sink debug line must not reach the file");
+        file::flush();
+
+        assert!(!stale.exists(), "retention must remove the stale file");
+        let current: Vec<_> = std::fs::read_dir(&dir).unwrap().flatten().collect();
+        assert_eq!(current.len(), 1, "exactly the current log file");
+        let content = std::fs::read_to_string(current[0].path()).unwrap();
+        assert!(content.contains("file sink info line"));
+        assert!(content.contains("file sink error line"));
+        assert!(!content.contains("debug line must not"));
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
     #[test]
     fn levels_order_most_severe_first() {
         assert!(LogLevel::Error < LogLevel::Warn);
