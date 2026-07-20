@@ -153,29 +153,33 @@ fn soft_body_step(@builtin(global_invocation_id) id: vec3<u32>) {
         if (dist > DIRECTION_EPSILON_BITS) {
             direction = fvec3_scale(delta, fixed_div(ONE_BITS, dist));
         }
-        let stretch = fixed_sub(dist, edge_rest_length[e]);
-        let spring_force = fvec3_scale(direction, fixed_mul(edge_stiffness[e], stretch));
+        let rest_length = edge_params[3u * e];
+        let stiffness = edge_params[3u * e + 1u];
+        let damping = edge_params[3u * e + 2u];
+
+        let stretch = fixed_sub(dist, rest_length);
+        let spring_force = fvec3_scale(direction, fixed_mul(stiffness, stretch));
 
         let relative_velocity = fvec3_sub(read_velocity_in(j), vel_i);
         let closing_speed = fvec3_dot(relative_velocity, direction);
-        let damping_force = fvec3_scale(direction, fixed_mul(edge_damping[e], closing_speed));
+        let damping_force = fvec3_scale(direction, fixed_mul(damping, closing_speed));
 
         force = fvec3_add(force, fvec3_add(spring_force, damping_force));
     }
 
-    let acceleration = fvec3_add(fvec3_scale(force, inverse_mass), params.gravity);
+    let acceleration = fvec3_add(fvec3_scale(force, inverse_mass), gravity);
     var velocity = fvec3_add(vel_i, fvec3_scale(acceleration, params.dt));
     var position = fvec3_add(pos_i, fvec3_scale(velocity, params.dt));
 
-    let separation = fixed_add(fvec3_dot(params.ground_normal, position), params.ground_d);
+    let separation = fixed_add(fvec3_dot(ground_normal, position), params.ground_d);
     if (separation < 0) {
-        position = fvec3_sub(position, fvec3_scale(params.ground_normal, separation));
-        let normal_speed = fvec3_dot(velocity, params.ground_normal);
+        position = fvec3_sub(position, fvec3_scale(ground_normal, separation));
+        let normal_speed = fvec3_dot(velocity, ground_normal);
         if (normal_speed < 0) {
             let restitution_factor = fixed_add(ONE_BITS, params.restitution);
             velocity = fvec3_sub(
                 velocity,
-                fvec3_scale(params.ground_normal, fixed_mul(normal_speed, restitution_factor)),
+                fvec3_scale(ground_normal, fixed_mul(normal_speed, restitution_factor)),
             );
         }
     }
@@ -280,30 +284,16 @@ impl FixedSoftBodyGpuKernel {
                 .collect(),
             4,
         );
-        let edge_rest_length_bytes = pad_or(
-            adjacency
-                .rest_length
-                .iter()
-                .flat_map(|v| v.to_bits().to_le_bytes())
-                .collect(),
-            4,
-        );
-        let edge_stiffness_bytes = pad_or(
-            adjacency
-                .stiffness
-                .iter()
-                .flat_map(|v| v.to_bits().to_le_bytes())
-                .collect(),
-            4,
-        );
-        let edge_damping_bytes = pad_or(
-            adjacency
-                .damping
-                .iter()
-                .flat_map(|v| v.to_bits().to_le_bytes())
-                .collect(),
-            4,
-        );
+        // Interleaved [rest_length, stiffness, damping] per half-edge —
+        // see `crate::float`'s equivalent packing for why this is one
+        // buffer instead of three.
+        let mut edge_params_bytes = Vec::with_capacity(adjacency.rest_length.len() * 12);
+        for i in 0..adjacency.rest_length.len() {
+            edge_params_bytes.extend_from_slice(&adjacency.rest_length[i].to_bits().to_le_bytes());
+            edge_params_bytes.extend_from_slice(&adjacency.stiffness[i].to_bits().to_le_bytes());
+            edge_params_bytes.extend_from_slice(&adjacency.damping[i].to_bits().to_le_bytes());
+        }
+        let edge_params_bytes = pad_or(edge_params_bytes, 4);
 
         let params_buf = gpu.allocate_buffer(params_bytes.len(), BufferUsage::Uniform);
         gpu.write_buffer(&params_buf, &params_bytes);
