@@ -32,6 +32,7 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
+use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use meridian_platform_core::{BackendCapabilities, CpuCapabilities, GpuCapabilities};
 
 /// Why [`AudioDevice::new`] or [`AudioDevice::open_stream`] failed.
@@ -176,20 +177,17 @@ impl AudioDevice {
             .map_err(|e| AudioDeviceError::StreamError(e.to_string()))?;
 
         for cfg in supported {
-            // Check if our desired sample rate is within range.
             if config.sample_rate >= cfg.min_sample_rate().0
                 && config.sample_rate <= cfg.max_sample_rate().0
             {
-                // Check if our desired channel count is within range.
-                let ch_range = cfg.channels();
-                if config.channels >= ch_range.min() && config.channels <= ch_range.max() {
+                let ch = cfg.channels();
+                if config.channels >= ch.min() && config.channels <= ch.max() {
                     let resolved = cfg.with_sample_rate(cpal::SampleRate(config.sample_rate));
                     candidates.push(resolved.config());
                 }
             }
         }
 
-        // Sort by preference: closest channel count match first.
         candidates.sort_by_key(|c| (c.channels() as i32 - config.channels as i32).abs());
         Ok(candidates)
     }
@@ -211,17 +209,16 @@ impl AudioDevice {
 
         let channels = config.channels as usize;
 
-        // Determine the ring buffer capacity (in samples).
-        // We use at least 4 hardware buffer periods worth of slack so the
-        // game thread doesn't need to hit exact hardware timing.
         let hw_buffer_frames = resolved
             .buffer_size()
+            .cloned()
             .and_then(|bs| match bs {
                 cpal::BufferSize::Fixed(n) => Some(n),
                 cpal::BufferSize::Default => None,
             })
             .unwrap_or(1024)
             .max(256);
+
         let ring_frames = config
             .buffer_frames
             .unwrap_or(hw_buffer_frames * 4)
@@ -238,33 +235,33 @@ impl AudioDevice {
             buffer_size: cpal::BufferSize::Default,
         };
 
-        let stream = match resolved.sample_format() {
-            cpal::SampleFormat::F32 => {
-                self.device
-                    .build_output_stream(
-                        &stream_config,
-                        move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
-                            // CPAL calls this on a real-time audio thread.
-                            // We must be fast and non-blocking — try_recv
-                            // only, never send/recv with blocking.
-                            for output_sample in data.iter_mut() {
-                                *output_sample = sample_rx.try_recv().unwrap_or(0.0);
-                            }
-                        },
-                        move |err| {
-                            eprintln!("audio stream error: {err}");
-                            err_flag.store(true, Ordering::SeqCst);
-                        },
-                        None, // block_on option — unused in practice
-                    )
-                    .map_err(|e| AudioDeviceError::StreamError(e.to_string()))?
-            }
+        let mut stream = match resolved.sample_format() {
+            cpal::SampleFormat::F32 => self
+                .device
+                .build_output_stream(
+                    &stream_config,
+                    move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
+                        for output_sample in data.iter_mut() {
+                            *output_sample = sample_rx.try_recv().unwrap_or(0.0);
+                        }
+                    },
+                    move |err| {
+                        eprintln!("audio stream error: {err}");
+                        err_flag.store(true, Ordering::SeqCst);
+                    },
+                    None,
+                )
+                .map_err(|e| AudioDeviceError::StreamError(e.to_string()))?,
             _ => {
                 return Err(AudioDeviceError::UnsupportedConfig(
                     "only f32 sample format is supported".to_string(),
                 ));
             }
         };
+
+        stream
+            .play()
+            .map_err(|e| AudioDeviceError::StreamError(e.to_string()))?;
 
         Ok(AudioStream {
             _stream: stream,
@@ -290,8 +287,6 @@ impl BackendCapabilities for AudioDevice {
 mod tests {
     use super::*;
 
-    /// Every test here needs a real audio device; CI/headless environments
-    /// may have none. Skip rather than fail in that case.
     async fn device_or_skip() -> Option<AudioDevice> {
         match AudioDevice::new().await {
             Ok(device) => Some(device),
@@ -334,7 +329,6 @@ mod tests {
         let stream = device.open_stream(config).unwrap();
         assert_eq!(stream.config().sample_rate, 48000);
         assert_eq!(stream.config().channels, 2);
-        // Stream is dropped here, which stops playback.
     }
 
     #[tokio::test]
@@ -344,10 +338,8 @@ mod tests {
         };
         let config = AudioStreamConfig::default();
         let stream = device.open_stream(config).unwrap();
-        // Push a small buffer of silence.
         let samples = vec![0.0f32; 256];
         stream.push_samples(&samples);
-        // No panic = success. Give the audio thread a moment to drain.
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
     }
 
@@ -362,8 +354,6 @@ mod tests {
             ..Default::default()
         };
         let stream = device.open_stream(config).unwrap();
-        // Buffer is 256 frames * 1 channel = 256 samples minimum,
-        // but with hw_buffer_frames*4 floor it'll be at least 1024.
         assert!(
             stream.available_capacity() > 0,
             "buffer should have capacity"
