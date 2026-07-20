@@ -1,20 +1,38 @@
 //! Low-level compute dispatch abstraction (CPU SIMD backends, GPU compute queues/buffers). Knows nothing about physics, animation or rendering.
 //!
-//! Only a CPU backend exists so far — no GPU backend yet. Planned: `wgpu`
-//! (Vulkan/DX12/Metal in one safe API) rather than hand-written
-//! multi-backend FFI, once `graphics-driver` needs it — see
-//! docs/roadmap.md. The CPU backend is real, not a stub:
+//! Two independent backends. [`ComputeDevice`] (CPU) is real, not a stub:
 //! [`ComputeDevice::dispatch_parallel`] runs work across real OS threads
-//! via `std::thread::scope`, safe, no `unsafe`.
+//! via `std::thread::scope`, safe, no `unsafe`. [`GpuComputeDevice`] is
+//! real too now, built on [`meridian_gpu_driver`] — the crate shared with
+//! `graphics-driver` that owns the actual `wgpu` device/buffer/shader
+//! mechanics (see that crate's module doc and
+//! [ADR 011](../../../docs/adr/011-shared-gpu-driver-crate.md)); this
+//! crate adds nothing on top but the compute-dispatch-shaped API
+//! (`allocate_buffer`/`dispatch`) `compute-runtime::ComputeContext` uses
+//! to reach it (see rule 5 in docs/dependency-rules.md: `compute-runtime`
+//! is the sanctioned path to CPU-SIMD/GPU-compute for domain crates, not
+//! this crate directly). A caller picks a backend explicitly
+//! (`ComputeContext::new` for CPU-only, `ComputeContext::with_gpu` to add
+//! the GPU path alongside it) — there's no automatic fallback between
+//! them.
+//!
+//! **Async on genuine I/O, not on everything** — same policy as every
+//! other driver crate (see
+//! [ADR 009](../../../docs/adr/009-async-io-via-tokio.md)):
+//! [`GpuComputeDevice::new`] (an OS/driver handshake) and
+//! [`GpuComputeDevice::read_buffer`] (waiting on in-flight GPU work) are
+//! real `async fn`s; `ComputeDevice`'s CPU path and GPU allocation/
+//! dispatch-recording calls stay synchronous.
 
 use meridian_platform_core::{BackendCapabilities, CpuCapabilities, GpuCapabilities};
 
 /// Backend capability flags. Embeds `platform-core`'s [`CpuCapabilities`]
-/// (the shape shared with `physics-driver::PhysicsBackend` and future
+/// (the shape shared with `physics-driver::PhysicsBackend` and
 /// `graphics-driver`/`audio-driver` equivalents) rather than redeclaring
-/// `threads`; `gpu` is `None` until a real GPU backend exists — see the
-/// module doc — at which point it becomes `Some(GpuCapabilities { .. })`
-/// with real detected fields, no restructuring needed here.
+/// `threads`; `gpu` is `None` for [`ComputeDevice`] (the CPU backend has
+/// no GPU to report) and `Some(GpuCapabilities { .. })` for
+/// [`GpuComputeDevice`] (real detected fields, via
+/// `meridian_gpu_driver::Device`'s own `BackendCapabilities` impl).
 #[derive(Debug, Clone, Default)]
 pub struct ComputeCapabilities {
     pub cpu: CpuCapabilities,
@@ -31,9 +49,11 @@ impl BackendCapabilities for ComputeCapabilities {
     }
 }
 
-/// A device-visible compute buffer. On the CPU backend this is just owned
-/// bytes; a GPU backend would instead hold a device-memory handle (not
-/// implemented yet).
+/// A CPU-backend compute buffer: owned bytes. [`GpuComputeDevice`] uses
+/// `meridian_gpu_driver::Buffer` instead (a real device-memory handle) —
+/// genuinely different representations for genuinely different backends,
+/// not something worth unifying into one buffer type that would have to
+/// paper over "sometimes owned bytes, sometimes a GPU handle."
 #[derive(Debug, Clone, Default)]
 pub struct ComputeBuffer {
     data: Vec<u8>,

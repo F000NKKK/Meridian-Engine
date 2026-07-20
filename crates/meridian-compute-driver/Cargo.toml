@@ -10,3 +10,4 @@ description = "Low-level compute dispatch abstraction (CPU SIMD backends, GPU co
 [dependencies]
 meridian-platform-core = { workspace = true }
 meridian-gpu-driver = { workspace = true }
+tokio = { workspace = true }
