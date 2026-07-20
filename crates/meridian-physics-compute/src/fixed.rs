@@ -309,14 +309,8 @@ impl FixedSoftBodyGpuKernel {
         let edge_neighbor_buf =
             gpu.allocate_buffer(edge_neighbor_bytes.len(), BufferUsage::Storage);
         gpu.write_buffer(&edge_neighbor_buf, &edge_neighbor_bytes);
-        let edge_rest_length_buf =
-            gpu.allocate_buffer(edge_rest_length_bytes.len(), BufferUsage::Storage);
-        gpu.write_buffer(&edge_rest_length_buf, &edge_rest_length_bytes);
-        let edge_stiffness_buf =
-            gpu.allocate_buffer(edge_stiffness_bytes.len(), BufferUsage::Storage);
-        gpu.write_buffer(&edge_stiffness_buf, &edge_stiffness_bytes);
-        let edge_damping_buf = gpu.allocate_buffer(edge_damping_bytes.len(), BufferUsage::Storage);
-        gpu.write_buffer(&edge_damping_buf, &edge_damping_bytes);
+        let edge_params_buf = gpu.allocate_buffer(edge_params_bytes.len(), BufferUsage::Storage);
+        gpu.write_buffer(&edge_params_buf, &edge_params_bytes);
         let positions_out = gpu.allocate_buffer(positions_bytes.len(), BufferUsage::Storage);
         let velocities_out = gpu.allocate_buffer(velocities_bytes.len(), BufferUsage::Storage);
 
@@ -330,9 +324,7 @@ impl FixedSoftBodyGpuKernel {
                 &inverse_masses_buf,
                 &edge_offsets_buf,
                 &edge_neighbor_buf,
-                &edge_rest_length_buf,
-                &edge_stiffness_buf,
-                &edge_damping_buf,
+                &edge_params_buf,
                 &positions_out,
                 &velocities_out,
             ],
