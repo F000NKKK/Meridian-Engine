@@ -2,11 +2,15 @@
 //! `examples/assets/audio/` (decoded by signature via
 //! `asset-core::AnyAudioDecoder` — MP3/Opus/Vorbis/FLAC/WAV all work,
 //! see ADR 013), and a free-fly camera whose pose *is* the audio
-//! listener: fly around the sphere and the music pans between your ears
-//! and fades with distance (`audio-core`'s VBAP panning + inverse-
-//! distance attenuation — the "ear effect"). `FlyCamera`'s `Motor3`
-//! frame uses the same local-forward-`+X` convention as `audio-core`'s
-//! `Listener`, so the camera frame is handed to the mixer unchanged.
+//! listener: fly around the sphere and the music tracks your head
+//! through `audio-core`'s `BinauralRenderer` — interaural time
+//! difference (the far ear hears ~0.6 ms later), head-shadow filtering
+//! (the far ear loses high frequencies, lows wrap around), rear damping
+//! (quieter and duller behind you) and distance attenuation, all with
+//! per-block parameter ramps so a moving camera never crackles.
+//! `FlyCamera`'s `Motor3` frame uses the same local-forward-`+X`
+//! convention as `audio-core`'s `Listener`, so the camera frame is
+//! handed to the renderer unchanged.
 //!
 //! Audio is fed without ever blocking the render thread: each frame
 //! tops the stream's ring buffer up with `can_push`-guarded ~50 ms
@@ -22,7 +26,7 @@
 //!   ./build.sh run music_sphere
 
 use meridian_asset_core::{AnyAudioDecoder, Decoder};
-use meridian_audio_core::{AudioOutput, Emitter, Listener, Mixer, SpeakerLayout};
+use meridian_audio_core::{AudioOutput, BinauralRenderer, Emitter, Listener, SpeakerLayout};
 use meridian_examples::{
     FlyCamera, GROUND_SHADER, SOFT_BODY_SHADER, ground_quad_buffers, mat4_to_bytes,
     soft_body_render_buffers, soft_body_vertex_layout,
@@ -45,7 +49,7 @@ const CHUNK_SECONDS: f32 = 0.05;
 /// listener pose and topped up into the output stream without blocking.
 struct MusicSource {
     output: AudioOutput,
-    mixer: Mixer,
+    renderer: BinauralRenderer,
     /// The decoded track, downmixed to mono — the emitter is a point
     /// source; its spatialization *is* the stereo image.
     mono: Vec<f32>,
@@ -96,13 +100,13 @@ impl MusicSource {
                 })
                 .collect();
 
-            let mixer = Mixer::new(SpeakerLayout::stereo_headphones());
-            let output = AudioOutput::open(&mixer.layout, audio.sample_rate)
+            let renderer = BinauralRenderer::new(audio.sample_rate);
+            let output = AudioOutput::open(&SpeakerLayout::stereo_headphones(), audio.sample_rate)
                 .await
                 .map_err(|e| e.to_string())?;
             return Ok(Self {
                 output,
-                mixer,
+                renderer,
                 mono,
                 cursor: 0,
                 chunk_frames: (audio.sample_rate as f32 * CHUNK_SECONDS) as usize,
@@ -118,16 +122,15 @@ impl MusicSource {
         let emitter = Emitter {
             frame: Motor3::translation(SPHERE_CENTER),
         };
-        let channels = self.mixer.layout.speakers.len();
-        while self.output.can_push(self.chunk_frames * channels) {
+        while self.output.can_push(self.chunk_frames * 2) {
             let mut chunk = Vec::with_capacity(self.chunk_frames);
             for _ in 0..self.chunk_frames {
                 chunk.push(self.mono[self.cursor]);
                 self.cursor = (self.cursor + 1) % self.mono.len(); // loop the track
             }
             let interleaved =
-                self.mixer
-                    .render_interleaved(listener, &[(emitter, &chunk)], self.chunk_frames);
+                self.renderer
+                    .render(listener, &[(emitter, &chunk)], self.chunk_frames);
             self.output.push_interleaved(&interleaved);
         }
     }
