@@ -136,7 +136,7 @@ fn decode_with_symphonia(bytes: &[u8]) -> Result<AudioData, DecodeError> {
         .next_packet()
         .map_err(|e| DecodeError::Codec(e.to_string()))?
     {
-        if packet.track_id() != track_id {
+        if packet.track_id != track_id {
             continue;
         }
         let decoded = decoder
@@ -216,13 +216,10 @@ impl Decoder<AudioData> for FlacDecoder {
     }
 }
 
-/// Decodes OGG/Opus via the reference `libopus` (see ADR 013 — no mature
-/// pure-Rust Opus decoder exists). Mapping family 0 only (mono/stereo,
-/// which is what `opusenc`/`ffmpeg` produce for plain music files);
-/// output is always 48 kHz, Opus's native decode rate. The `OpusHead`
-/// pre-skip is trimmed from the front; end-trimming from the final
-/// page's granule position is not applied (a few ms of decoder padding
-/// may remain at the tail).
+/// Decodes OGG/Opus — symphonia's OGG demuxer plus the reference
+/// `libopus` registered in [`codec_registry`] (see ADR 013 — no mature
+/// pure-Rust Opus decoder exists). Output is always 48 kHz, Opus's
+/// native decode rate.
 #[derive(Debug, Default)]
 pub struct OpusDecoder;
 
@@ -231,77 +228,7 @@ impl Decoder<AudioData> for OpusDecoder {
 
     fn decode(&self, bytes: &[u8]) -> Result<AudioData, DecodeError> {
         expect_format(bytes, AudioFormat::OggOpus)?;
-
-        let mut reader = ogg::PacketReader::new(std::io::Cursor::new(bytes));
-        let head = reader
-            .read_packet()
-            .map_err(|e| DecodeError::Codec(e.to_string()))?
-            .ok_or(DecodeError::Malformed("empty OGG stream"))?;
-        if head.data.len() < 19 || !head.data.starts_with(b"OpusHead") {
-            return Err(DecodeError::Malformed("first OGG packet is not OpusHead"));
-        }
-        let channel_count = head.data[9];
-        let pre_skip = u16::from_le_bytes([head.data[10], head.data[11]]) as usize;
-        let mapping_family = head.data[18];
-        if mapping_family != 0 {
-            return Err(DecodeError::Unsupported(
-                "Opus mapping family other than 0 (mono/stereo)",
-            ));
-        }
-        let channels = match channel_count {
-            1 => opus::Channels::Mono,
-            2 => opus::Channels::Stereo,
-            _ => {
-                return Err(DecodeError::Malformed(
-                    "OpusHead channel count invalid for mapping family 0",
-                ));
-            }
-        };
-
-        // OpusTags is mandatory as the second packet; tolerate it missing.
-        let mut pending = reader
-            .read_packet()
-            .map_err(|e| DecodeError::Codec(e.to_string()))?;
-        if let Some(packet) = &pending {
-            if packet.data.starts_with(b"OpusTags") {
-                pending = None;
-            }
-        }
-
-        let mut decoder = opus::Decoder::new(48_000, channels)
-            .map_err(|e| DecodeError::Codec(e.to_string()))?;
-        // 120 ms at 48 kHz — the maximum Opus frame duration.
-        const MAX_FRAME_SAMPLES: usize = 5760;
-        let mut frame = vec![0i16; MAX_FRAME_SAMPLES * channel_count as usize];
-        let mut samples: Vec<i16> = Vec::new();
-
-        loop {
-            let packet = match pending.take() {
-                Some(packet) => packet,
-                None => match reader
-                    .read_packet()
-                    .map_err(|e| DecodeError::Codec(e.to_string()))?
-                {
-                    Some(packet) => packet,
-                    None => break,
-                },
-            };
-            let decoded_per_channel = decoder
-                .decode(&packet.data, &mut frame, false)
-                .map_err(|e| DecodeError::Codec(e.to_string()))?;
-            samples.extend_from_slice(&frame[..decoded_per_channel * channel_count as usize]);
-        }
-
-        let skip = (pre_skip * channel_count as usize).min(samples.len());
-        samples.drain(..skip);
-        if samples.is_empty() {
-            return Err(DecodeError::Malformed("no decodable Opus packets"));
-        }
-        Ok(AudioData {
-            sample_rate: 48_000,
-            channels: channel_count as u16,
-            samples,
-        })
+        decode_with_symphonia(bytes)
     }
 }
 
