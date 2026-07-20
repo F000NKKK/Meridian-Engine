@@ -141,7 +141,7 @@ impl App {
             FixedVec3::ZERO,
             Plane {
                 normal: fv3(0.0, 1.0, 0.0),
-                d: Fixed::from_num(-100.0),
+                d: Fixed::from_num(100.0),
             },
             Fixed::from_num(0.3),
         );

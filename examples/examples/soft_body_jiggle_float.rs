@@ -112,7 +112,7 @@ impl App {
             Vec3::ZERO,
             Plane {
                 normal: Vec3::Y,
-                d: -100.0,
+                d: 100.0,
             },
             0.3,
         );
