@@ -11,3 +11,6 @@ description = "Low-level audio device abstraction: output streams, buffers and p
 meridian-platform-core = { workspace = true }
 cpal = { workspace = true }
 crossbeam-channel = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true }

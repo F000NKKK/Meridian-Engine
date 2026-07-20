@@ -4,8 +4,8 @@
 //! and `winit` for windowing: hand-writing FFI to ALSA/PulseAudio/WASAPI/
 //! CoreAudio would be a multi-month undertaking with three or more
 //! independent classes of platform bugs; `cpal` is to audio output what
-//! `winit` is to windowing (see the workspace `Cargo.toml`'s `cpal` entry
-//! for the full rationale).
+//! `winit` is to windowing (see ADR 012 and the workspace `Cargo.toml`'s
+//! `cpal` entry for the full rationale).
 //!
 //! The design follows the same driver/core separation as every other
 //! subsystem in this workspace (see ADR 005): `audio-driver` knows about
@@ -87,7 +87,6 @@ impl Default for AudioStreamConfig {
 /// hardware on a real-time callback thread.
 ///
 /// Dropping the stream stops the audio output.
-#[derive(Debug)]
 pub struct AudioStream {
     /// The CPAL stream handle. Kept alive for the stream's lifetime.
     _stream: cpal::Stream,
@@ -158,7 +157,8 @@ impl AudioDevice {
     /// Returns the human-readable name of this audio device.
     pub fn name(&self) -> Result<String, AudioDeviceError> {
         self.device
-            .name()
+            .description()
+            .map(|d| d.name().to_string())
             .map_err(|e| AudioDeviceError::StreamError(e.to_string()))
     }
 
@@ -169,26 +169,25 @@ impl AudioDevice {
         &self,
         config: &AudioStreamConfig,
     ) -> Result<Vec<cpal::SupportedStreamConfig>, AudioDeviceError> {
-        let mut candidates: Vec<cpal::SupportedStreamConfig> = Vec::new();
-
         let supported = self
             .device
             .supported_output_configs()
             .map_err(|e| AudioDeviceError::StreamError(e.to_string()))?;
 
-        for cfg in supported {
-            if config.sample_rate >= cfg.min_sample_rate().0
-                && config.sample_rate <= cfg.max_sample_rate().0
-            {
-                let ch = cfg.channels();
-                if config.channels >= ch.min() && config.channels <= ch.max() {
-                    let resolved = cfg.with_sample_rate(cpal::SampleRate(config.sample_rate));
-                    candidates.push(resolved.config());
-                }
-            }
-        }
+        let mut candidates: Vec<cpal::SupportedStreamConfig> = supported
+            .filter(|cfg| {
+                config.sample_rate >= cfg.min_sample_rate()
+                    && config.sample_rate <= cfg.max_sample_rate()
+            })
+            .map(|cfg| cfg.with_sample_rate(config.sample_rate))
+            .collect();
 
-        candidates.sort_by_key(|c| (c.channels() as i32 - config.channels as i32).abs());
+        candidates.sort_by_key(|c| {
+            (
+                (c.channels() as i32 - config.channels as i32).abs(),
+                c.sample_format() != cpal::SampleFormat::F32,
+            )
+        });
         Ok(candidates)
     }
 
@@ -200,24 +199,23 @@ impl AudioDevice {
     /// doesn't wait on I/O once the device is known).
     pub fn open_stream(&self, config: AudioStreamConfig) -> Result<AudioStream, AudioDeviceError> {
         let supported = self.supported_output_configs(&config)?;
-        let resolved = supported.into_iter().next().ok_or_else(|| {
-            AudioDeviceError::UnsupportedConfig(format!(
-                "no supported config for {} Hz, {} channels",
-                config.sample_rate, config.channels
-            ))
-        })?;
+        let resolved = supported
+            .into_iter()
+            .find(|c| c.channels() == config.channels)
+            .ok_or_else(|| {
+                AudioDeviceError::UnsupportedConfig(format!(
+                    "no supported config for {} Hz, {} channels",
+                    config.sample_rate, config.channels
+                ))
+            })?;
 
         let channels = config.channels as usize;
 
-        let hw_buffer_frames = resolved
-            .buffer_size()
-            .cloned()
-            .and_then(|bs| match bs {
-                cpal::BufferSize::Fixed(n) => Some(n),
-                cpal::BufferSize::Default => None,
-            })
-            .unwrap_or(1024)
-            .max(256);
+        let hw_buffer_frames = match *resolved.buffer_size() {
+            cpal::SupportedBufferSize::Range { min, max } => 1024u32.clamp(min.max(1), max.max(1)),
+            cpal::SupportedBufferSize::Unknown => 1024,
+        }
+        .max(256);
 
         let ring_frames = config
             .buffer_frames
@@ -231,15 +229,15 @@ impl AudioDevice {
 
         let stream_config = cpal::StreamConfig {
             channels: config.channels,
-            sample_rate: cpal::SampleRate(config.sample_rate),
+            sample_rate: config.sample_rate,
             buffer_size: cpal::BufferSize::Default,
         };
 
-        let mut stream = match resolved.sample_format() {
+        let stream = match resolved.sample_format() {
             cpal::SampleFormat::F32 => self
                 .device
                 .build_output_stream(
-                    &stream_config,
+                    stream_config,
                     move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
                         for output_sample in data.iter_mut() {
                             *output_sample = sample_rx.try_recv().unwrap_or(0.0);
@@ -340,7 +338,7 @@ mod tests {
         let stream = device.open_stream(config).unwrap();
         let samples = vec![0.0f32; 256];
         stream.push_samples(&samples);
-        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        std::thread::sleep(std::time::Duration::from_millis(50));
     }
 
     #[tokio::test]

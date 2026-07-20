@@ -118,12 +118,14 @@ broad phase, sphere-sphere/sphere-cuboid/cuboid-cuboid (SAT) narrow phase
 (see below for the `Cuboid` collider shape), an impulse-based constraint
 solver (linear *and* angular — see below), semi-implicit Euler
 integration. `graphics-driver` is real now, headless-only — see "Not yet
-decided" below for the `wgpu` details. `audio-driver` is still a
-scaffold: a real *output device* is its own OS-boundary problem, not a
-GPU problem, so it isn't unblocked by `wgpu`/`winit`, and no ecosystem-
-standard crate has been evaluated for it yet the way `winit` was for
-windowing (see [ADR 010](adr/010-windowing-via-winit.md)); `audio-core`
-itself doesn't need `audio-driver` to be real to be useful — see next.
+decided" below for the `wgpu` details. `audio-driver` is real, backed by
+`cpal` (see [ADR 012](adr/012-audio-output-via-cpal.md)): async device
+enumeration per ADR 009, and an `AudioStream` that bridges cpal's
+real-time callback model into a push model — the game thread pushes
+interleaved `f32` samples into a bounded ring buffer, the hardware
+callback drains it, blocking-on-full is the backpressure. Only `f32`
+output for now; `audio-core` never appears in its dependency graph — see
+next.
 
 **GA is used in physics where it actually matters, not decoratively**:
 angular velocity/torque are `gac-core::Bivector3` (angular quantities
