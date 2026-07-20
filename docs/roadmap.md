@@ -10,6 +10,20 @@ parent/child transform-hierarchy milestone below (`cargo test -p
 meridian-gac-core`; runnable end to end via `./build.sh run
 gac_validation`).
 
+`meridian-foundation` also owns the workspace's diagnostics: the unified
+`logging` sink (`log_error!`..`log_trace!` macros, stderr + an in-memory
+ring, and — behind the `file-logging` feature — a buffered async file
+sink on a dedicated tokio thread with Error/Warn/Info file levels and
+7-day-default retention cleanup) and `crash_reporting` (a panic hook
+writing post-mortem files: message, location, backtrace, the recent-log
+tail). Every workspace error type implements `foundation::EngineError`;
+drivers and windowed examples log through the sink instead of scattered
+`eprintln!`s, and every windowed example installs the crash hook and
+recovers a lost/outdated swapchain by reconfiguring the surface instead
+of silently skipping frames forever (the "gray window" failure). See
+dependency-rules.md rule 0 for why foundation is the open bottom of the
+graph.
+
 Step 3 (`memory-core`/`task-core`/`platform-core`) is also real and tested:
 - `meridian-memory-core` — generational `ResourcePool<T>` (stale-handle
   detection via generation bump on reuse) and `FrameArena<T>`/
