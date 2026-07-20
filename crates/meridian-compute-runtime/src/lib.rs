@@ -159,7 +159,7 @@ impl ComputeContext {
     /// see the module doc for why this needs `kernel: Arc<K>` rather than
     /// `&K` (the CPU half runs on a `tokio::task::spawn_blocking` thread,
     /// which requires `'static`) and for the mechanism in general. A
-    /// no-op (`Ok`, does nothing) if `count == 0`. Falls back to
+    /// no-op if `count == 0`. Falls back to
     /// `CpuOnly` behavior regardless of `split` if this context has no
     /// GPU backend (see [`ComputeContext::with_gpu`]) — a caller that
     /// wants a hybrid dispatch to *require* GPU should check
@@ -480,10 +480,13 @@ mod tests {
         }
 
         async fn run_gpu(&self, context: &ComputeContext, range: Range<usize>) {
-            let gpu = context.gpu().expect("run_hybrid only calls run_gpu when a GPU backend exists");
+            let gpu = context
+                .gpu()
+                .expect("run_hybrid only calls run_gpu when a GPU backend exists");
             let slice = &self.input[range.clone()];
             let bytes: Vec<u8> = slice.iter().flat_map(|v| v.to_le_bytes()).collect();
-            let buffer = gpu.allocate_buffer(bytes.len(), meridian_gpu_driver::BufferUsage::Storage);
+            let buffer =
+                gpu.allocate_buffer(bytes.len(), meridian_gpu_driver::BufferUsage::Storage);
             gpu.write_buffer(&buffer, &bytes);
             let workgroups = (range.len() as u32).div_ceil(64).max(1);
             gpu.dispatch(&self.pipeline, &buffer, workgroups);
