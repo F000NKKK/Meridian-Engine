@@ -111,7 +111,7 @@ impl BinauralSourceState {
 }
 
 /// Headphone ("ear effect") spatializer — the stereo-only, stateful
-/// upgrade over [`Mixer::render_interleaved`]'s amplitude panning.
+/// upgrade over [`Mixer::render_interleaved`](crate::Mixer::render_interleaved)'s amplitude panning.
 /// Models, per source:
 ///
 /// - **ITD** (interaural time difference): the far ear hears the source
@@ -122,7 +122,7 @@ impl BinauralSourceState {
 ///   highs don't. The near ear stays (almost) transparent.
 /// - **Behind the listener**: mildly quieter and duller (lower cutoff on
 ///   both ears) — the pinna-less approximation of a rear source; unlike
-///   [`fold_to_front_hemisphere`] the rear is *not* folded onto the
+///   [`fold_to_front_hemisphere`](crate::fold_to_front_hemisphere) the rear is *not* folded onto the
 ///   front, so front and back genuinely differ.
 /// - **Distance**: the same [`AttenuationModel`] as the mixer, plus the
 ///   medium's high-frequency absorption — far sources sound duller, and
@@ -140,8 +140,8 @@ impl BinauralSourceState {
 ///
 /// Stateful: keep one renderer alive across blocks and pass sources in a
 /// stable order (state is per source index). Output is interleaved
-/// stereo `[L, R]` — the layout [`SpeakerLayout::stereo_headphones`]
-/// describes, ready for [`AudioOutput::push_interleaved`].
+/// stereo `[L, R]` — the layout [`SpeakerLayout::stereo_headphones`](crate::SpeakerLayout::stereo_headphones)
+/// describes, ready for [`AudioOutput::push_interleaved`](crate::AudioOutput::push_interleaved).
 #[derive(Debug)]
 pub struct BinauralRenderer {
     sample_rate: u32,
