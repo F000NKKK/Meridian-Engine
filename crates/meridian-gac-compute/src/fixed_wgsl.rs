@@ -14,13 +14,10 @@
 //! just "close") via [`FixedArithmeticKernels::dispatch`]'s own test
 //! suite below.
 //!
-//! **Scope of this pass: `+`/`-`/`*`/`/` only.** `Fixed::sqrt` and the
-//! CORDIC `sin_cos`/`atan2` are real follow-up work, not done here —
-//! `sqrt` needs its own 64-bit-aware Newton's-method loop (a `while`,
-//! not a fixed iteration count, to match `isqrt_u64` exactly) and CORDIC
-//! needs the full `atan` table ported, both larger, separable pieces of
-//! work building on the multiply/divide emulation this module proves out
-//! first.
+//! **Scope so far: `+`/`-`/`*`/`/`/`sqrt`.** The CORDIC `sin_cos`/`atan2`
+//! are still real follow-up work, not done here — CORDIC needs the full
+//! `atan` table ported, a larger, separable piece of work building on
+//! the arithmetic emulation this module already proves out.
 //!
 //! [`FixedArithmeticKernels`] compiles the four binary-op compute
 //! pipelines once against a [`meridian_compute_runtime::ComputeContext`]'s
@@ -173,6 +170,128 @@ fn fixed_div(a: i32, b: i32) -> i32 {
     let result = i32(quotient);
     return select(result, -result, negative);
 }
+
+// 64-bit (as two u32 words) addition, with carry out of the low word
+// propagated into the high word.
+fn u64_add(a: U64, b: U64) -> U64 {
+    let lo = a.lo + b.lo;
+    let carry = select(0u, 1u, lo < a.lo);
+    let hi = a.hi + b.hi + carry;
+    return U64(hi, lo);
+}
+
+// 64-bit subtraction, with borrow out of the low word propagated into
+// the high word. Only ever called here with `a >= b` (restoring
+// division's own invariant), so underflow of the high word never
+// happens in practice.
+fn u64_sub(a: U64, b: U64) -> U64 {
+    let borrow = select(0u, 1u, a.lo < b.lo);
+    let lo = a.lo - b.lo;
+    let hi = a.hi - b.hi - borrow;
+    return U64(hi, lo);
+}
+
+// Logical right shift by one bit, carrying the low bit of the high word
+// into the top bit of the low word.
+fn u64_shr1(v: U64) -> U64 {
+    let lo = (v.lo >> 1u) | (v.hi << 31u);
+    let hi = v.hi >> 1u;
+    return U64(hi, lo);
+}
+
+// Logical left shift by one bit.
+fn u64_shl1(v: U64) -> U64 {
+    let hi = (v.hi << 1u) | (v.lo >> 31u);
+    let lo = v.lo << 1u;
+    return U64(hi, lo);
+}
+
+// Sets bit 0 of `v` to `bit` (0 or 1) — used by `u64_div_u64` to build up
+// a shifted-in quotient/remainder bit at a time.
+fn u64_or_lsb(v: U64, bit: u32) -> U64 {
+    return U64(v.hi, v.lo | bit);
+}
+
+// Bit `i` (0 = least significant, up to 63) of a 64-bit value.
+fn u64_get_bit(v: U64, i: u32) -> u32 {
+    if (i >= 32u) {
+        return (v.hi >> (i - 32u)) & 1u;
+    }
+    return (v.lo >> i) & 1u;
+}
+
+fn u64_ge(a: U64, b: U64) -> bool {
+    if (a.hi != b.hi) {
+        return a.hi > b.hi;
+    }
+    return a.lo >= b.lo;
+}
+
+fn u64_lt(a: U64, b: U64) -> bool {
+    return !u64_ge(a, b);
+}
+
+fn u64_is_zero(v: U64) -> bool {
+    return v.hi == 0u && v.lo == 0u;
+}
+
+// Unsigned 64-bit divided by unsigned 64-bit, truncating toward zero,
+// keeping only the quotient (the remainder is discarded — nothing here
+// needs it). Restoring binary long division, 64 iterations, generalizing
+// `u64_div_u32` to a 64-bit divisor: `isqrt_u64`'s Newton iteration
+// divides by its own running estimate `x`, which starts at `n` itself
+// and can exceed 32 bits, so the narrower `u64_div_u32` doesn't cover it.
+fn u64_div_u64(numerator: U64, divisor: U64) -> U64 {
+    var remainder = U64(0u, 0u);
+    var quotient = U64(0u, 0u);
+    for (var i: i32 = 63; i >= 0; i = i - 1) {
+        let bit = u64_get_bit(numerator, u32(i));
+        remainder = u64_or_lsb(u64_shl1(remainder), bit);
+        if (u64_ge(remainder, divisor)) {
+            remainder = u64_sub(remainder, divisor);
+            quotient = u64_or_lsb(u64_shl1(quotient), 1u);
+        } else {
+            quotient = u64_shl1(quotient);
+        }
+    }
+    return quotient;
+}
+
+// Floor integer square root via Newton's method (Heron's method),
+// ported bit-for-bit from `meridian_numeric_core::fixed::isqrt_u64`:
+// starts from `n` itself and iterates `x -> (x + n/x) / 2` until it
+// stops decreasing. `y = x.div_ceil(2)` on the Rust side is
+// `(x + 1) >> 1` here (equivalent for all `x >= 0`, and `U64(0u, 1u)`
+// never overflows `u64_add` since `n >= 1` in this branch).
+fn isqrt_u64(n: U64) -> U64 {
+    if (u64_is_zero(n)) {
+        return U64(0u, 0u);
+    }
+    var x = n;
+    var y = u64_shr1(u64_add(x, U64(0u, 1u)));
+    loop {
+        if (!u64_lt(y, x)) {
+            break;
+        }
+        x = y;
+        let q = u64_div_u64(n, x);
+        y = u64_shr1(u64_add(x, q));
+    }
+    return x;
+}
+
+// Matches `Fixed::sqrt`: `Fixed(isqrt_u64((self.0 as u64) << 16) as i32)`.
+// Callers must only pass non-negative `a` (the CPU-side `Fixed::sqrt`
+// asserts this and panics otherwise; WGSL has no panic, so this is the
+// caller's responsibility — see `FixedArithmeticKernels::dispatch_sqrt`).
+// `(self.0 as u64) << 16` is built directly as a 64-bit value the same
+// way `fixed_div`'s numerator is: `hi = a >> 16, lo = a << 16`.
+fn fixed_sqrt(a: i32) -> i32 {
+    let magnitude = u32(a);
+    let scaled = U64(magnitude >> 16u, magnitude << 16u);
+    let result = isqrt_u64(scaled);
+    return bitcast<i32>(result.lo);
+}
 "#;
 
 /// Which [`Fixed`] binary operation a [`FixedArithmeticKernels`] pipeline
@@ -234,6 +353,15 @@ fn dispatch_mul(@builtin(global_invocation_id) id: vec3<u32>) {{
 fn dispatch_div(@builtin(global_invocation_id) id: vec3<u32>) {{
     results[id.x] = fixed_div(operands[2u * id.x], operands[2u * id.x + 1u]);
 }}
+
+// Unary, unlike the four above: one operand per invocation
+// (`operands[id.x]`, not a `2*id.x`/`2*id.x+1` pair) — see
+// `FixedArithmeticKernels::dispatch_sqrt`, which populates `operands`
+// accordingly.
+@compute @workgroup_size(64)
+fn dispatch_sqrt(@builtin(global_invocation_id) id: vec3<u32>) {{
+    results[id.x] = fixed_sqrt(operands[id.x]);
+}}
 "#,
         lib = FIXED_ARITHMETIC_LIB_WGSL
     )
@@ -250,14 +378,15 @@ pub struct FixedArithmeticKernels {
     sub: ComputePipeline,
     mul: ComputePipeline,
     div: ComputePipeline,
+    sqrt: ComputePipeline,
 }
 
 impl FixedArithmeticKernels {
-    /// Compiles the WGSL module and builds all four pipelines.
-    /// `context` must already have a GPU backend
-    /// ([`ComputeContext::with_gpu`]) — panics otherwise, the same
-    /// "caller opted into GPU dispatch explicitly, so a missing backend
-    /// is a logic error to surface immediately" policy
+    /// Compiles the WGSL module and builds every pipeline (the four
+    /// binary ops plus `sqrt`). `context` must already have a GPU
+    /// backend ([`ComputeContext::with_gpu`]) — panics otherwise, the
+    /// same "caller opted into GPU dispatch explicitly, so a missing
+    /// backend is a logic error to surface immediately" policy
     /// `meridian-graphics-driver`'s own headless-device tests use.
     pub fn new(context: &ComputeContext) -> Self {
         let gpu = context
@@ -269,12 +398,14 @@ impl FixedArithmeticKernels {
         let sub = gpu.create_compute_pipeline(&shader, FixedBinaryOp::Sub.entry_point());
         let mul = gpu.create_compute_pipeline(&shader, FixedBinaryOp::Mul.entry_point());
         let div = gpu.create_compute_pipeline(&shader, FixedBinaryOp::Div.entry_point());
+        let sqrt = gpu.create_compute_pipeline(&shader, "dispatch_sqrt");
         Self {
             shader,
             add,
             sub,
             mul,
             div,
+            sqrt,
         }
     }
 
