@@ -71,7 +71,8 @@ mod tests {
     #[test]
     fn ball_falls_under_gravity() {
         let mut body = ball(fv3(0.0, 5.0, 0.0), 0.5);
-        let integrator = FixedSoftBodyIntegrator::new(fv3(0.0, -9.81, 0.0), ground(), Fixed::from_num(0.3));
+        let integrator =
+            FixedSoftBodyIntegrator::new(fv3(0.0, -9.81, 0.0), ground(), Fixed::from_num(0.3));
         let center_index = body.particle_count() - 1;
         let start_height = body.positions[center_index].y;
         let dt = Fixed::from_num(1.0 / 60.0);
@@ -93,18 +94,19 @@ mod tests {
     #[test]
     fn identical_inputs_produce_bit_identical_output_after_many_steps() {
         fn run() -> FixedSoftBody {
-            // A gentle drop, not a big one: explicit-Euler mass-spring
-            // integration is only conditionally stable (stiffness/mass/dt
-            // have to stay in a sane relationship — the same reason the
-            // `float_softbody` deformation test uses a barely-above-ground
-            // start rather than a multi-meter fall). This test's job is
-            // proving bit-exact reproducibility, not stress-testing spring
-            // stability, so it deliberately stays inside the stable
-            // regime.
+            // A gentle drop and a fine timestep, not a big drop at a
+            // coarse one: explicit-Euler mass-spring integration is only
+            // conditionally stable (stiffness/mass/dt have to stay in a
+            // sane relationship) — the same reason `float_softbody`'s own
+            // deformation test uses `dt = 1/240`, not `1/60`, once its
+            // ball actually reaches the ground. This test's job is
+            // proving bit-exact reproducibility, not stress-testing
+            // spring stability, so it deliberately stays inside the
+            // stable regime.
             let mut body = ball(fv3(0.3, 0.7, -0.2), 0.5);
             let integrator =
                 FixedSoftBodyIntegrator::new(fv3(0.0, -9.81, 0.0), ground(), Fixed::from_num(0.3));
-            let dt = Fixed::from_num(1.0 / 60.0);
+            let dt = Fixed::from_num(1.0 / 240.0);
             for _ in 0..180 {
                 integrator.step(&mut body, dt);
             }

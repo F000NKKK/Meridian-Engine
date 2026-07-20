@@ -94,7 +94,11 @@ mod tests {
         let dt = 1.0 / 240.0;
 
         let vertical_extent = |body: &SoftBody| -> f32 {
-            let min = body.positions.iter().map(|p| p.y).fold(f32::INFINITY, f32::min);
+            let min = body
+                .positions
+                .iter()
+                .map(|p| p.y)
+                .fold(f32::INFINITY, f32::min);
             let max = body
                 .positions
                 .iter()

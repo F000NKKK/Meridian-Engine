@@ -619,7 +619,8 @@ impl<F: GaFlavor> Mesh<F> {
 /// vertices are all even permutations of `(0, ±1, ±φ)` with the golden
 /// ratio `φ`, normalized.
 pub fn icosphere<F: GaFlavor>(subdivisions: u32) -> Mesh<F> {
-    let phi = (F::Scalar::ONE + F::Scalar::from_f64(5.0).sqrt()) / (F::Scalar::ONE + F::Scalar::ONE);
+    let phi =
+        (F::Scalar::ONE + F::Scalar::from_f64(5.0).sqrt()) / (F::Scalar::ONE + F::Scalar::ONE);
     let raw: [[F::Scalar; 3]; 12] = {
         let z = F::Scalar::ZERO;
         let o = F::Scalar::ONE;

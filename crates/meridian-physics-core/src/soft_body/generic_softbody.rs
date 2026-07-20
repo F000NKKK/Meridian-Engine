@@ -165,7 +165,8 @@ pub fn icosphere_soft_body<F: GaFlavor>(
 ) -> SoftBody<F> {
     let mesh = icosphere::<F>(subdivisions);
 
-    let mut positions: Vec<F::Vector> = mesh.vertices.iter().map(|&d| center + d * radius).collect();
+    let mut positions: Vec<F::Vector> =
+        mesh.vertices.iter().map(|&d| center + d * radius).collect();
     let surface_count = positions.len();
     positions.push(center);
     let center_index = surface_count;
