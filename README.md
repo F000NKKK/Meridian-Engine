@@ -10,22 +10,23 @@ Rust 1.92+ (edition 2024). Licensed under [MPL-2.0](LICENSE).
 
 ```text
 meridian-foundation      zero-dependency shared primitives (errors, feature detection)
-meridian-numeric-core    scalar types, SIMD helpers, numeric traits
-meridian-gac-core        geometric algebra: vectors, rotors, motors, transforms
+meridian-numeric-core    scalar types (float + deterministic Fixed), SIMD helpers, numeric traits
+meridian-gac-core        geometric algebra: vectors, rotors, motors, transforms — float and Fixed flavors
 meridian-memory-core     arenas, resource pools, generational handles
 meridian-resource-core   typed resource handles, versioning, dependency tracking
 meridian-task-core       job graph scheduler
-meridian-platform-core   window, input, filesystem, time, threading
-meridian-compute-driver  low-level CPU-SIMD / GPU-compute dispatch abstraction
+meridian-platform-core   window (real, winit-backed), input, filesystem, time, threading
+meridian-gpu-driver      shared wgpu device/buffer/shader/compute-pipeline mechanics
+meridian-compute-driver  low-level CPU-SIMD (real) and GPU-compute (real, via gpu-driver) dispatch abstraction
 meridian-compute-runtime compute dispatch runtime (device/context, buffers, ComputeKernel), no algorithms
-meridian-gac-compute     GAC batch kernels (Motor3 transforms) — adapter between gac-core and compute-runtime
+meridian-gac-compute     GAC + Fixed-point batch kernels (Motor3 transforms, WGSL Fixed arithmetic) — adapter between gac-core and compute-runtime
 meridian-asset-core      image/mesh/audio/shader loading & decoding
 meridian-ecs-core        archetype ECS, SoA storage
-meridian-graphics-driver low-level GPU device abstraction
+meridian-graphics-driver GPU device abstraction: headless + windowed wgpu device, render pipeline, swapchain
 meridian-audio-driver    low-level audio device abstraction
 meridian-physics-driver  low-level physics execution backend (memory, SIMD/GPU dispatch, sync)
 meridian-graphics-core   render graph, culling, lighting, materials, camera
-meridian-physics-core    broad/narrow phase collision, constraint solver
+meridian-physics-core    broad/narrow phase collision, constraint solver — generic over GaFlavor (float or deterministic Fixed)
 meridian-audio-core      spatial mixer, DSP graph, listener/emitter
 meridian-engine-core     runtime: frame scheduler, events, subsystem manager
 ```
@@ -37,9 +38,21 @@ deliberately independent of each other — neither depends on the other.
 `gac-compute` is the adapter crate that depends on both, so batched `Motor3`
 work can run on CPU-SIMD or GPU compute without `gac-core` ever knowing a
 GPU exists (see [ADR 007](docs/adr/007-batch-transforms-via-compute.md)).
-The full graph, and the rules for which direction a dependency is allowed to
-point, are documented in
-[`docs/dependency-rules.md`](docs/dependency-rules.md).
+`graphics-driver` and `compute-driver` both depend on `gpu-driver`, the
+crate that owns the actual `wgpu` device/buffer/shader/compute-pipeline
+mechanics shared between rendering and general GPU compute (see
+[ADR 011](docs/adr/011-shared-gpu-driver-crate.md)). The full graph, and
+the rules for which direction a dependency is allowed to point, are
+documented in [`docs/dependency-rules.md`](docs/dependency-rules.md).
+
+Windowing is real (`winit`, see [ADR 010](docs/adr/010-windowing-via-winit.md)),
+GPU rendering and compute are real (`wgpu`), and the workspace is
+async-native on genuine I/O only — a `tokio` runtime drives OS/driver
+handshakes and GPU readbacks, everything else (recording, allocation, ECS
+queries, GA math) stays synchronous (see
+[ADR 009](docs/adr/009-async-io-via-tokio.md)). `./build.sh run
+spinning_cube` renders a real spinning, lit cube to a real window end to
+end.
 
 ## Documentation
 

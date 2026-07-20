@@ -42,18 +42,28 @@ meridian-gac-core   meridian-compute-runtime
         |                     |
 meridian-numeric-core   meridian-compute-driver
         |                     |
-meridian-foundation      platform-core
+meridian-foundation      meridian-gpu-driver
+                               |
+                        platform-core
 ```
 
 `gac-core` defines *what* to compute (`Motor3`, `Rotor`, ...); `compute-runtime`
 defines *where* (CPU-SIMD or GPU, via `compute-driver`); `gac-compute` is the
 adapter that implements `compute-runtime`'s `ComputeKernel` trait for batched
-GAC operations. `graphics-core` and `physics-core` depend on `gac-compute`
-for batched transform work and on `compute-runtime` directly for non-GAC
-compute (e.g. GPU culling) — see
-[ADR 007](adr/007-batch-transforms-via-compute.md). `gac-core` never depends
-on `compute-runtime`, and `compute-runtime` never depends on `gac-core`, in
-either direction.
+GAC operations, and also depends on `gpu-driver` directly for the GPU
+resource types (`Buffer`, `Shader`, `ComputePipeline`, ...) a real
+GPU-dispatching kernel has to name — see
+[dependency-rules.md](dependency-rules.md) for why that's not the same as
+depending on `compute-driver` directly (still forbidden). `graphics-core`
+and `physics-core` depend on `gac-compute` for batched transform work and
+on `compute-runtime` directly for non-GAC compute (e.g. GPU culling) —
+see [ADR 007](adr/007-batch-transforms-via-compute.md). `gac-core` never
+depends on `compute-runtime`, and `compute-runtime` never depends on
+`gac-core`, in either direction. `compute-driver` and `graphics-driver`
+both depend on `gpu-driver`, the crate that owns the actual `wgpu`
+device/buffer/shader/compute-pipeline mechanics shared between rendering
+and general GPU compute, so neither reimplements it independently — see
+[ADR 011](adr/011-shared-gpu-driver-crate.md).
 
 See [dependency-rules.md](dependency-rules.md) for the exact, enforceable
 edge list — this diagram is the intuition, that document is the ruling.
@@ -105,6 +115,15 @@ lives in it) — it's dispatch infrastructure that domain crates
 on top of, so it doesn't get the "core" name reserved for
 `graphics-core`/`physics-core`/`audio-core`-style domain layers. See
 [ADR 007](adr/007-batch-transforms-via-compute.md).
+
+`graphics-driver` and `compute-driver` both need the same underlying
+`wgpu` device/buffer/shader/compute-pipeline mechanics (rendering and
+general GPU compute are both "do something with a GPU device," even
+though what they submit to it differs completely) — that shared
+mechanics lives in a third crate, `meridian-gpu-driver`, rather than
+being duplicated in both or reached through one from the other (which
+would cross the "no driver depends on a different subsystem's driver"
+boundary). See [ADR 011](adr/011-shared-gpu-driver-crate.md).
 
 ## Threading and scheduling
 
