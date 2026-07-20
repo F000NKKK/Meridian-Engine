@@ -11,3 +11,7 @@ description = "Batch execution kernels for GAC transforms (Motor3) on CPU-SIMD /
 meridian-gac-core = { workspace = true }
 meridian-compute-runtime = { workspace = true }
 meridian-numeric-core = { workspace = true }
+meridian-gpu-driver = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true }

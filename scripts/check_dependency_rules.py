@@ -37,6 +37,7 @@ ALLOWED = {
         "meridian-gac-core",
         "meridian-numeric-core",
         "meridian-compute-runtime",
+        "meridian-gpu-driver",
     },
     "meridian-ecs-core": {"meridian-memory-core", "meridian-gac-core"},
     "meridian-asset-core": {"meridian-platform-core"},

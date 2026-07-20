@@ -76,7 +76,22 @@ meridian-gac-core   meridian-compute-runtime
 for non-GAC compute (e.g. GPU culling) — both edges omitted from the main
 diagram above for readability, along with `meridian-audio-core`'s dependency
 on `meridian-gac-core` and `meridian-audio-driver`; see each crate's own
-`Cargo.toml` for the exact edge list. See
+`Cargo.toml` for the exact edge list.
+
+`meridian-gac-compute` also depends directly on `meridian-gpu-driver` —
+not `meridian-compute-driver` (still forbidden by rule 5: a kernel
+dispatches through `compute-runtime::ComputeContext`, never around it).
+`compute-runtime::ComputeContext::gpu()` returns a
+`compute-driver::GpuComputeDevice`, whose buffer/shader/pipeline methods
+are typed in terms of `gpu-driver`'s own resource types
+(`Buffer`/`BufferUsage`/`Shader`/`ComputePipeline`) — a real GPU-dispatching
+`ComputeKernel` has to name those types (a bind-group's usage flags, a
+kernel's own pipeline field, ...), which needs `gpu-driver` in scope. This
+doesn't reach around `compute-runtime`'s dispatch mechanism (rule 5's
+actual concern); it's the same category of edge `graphics-driver`/
+`compute-driver` already have to `gpu-driver` for the same
+resource-type-naming reason — see
+[ADR 011](adr/011-shared-gpu-driver-crate.md). See
 [ADR 007](adr/007-batch-transforms-via-compute.md).
 
 ## Rules
