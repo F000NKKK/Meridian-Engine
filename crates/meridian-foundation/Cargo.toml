@@ -5,6 +5,15 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Zero-dependency foundational types shared workspace-wide: error conventions, basic type aliases, feature-detection primitives."
+description = "Zero-dependency foundational types shared workspace-wide: error conventions, unified logging, crash reporting, feature-detection primitives."
 
 [dependencies]
+tokio = { workspace = true, features = ["time", "fs", "io-util"], optional = true }
+
+[features]
+# Buffered async log-file sink (logging::file) — the only part of this
+# crate with a dependency; everything else stays zero-dep.
+file-logging = ["dep:tokio"]
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["time", "fs", "io-util"] }
