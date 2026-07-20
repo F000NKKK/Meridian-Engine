@@ -210,7 +210,7 @@ pub fn mat4_to_bytes(m: [[f32; 4]; 4]) -> [u8; 64] {
 /// A camera rotor turning `gac-core`'s local-forward `+X` toward `target
 /// - eye` — see `spinning_cube`'s identical helper, duplicated here
 /// (not worth a shared engine-level utility for three examples) rather
-/// than depended on across two `[[example]]` binaries.
+/// than depended on across two ``[[example]]`` binaries.
 pub fn look_at_rotor(eye: Vec3, target: Vec3) -> meridian_gac_core::Rotor {
     use meridian_gac_core::Rotor;
     let forward = (target - eye).normalize();
