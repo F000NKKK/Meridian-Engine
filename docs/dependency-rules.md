@@ -117,6 +117,17 @@ rather than re-deriving the same Q16.16 emulation — see
 
 ## Rules
 
+0. **`meridian-foundation` is the open bottom of the graph.** It depends
+   on nothing (its optional `file-logging` feature is the one external
+   exception, pulling `tokio` for the buffered async log-file sink), and
+   *any* crate may take an edge to it — that edge is added to
+   `scripts/check_dependency_rules.py` when actually taken, not
+   pre-declared. It exists for exactly two kinds of content: shared
+   conventions (`EngineError`, `FeatureFlags`) and process-wide
+   diagnostics (the unified `logging` sink and `crash_reporting` panic
+   hook). Diagnostics are deliberately *not* a "global manager" in rule
+   3's sense: the sink owns no engine objects and hands out no handles —
+   it appends lines, the same category as `std`'s own panic hook.
 1. **A `*-core` crate never depends on the `*-driver` crate of a *different*
    subsystem.** `graphics-core` may depend on `graphics-driver`, never on
    `audio-driver` or `physics-driver`.
