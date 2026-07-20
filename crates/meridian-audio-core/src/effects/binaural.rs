@@ -493,4 +493,43 @@ mod binaural_tests {
             assert!(step < 0.03, "ear {ear} boundary step {step}");
         }
     }
+
+    #[test]
+    fn water_shrinks_the_interaural_delay() {
+        // Sound crosses the head ~4.4x faster in water than in air, so
+        // the ITD shrinks accordingly — the medium, not a constant,
+        // decides it.
+        let peak_offset = |renderer: &mut BinauralRenderer| {
+            let mut source = vec![0.0f32; 256];
+            source[64] = 1.0;
+            let out = renderer.render(
+                &listener(),
+                &[(emitter_at(Vec3::new(0.0, 0.0, 3.0)), &source)],
+                256,
+            );
+            let peak = |ear: usize| {
+                out.chunks_exact(2)
+                    .map(|f| f[ear])
+                    .enumerate()
+                    .max_by(|a, b| a.1.abs().total_cmp(&b.1.abs()))
+                    .map(|(i, _)| i)
+                    .unwrap()
+            };
+            peak(0) as i64 - peak(1) as i64
+        };
+
+        let mut air = renderer();
+        let mut water = renderer();
+        water.medium = AcousticMedium::fresh_water();
+        let air_offset = peak_offset(&mut air);
+        let water_offset = peak_offset(&mut water);
+        assert!(
+            air_offset >= 20,
+            "air ITD should be ~29 samples, got {air_offset}"
+        );
+        assert!(
+            water_offset <= air_offset / 3,
+            "water ITD {water_offset} should be far below air {air_offset}"
+        );
+    }
 }
