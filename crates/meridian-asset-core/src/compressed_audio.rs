@@ -7,7 +7,7 @@
 //! never by file extension — the file name is not part of any decoder's
 //! input. [`AnyAudioDecoder`] is the sniffing front door: detect, then
 //! dispatch to the per-format decoder (including the hand-rolled
-//! [`WavDecoder`](crate::WavDecoder) for uncompressed PCM).
+//! [`WavDecoder`] for uncompressed PCM).
 //!
 //! Everything here decodes complete in-memory bytes to a complete
 //! [`AudioData`] — the same bytes-in/CPU-data-out contract as every other
@@ -40,7 +40,7 @@ fn codec_registry() -> &'static CodecRegistry {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AudioFormat {
     /// RIFF/WAVE (`RIFF....WAVE`) — decoded by the hand-rolled
-    /// [`WavDecoder`](crate::WavDecoder).
+    /// [`WavDecoder`].
     Wav,
     /// MPEG Layer III: an `ID3` tag or an MPEG frame-sync header.
     Mp3,
