@@ -2,11 +2,43 @@
 //! filtering, rear damping and distance attenuation, with per-block
 //! parameter ramping. See [`BinauralRenderer`].
 
+use super::AcousticMedium;
 use crate::{AttenuationModel, Emitter, Listener};
 
-/// Distance between the ears — the standard ~head-width used for ITD.
-const EAR_SEPARATION_METERS: f32 = 0.21;
-const SPEED_OF_SOUND_M_PER_S: f32 = 343.0;
+/// Tunable parameters of the binaural model — nothing about how the
+/// listener's head or the filters behave is hard-coded; the propagation
+/// medium itself is a separate knob ([`AcousticMedium`] on
+/// [`BinauralRenderer::with_medium`]).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct BinauralConfig {
+    /// Distance between the ears in meters — with the medium's speed of
+    /// sound, sets the maximum interaural time difference.
+    pub ear_separation_m: f32,
+    /// Head-shadow cutoff for the fully *unshadowed* ear, Hz (clamped
+    /// below Nyquist at render time). Near-transparent by default.
+    pub shadow_open_cutoff_hz: f32,
+    /// Head-shadow cutoff for the fully *shadowed* ear, Hz — what the
+    /// far ear is left with when the source sits hard to one side.
+    pub shadow_closed_cutoff_hz: f32,
+    /// Fraction of gain removed directly behind the listener (`0.0` =
+    /// rear as loud as front, `0.25` = 25% quieter).
+    pub rear_gain_reduction: f32,
+    /// Fraction of filter cutoff removed directly behind the listener —
+    /// how much duller the rear sounds.
+    pub rear_cutoff_reduction: f32,
+}
+
+impl Default for BinauralConfig {
+    fn default() -> Self {
+        Self {
+            ear_separation_m: 0.21,
+            shadow_open_cutoff_hz: 18_000.0,
+            shadow_closed_cutoff_hz: 900.0,
+            rear_gain_reduction: 0.25,
+            rear_cutoff_reduction: 0.55,
+        }
+    }
+}
 
 /// Per-ear render targets for one source at one listener pose. Ear index
 /// 0 is left, 1 is right — the interleave order of a stereo stream.
