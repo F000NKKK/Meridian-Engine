@@ -282,14 +282,14 @@ impl FlyCamera {
     /// — a locked cursor stops generating position deltas entirely.
     pub fn update(&mut self, input: &InputState, dt: f32) {
         let (dx, dy) = input.raw_mouse_delta();
-        self.yaw -= dx * self.look_sensitivity;
+        self.yaw += dx * self.look_sensitivity;
         self.pitch = (self.pitch - dy * self.look_sensitivity).clamp(
             -core::f32::consts::FRAC_PI_2 + 0.01,
             core::f32::consts::FRAC_PI_2 - 0.01,
         );
 
         let forward = self.forward();
-        let right = forward.cross(Vec3::Y).normalize();
+        let right = Vec3::Y.cross(forward).normalize();
         let mut movement = Vec3::ZERO;
         if input.is_key_down(KeyCode::W) {
             movement = movement + forward;
