@@ -15,10 +15,12 @@
 //! when-a-concrete-asset-needs-it trigger.
 
 pub mod compressed_audio;
+pub mod streaming;
 
 pub use compressed_audio::{
     AnyAudioDecoder, AudioFormat, FlacDecoder, Mp3Decoder, OpusDecoder, VorbisDecoder,
 };
+pub use streaming::{AudioAsset, DecodeMode, DecodeStrategy, StreamingAudioDecoder, open_audio};
 
 /// Decodes raw file bytes into a CPU-side representation of `T`. Does not
 /// decide where `T` lives afterward or when it's dropped.

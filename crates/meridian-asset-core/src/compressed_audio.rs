@@ -26,7 +26,7 @@ use symphonia::core::meta::MetadataOptions;
 /// symphonia's own enabled codecs (MP3/Vorbis/FLAC) plus libopus via the
 /// adapter — so Opus rides the exact same probe/demux/decode pipeline
 /// instead of a hand-written OGG parse.
-fn codec_registry() -> &'static CodecRegistry {
+pub(crate) fn codec_registry() -> &'static CodecRegistry {
     static REGISTRY: std::sync::OnceLock<CodecRegistry> = std::sync::OnceLock::new();
     REGISTRY.get_or_init(|| {
         let mut registry = CodecRegistry::new();
