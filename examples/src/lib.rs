@@ -53,6 +53,77 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
 }
 "#;
 
+/// A procedural checkerboard floor — no texture asset, the checker
+/// pattern is computed directly in the fragment shader from world-space
+/// `x`/`z` (1-unit tiles, parity via `& 1` on the floored tile
+/// coordinates so it stays correct for negative coordinates too, unlike
+/// `%` on signed integers). Exists because the soft-body examples were
+/// otherwise "balls floating in a black void" — no ground reference to
+/// judge height, deformation, or collision against.
+pub const GROUND_SHADER: &str = r#"
+struct Uniforms {
+    view_proj: mat4x4<f32>,
+};
+
+@group(0) @binding(0)
+var<uniform> u: Uniforms;
+
+struct VertexInput {
+    @location(0) position: vec3<f32>,
+    @location(1) normal: vec3<f32>,
+};
+
+struct VertexOutput {
+    @builtin(position) clip_position: vec4<f32>,
+    @location(0) world_position: vec3<f32>,
+};
+
+@vertex
+fn vs_main(in: VertexInput) -> VertexOutput {
+    var out: VertexOutput;
+    out.clip_position = u.view_proj * vec4<f32>(in.position, 1.0);
+    out.world_position = in.position;
+    return out;
+}
+
+@fragment
+fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
+    let tile_x = i32(floor(in.world_position.x));
+    let tile_z = i32(floor(in.world_position.z));
+    let is_dark = ((tile_x ^ tile_z) & 1) == 0;
+    let checker = select(vec3<f32>(0.82, 0.82, 0.88), vec3<f32>(0.22, 0.22, 0.28), is_dark);
+    return vec4<f32>(checker, 1.0);
+}
+"#;
+
+/// One large flat quad (`size` x `size`, centered at `(0, y, 0)`) for
+/// [`GROUND_SHADER`] to shade — reuses [`soft_body_vertex_layout`]'s
+/// position+normal layout (the normal is written but unread by
+/// `GROUND_SHADER`, kept only so both pipelines share one vertex
+/// layout/buffer shape).
+pub fn ground_quad_buffers(size: f32, y: f32) -> (Vec<u8>, Vec<u8>, u32) {
+    let half = size / 2.0;
+    let corners = [
+        Vec3::new(-half, y, -half),
+        Vec3::new(half, y, -half),
+        Vec3::new(half, y, half),
+        Vec3::new(-half, y, half),
+    ];
+    let normal = Vec3::Y;
+
+    let mut vertex_bytes = Vec::new();
+    for p in corners {
+        for component in [p.x, p.y, p.z, normal.x, normal.y, normal.z] {
+            vertex_bytes.extend_from_slice(&component.to_le_bytes());
+        }
+    }
+    let mut index_bytes = Vec::new();
+    for i in [0u16, 1, 2, 0, 2, 3] {
+        index_bytes.extend_from_slice(&i.to_le_bytes());
+    }
+    (vertex_bytes, index_bytes, 6)
+}
+
 pub fn soft_body_vertex_layout() -> VertexLayout {
     VertexLayout {
         stride: 24, // position (12 bytes) + normal (12 bytes)
