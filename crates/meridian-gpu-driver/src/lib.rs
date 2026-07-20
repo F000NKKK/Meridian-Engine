@@ -315,13 +315,31 @@ impl Device {
         pipeline_layout: &wgpu::BindGroupLayout,
         buffer: &Buffer,
     ) -> BindGroup {
+        self.create_bind_group(pipeline_layout, &[buffer])
+    }
+
+    /// Builds a bind group binding `buffers[i]` at `@group(0)
+    /// @binding(i)` of `pipeline_layout`, for pipelines that need more
+    /// than one bound resource (e.g. a compute kernel reading from one
+    /// storage buffer and writing to another) —
+    /// [`Device::create_single_buffer_bind_group`]'s general form.
+    pub fn create_bind_group(
+        &self,
+        pipeline_layout: &wgpu::BindGroupLayout,
+        buffers: &[&Buffer],
+    ) -> BindGroup {
+        let entries: Vec<wgpu::BindGroupEntry> = buffers
+            .iter()
+            .enumerate()
+            .map(|(i, buffer)| wgpu::BindGroupEntry {
+                binding: i as u32,
+                resource: buffer.raw.as_entire_binding(),
+            })
+            .collect();
         let raw = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: None,
             layout: pipeline_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: buffer.raw.as_entire_binding(),
-            }],
+            entries: &entries,
         });
         BindGroup { raw }
     }
