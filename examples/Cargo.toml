@@ -7,7 +7,7 @@ license.workspace = true
 repository.workspace = true
 publish = false
 
-[dev-dependencies]
+[dependencies]
 meridian-engine-core = { workspace = true }
 meridian-gac-core = { workspace = true }
 meridian-ecs-core = { workspace = true }
@@ -19,6 +19,8 @@ meridian-audio-core = { workspace = true }
 meridian-graphics-core = { workspace = true }
 meridian-graphics-driver = { workspace = true }
 meridian-physics-core = { workspace = true }
+meridian-physics-compute = { workspace = true }
+meridian-compute-runtime = { workspace = true }
 meridian-numeric-core = { workspace = true }
 meridian-gpu-driver.workspace = true
 
@@ -55,3 +57,15 @@ path = "examples/determinism_validation.rs"
 [[example]]
 name = "spinning_cube"
 path = "examples/spinning_cube.rs"
+
+[[example]]
+name = "soft_body_rubber_balls"
+path = "examples/soft_body_rubber_balls.rs"
+
+[[example]]
+name = "soft_body_jiggle_deterministic"
+path = "examples/soft_body_jiggle_deterministic.rs"
+
+[[example]]
+name = "soft_body_jiggle_float"
+path = "examples/soft_body_jiggle_float.rs"
