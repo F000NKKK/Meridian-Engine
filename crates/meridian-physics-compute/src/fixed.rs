@@ -174,12 +174,18 @@ fn soft_body_step(@builtin(global_invocation_id) id: vec3<u32>) {
         let spring_force = fvec3_scale(direction, fixed_mul(stiffness, stretch));
 
         let vel_j = read_velocity_in(j);
-        let relative_velocity = select(fvec3_sub(vel_i, vel_j), fvec3_sub(vel_j, vel_i), is_a);
+        var relative_velocity = fvec3_sub(vel_i, vel_j);
+        if (is_a) {
+            relative_velocity = fvec3_sub(vel_j, vel_i);
+        }
         let closing_speed = fvec3_dot(relative_velocity, direction);
         let damping_force = fvec3_scale(direction, fixed_mul(damping, closing_speed));
 
         let total = fvec3_add(spring_force, damping_force);
-        let contribution = select(FVec3(-total.x, -total.y, -total.z), total, is_a);
+        var contribution = FVec3(-total.x, -total.y, -total.z);
+        if (is_a) {
+            contribution = total;
+        }
         force = fvec3_add(force, contribution);
     }
 
