@@ -12,9 +12,11 @@
 //! every particle at construction), so [`SOFT_BODY_SHADER`]'s uniform is
 //! just a view-projection matrix, no per-mesh model matrix.
 
-use meridian_gac_core::Vec3;
 use meridian_gac_core::generic::Face;
+use meridian_gac_core::{Motor3, Vec3};
+use meridian_graphics_core::Camera;
 use meridian_graphics_driver::{VertexAttributeDesc, VertexFormat, VertexLayout};
+use meridian_platform_core::{InputState, KeyCode, MouseButton};
 
 pub const SOFT_BODY_SHADER: &str = r#"
 struct Uniforms {
