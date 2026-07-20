@@ -118,12 +118,12 @@ impl<F: GaFlavor> SoftBodyIntegrator<F> {
             forces[spring.b] = forces[spring.b] - total;
         }
 
-        for i in 0..body.particle_count() {
+        for (i, &force) in forces.iter().enumerate() {
             let inverse_mass = body.inverse_masses[i];
             if inverse_mass <= F::Scalar::ZERO {
                 continue; // pinned particle
             }
-            let acceleration = forces[i] * inverse_mass + self.gravity;
+            let acceleration = force * inverse_mass + self.gravity;
             body.velocities[i] = body.velocities[i] + acceleration * dt;
             body.positions[i] = body.positions[i] + body.velocities[i] * dt;
 
@@ -153,6 +153,7 @@ impl<F: GaFlavor> SoftBodyIntegrator<F> {
 /// springs pull against) — pinning it instead (`inverse_mass = 0`) is a
 /// reasonable alternative a caller can build directly via [`SoftBody`]'s
 /// fields if a stiffer-feeling ball is wanted.
+#[allow(clippy::too_many_arguments)]
 pub fn icosphere_soft_body<F: GaFlavor>(
     center: F::Vector,
     radius: F::Scalar,
