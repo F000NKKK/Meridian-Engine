@@ -289,4 +289,66 @@ mod tests {
         let expected: usize = (0..n).sum();
         assert_eq!(total.load(Ordering::Relaxed), expected);
     }
+
+    /// Every `GpuComputeDevice` test needs a real adapter; some CI/
+    /// sandboxed environments have none. Skip rather than fail — this
+    /// validates this crate's own GPU-dispatch API, not that a GPU is
+    /// present.
+    async fn gpu_device_or_skip() -> Option<GpuComputeDevice> {
+        match GpuComputeDevice::new().await {
+            Ok(device) => Some(device),
+            Err(err) => {
+                eprintln!("skipping: no GPU device available ({err})");
+                None
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn gpu_capabilities_report_a_real_device_name() {
+        let Some(device) = gpu_device_or_skip().await else {
+            return;
+        };
+        let caps = device.capabilities();
+        assert!(caps.cpu.threads >= 1);
+        let gpu = caps.gpu.expect("a constructed GpuComputeDevice always has a real adapter");
+        assert!(!gpu.device_name.is_empty());
+    }
+
+    /// The actual end-to-end proof: write data to a GPU buffer, run a
+    /// real compute shader over it, read the result back, and check it
+    /// matches what the shader says it does.
+    #[tokio::test]
+    async fn gpu_dispatch_doubles_every_element() {
+        let Some(device) = gpu_device_or_skip().await else {
+            return;
+        };
+
+        const SHADER: &str = r#"
+            @group(0) @binding(0)
+            var<storage, read_write> data: array<u32>;
+
+            @compute @workgroup_size(4)
+            fn double_elements(@builtin(global_invocation_id) id: vec3<u32>) {
+                data[id.x] = data[id.x] * 2u;
+            }
+        "#;
+
+        let input: [u32; 4] = [1, 2, 3, 4];
+        let bytes: Vec<u8> = input.iter().flat_map(|v| v.to_le_bytes()).collect();
+
+        let buffer = device.allocate_buffer(bytes.len(), meridian_gpu_driver::BufferUsage::Storage);
+        device.write_buffer(&buffer, &bytes);
+
+        let shader = device.create_shader("double_elements", SHADER);
+        let pipeline = device.create_compute_pipeline(&shader, "double_elements");
+        device.dispatch(&pipeline, &buffer, 1);
+
+        let result_bytes = device.read_buffer(&buffer).await;
+        let result: Vec<u32> = result_bytes
+            .chunks_exact(4)
+            .map(|c| u32::from_le_bytes(c.try_into().unwrap()))
+            .collect();
+        assert_eq!(result, vec![2, 4, 6, 8]);
+    }
 }
