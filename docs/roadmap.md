@@ -285,16 +285,18 @@ sequentially data-dependent today, not independent branches, so running
 them through a job graph would be decorative; see
 docs/threading-model.md's `FrameScheduler` section for why, and what makes
 it load-bearing later. `graphics-core` isn't wired into `Runtime::tick`
-either — `graphics-driver` has a real headless `wgpu` device now, but
-nothing to present a rendered frame to without a window/swapchain
-surface (see the `winit`/windowing entry below).
+either — window/swapchain presentation is real now (`Device::new_windowed`,
+the `spinning_cube` example), but `graphics-core` has no scene/material
+vocabulary yet for `Runtime` to extract a frame from; wiring it in
+without one would be decorative.
 
-The remaining incomplete areas are, specifically: window/swapchain
-presentation (`platform-core::Window`, a real surface into
-`graphics-driver::Device`, and `graphics-core`'s scene/material/lighting
-layers that need one to shade against), real audio output
-(`audio-driver`'s device stub), and `DynamicLibrary` (still a stub,
-deferred alongside `Window` on the same OS-boundary track) — not a
+The remaining incomplete areas are, specifically: `graphics-core`'s
+scene/material/lighting layers (window/swapchain presentation they
+needed is real now — see the `wgpu` entry below), routing
+`engine-core`'s mixed audio into `audio-driver`'s real output stream
+(both halves exist; nothing connects `Mixer` output to
+`AudioStream::push_samples` yet), and `DynamicLibrary` (still a stub, on
+the original hand-written-FFI plan per ADR 010) — not a
 blanket "every other crate is a scaffold." Every crate not named above
 has a real, tested implementation; see each crate's own section above
 for specifics. This staged order is intentional — see "Why implementation
