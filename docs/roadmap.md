@@ -352,11 +352,12 @@ priority before writing implementations is keeping that document and the
    narrow phase, impulse solver, GA-native integration; see "Current
    state" above). `meridian-audio-core` — **done** (`SpeakerLayout`/
    `Mixer`/`AttenuationModel`/`DspGraph`; see "Current state" above).
-   `meridian-graphics-driver` — **done, headless only**: real `wgpu`
+   `meridian-graphics-driver` — **done**: real `wgpu`
    `Device`/`Buffer`/`Texture`/`Shader`/compute `Pipeline`/`CommandBuffer`,
-   no window/surface yet (see "Not yet decided" below). `meridian-audio-driver`
-   is still blocked on the `Window`/`DynamicLibrary`-class OS-device
-   decision (not a GPU problem, so not unblocked by the above).
+   headless and windowed (`Device::new_windowed`, a real swapchain —
+   see "Not yet decided" below). `meridian-audio-driver` — **done**,
+   backed by `cpal` (see [ADR 012](adr/012-audio-output-via-cpal.md)
+   and "Current state" above).
    `meridian-graphics-core`'s driver-independent half — **done**: render
    graph pass ordering, `Camera`'s `Motor3` -> view/projection matrix
    bridge, and frustum culling (see "Current state" above). This was the
