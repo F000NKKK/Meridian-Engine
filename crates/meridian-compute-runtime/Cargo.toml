@@ -11,6 +11,7 @@ description = "Compute dispatch runtime: device/context, buffers, and the Comput
 meridian-compute-driver = { workspace = true }
 meridian-task-core = { workspace = true }
 meridian-memory-core = { workspace = true }
+tokio = { workspace = true }
 
 [dev-dependencies]
-tokio = { workspace = true }
+meridian-gpu-driver.workspace = true
