@@ -14,7 +14,7 @@
 //! extension. PNG/JPEG and glTF remain future work on the same
 //! when-a-concrete-asset-needs-it trigger.
 
-mod compressed_audio;
+pub mod compressed_audio;
 
 pub use compressed_audio::{
     AnyAudioDecoder, AudioFormat, FlacDecoder, Mp3Decoder, OpusDecoder, VorbisDecoder,

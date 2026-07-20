@@ -217,7 +217,7 @@ impl Decoder<AudioData> for FlacDecoder {
 }
 
 /// Decodes OGG/Opus — symphonia's OGG demuxer plus the reference
-/// `libopus` registered in [`codec_registry`] (see ADR 013 — no mature
+/// `libopus` registered in the shared codec registry (see ADR 013 — no mature
 /// pure-Rust Opus decoder exists). Output is always 48 kHz, Opus's
 /// native decode rate.
 #[derive(Debug, Default)]
