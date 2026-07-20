@@ -433,6 +433,24 @@ impl CommandBuffer<'_> {
         pass.dispatch_workgroups(workgroups, 1, 1);
     }
 
+    /// Records a compute dispatch against an already-built `bind_group`
+    /// (see [`Device::create_bind_group`]) — the general form of
+    /// [`CommandBuffer::dispatch_compute`] for pipelines that need more
+    /// than the single-buffer binding shape it assumes.
+    pub fn dispatch_compute_with_bind_group(
+        &mut self,
+        pipeline: &ComputePipeline,
+        bind_group: &BindGroup,
+        workgroups: u32,
+    ) {
+        let mut pass = self
+            .encoder
+            .begin_compute_pass(&wgpu::ComputePassDescriptor::default());
+        pass.set_pipeline(&pipeline.raw);
+        pass.set_bind_group(0, &bind_group.raw, &[]);
+        pass.dispatch_workgroups(workgroups, 1, 1);
+    }
+
     /// Escape hatch for `graphics-driver`'s render-pass recording, which
     /// this crate deliberately doesn't know about (render
     /// passes/swapchains are a graphics-specific concept — see the module
