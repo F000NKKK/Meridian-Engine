@@ -35,7 +35,8 @@ use meridian_gac_core::{Motor3, Vec3};
 pub mod effects;
 
 pub use effects::{
-    AcousticMedium, BinauralConfig, BinauralRenderer, DspGraph, DspNode, Gain, LowPassFilter,
+    AcousticMedium, BinauralConfig, BinauralRenderer, Declicker, DspGraph, DspNode, Gain,
+    LowPassFilter,
 };
 
 /// The listener's spatial frame for 3D audio.

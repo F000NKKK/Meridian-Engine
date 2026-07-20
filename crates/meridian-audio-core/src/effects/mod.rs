@@ -4,12 +4,14 @@
 //! their own file here and a re-export below.
 
 mod binaural;
+mod declicker;
 mod dsp_graph;
 mod gain;
 mod low_pass;
 mod medium;
 
 pub use binaural::{BinauralConfig, BinauralRenderer};
+pub use declicker::Declicker;
 pub use dsp_graph::DspGraph;
 pub use gain::Gain;
 pub use low_pass::LowPassFilter;
