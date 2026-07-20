@@ -301,6 +301,22 @@ impl StreamingAudioDecoder {
     }
 }
 
+/// The standard-library face of streaming: a [`StreamingAudioDecoder`]
+/// *is* an iterator of blocks. Rust's own pull-streaming abstraction is
+/// `Iterator` (async `Stream` lives outside std and buys nothing here —
+/// decoding in-memory bytes is CPU-bound, not I/O), so this crate
+/// deliberately implements it instead of inventing an engine-specific
+/// `AssetStream` trait with a single implementor; a shared cross-asset
+/// streaming shape is deferred until a second streamed asset type
+/// actually exists (see ADR 014).
+impl Iterator for StreamingAudioDecoder {
+    type Item = Result<Vec<i16>, DecodeError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.next_block().transpose()
+    }
+}
+
 /// Probes `bytes` with the shared codec registry pipeline and returns
 /// the open reader/decoder pair plus the track's declared metadata.
 #[allow(clippy::type_complexity)]
