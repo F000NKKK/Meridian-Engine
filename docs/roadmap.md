@@ -450,9 +450,11 @@ priority before writing implementations is keeping that document and the
   synchronous — bounded, local, effectively-instant work gains nothing
   from being `async`, the same reason `Vec::push` isn't. `tokio` is only
   a dependency of crates with a genuine I/O operation of their own —
-  `platform-core::Window`/`DynamicLibrary` and `audio-driver`'s device
-  stubs will add it once their real implementations land, the same way
-  `graphics-driver` just did; it isn't forced onto `ecs-core`,
+  `audio-driver`'s real `AudioDevice::new` is an `async fn` per the same
+  policy (and needs `tokio` itself only as a dev-dependency, for its
+  tests' runtime); `platform-core::Window`/`DynamicLibrary` will add it
+  if their implementations gain a genuine I/O operation. It isn't forced
+  onto `ecs-core`,
   `gac-core`, `physics-core`, or anything else with no I/O. See
   [ADR 009](adr/009-async-io-via-tokio.md) for the full decision,
   including why this reverses this document's own earlier "not a reason
