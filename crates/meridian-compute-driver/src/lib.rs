@@ -232,6 +232,17 @@ impl GpuComputeDevice {
         commands.dispatch_compute(pipeline, buffer, workgroups);
         commands.submit();
     }
+
+    /// The raw `meridian_gpu_driver::Device` — an escape hatch for a
+    /// kernel author (e.g. `gac-compute`'s `Fixed` arithmetic kernels)
+    /// that needs a bind group/dispatch shape beyond
+    /// [`GpuComputeDevice::dispatch`]'s single-buffer convenience (a
+    /// kernel reading from one buffer and writing to another, for
+    /// instance) — see [`meridian_gpu_driver::Device::create_bind_group`]/
+    /// [`meridian_gpu_driver::CommandBuffer::dispatch_compute_with_bind_group`].
+    pub fn gpu_driver_device(&self) -> &meridian_gpu_driver::Device {
+        &self.device
+    }
 }
 
 #[cfg(test)]
