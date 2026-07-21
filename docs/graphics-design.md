@@ -245,17 +245,18 @@ driver.
    per-instance uniform mechanism exists, so world-space vertices and
    textured-draw bind groups are baked/rebuilt fresh every frame — see
    the module doc's "no per-instance uniform" note and the
-   GPU-driven-rendering section below). One windowed example
-   (`music_sphere`) has converged onto the bridge — procedurally
-   generated checkerboard floor (`TextureRegistry::upload` on a
-   generated `ImageData`, no file needed), a lit colored cube, and the
-   music-emitting sphere as an unlit+emissive material with `BloomPass`
-   applied, replacing that example's hand-rolled pipelines/buffers
-   entirely. The remaining windowed examples (`spinning_cube`, the
-   soft-body ones) haven't converged yet — real PNG/JPEG decoders (glTF
-   once real meshes ship — the ADR 013 when-a-concrete-asset-needs-it
-   pattern) and the GPU-compute audit under real load are also still
-   open, unblocked by the texture path landing but not yet done.
+   GPU-driven-rendering section below). Two windowed examples
+   (`magic_figures`, `physic_figures`) have converged onto the bridge —
+   a real PNG-textured checkerboard floor (`AnyImageDecoder`/
+   `TextureRegistry::upload` on a decoded file, not a generated
+   pattern), real BMP/PNG textures per shape, and (in `magic_figures`)
+   each orbiting shape as an unlit+emissive material with `BloomPass`
+   applied, replacing the old hand-rolled pipelines/buffers entirely.
+   The remaining windowed examples (`spinning_cube`, the soft-body ones)
+   haven't converged yet — glTF decoding (once real meshes ship — the
+   ADR 013 when-a-concrete-asset-needs-it pattern) and the GPU-compute
+   audit under real load are also still open, unblocked by the texture
+   path landing but not yet done.
 3. **Done, core lighting; material handling partially open.**
    `submission.rs` gained Blinn-Phong forward lighting: `Scene3D` now
    carries `ambient: [f32; 3]`, and every renderable's family (colored/
