@@ -90,13 +90,15 @@ impl Decoder<ImageData> for BmpDecoder {
         })
     }
 }
+/// Test-fixture builder shared with `image::mod`'s `AnyImageDecoder`
+/// tests — `pub(crate)` rather than duplicated, since a real BMP file
+/// (unlike a PNG) is simple enough to hand-build but still shouldn't be
+/// built twice.
 #[cfg(test)]
-mod tests {
-    use super::*;
-
+pub(crate) mod tests_support {
     /// Builds a minimal uncompressed 24-bit BMP: `width`x`height`, every
     /// pixel the given (r,g,b).
-    fn make_bmp(width: u32, height: u32, rgb: (u8, u8, u8)) -> Vec<u8> {
+    pub(crate) fn make_bmp(width: u32, height: u32, rgb: (u8, u8, u8)) -> Vec<u8> {
         let row_stride = (width as usize * 3).div_ceil(4) * 4;
         let pixel_data_len = row_stride * height as usize;
         let file_size = 54 + pixel_data_len;
@@ -128,6 +130,12 @@ mod tests {
         }
         b
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tests_support::make_bmp;
 
     #[test]
     fn bmp_decodes_solid_color_and_dimensions() {
