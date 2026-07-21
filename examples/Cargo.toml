@@ -35,19 +35,3 @@ path = "examples/magic_figures.rs"
 [[example]]
 name = "physic_figures"
 path = "examples/physic_figures.rs"
-
-[[example]]
-name = "spinning_cube"
-path = "examples/spinning_cube.rs"
-
-[[example]]
-name = "soft_body_rubber_balls"
-path = "examples/soft_body_rubber_balls.rs"
-
-[[example]]
-name = "soft_body_jiggle_deterministic"
-path = "examples/soft_body_jiggle_deterministic.rs"
-
-[[example]]
-name = "soft_body_jiggle_float"
-path = "examples/soft_body_jiggle_float.rs"
