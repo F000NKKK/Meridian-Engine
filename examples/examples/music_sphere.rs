@@ -95,8 +95,10 @@ fn icosphere_mesh_source(subdivisions: u32, radius: f32) -> MeshSource {
 
 /// A unit cube (half-extent 1 on every axis), one set of 4 vertices per
 /// face so each face gets its own flat normal and a full `[0,1]` UV.
+type CubeFace = ([f32; 3], [f32; 3], [f32; 3], [f32; 3], [f32; 3]);
+
 fn cube_mesh_source() -> MeshSource {
-    const FACES: [([f32; 3], [f32; 3], [f32; 3], [f32; 3], [f32; 3]); 6] = [
+    const FACES: [CubeFace; 6] = [
         // (normal, corner00, corner10, corner11, corner01) — CCW as seen
         // from outside the cube along `normal`, matching this crate's
         // `FrontFace::Ccw` convention.
