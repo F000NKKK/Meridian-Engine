@@ -11,18 +11,19 @@
 //! [`TextureRegistry`] wrap `memory-core::ResourcePool`, resolved by
 //! [`MeshHandle`]/[`MaterialHandle`]/[`TextureHandle`] — see ADR 002).
 //!
-//! **Four pipelines, chosen per renderable at bake time:** textured vs.
-//! flat-color (whether `Material::albedo` resolves in the
-//! [`TextureRegistry`]) crossed with lit vs. `Material::unlit`. Lit
-//! pipelines run Blinn-Phong forward shading against `Scene3D::lights`
-//! + `Scene3D::ambient` — a fixed-shininess, no-shadows approximation
-//! (real material roughness/specular control and shadow mapping are
-//! future work, not this step); unlit pipelines skip lighting entirely,
-//! for world-space UI and anything meant to read at a constant
-//! brightness. `Material::emissive` is added on top in both cases and
-//! baked into every vertex regardless of family — see
-//! [`bake_draw_buffers`] — so a mesh can glow (feed a bloom pass) whether
-//! or not it's lit.
+//! **Four pipelines, chosen per renderable at bake time:** textured
+//! vs. flat-color (whether `Material::albedo` resolves in the
+//! [`TextureRegistry`]) crossed with lit vs. `Material::unlit`.
+//!
+//! Lit pipelines run Blinn-Phong forward shading against
+//! `Scene3D::lights` + `Scene3D::ambient` — a fixed-shininess,
+//! no-shadows approximation (real material roughness/specular control
+//! and shadow mapping are future work, not this step); unlit pipelines
+//! skip lighting entirely, for world-space UI and anything meant to
+//! read at a constant brightness. `Material::emissive` is added on top
+//! in both cases and baked into every vertex regardless of family — see
+//! [`bake_draw_buffers`] — so a mesh can glow (feed a bloom pass)
+//! whether or not it's lit.
 //!
 //! **No per-instance uniform, no GPU-side instancing yet.** A render
 //! pass here has exactly one shared uniform buffer (view-projection,

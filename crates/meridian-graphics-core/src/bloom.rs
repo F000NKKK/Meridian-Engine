@@ -42,7 +42,7 @@
 //! windowed example.
 
 use meridian_graphics_driver::{
-    BindGroup, Buffer, BufferUsage, Device, RenderPipeline, Sampler, Surface, SurfaceFrame, Texture,
+    BindGroup, BufferUsage, Device, RenderPipeline, Sampler, Surface, SurfaceFrame, Texture,
 };
 
 use crate::SceneRenderer;
