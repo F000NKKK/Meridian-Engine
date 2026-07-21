@@ -211,6 +211,67 @@ impl Decoder<ImageData> for BmpDecoder {
     }
 }
 
+/// Decodes PNG (any color type/bit depth the `png` crate itself
+/// supports) into RGBA8, always — palette, grayscale and
+/// grayscale+alpha sources are expanded/converted, 16-bit samples are
+/// stripped to 8-bit. Detected by the 8-byte PNG signature.
+#[derive(Debug, Default)]
+pub struct PngDecoder;
+
+impl Decoder<ImageData> for PngDecoder {
+    type Error = DecodeError;
+
+    fn decode(&self, bytes: &[u8]) -> Result<ImageData, DecodeError> {
+        const SIGNATURE: [u8; 8] = [0x89, b'P', b'N', b'G', 0x0d, 0x0a, 0x1a, 0x0a];
+        need(bytes, SIGNATURE.len())?;
+        if bytes[..SIGNATURE.len()] != SIGNATURE {
+            return Err(DecodeError::BadMagic {
+                expected: "\\x89PNG\\r\\n\\x1a\\n",
+            });
+        }
+
+        let mut decoder = png::Decoder::new(std::io::Cursor::new(bytes));
+        // Always normalize to 8-bit and force an alpha channel, so the
+        // output is either Rgba or GrayscaleAlpha regardless of the
+        // source's color type/bit depth/palette — one conversion path
+        // below instead of one per PNG color type.
+        decoder.set_transformations(
+            png::Transformations::EXPAND | png::Transformations::STRIP_16 | png::Transformations::ALPHA,
+        );
+        let mut reader = decoder
+            .read_info()
+            .map_err(|e| DecodeError::Codec(e.to_string()))?;
+
+        let mut buffer = vec![0u8; reader.output_buffer_size().unwrap_or(0)];
+        let info = reader
+            .next_frame(&mut buffer)
+            .map_err(|e| DecodeError::Codec(e.to_string()))?;
+        let decoded = &buffer[..info.buffer_size()];
+
+        let pixels = match info.color_type {
+            png::ColorType::Rgba => decoded.to_vec(),
+            png::ColorType::GrayscaleAlpha => decoded
+                .chunks_exact(2)
+                .flat_map(|ga| [ga[0], ga[0], ga[0], ga[1]])
+                .collect(),
+            other => {
+                return Err(DecodeError::Unsupported(match other {
+                    png::ColorType::Grayscale => "PNG grayscale without alpha after normalization",
+                    png::ColorType::Rgb => "PNG RGB without alpha after normalization",
+                    png::ColorType::Indexed => "PNG indexed color after normalization",
+                    _ => "unrecognized PNG color type after normalization",
+                }));
+            }
+        };
+
+        Ok(ImageData {
+            width: info.width,
+            height: info.height,
+            pixels,
+        })
+    }
+}
+
 /// Decodes a minimal Wavefront OBJ: `v x y z` vertex lines and `f a b c`
 /// triangle face lines (1-indexed; `a/b/c` texture/normal index suffixes
 /// are recognized and ignored). No normals, UVs, materials, groups, or
