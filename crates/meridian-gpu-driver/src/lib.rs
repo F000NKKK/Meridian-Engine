@@ -379,12 +379,20 @@ impl Device {
     /// texture's own edges). Not parameterized yet: a second sampler
     /// configuration (wrapping, nearest-neighbor, ...) is additive future
     /// work once a concrete material needs one.
+    /// `Repeat` addressing, not `ClampToEdge`: a UV that tiles a texture
+    /// across a surface (a floor's checkerboard, say) needs values
+    /// outside `[0,1]` to wrap back around, not smear the edge texel —
+    /// `ClampToEdge` turns every tile beyond the first into a stretched
+    /// streak of edge pixels, which reads as stripes, not a repeating
+    /// pattern. `Repeat` is exactly equivalent to `ClampToEdge` for the
+    /// non-tiling case (UVs that never leave `[0,1]`), so this is
+    /// strictly the more general default, not a trade-off.
     pub fn create_sampler(&self) -> Sampler {
         let raw = self.device.create_sampler(&wgpu::SamplerDescriptor {
             label: None,
-            address_mode_u: wgpu::AddressMode::ClampToEdge,
-            address_mode_v: wgpu::AddressMode::ClampToEdge,
-            address_mode_w: wgpu::AddressMode::ClampToEdge,
+            address_mode_u: wgpu::AddressMode::Repeat,
+            address_mode_v: wgpu::AddressMode::Repeat,
+            address_mode_w: wgpu::AddressMode::Repeat,
             mag_filter: wgpu::FilterMode::Linear,
             min_filter: wgpu::FilterMode::Linear,
             mipmap_filter: wgpu::MipmapFilterMode::Nearest,
