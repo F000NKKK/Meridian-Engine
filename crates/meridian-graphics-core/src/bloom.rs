@@ -283,19 +283,33 @@ impl BloomPass {
         pass: &mut meridian_graphics_driver::RenderPass<'_>,
         buffers: &[DrawBuffers],
     ) {
-        // Rebuilt every frame, same "correct now, cache later" trade-off
-        // as the per-texture bind groups in `submission.rs`.
-        let bind_group = device.create_uniform_bind_group(
+        // Two bind groups, not one: with `layout: None` (auto-derived
+        // bind group layout), wgpu treats each pipeline's layout as a
+        // distinct object even when two shaders declare an identical
+        // `@group`/`@binding` shape — a bind group built against one
+        // pipeline is rejected ("exclusive pipelines don't match") the
+        // moment a *different* pipeline is bound, which is exactly what
+        // reusing one bind group across the colored/textured pipeline
+        // switch below used to do. Both rebuilt every frame, same
+        // "correct now, cache later" trade-off as the per-texture bind
+        // groups in `submission.rs`.
+        let colored_bind_group = device.create_uniform_bind_group(
             &self.emissive_from_colored_pipeline,
             renderer.uniform_buffer(),
         );
-        pass.set_bind_group(0, &bind_group);
+        let textured_bind_group = device.create_uniform_bind_group(
+            &self.emissive_from_textured_pipeline,
+            renderer.uniform_buffer(),
+        );
         for entry in buffers {
-            let pipeline = match &entry.kind {
-                DrawKind::Colored => &self.emissive_from_colored_pipeline,
-                DrawKind::Textured { .. } => &self.emissive_from_textured_pipeline,
+            let (pipeline, bind_group) = match &entry.kind {
+                DrawKind::Colored => (&self.emissive_from_colored_pipeline, &colored_bind_group),
+                DrawKind::Textured { .. } => {
+                    (&self.emissive_from_textured_pipeline, &textured_bind_group)
+                }
             };
             pass.set_pipeline(pipeline);
+            pass.set_bind_group(0, bind_group);
             pass.set_vertex_buffer(0, &entry.vertex_buffer);
             pass.set_index_buffer_u16(&entry.index_buffer);
             pass.draw_indexed(0..entry.index_count);
