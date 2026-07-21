@@ -94,12 +94,48 @@ fn cube_mesh_source() -> MeshSource {
         // (normal, corner00, corner10, corner11, corner01) — CCW as seen
         // from outside the cube along `normal`, matching this crate's
         // `FrontFace::Ccw` convention.
-        ([1.0, 0.0, 0.0], [1.0, -1.0, -1.0], [1.0, -1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, -1.0]),
-        ([-1.0, 0.0, 0.0], [-1.0, -1.0, 1.0], [-1.0, -1.0, -1.0], [-1.0, 1.0, -1.0], [-1.0, 1.0, 1.0]),
-        ([0.0, 1.0, 0.0], [-1.0, 1.0, -1.0], [1.0, 1.0, -1.0], [1.0, 1.0, 1.0], [-1.0, 1.0, 1.0]),
-        ([0.0, -1.0, 0.0], [-1.0, -1.0, 1.0], [1.0, -1.0, 1.0], [1.0, -1.0, -1.0], [-1.0, -1.0, -1.0]),
-        ([0.0, 0.0, 1.0], [-1.0, -1.0, 1.0], [1.0, -1.0, 1.0], [1.0, 1.0, 1.0], [-1.0, 1.0, 1.0]),
-        ([0.0, 0.0, -1.0], [1.0, -1.0, -1.0], [-1.0, -1.0, -1.0], [-1.0, 1.0, -1.0], [1.0, 1.0, -1.0]),
+        (
+            [1.0, 0.0, 0.0],
+            [1.0, -1.0, -1.0],
+            [1.0, -1.0, 1.0],
+            [1.0, 1.0, 1.0],
+            [1.0, 1.0, -1.0],
+        ),
+        (
+            [-1.0, 0.0, 0.0],
+            [-1.0, -1.0, 1.0],
+            [-1.0, -1.0, -1.0],
+            [-1.0, 1.0, -1.0],
+            [-1.0, 1.0, 1.0],
+        ),
+        (
+            [0.0, 1.0, 0.0],
+            [-1.0, 1.0, -1.0],
+            [1.0, 1.0, -1.0],
+            [1.0, 1.0, 1.0],
+            [-1.0, 1.0, 1.0],
+        ),
+        (
+            [0.0, -1.0, 0.0],
+            [-1.0, -1.0, 1.0],
+            [1.0, -1.0, 1.0],
+            [1.0, -1.0, -1.0],
+            [-1.0, -1.0, -1.0],
+        ),
+        (
+            [0.0, 0.0, 1.0],
+            [-1.0, -1.0, 1.0],
+            [1.0, -1.0, 1.0],
+            [1.0, 1.0, 1.0],
+            [-1.0, 1.0, 1.0],
+        ),
+        (
+            [0.0, 0.0, -1.0],
+            [1.0, -1.0, -1.0],
+            [-1.0, -1.0, -1.0],
+            [-1.0, 1.0, -1.0],
+            [1.0, 1.0, -1.0],
+        ),
     ];
 
     let mut positions = Vec::new();
@@ -378,17 +414,12 @@ struct GpuState {
     device: Device,
     surface: Surface,
     depth: DepthTexture,
-    pipeline: RenderPipeline,
-    uniform_buffer: Buffer,
-    bind_group: BindGroup,
-    ground_pipeline: RenderPipeline,
-    ground_bind_group: BindGroup,
-    ground_vertex_buffer: Buffer,
-    ground_index_buffer: Buffer,
-    ground_index_count: u32,
-    sphere_vertex_buffer: Buffer,
-    sphere_index_buffer: Buffer,
-    sphere_index_count: u32,
+    renderer: SceneRenderer,
+    bloom: BloomPass,
+    meshes: MeshRegistry,
+    materials: MaterialRegistry,
+    textures: TextureRegistry,
+    scene: Scene3D,
 }
 
 struct App {
