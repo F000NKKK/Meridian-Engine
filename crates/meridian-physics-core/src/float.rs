@@ -408,4 +408,68 @@ mod tests {
             "box should settle near the floor surface, got y={resting_height}"
         );
     }
+
+    /// Regression test for the "cube/pyramid spin hysterically on
+    /// touchdown" bug: a box-box manifold's per-corner torque isn't a
+    /// coupled solve (see `Contact::suppress_angular_response`'s doc
+    /// comment), so before that flag existed this box's
+    /// `angular_velocity` diverged instead of settling. A flat box
+    /// dropped with zero initial spin onto a flat static floor has no
+    /// physical reason to ever spin fast — this runs the *exact* same
+    /// `examples/examples/physic_figures.rs` loop shape (integrate,
+    /// broad, narrow, resolve, with friction) headlessly in a fraction
+    /// of a second, so this bug (and any regression of it) is caught by
+    /// `cargo test -p meridian-physics-core` without launching the
+    /// windowed example at all.
+    #[test]
+    fn cuboid_settles_without_runaway_spin() {
+        let floor = cuboid(
+            Motor3::translation(Vec3::new(0.0, -0.5, 0.0)),
+            Vec3::ZERO,
+            0.0,
+            Vec3::new(14.0, 0.5, 14.0),
+        );
+        let falling = cuboid(
+            Motor3::translation(Vec3::new(0.0, 3.0, 0.0)),
+            Vec3::ZERO,
+            1.0,
+            Vec3::new(0.6, 0.6, 0.6),
+        );
+        let mut bodies = vec![floor, falling];
+
+        let integrator = Integrator::default();
+        let solver = ConstraintSolver::new(0.15).with_friction(0.6);
+        let mut broad = BroadPhase::new();
+        let narrow = NarrowPhase::new();
+        let dt = 1.0 / 60.0;
+
+        let mut max_angular_speed_after_landing: f32 = 0.0;
+        for step in 0..600 {
+            integrator.step(&mut bodies, dt);
+            for _ in 0..4 {
+                let pairs = broad.find_candidate_pairs(&bodies).to_vec();
+                for contact in narrow.generate_contacts(&bodies, &pairs) {
+                    solver.resolve(&mut bodies, &contact);
+                }
+            }
+            // Give the box a couple hundred steps to make first contact
+            // and let any initial-impact wobble die down before tracking
+            // the "should now be at rest" window.
+            if step > 200 {
+                max_angular_speed_after_landing =
+                    max_angular_speed_after_landing.max(bodies[1].angular_velocity.length());
+            }
+            assert!(
+                bodies[1].position().y.is_finite()
+                    && bodies[1].angular_velocity.length().is_finite(),
+                "body must never diverge to NaN/infinity (step {step})"
+            );
+        }
+
+        assert!(
+            max_angular_speed_after_landing < 1.0,
+            "a flat box dropped with no initial spin should settle, not keep spinning \
+             (max angular speed after landing: {max_angular_speed_after_landing} rad/s)"
+        );
+    }
 }
