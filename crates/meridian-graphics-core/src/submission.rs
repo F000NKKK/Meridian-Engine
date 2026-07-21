@@ -36,14 +36,12 @@
 //! rendering" section already names as the long-term thing to fix via
 //! instancing/indirect draw.
 
-use std::collections::HashMap;
-
 use meridian_gac_core::{Motor3, Vec3};
 use meridian_graphics_driver::{
     BindGroup, Buffer, BufferUsage, Device, RenderPass as DriverRenderPass, RenderPipeline,
     Surface, VertexAttributeDesc, VertexFormat, VertexLayout,
 };
-use meridian_memory_core::{Handle, ResourcePool};
+use meridian_memory_core::ResourcePool;
 
 use crate::scene::{Material, Renderable3D, Scene3D};
 use crate::{Camera, MaterialHandle, MeshHandle};
