@@ -49,6 +49,11 @@ const PYRAMID_HEIGHT: f32 = 1.2;
 
 const PHYSICS_DT: f32 = 1.0 / 60.0;
 const SOLVER_RESTITUTION: f32 = 0.15;
+/// Coulomb friction coefficient — without this, resting bodies had
+/// nothing slowing lateral sliding, so any small rotational/positional
+/// jitter (see `NarrowPhase`'s box-box manifold) could slide the box
+/// across the floor indefinitely instead of settling.
+const SOLVER_FRICTION: f32 = 0.6;
 
 /// A `Cuboid` collider that roughly bounds the pyramid mesh (base
 /// `2*PYRAMID_BASE_HALF_EXTENT` square, `PYRAMID_HEIGHT` tall) — see the
@@ -123,7 +128,7 @@ impl PhysicsRig {
         Self {
             bodies: vec![floor, sphere, cube, pyramid],
             integrator: Integrator::default(),
-            solver: ConstraintSolver::new(SOLVER_RESTITUTION),
+            solver: ConstraintSolver::new(SOLVER_RESTITUTION).with_friction(SOLVER_FRICTION),
             broad: BroadPhase::new(),
             narrow: NarrowPhase::new(),
             accumulator: 0.0,

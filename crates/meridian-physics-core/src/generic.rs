@@ -701,19 +701,43 @@ pub struct ConstraintSolver<F: GaFlavor> {
     /// 0 = perfectly inelastic (bodies stick, no bounce), 1 = perfectly
     /// elastic (no kinetic energy lost).
     pub restitution: F::Scalar,
+    /// Coulomb friction coefficient, applied as a tangential impulse
+    /// clamped to `friction * normal_impulse` (see [`resolve`](Self::resolve)) —
+    /// `0` disables friction entirely (the old behavior every existing
+    /// [`ConstraintSolver::new`] call site got, since this field didn't
+    /// exist before). Not a true static/dynamic-friction split (that
+    /// needs per-contact tangential *position* tracking to detect
+    /// "still stuck" vs "sliding", which this solver's single-point,
+    /// no-warm-starting design doesn't carry) — one coefficient used as
+    /// a dynamic-friction cone for both regimes, the same simplification
+    /// most simple/game physics engines make.
+    pub friction: F::Scalar,
 }
 
 impl<F: GaFlavor> Default for ConstraintSolver<F> {
     fn default() -> Self {
         Self {
             restitution: F::Scalar::ZERO,
+            friction: F::Scalar::ZERO,
         }
     }
 }
 
 impl<F: GaFlavor> ConstraintSolver<F> {
+    /// `friction` defaults to `0` (no friction) — existing call sites
+    /// that only ever passed `restitution` keep their old behavior
+    /// unchanged; opt into friction via
+    /// [`with_friction`](Self::with_friction).
     pub fn new(restitution: F::Scalar) -> Self {
-        Self { restitution }
+        Self {
+            restitution,
+            friction: F::Scalar::ZERO,
+        }
+    }
+
+    pub fn with_friction(mut self, friction: F::Scalar) -> Self {
+        self.friction = friction;
+        self
     }
 
     /// Applies an impulse-based resolution for `contact`, mutating only
@@ -748,6 +772,40 @@ impl<F: GaFlavor> ConstraintSolver<F> {
                 bodies[contact.a].angular_velocity - torque_a * inv_inertia_a;
             bodies[contact.b].angular_velocity =
                 bodies[contact.b].angular_velocity + torque_b * inv_inertia_b;
+
+            // Coulomb friction: the tangential component of relative
+            // velocity (whatever's left of `relative_velocity` once the
+            // along-normal part is removed) gets its own impulse,
+            // opposing sliding, clamped to `friction * j` — a cone
+            // around the normal impulse, not a fixed force, so light
+            // contacts can't get an unphysically strong sideways
+            // impulse. Recomputed from the *post-normal-impulse*
+            // velocity so it reacts to what the normal impulse just
+            // did, same sequential-impulse spirit as running each
+            // manifold point's `resolve` call in sequence.
+            if self.friction > F::Scalar::ZERO {
+                let relative_velocity = bodies[contact.b].velocity - bodies[contact.a].velocity;
+                let tangential_velocity =
+                    relative_velocity - contact.normal * relative_velocity.dot(contact.normal);
+                let tangential_speed = tangential_velocity.length();
+                if tangential_speed > F::Scalar::EPSILON {
+                    let tangent = tangential_velocity * (F::Scalar::ONE / tangential_speed);
+                    let jt = (-tangential_speed / total_inv_mass)
+                        .clamp(-self.friction * j, self.friction * j);
+                    let friction_impulse = tangent * jt;
+                    bodies[contact.a].velocity =
+                        bodies[contact.a].velocity - friction_impulse * inv_mass_a;
+                    bodies[contact.b].velocity =
+                        bodies[contact.b].velocity + friction_impulse * inv_mass_b;
+
+                    let friction_torque_a = F::Bivector::wedge(offset_a, friction_impulse);
+                    let friction_torque_b = F::Bivector::wedge(offset_b, friction_impulse);
+                    bodies[contact.a].angular_velocity =
+                        bodies[contact.a].angular_velocity - friction_torque_a * inv_inertia_a;
+                    bodies[contact.b].angular_velocity =
+                        bodies[contact.b].angular_velocity + friction_torque_b * inv_inertia_b;
+                }
+            }
         }
 
         let correction_percent = F::Scalar::from_f64(0.8);
