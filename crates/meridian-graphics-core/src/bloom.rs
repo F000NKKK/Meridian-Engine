@@ -221,7 +221,7 @@ impl BloomPass {
     }
 
     /// Runs the full bloom pipeline for one view and composites the
-    /// result onto `target_view` — the *same* view `renderer`'s main
+    /// result onto `target_frame` — the *same* frame `renderer`'s main
     /// [`SceneRenderer::draw`] already rendered into earlier in this
     /// `command_buffer`, per the module doc's step 4.
     ///
@@ -234,7 +234,7 @@ impl BloomPass {
         command_buffer: &mut meridian_graphics_driver::CommandBuffer<'_>,
         renderer: &SceneRenderer,
         draw_buffers: &[DrawBuffers],
-        target_view: &wgpu::TextureView,
+        target_frame: &SurfaceFrame,
     ) {
         if self.config.intensity <= 0.0 {
             return;
@@ -292,7 +292,7 @@ impl BloomPass {
             &self.sampler,
         );
         {
-            let mut pass = command_buffer.begin_render_pass_loaded(target_view);
+            let mut pass = command_buffer.begin_render_pass_loaded(target_frame.view());
             pass.set_pipeline(&self.composite_pipeline);
             pass.set_bind_group(0, &composite_bind_group);
             pass.draw(0..3);

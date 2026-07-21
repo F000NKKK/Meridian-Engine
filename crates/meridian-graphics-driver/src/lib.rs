@@ -322,6 +322,41 @@ impl Device {
         &self,
         shader: &meridian_gpu_driver::Shader,
         fragment_entry: &str,
+        surface: &Surface,
+        additive: bool,
+    ) -> RenderPipeline {
+        self.create_fullscreen_pipeline_for_format(
+            shader,
+            fragment_entry,
+            surface.config.format,
+            additive,
+        )
+    }
+
+    /// [`create_fullscreen_pipeline`](Self::create_fullscreen_pipeline)'s
+    /// offscreen counterpart: targets
+    /// [`create_offscreen_color_texture`](Self::create_offscreen_color_texture)'s
+    /// fixed `Rgba8UnormSrgb` format directly, for a post-process pass
+    /// that renders into an intermediate texture rather than the
+    /// swapchain (e.g. bloom's blur passes).
+    pub fn create_fullscreen_pipeline_for_offscreen(
+        &self,
+        shader: &meridian_gpu_driver::Shader,
+        fragment_entry: &str,
+        additive: bool,
+    ) -> RenderPipeline {
+        self.create_fullscreen_pipeline_for_format(
+            shader,
+            fragment_entry,
+            wgpu::TextureFormat::Rgba8UnormSrgb,
+            additive,
+        )
+    }
+
+    fn create_fullscreen_pipeline_for_format(
+        &self,
+        shader: &meridian_gpu_driver::Shader,
+        fragment_entry: &str,
         format: wgpu::TextureFormat,
         additive: bool,
     ) -> RenderPipeline {
