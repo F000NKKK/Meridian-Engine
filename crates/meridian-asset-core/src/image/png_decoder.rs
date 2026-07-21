@@ -66,16 +66,20 @@ impl Decoder<ImageData> for PngDecoder {
         })
     }
 }
+/// Test-fixture builder shared with `image::mod`'s `AnyImageDecoder`
+/// tests — encodes a real PNG via the same `png` crate this decoder
+/// wraps (hand-building valid DEFLATE-compressed bytes isn't practical
+/// the way hand-building BMP/OBJ bytes is — see the module doc's
+/// DEFLATE-is-too-big-to-hand-roll reasoning); this exercises *our*
+/// wiring and color-type conversion, not the `png` crate itself.
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// Encodes a real PNG via the same `png` crate this decoder wraps —
-    /// hand-building valid DEFLATE-compressed bytes isn't practical the
-    /// way hand-building BMP/OBJ bytes is (see the module doc's
-    /// DEFLATE-is-too-big-to-hand-roll reasoning); this exercises *our*
-    /// wiring and color-type conversion, not the `png` crate itself.
-    fn make_png(width: u32, height: u32, color: png::ColorType, pixels: &[u8]) -> Vec<u8> {
+pub(crate) mod tests_support {
+    pub(crate) fn make_png(
+        width: u32,
+        height: u32,
+        color: png::ColorType,
+        pixels: &[u8],
+    ) -> Vec<u8> {
         let mut bytes = Vec::new();
         let mut encoder = png::Encoder::new(&mut bytes, width, height);
         encoder.set_color(color);
@@ -85,6 +89,12 @@ mod tests {
         writer.finish().unwrap();
         bytes
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tests_support::make_png;
 
     #[test]
     fn png_decodes_rgba_directly() {
