@@ -463,68 +463,91 @@ impl AppHandler for App {
             .expect("failed to create windowed GPU device");
 
         let depth = device.create_depth_texture(width, height);
-        let shader = device.create_shader("music_sphere", SOFT_BODY_SHADER);
-        let pipeline = device.create_render_pipeline(
-            &shader,
-            "vs_main",
-            "fs_main",
-            &soft_body_vertex_layout(),
-            &surface,
-            true,
-        );
-        let uniform_buffer = device.create_buffer(64, BufferUsage::Uniform);
-        let bind_group = device.create_uniform_bind_group(&pipeline, &uniform_buffer);
+        let renderer = SceneRenderer::new(&device, &surface);
+        let bloom = BloomPass::new(&device, width, height, &surface);
 
-        let ground_shader = device.create_shader("ground", GROUND_SHADER);
-        let ground_pipeline = device.create_render_pipeline(
-            &ground_shader,
-            "vs_main",
-            "fs_main",
-            &soft_body_vertex_layout(),
-            &surface,
-            true,
-        );
-        let ground_bind_group = device.create_uniform_bind_group(&ground_pipeline, &uniform_buffer);
-        let (ground_vertex_bytes, ground_index_bytes, ground_index_count) =
-            ground_quad_buffers(30.0, 0.0);
-        let ground_vertex_buffer =
-            device.create_buffer(ground_vertex_bytes.len(), BufferUsage::Vertex);
-        device.write_buffer(&ground_vertex_buffer, &ground_vertex_bytes);
-        let ground_index_buffer =
-            device.create_buffer(ground_index_bytes.len(), BufferUsage::Index);
-        device.write_buffer(&ground_index_buffer, &ground_index_bytes);
+        let mut meshes = MeshRegistry::new();
+        let mut materials = MaterialRegistry::new();
+        let mut textures = TextureRegistry::new();
 
-        // The sphere never deforms — build its buffers once.
-        let mesh = icosphere(2);
-        let positions: Vec<Vec3> = mesh
-            .vertices
-            .iter()
-            .map(|v| SPHERE_CENTER + *v * SPHERE_RADIUS)
-            .collect();
-        let (sphere_vertex_bytes, sphere_index_bytes, sphere_index_count) =
-            soft_body_render_buffers(&positions, &mesh.faces);
-        let sphere_vertex_buffer =
-            device.create_buffer(sphere_vertex_bytes.len(), BufferUsage::Vertex);
-        device.write_buffer(&sphere_vertex_buffer, &sphere_vertex_bytes);
-        let sphere_index_buffer =
-            device.create_buffer(sphere_index_bytes.len(), BufferUsage::Index);
-        device.write_buffer(&sphere_index_buffer, &sphere_index_bytes);
+        let checkerboard = textures.upload(&device, &checkerboard_image(256, 8));
+        let floor_material = materials.register(Material {
+            albedo: Some(checkerboard),
+            base_color_factor: [1.0, 1.0, 1.0, 1.0],
+            ..Default::default()
+        });
+        let cube_material = materials.register(Material {
+            base_color_factor: [0.25, 0.45, 0.9, 1.0],
+            ..Default::default()
+        });
+        // Unlit + emissive: the sphere always reads as a light source
+        // regardless of scene lighting, and its emissive value is
+        // exactly what `BloomPass` blooms — see the module doc.
+        let sphere_material = materials.register(Material {
+            base_color_factor: [1.0, 0.65, 0.25, 1.0],
+            unlit: true,
+            emissive: [1.0, 0.65, 0.25],
+            ..Default::default()
+        });
+
+        let floor_mesh = meshes
+            .register(ground_mesh_source(15.0, 8.0))
+            .expect("floor mesh must be valid");
+        let cube_mesh = meshes
+            .register(cube_mesh_source())
+            .expect("cube mesh must be valid");
+        let sphere_mesh = meshes
+            .register(icosphere_mesh_source(2))
+            .expect("sphere mesh must be valid");
+
+        let scene = Scene3D {
+            renderables: vec![
+                Renderable3D {
+                    mesh: floor_mesh,
+                    material: floor_material,
+                    frame: Motor3::identity(),
+                    billboard: false,
+                },
+                Renderable3D {
+                    mesh: cube_mesh,
+                    material: cube_material,
+                    frame: Motor3::translation(Vec3::new(-2.5, 1.0, -1.5)),
+                    billboard: false,
+                },
+                Renderable3D {
+                    mesh: sphere_mesh,
+                    material: sphere_material,
+                    frame: Motor3::translation(SPHERE_CENTER).compose(
+                        Motor3::from_rotation_translation(
+                            meridian_gac_core::Rotor::identity(),
+                            Vec3::ZERO,
+                        ),
+                    ) * SPHERE_RADIUS_SCALE,
+                    billboard: false,
+                },
+            ],
+            lights: vec![Light::Directional {
+                direction: Motor3::from_rotation_translation(
+                    look_at_rotor_down(Vec3::new(-0.4, -1.0, -0.3)),
+                    Vec3::ZERO,
+                ),
+                color: [1.0, 0.96, 0.9],
+                intensity: 1.2,
+            }],
+            ambient: [0.08, 0.08, 0.1],
+            ..Scene3D::default()
+        };
 
         self.gpu = Some(GpuState {
             device,
             surface,
             depth,
-            pipeline,
-            uniform_buffer,
-            bind_group,
-            ground_pipeline,
-            ground_bind_group,
-            ground_vertex_buffer,
-            ground_index_buffer,
-            ground_index_count,
-            sphere_vertex_buffer,
-            sphere_index_buffer,
-            sphere_index_count,
+            renderer,
+            bloom,
+            meshes,
+            materials,
+            textures,
+            scene,
         });
     }
 
