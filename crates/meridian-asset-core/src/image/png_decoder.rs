@@ -29,7 +29,9 @@ impl Decoder<ImageData> for PngDecoder {
         // source's color type/bit depth/palette — one conversion path
         // below instead of one per PNG color type.
         decoder.set_transformations(
-            png::Transformations::EXPAND | png::Transformations::STRIP_16 | png::Transformations::ALPHA,
+            png::Transformations::EXPAND
+                | png::Transformations::STRIP_16
+                | png::Transformations::ALPHA,
         );
         let mut reader = decoder
             .read_info()
@@ -86,7 +88,9 @@ mod tests {
 
     #[test]
     fn png_decodes_rgba_directly() {
-        let pixels = [10, 20, 30, 255, 40, 50, 60, 128, 70, 80, 90, 0, 100, 110, 120, 255];
+        let pixels = [
+            10, 20, 30, 255, 40, 50, 60, 128, 70, 80, 90, 0, 100, 110, 120, 255,
+        ];
         let bytes = make_png(2, 2, png::ColorType::Rgba, &pixels);
         let image = PngDecoder.decode(&bytes).unwrap();
         assert_eq!((image.width, image.height), (2, 2));
@@ -100,7 +104,9 @@ mod tests {
         let image = PngDecoder.decode(&bytes).unwrap();
         assert_eq!(
             image.pixels,
-            vec![10, 20, 30, 255, 40, 50, 60, 255, 70, 80, 90, 255, 100, 110, 120, 255]
+            vec![
+                10, 20, 30, 255, 40, 50, 60, 255, 70, 80, 90, 255, 100, 110, 120, 255
+            ]
         );
     }
 
@@ -111,7 +117,9 @@ mod tests {
         let image = PngDecoder.decode(&bytes).unwrap();
         assert_eq!(
             image.pixels,
-            vec![0, 0, 0, 255, 128, 128, 128, 255, 255, 255, 255, 255, 64, 64, 64, 255]
+            vec![
+                0, 0, 0, 255, 128, 128, 128, 255, 255, 255, 255, 255, 64, 64, 64, 255
+            ]
         );
     }
 
@@ -130,5 +138,4 @@ mod tests {
             Err(DecodeError::TooShort { .. })
         ));
     }
-
 }

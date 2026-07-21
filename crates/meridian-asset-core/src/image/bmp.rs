@@ -186,5 +186,4 @@ mod tests {
             Err(DecodeError::TooShort { .. })
         ));
     }
-
 }
