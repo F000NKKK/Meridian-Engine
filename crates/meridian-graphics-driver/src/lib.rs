@@ -210,6 +210,30 @@ impl Device {
         surface: &Surface,
         depth_enabled: bool,
     ) -> RenderPipeline {
+        self.create_render_pipeline_for_format(
+            shader,
+            vertex_entry,
+            fragment_entry,
+            vertex_layout,
+            surface.config.format,
+            depth_enabled,
+        )
+    }
+
+    /// [`create_render_pipeline`](Self::create_render_pipeline)'s general
+    /// form: takes the target color format directly instead of reading
+    /// it off a [`Surface`], for pipelines that render into an offscreen
+    /// texture rather than the swapchain (e.g. a post-process pass's
+    /// intermediate target — see [`create_offscreen_color_texture`](Self::create_offscreen_color_texture)).
+    pub fn create_render_pipeline_for_format(
+        &self,
+        shader: &meridian_gpu_driver::Shader,
+        vertex_entry: &str,
+        fragment_entry: &str,
+        vertex_layout: &VertexLayout,
+        format: wgpu::TextureFormat,
+        depth_enabled: bool,
+    ) -> RenderPipeline {
         let wgpu_attributes: Vec<wgpu::VertexAttribute> = vertex_layout
             .attributes
             .iter()
@@ -242,7 +266,7 @@ impl Device {
                     entry_point: Some(fragment_entry),
                     compilation_options: wgpu::PipelineCompilationOptions::default(),
                     targets: &[Some(wgpu::ColorTargetState {
-                        format: surface.config.format,
+                        format,
                         blend: Some(wgpu::BlendState::REPLACE),
                         write_mask: wgpu::ColorWrites::ALL,
                     })],
@@ -261,6 +285,91 @@ impl Device {
                     stencil: wgpu::StencilState::default(),
                     bias: wgpu::DepthBiasState::default(),
                 }),
+                multisample: wgpu::MultisampleState::default(),
+                multiview_mask: None,
+                cache: None,
+            });
+        RenderPipeline { raw }
+    }
+
+    /// A sampleable *and* renderable color texture (`Rgba8UnormSrgb`,
+    /// `TEXTURE_BINDING | RENDER_ATTACHMENT`) — the shape a post-process
+    /// pass's intermediate target needs: something to render into, then
+    /// read back from in the next pass. [`create_texture_2d`](Self::create_texture_2d)
+    /// is sampleable but not renderable (an uploaded asset texture is
+    /// never a render target); this is that plus render-attachment
+    /// usage.
+    pub fn create_offscreen_color_texture(&self, width: u32, height: u32) -> Texture {
+        self.0.create_texture(
+            width,
+            height,
+            wgpu::TextureFormat::Rgba8UnormSrgb,
+            wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
+        )
+    }
+
+    /// Builds a full-screen-triangle pipeline: no vertex buffer (three
+    /// vertices generated in `shader` from `@builtin(vertex_index)`, the
+    /// standard `wgpu` full-screen-triangle trick — one triangle
+    /// covering the whole clip-space rectangle, cheaper than a
+    /// two-triangle quad and with no seam), no depth test, and `blend`
+    /// picking `REPLACE` (a filter pass, e.g. blur) or `ADD` (a bloom-
+    /// style additive composite onto whatever the target already holds
+    /// — see [`CommandBuffer::begin_render_pass_loaded`]). Used for
+    /// post-process passes; ordinary mesh rendering stays on
+    /// [`create_render_pipeline`](Self::create_render_pipeline).
+    pub fn create_fullscreen_pipeline(
+        &self,
+        shader: &meridian_gpu_driver::Shader,
+        fragment_entry: &str,
+        format: wgpu::TextureFormat,
+        additive: bool,
+    ) -> RenderPipeline {
+        let raw = self
+            .0
+            .wgpu_device()
+            .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: None,
+                layout: None,
+                vertex: wgpu::VertexState {
+                    module: shader.wgpu_shader(),
+                    entry_point: Some("vs_main"),
+                    compilation_options: wgpu::PipelineCompilationOptions::default(),
+                    buffers: &[],
+                },
+                fragment: Some(wgpu::FragmentState {
+                    module: shader.wgpu_shader(),
+                    entry_point: Some(fragment_entry),
+                    compilation_options: wgpu::PipelineCompilationOptions::default(),
+                    targets: &[Some(wgpu::ColorTargetState {
+                        format,
+                        blend: Some(if additive {
+                            wgpu::BlendState {
+                                color: wgpu::BlendComponent {
+                                    src_factor: wgpu::BlendFactor::One,
+                                    dst_factor: wgpu::BlendFactor::One,
+                                    operation: wgpu::BlendOperation::Add,
+                                },
+                                alpha: wgpu::BlendComponent {
+                                    src_factor: wgpu::BlendFactor::One,
+                                    dst_factor: wgpu::BlendFactor::One,
+                                    operation: wgpu::BlendOperation::Add,
+                                },
+                            }
+                        } else {
+                            wgpu::BlendState::REPLACE
+                        }),
+                        write_mask: wgpu::ColorWrites::ALL,
+                    })],
+                }),
+                primitive: wgpu::PrimitiveState {
+                    topology: wgpu::PrimitiveTopology::TriangleList,
+                    strip_index_format: None,
+                    front_face: wgpu::FrontFace::Ccw,
+                    cull_mode: None,
+                    ..Default::default()
+                },
+                depth_stencil: None,
                 multisample: wgpu::MultisampleState::default(),
                 multiview_mask: None,
                 cache: None,
@@ -347,6 +456,40 @@ impl<'a> CommandBuffer<'a> {
                     }),
                     stencil_ops: None,
                 }),
+                timestamp_writes: None,
+                occlusion_query_set: None,
+                multiview_mask: None,
+            });
+        RenderPass { raw }
+    }
+
+    /// Like [`begin_render_pass`](Self::begin_render_pass), but preserves
+    /// `color_target`'s existing contents (`LoadOp::Load`) instead of
+    /// clearing them, and never adds a depth stage. For a pass that
+    /// *accumulates* onto a target an earlier pass in the same command
+    /// buffer already drew into — the bloom composite pass is the
+    /// concrete case: it additively blends a blurred bright-pass texture
+    /// onto the swapchain view the main scene pass already rendered into
+    /// moments earlier in the same [`CommandBuffer`].
+    pub fn begin_render_pass_loaded<'pass>(
+        &'pass mut self,
+        color_target: &'pass wgpu::TextureView,
+    ) -> RenderPass<'pass> {
+        let raw = self
+            .inner
+            .encoder_mut()
+            .begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: None,
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: color_target,
+                    depth_slice: None,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
                 timestamp_writes: None,
                 occlusion_query_set: None,
                 multiview_mask: None,
