@@ -406,6 +406,42 @@ impl BloomPass {
             pass.draw(0..3);
         }
 
+        // A second horizontal+vertical pass (pong -> ping -> pong), same
+        // wide-spread kernel — one pass alone reads as a thin fuzzy edge;
+        // stacking two widens the falloff into an actual halo, at the
+        // cost of two more small fullscreen-triangle draws.
+        let horizontal_uniform_2 = device.create_buffer(16, BufferUsage::Uniform);
+        device.write_buffer(&horizontal_uniform_2, &self.blur_uniform_bytes(true));
+        let horizontal_bind_group_2 = device.create_textured_bind_group(
+            &self.blur_pipeline,
+            &horizontal_uniform_2,
+            &self.pong,
+            &self.sampler,
+        );
+        {
+            let mut pass =
+                command_buffer.begin_render_pass(self.ping.view(), [0.0, 0.0, 0.0, 1.0], None);
+            pass.set_pipeline(&self.blur_pipeline);
+            pass.set_bind_group(0, &horizontal_bind_group_2);
+            pass.draw(0..3);
+        }
+
+        let vertical_uniform_2 = device.create_buffer(16, BufferUsage::Uniform);
+        device.write_buffer(&vertical_uniform_2, &self.blur_uniform_bytes(false));
+        let vertical_bind_group_2 = device.create_textured_bind_group(
+            &self.blur_pipeline,
+            &vertical_uniform_2,
+            &self.ping,
+            &self.sampler,
+        );
+        {
+            let mut pass =
+                command_buffer.begin_render_pass(self.pong.view(), [0.0, 0.0, 0.0, 1.0], None);
+            pass.set_pipeline(&self.blur_pipeline);
+            pass.set_bind_group(0, &vertical_bind_group_2);
+            pass.draw(0..3);
+        }
+
         // Step 4: additive composite onto the already-drawn target.
         let mut intensity_bytes = [0u8; 16];
         intensity_bytes[0..4].copy_from_slice(&self.config.intensity.to_le_bytes());
