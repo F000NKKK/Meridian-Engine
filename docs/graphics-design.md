@@ -252,8 +252,32 @@ driver.
    the texture path landing, but not yet done; neither is converging the
    windowed examples onto this bridge (replacing their hand-rolled
    pipelines) — both remain follow-up work.
-3. Lighting (directional + point, Blinn-Phong) and real material
-   handling (blend modes, `unlit`/`always_on_top` actually honored).
+3. **Done, core lighting; material handling partially open.**
+   `submission.rs` gained Blinn-Phong forward lighting: `Scene3D` now
+   carries `ambient: [f32; 3]`, and every renderable's family (colored/
+   textured) crosses with lit/unlit into four main pipelines —
+   `lit_shader_wgsl()`/`lit_textured_shader_wgsl()` shade against
+   `Scene3D::lights` (directional + point, capped at `MAX_LIGHTS = 4`,
+   extra lights dropped and logged) and `Scene3D::ambient`; the existing
+   `UNLIT_SHADER_WGSL`/`TEXTURED_SHADER_WGSL` stay for `Material::unlit`.
+   `Material::emissive` bakes into every vertex regardless of family and
+   feeds bloom's bright-pass mask (see next). Meshes now carry per-vertex
+   normals (`MeshSource::normals`, transformed by `Motor3::transform_vector`
+   — rotation only, matching a normal's transform rule). **Bloom is
+   real** too, one layer up from the design's original "Post Processing"
+   scaffold entry: `crate::bloom::BloomPass` redraws each frame's already-
+   baked `DrawBuffers` through an emissive-extraction pipeline into an
+   offscreen texture, separably Gaussian-blurs it (two full-screen-
+   triangle passes, horizontal then vertical), and additively composites
+   the result onto the already-rendered view via the new
+   `CommandBuffer::begin_render_pass_loaded` (preserves existing content
+   instead of clearing) — deliberately non-HDR (`Rgba8UnormSrgb`
+   throughout; `Rgba16Float` + exposure is real future work if a scene
+   ever needs it). Still open: real per-material roughness/specular
+   control (shininess is fixed at 32 in the shader), shadow mapping, and
+   blend-mode/`always_on_top` handling (both fields exist on `Material`
+   but the submission bridge doesn't act on either yet — every draw is
+   still opaque, depth-tested).
 4. `Runtime::tick` integration (step 9 closes).
 5. `ui-core` (widgets/layout/input) and text rendering — separate,
    ADR-gated.
