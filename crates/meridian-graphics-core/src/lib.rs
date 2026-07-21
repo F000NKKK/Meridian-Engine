@@ -10,8 +10,9 @@ use meridian_resource_core::ResourceId;
 pub mod scene;
 
 pub use scene::{
-    BlendMode, Camera2D, FrameScene, Light, LightKind, Material, MaterialHandle, Mesh,
-    Renderable3D, Scene2D, Scene3D, Sprite, View,
+    BlendMode, Camera2D, FrameScene, Light, Material, MaterialHandle, Mesh, MeshRenderer,
+    Renderable3D, Scene2D, Scene3D, Sprite, View, cull_scene3d, extract_scene3d,
+    world_space_bounds,
 };
 
 /// Marker types distinguishing `ResourceId`s of different graphics resource
