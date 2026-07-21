@@ -10,7 +10,7 @@
 //! exists to replace (see docs/graphics-design.md).
 
 use meridian_asset_core::{AnyImageDecoder, Decoder, ImageData};
-use meridian_gac_core::{Vec3, icosphere};
+use meridian_gac_core::icosphere;
 use meridian_graphics_core::{
     BloomPass, MaterialRegistry, MeshRegistry, MeshSource, SceneRenderer, TextureRegistry,
 };
