@@ -445,6 +445,69 @@ mod tests {
         ));
     }
 
+    /// Encodes a real PNG via the same `png` crate this decoder wraps —
+    /// hand-building valid DEFLATE-compressed bytes isn't practical the
+    /// way hand-building BMP/OBJ bytes is (see the module doc's
+    /// DEFLATE-is-too-big-to-hand-roll reasoning); this exercises *our*
+    /// wiring and color-type conversion, not the `png` crate itself.
+    fn make_png(width: u32, height: u32, color: png::ColorType, pixels: &[u8]) -> Vec<u8> {
+        let mut bytes = Vec::new();
+        let mut encoder = png::Encoder::new(&mut bytes, width, height);
+        encoder.set_color(color);
+        encoder.set_depth(png::BitDepth::Eight);
+        let mut writer = encoder.write_header().unwrap();
+        writer.write_image_data(pixels).unwrap();
+        writer.finish().unwrap();
+        bytes
+    }
+
+    #[test]
+    fn png_decodes_rgba_directly() {
+        let pixels = [10, 20, 30, 255, 40, 50, 60, 128, 70, 80, 90, 0, 100, 110, 120, 255];
+        let bytes = make_png(2, 2, png::ColorType::Rgba, &pixels);
+        let image = PngDecoder.decode(&bytes).unwrap();
+        assert_eq!((image.width, image.height), (2, 2));
+        assert_eq!(image.pixels, pixels);
+    }
+
+    #[test]
+    fn png_expands_rgb_to_opaque_rgba() {
+        let pixels = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120];
+        let bytes = make_png(2, 2, png::ColorType::Rgb, &pixels);
+        let image = PngDecoder.decode(&bytes).unwrap();
+        assert_eq!(
+            image.pixels,
+            vec![10, 20, 30, 255, 40, 50, 60, 255, 70, 80, 90, 255, 100, 110, 120, 255]
+        );
+    }
+
+    #[test]
+    fn png_expands_grayscale_to_rgba() {
+        let pixels = [0u8, 128, 255, 64];
+        let bytes = make_png(2, 2, png::ColorType::Grayscale, &pixels);
+        let image = PngDecoder.decode(&bytes).unwrap();
+        assert_eq!(
+            image.pixels,
+            vec![0, 0, 0, 255, 128, 128, 128, 255, 255, 255, 255, 255, 64, 64, 64, 255]
+        );
+    }
+
+    #[test]
+    fn png_rejects_bad_magic() {
+        assert!(matches!(
+            PngDecoder.decode(b"not a png file at all!!"),
+            Err(DecodeError::BadMagic { .. })
+        ));
+    }
+
+    #[test]
+    fn png_rejects_truncated_buffer() {
+        assert!(matches!(
+            PngDecoder.decode(&[0x89, b'P', b'N']),
+            Err(DecodeError::TooShort { .. })
+        ));
+    }
+
     #[test]
     fn obj_decodes_a_triangle() {
         let text = "# comment\nv 0.0 0.0 0.0\nv 1.0 0.0 0.0\nv 0.0 1.0 0.0\nf 1 2 3\n";
