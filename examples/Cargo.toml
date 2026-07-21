@@ -29,8 +29,12 @@ meridian-gpu-driver.workspace = true
 tokio = { workspace = true }
 
 [[example]]
-name = "music_sphere"
-path = "examples/music_sphere.rs"
+name = "magic_figures"
+path = "examples/magic_figures.rs"
+
+[[example]]
+name = "physic_figures"
+path = "examples/physic_figures.rs"
 
 [[example]]
 name = "spinning_cube"
