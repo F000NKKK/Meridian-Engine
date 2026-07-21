@@ -47,20 +47,26 @@ use meridian_audio_core::{
 use meridian_examples::FlyCamera;
 use meridian_gac_core::{Motor3, Vec3, icosphere};
 use meridian_graphics_core::{
-    BloomPass, Camera, DrawBuffers, Light, Material, MaterialRegistry, Mesh as GraphicsMesh,
-    MeshRegistry, MeshSource, Renderable3D, Scene3D, SceneRenderer, TextureRegistry,
+    BloomPass, Light, Material, MaterialRegistry, MeshRegistry, MeshSource, Renderable3D, Scene3D,
+    SceneRenderer, TextureRegistry, submit_scene3d,
 };
 use meridian_graphics_driver::{DepthTexture, Device, Surface};
 use meridian_platform_core::{AppHandler, InputState, KeyCode, Window, run_windowed_app};
 
-/// Builds a [`MeshSource`] for a unit icosphere (radius 1, centered at
-/// its own local origin — world placement is `Renderable3D::frame`'s
-/// job): normals are the (already-unit-length) vertex positions
-/// themselves, UVs an equirectangular projection.
-fn icosphere_mesh_source(subdivisions: u32) -> MeshSource {
+/// Builds a [`MeshSource`] for an icosphere of the given `radius`,
+/// centered at its own local origin (world placement is
+/// `Renderable3D::frame`'s job — `Motor3` has no scale component, so
+/// radius has to be baked into the mesh itself, not applied per
+/// instance). Normals are the unit-length vertex directions, UVs an
+/// equirectangular projection.
+fn icosphere_mesh_source(subdivisions: u32, radius: f32) -> MeshSource {
     let mesh = icosphere(subdivisions);
-    let positions: Vec<[f32; 3]> = mesh.vertices.iter().map(|v| [v.x, v.y, v.z]).collect();
-    let normals = positions.clone();
+    let positions: Vec<[f32; 3]> = mesh
+        .vertices
+        .iter()
+        .map(|v| [v.x * radius, v.y * radius, v.z * radius])
+        .collect();
+    let normals: Vec<[f32; 3]> = mesh.vertices.iter().map(|v| [v.x, v.y, v.z]).collect();
     let uvs: Vec<[f32; 2]> = mesh
         .vertices
         .iter()
@@ -497,7 +503,7 @@ impl AppHandler for App {
             .register(cube_mesh_source())
             .expect("cube mesh must be valid");
         let sphere_mesh = meshes
-            .register(icosphere_mesh_source(2))
+            .register(icosphere_mesh_source(2, SPHERE_RADIUS))
             .expect("sphere mesh must be valid");
 
         let scene = Scene3D {
@@ -517,18 +523,17 @@ impl AppHandler for App {
                 Renderable3D {
                     mesh: sphere_mesh,
                     material: sphere_material,
-                    frame: Motor3::translation(SPHERE_CENTER).compose(
-                        Motor3::from_rotation_translation(
-                            meridian_gac_core::Rotor::identity(),
-                            Vec3::ZERO,
-                        ),
-                    ) * SPHERE_RADIUS_SCALE,
+                    frame: Motor3::translation(SPHERE_CENTER),
                     billboard: false,
                 },
             ],
+            // `Light::Directional::direction` is a `Motor3` whose local
+            // +X (see `look_at_rotor`'s convention) *is* the direction
+            // light travels; pointing +X at `sun_direction` from the
+            // origin gives exactly that rotor, with no translation.
             lights: vec![Light::Directional {
                 direction: Motor3::from_rotation_translation(
-                    look_at_rotor_down(Vec3::new(-0.4, -1.0, -0.3)),
+                    meridian_examples::look_at_rotor(Vec3::ZERO, Vec3::new(-0.4, -1.0, -0.3)),
                     Vec3::ZERO,
                 ),
                 color: [1.0, 0.96, 0.9],
