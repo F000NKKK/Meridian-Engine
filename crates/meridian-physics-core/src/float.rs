@@ -438,7 +438,12 @@ mod tests {
         let mut bodies = vec![floor, falling];
 
         let integrator = Integrator::default();
-        let solver = ConstraintSolver::new(0.15).with_friction(0.6);
+        // Matches `examples/examples/physic_figures.rs`: restitution 0
+        // (a settled body must not bounce at all — the
+        // `restitution_velocity_threshold` default alone already
+        // suppresses bounce off residual gravity velocity, but `0` here
+        // means there's no ambiguity about intent for this test).
+        let solver = ConstraintSolver::new(0.0).with_friction(0.6);
         let mut broad = BroadPhase::new();
         let narrow = NarrowPhase::new();
         let dt = 1.0 / 60.0;
@@ -490,8 +495,8 @@ mod tests {
              (max angular speed after landing: {max_angular_speed_after_landing} rad/s)"
         );
         assert!(
-            max_height_after_landing - min_height_after_landing < 0.05,
-            "a settled box's resting height must not bounce up/down every tick \
+            max_height_after_landing - min_height_after_landing < 0.01,
+            "a settled box (restitution 0) must not bounce up/down at all \
              (min {min_height_after_landing}, max {max_height_after_landing})"
         );
         assert!(
