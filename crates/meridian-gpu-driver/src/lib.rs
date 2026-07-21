@@ -346,6 +346,87 @@ impl Device {
         BindGroup { raw }
     }
 
+    /// Uploads `rgba8_data` (tightly packed, `width * height * 4` bytes)
+    /// to `texture`'s full extent. The counterpart to [`write_buffer`]
+    /// for textures — `wgpu`'s `write_texture` needs the row/image byte
+    /// layout spelled out explicitly (no implicit tight-packing the way
+    /// buffer writes get), so this fills that in for the common
+    /// tightly-packed-RGBA8 case.
+    pub fn write_texture(&self, texture: &Texture, rgba8_data: &[u8]) {
+        self.queue.write_texture(
+            wgpu::TexelCopyTextureInfo {
+                texture: &texture.raw,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            rgba8_data,
+            wgpu::TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(texture.width * 4),
+                rows_per_image: Some(texture.height),
+            },
+            wgpu::Extent3d {
+                width: texture.width,
+                height: texture.height,
+                depth_or_array_layers: 1,
+            },
+        );
+    }
+
+    /// A linear-filtered, clamp-to-edge sampler — the standard default
+    /// for sampling an albedo texture (no mipmaps, no wrapping beyond the
+    /// texture's own edges). Not parameterized yet: a second sampler
+    /// configuration (wrapping, nearest-neighbor, ...) is additive future
+    /// work once a concrete material needs one.
+    pub fn create_sampler(&self) -> Sampler {
+        let raw = self.device.create_sampler(&wgpu::SamplerDescriptor {
+            label: None,
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            address_mode_w: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            mipmap_filter: wgpu::MipmapFilterMode::Nearest,
+            ..Default::default()
+        });
+        Sampler { raw }
+    }
+
+    /// Builds a bind group binding `buffer` at `@group(0) @binding(0)`,
+    /// `texture`'s default view at `@binding(1)` and `sampler` at
+    /// `@binding(2)` of `pipeline_layout` — the shape a shader that
+    /// samples one texture, alongside one uniform buffer, needs. See
+    /// [`create_bind_group`](Self::create_bind_group) for the
+    /// buffers-only general form this specializes.
+    pub fn create_texture_bind_group(
+        &self,
+        pipeline_layout: &wgpu::BindGroupLayout,
+        buffer: &Buffer,
+        texture: &Texture,
+        sampler: &Sampler,
+    ) -> BindGroup {
+        let raw = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: None,
+            layout: pipeline_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: buffer.raw.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureView(&texture.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::Sampler(&sampler.raw),
+                },
+            ],
+        });
+        BindGroup { raw }
+    }
+
     /// Opens a new [`CommandBuffer`] for recording. Nothing reaches the
     /// GPU until [`CommandBuffer::submit`] is called.
     pub fn create_command_buffer(&self) -> CommandBuffer<'_> {
@@ -505,6 +586,13 @@ impl Texture {
     pub fn view(&self) -> &wgpu::TextureView {
         &self.view
     }
+}
+
+/// A texture sampler — filtering/addressing configuration for reading a
+/// [`Texture`] in a shader. Built by [`Device::create_sampler`].
+#[derive(Debug)]
+pub struct Sampler {
+    raw: wgpu::Sampler,
 }
 
 /// A compiled shader module.
