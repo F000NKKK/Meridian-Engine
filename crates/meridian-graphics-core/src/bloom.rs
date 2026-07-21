@@ -42,7 +42,7 @@
 //! windowed example.
 
 use meridian_graphics_driver::{
-    BindGroup, Buffer, BufferUsage, Device, RenderPipeline, Sampler, Texture,
+    BindGroup, Buffer, BufferUsage, Device, RenderPipeline, Sampler, Surface, SurfaceFrame, Texture,
 };
 
 use crate::SceneRenderer;
@@ -179,12 +179,11 @@ pub struct BloomPass {
 }
 
 impl BloomPass {
-    pub fn new(
-        device: &Device,
-        width: u32,
-        height: u32,
-        target_format: wgpu::TextureFormat,
-    ) -> Self {
+    /// `surface` supplies the composite pass's target color format (the
+    /// real swapchain format) — `width`/`height` should match it too,
+    /// so the bloom textures are the same resolution as what's actually
+    /// being rendered.
+    pub fn new(device: &Device, width: u32, height: u32, surface: &Surface) -> Self {
         let bright = device.create_offscreen_color_texture(width, height);
         let ping = device.create_offscreen_color_texture(width, height);
         let pong = device.create_offscreen_color_texture(width, height);
@@ -192,20 +191,15 @@ impl BloomPass {
         let blur_shader = device.create_shader("meridian-bloom-blur", &blur_shader_wgsl());
         // The bright/ping/pong textures are all Rgba8UnormSrgb (see
         // `create_offscreen_color_texture`); the blur pass's own target
-        // format matches them, independent of `target_format` (the
-        // final composite's target, which may be the real swapchain
-        // format).
-        let blur_pipeline = device.create_fullscreen_pipeline(
-            &blur_shader,
-            "fs_main",
-            wgpu::TextureFormat::Rgba8UnormSrgb,
-            false,
-        );
+        // format matches them, independent of the composite pass's
+        // target format below (the real swapchain format).
+        let blur_pipeline =
+            device.create_fullscreen_pipeline_for_offscreen(&blur_shader, "fs_main", false);
 
         let composite_shader =
             device.create_shader("meridian-bloom-composite", &composite_shader_wgsl());
         let composite_pipeline =
-            device.create_fullscreen_pipeline(&composite_shader, "fs_main", target_format, true);
+            device.create_fullscreen_pipeline(&composite_shader, "fs_main", surface, true);
 
         let sampler = device.create_sampler();
 
