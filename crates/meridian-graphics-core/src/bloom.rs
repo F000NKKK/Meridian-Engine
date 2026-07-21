@@ -229,6 +229,7 @@ impl BloomPass {
     /// being rendered.
     pub fn new(device: &Device, width: u32, height: u32, surface: &Surface) -> Self {
         let bright = device.create_offscreen_color_texture(width, height, OFFSCREEN_FORMAT);
+        let bright_depth = device.create_depth_texture(width, height);
         let ping = device.create_offscreen_color_texture(width, height, OFFSCREEN_FORMAT);
         let pong = device.create_offscreen_color_texture(width, height, OFFSCREEN_FORMAT);
 
@@ -240,7 +241,7 @@ impl BloomPass {
             "fs_main",
             &emissive_from_colored_layout(),
             OFFSCREEN_FORMAT,
-            false,
+            true,
         );
         let emissive_from_textured_pipeline = device.create_render_pipeline_for_offscreen(
             &emissive_shader,
@@ -248,7 +249,7 @@ impl BloomPass {
             "fs_main",
             &emissive_from_textured_layout(),
             OFFSCREEN_FORMAT,
-            false,
+            true,
         );
 
         let blur_shader = device.create_shader("meridian-bloom-blur", &blur_shader_wgsl());
@@ -272,6 +273,7 @@ impl BloomPass {
 
         Self {
             bright,
+            bright_depth,
             ping,
             pong,
             emissive_from_colored_pipeline,
@@ -357,8 +359,11 @@ impl BloomPass {
 
         // Step 2: emissive-only bright pass.
         {
-            let mut pass =
-                command_buffer.begin_render_pass(self.bright.view(), [0.0, 0.0, 0.0, 1.0], None);
+            let mut pass = command_buffer.begin_render_pass(
+                self.bright.view(),
+                [0.0, 0.0, 0.0, 1.0],
+                Some(&self.bright_depth),
+            );
             self.draw_emissive(device, renderer, &mut pass, draw_buffers);
         }
 
