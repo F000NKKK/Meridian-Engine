@@ -481,6 +481,13 @@ impl AppHandler for App {
             let spin = Rotor::from_axis_angle(Vec3::Y, elapsed * shape.spin_speed);
             let renderable = &mut gpu.scene.renderables[gpu.shape_renderable_indices[i]];
             renderable.frame = Motor3::from_rotation_translation(spin, position);
+            if let Light::Point {
+                position: light_position,
+                ..
+            } = &mut gpu.scene.lights[gpu.point_light_indices[i]]
+            {
+                *light_position = Motor3::translation(position);
+            }
         }
 
         let aspect = window.width() as f32 / window.height().max(1) as f32;
