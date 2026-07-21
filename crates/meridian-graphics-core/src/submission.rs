@@ -1200,8 +1200,8 @@ mod tests {
         let bytes = lit_uniform_bytes(&camera, [0.1, 0.1, 0.1], &lights);
         assert_eq!(bytes.len(), 64 + 16 + 16 + 16 + MAX_LIGHTS * 48);
 
-        // light_count.x at offset 112 must read back as 2.
-        let count = u32::from_le_bytes(bytes[112..116].try_into().unwrap());
+        // light_count.x at offset 96 (after view_proj[64] + camera_pos[16] + ambient[16]) must read back as 2.
+        let count = u32::from_le_bytes(bytes[96..100].try_into().unwrap());
         assert_eq!(count, 2);
 
         // First light's kind field (offset 112 + 16 [lights array start] + 12).
@@ -1235,7 +1235,7 @@ mod tests {
             .collect();
         let bytes = lit_uniform_bytes(&camera, [0.0, 0.0, 0.0], &lights);
         assert_eq!(bytes.len(), 64 + 16 + 16 + 16 + MAX_LIGHTS * 48);
-        let count = u32::from_le_bytes(bytes[112..116].try_into().unwrap());
+        let count = u32::from_le_bytes(bytes[96..100].try_into().unwrap());
         assert_eq!(count as usize, MAX_LIGHTS);
     }
 
