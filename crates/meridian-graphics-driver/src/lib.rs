@@ -160,10 +160,17 @@ impl Device {
         self.0.write_texture(texture, rgba8_data);
     }
 
-    /// A linear-filtered, clamp-to-edge sampler — see
-    /// [`meridian_gpu_driver::Device::create_sampler`].
+    /// A linear-filtered, repeat-addressed sampler (for tiled surface
+    /// UVs) — see [`meridian_gpu_driver::Device::create_sampler`].
     pub fn create_sampler(&self) -> Sampler {
         self.0.create_sampler()
+    }
+
+    /// A linear-filtered, clamp-to-edge sampler (for full-screen post-
+    /// process passes) — see
+    /// [`meridian_gpu_driver::Device::create_clamp_sampler`].
+    pub fn create_clamp_sampler(&self) -> Sampler {
+        self.0.create_clamp_sampler()
     }
 
     /// Builds a bind group binding `buffer` (a uniform, as in

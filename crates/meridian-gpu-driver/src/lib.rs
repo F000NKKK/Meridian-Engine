@@ -401,6 +401,31 @@ impl Device {
         Sampler { raw }
     }
 
+    /// [`create_sampler`](Self::create_sampler)'s `ClampToEdge`
+    /// counterpart, for full-screen post-process passes (blur/composite)
+    /// rather than tiled surface UVs. A blur kernel deliberately samples
+    /// *beyond* `[0,1]` near the screen edges (offset by several texels
+    /// in each direction) — with `Repeat` addressing those out-of-range
+    /// samples wrap around to the opposite edge of the texture, bleeding
+    /// a shape's bloom halo across to the far side of the screen (the
+    /// concrete bug this was added to fix: a glowing shape near the left
+    /// edge showing a ghost of its glow on the right). `ClampToEdge`
+    /// instead repeats the nearest edge pixel, which fades toward
+    /// whatever's actually at that edge.
+    pub fn create_clamp_sampler(&self) -> Sampler {
+        let raw = self.device.create_sampler(&wgpu::SamplerDescriptor {
+            label: None,
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            address_mode_w: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            mipmap_filter: wgpu::MipmapFilterMode::Nearest,
+            ..Default::default()
+        });
+        Sampler { raw }
+    }
+
     /// Builds a bind group binding `buffer` at `@group(0) @binding(0)`,
     /// `texture`'s default view at `@binding(1)` and `sampler` at
     /// `@binding(2)` of `pipeline_layout` — the shape a shader that
