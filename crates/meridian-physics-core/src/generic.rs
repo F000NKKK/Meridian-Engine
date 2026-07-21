@@ -212,6 +212,21 @@ pub struct Contact<F: GaFlavor> {
     pub normal: F::Vector,
     pub penetration: F::Scalar,
     pub point: F::Vector,
+    /// `true` for a box-box manifold point (see
+    /// [`NarrowPhase::generate_contacts`]'s `Cuboid`-vs-`Cuboid` branch):
+    /// [`ConstraintSolver::resolve`] applies linear impulse/friction and
+    /// positional correction as usual but skips the torque/angular-
+    /// velocity update entirely. The angular response is explicitly a
+    /// "simplified, not fully coupled" single-scalar-inertia model (see
+    /// `ConstraintSolver`'s own doc comment), only proven inert for
+    /// sphere-sphere contacts; feeding it 4 independent per-corner torque
+    /// computations per box manifold (each corner's offset differs, none
+    /// of them solved as a coupled system) doesn't converge to rest —
+    /// it compounds into runaway spin, the concrete "cube/pyramid spin
+    /// hysterically" bug this suppresses. Always `false` for
+    /// sphere-sphere/sphere-cuboid contacts, where the single contact
+    /// point's angular response is stable.
+    pub suppress_angular_response: bool,
 }
 
 impl<F: GaFlavor> Default for Contact<F> {
@@ -222,6 +237,7 @@ impl<F: GaFlavor> Default for Contact<F> {
             normal: F::Vector::ZERO,
             penetration: F::Scalar::ZERO,
             point: F::Vector::ZERO,
+            suppress_angular_response: false,
         }
     }
 }
@@ -643,6 +659,7 @@ impl<F: GaFlavor> NarrowPhase<F> {
             normal,
             penetration,
             point,
+            suppress_angular_response: false,
         })
     }
 
@@ -677,6 +694,7 @@ impl<F: GaFlavor> NarrowPhase<F> {
                             normal,
                             penetration: penetration / point_count,
                             point,
+                            suppress_angular_response: true,
                         });
                     }
                 }
@@ -764,17 +782,21 @@ impl<F: GaFlavor> ConstraintSolver<F> {
             bodies[contact.b].velocity = bodies[contact.b].velocity + impulse * inv_mass_b;
 
             // Angular response — see the type's doc comment on why this
-            // is a simplified, decoupled solve.
+            // is a simplified, decoupled solve, and
+            // `Contact::suppress_angular_response`'s doc comment for why
+            // a box-box manifold point skips it entirely.
             let offset_a = contact.point - bodies[contact.a].position();
             let offset_b = contact.point - bodies[contact.b].position();
-            let torque_a = F::Bivector::wedge(offset_a, impulse);
-            let torque_b = F::Bivector::wedge(offset_b, impulse);
             let inv_inertia_a = bodies[contact.a].inverse_inertia();
             let inv_inertia_b = bodies[contact.b].inverse_inertia();
-            bodies[contact.a].angular_velocity =
-                bodies[contact.a].angular_velocity - torque_a * inv_inertia_a;
-            bodies[contact.b].angular_velocity =
-                bodies[contact.b].angular_velocity + torque_b * inv_inertia_b;
+            if !contact.suppress_angular_response {
+                let torque_a = F::Bivector::wedge(offset_a, impulse);
+                let torque_b = F::Bivector::wedge(offset_b, impulse);
+                bodies[contact.a].angular_velocity =
+                    bodies[contact.a].angular_velocity - torque_a * inv_inertia_a;
+                bodies[contact.b].angular_velocity =
+                    bodies[contact.b].angular_velocity + torque_b * inv_inertia_b;
+            }
 
             // Coulomb friction: the tangential component of relative
             // velocity (whatever's left of `relative_velocity` once the
@@ -801,12 +823,14 @@ impl<F: GaFlavor> ConstraintSolver<F> {
                     bodies[contact.b].velocity =
                         bodies[contact.b].velocity + friction_impulse * inv_mass_b;
 
-                    let friction_torque_a = F::Bivector::wedge(offset_a, friction_impulse);
-                    let friction_torque_b = F::Bivector::wedge(offset_b, friction_impulse);
-                    bodies[contact.a].angular_velocity =
-                        bodies[contact.a].angular_velocity - friction_torque_a * inv_inertia_a;
-                    bodies[contact.b].angular_velocity =
-                        bodies[contact.b].angular_velocity + friction_torque_b * inv_inertia_b;
+                    if !contact.suppress_angular_response {
+                        let friction_torque_a = F::Bivector::wedge(offset_a, friction_impulse);
+                        let friction_torque_b = F::Bivector::wedge(offset_b, friction_impulse);
+                        bodies[contact.a].angular_velocity =
+                            bodies[contact.a].angular_velocity - friction_torque_a * inv_inertia_a;
+                        bodies[contact.b].angular_velocity =
+                            bodies[contact.b].angular_velocity + friction_torque_b * inv_inertia_b;
+                    }
                 }
             }
         }
