@@ -24,7 +24,7 @@ pub use audio::{
     AnyAudioDecoder, AudioAsset, AudioFormat, DecodeMode, DecodeStrategy, FlacDecoder, Mp3Decoder,
     OpusDecoder, StreamingAudioDecoder, VorbisDecoder, WavDecoder, open_audio,
 };
-pub use image::{BmpDecoder, PngDecoder};
+pub use image::{AnyImageDecoder, BmpDecoder, ImageFormat, PngDecoder};
 
 /// Decodes raw file bytes into a CPU-side representation of `T`. Does not
 /// decide where `T` lives afterward or when it's dropped.
