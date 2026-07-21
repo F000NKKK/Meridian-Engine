@@ -47,8 +47,8 @@ use meridian_audio_core::{
 use meridian_examples::FlyCamera;
 use meridian_gac_core::{Motor3, Vec3, icosphere};
 use meridian_graphics_core::{
-    BloomPass, Light, Material, MaterialRegistry, MeshRegistry, MeshSource, Renderable3D, Scene3D,
-    SceneRenderer, TextureRegistry, submit_scene3d,
+    BloomPass, DrawBuffers, Light, Material, MaterialRegistry, MeshRegistry, MeshSource,
+    Renderable3D, Scene3D, SceneRenderer, TextureRegistry, submit_scene3d,
 };
 use meridian_graphics_driver::{DepthTexture, Device, Surface};
 use meridian_platform_core::{AppHandler, InputState, KeyCode, Window, run_windowed_app};
@@ -584,10 +584,7 @@ impl AppHandler for App {
             });
         }
 
-        gpu.device.write_buffer(
-            &gpu.uniform_buffer,
-            &mat4_to_bytes(camera.view_projection_matrix()),
-        );
+        gpu.scene.camera = camera;
 
         let frame = match gpu.surface.acquire_frame() {
             Ok(frame) => frame,
@@ -605,22 +602,27 @@ impl AppHandler for App {
         };
 
         let mut commands = gpu.device.create_command_buffer();
+        let draw_buffers: Vec<meridian_graphics_core::DrawBuffers>;
         {
             let mut pass =
                 commands.begin_render_pass(frame.view(), [0.05, 0.05, 0.08, 1.0], Some(&gpu.depth));
-
-            pass.set_pipeline(&gpu.ground_pipeline);
-            pass.set_bind_group(0, &gpu.ground_bind_group);
-            pass.set_vertex_buffer(0, &gpu.ground_vertex_buffer);
-            pass.set_index_buffer_u16(&gpu.ground_index_buffer);
-            pass.draw_indexed(0..gpu.ground_index_count);
-
-            pass.set_pipeline(&gpu.pipeline);
-            pass.set_bind_group(0, &gpu.bind_group);
-            pass.set_vertex_buffer(0, &gpu.sphere_vertex_buffer);
-            pass.set_index_buffer_u16(&gpu.sphere_index_buffer);
-            pass.draw_indexed(0..gpu.sphere_index_count);
+            draw_buffers = submit_scene3d(
+                &gpu.device,
+                &gpu.renderer,
+                &mut pass,
+                &gpu.scene,
+                &gpu.meshes,
+                &gpu.materials,
+                &gpu.textures,
+            );
         }
+        gpu.bloom.apply(
+            &gpu.device,
+            &mut commands,
+            &gpu.renderer,
+            &draw_buffers,
+            &frame,
+        );
         commands.submit();
         frame.present(&gpu.device);
 
@@ -631,6 +633,7 @@ impl AppHandler for App {
         if let Some(gpu) = &mut self.gpu {
             gpu.surface.resize(&gpu.device, width, height);
             gpu.depth = gpu.device.create_depth_texture(width, height);
+            gpu.bloom = BloomPass::new(&gpu.device, width, height, &gpu.surface);
         }
     }
 }
