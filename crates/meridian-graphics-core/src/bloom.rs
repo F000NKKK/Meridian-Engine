@@ -330,7 +330,7 @@ impl BloomPass {
         {
             let mut pass =
                 command_buffer.begin_render_pass(self.bright.view(), [0.0, 0.0, 0.0, 1.0], None);
-            renderer.draw_emissive(&mut pass, draw_buffers);
+            self.draw_emissive(device, renderer, &mut pass, draw_buffers);
         }
 
         // Step 3: horizontal blur (bright -> ping), then vertical (ping -> pong).
