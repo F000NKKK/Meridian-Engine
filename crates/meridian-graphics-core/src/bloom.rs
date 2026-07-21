@@ -46,8 +46,8 @@
 //! windowed example.
 
 use meridian_graphics_driver::{
-    BindGroup, BufferUsage, ColorFormat, Device, RenderPipeline, Sampler, Surface, SurfaceFrame,
-    Texture,
+    BindGroup, BufferUsage, ColorFormat, DepthTexture, Device, RenderPipeline, Sampler, Surface,
+    SurfaceFrame, Texture,
 };
 
 use crate::SceneRenderer;
@@ -195,6 +195,21 @@ impl Default for BloomConfig {
 /// impossible: a mesh pipeline built for the wrong render pass's format.
 pub struct BloomPass {
     bright: Texture,
+    /// Depth buffer for the bright pass only — cleared and depth-tested
+    /// fresh each frame against just the emissive redraw (step 2), so a
+    /// shape fully hidden behind another opaque shape (from the camera's
+    /// point of view) does not still contribute its glow color to
+    /// `bright`. Without this, the bright pass drew every emissive
+    /// renderable unoccluded, and the additive composite (step 4) then
+    /// bled a "ghost" of a shape's color through whatever opaquely
+    /// occluded it in the real scene — the concrete bug this was written
+    /// to fix (orbiting shapes appearing to glow *through* each other).
+    /// Not shared with the main scene's own depth texture: this pass
+    /// draws the exact same triangles with the exact same `view_proj`,
+    /// so a self-contained depth test among just those draws already
+    /// reconstructs the correct occlusion, with no cross-texture size/
+    /// format coupling needed.
+    bright_depth: DepthTexture,
     ping: Texture,
     pong: Texture,
     emissive_from_colored_pipeline: RenderPipeline,
