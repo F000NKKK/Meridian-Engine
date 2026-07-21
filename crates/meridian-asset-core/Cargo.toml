@@ -12,3 +12,4 @@ meridian-foundation = { workspace = true }
 meridian-platform-core = { workspace = true }
 symphonia = { workspace = true }
 symphonia-adapter-libopus = { workspace = true }
+png = { workspace = true }

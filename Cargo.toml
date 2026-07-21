@@ -76,6 +76,16 @@ crossbeam-channel = "0.5"
 symphonia = { version = "0.6", default-features = false, features = ["mp3", "ogg", "vorbis", "flac"] }
 symphonia-adapter-libopus = "0.3"
 
+# PNG decoding for `asset-core` — the same class of decision as the audio
+# codecs above: PNG's compressed data is DEFLATE (zlib), and hand-rolling
+# a correct DEFLATE decompressor is squarely a "multi-month, several
+# independent bug classes" undertaking, not the "small enough to own"
+# class BMP/OBJ fall into. `png` (pure Rust, the decoder `image` itself
+# uses) is the ecosystem-standard choice for exactly this format, without
+# pulling in `image`'s much larger multi-format surface for a
+# single-format need.
+png = "0.18"
+
 [profile.release]
 lto = true
 codegen-units = 1
