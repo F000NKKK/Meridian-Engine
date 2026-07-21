@@ -733,6 +733,22 @@ pub struct ConstraintSolver<F: GaFlavor> {
     /// a dynamic-friction cone for both regimes, the same simplification
     /// most simple/game physics engines make.
     pub friction: F::Scalar,
+    /// Below this incoming closing speed (in world units/second), a
+    /// contact resolves as if `restitution` were `0` regardless of the
+    /// configured value — see [`resolve_velocity`](Self::resolve_velocity).
+    /// Every real tick, gravity re-adds a small downward closing speed to
+    /// a body already resting on a surface (`gravity * dt`, a few
+    /// hundredths of a unit/second at 60 Hz); without this threshold,
+    /// *any* nonzero `restitution` turns that into a small bounce-back
+    /// impulse every single tick forever — a resting contact that never
+    /// actually rests, just bounces at a shrinking-but-never-zero
+    /// amplitude. A single point (a resting sphere) barely shows it; a
+    /// box/pyramid's multi-point manifold (see
+    /// [`NarrowPhase::generate_contacts`]) re-triggers it at up to 4
+    /// points per tick, which is what made it visible as continuous
+    /// up/down jitter — the concrete bug this threshold exists to kill
+    /// outright, not just shrink.
+    pub restitution_velocity_threshold: F::Scalar,
 }
 
 impl<F: GaFlavor> Default for ConstraintSolver<F> {
@@ -740,24 +756,35 @@ impl<F: GaFlavor> Default for ConstraintSolver<F> {
         Self {
             restitution: F::Scalar::ZERO,
             friction: F::Scalar::ZERO,
+            restitution_velocity_threshold: F::Scalar::from_f64(0.5),
         }
     }
 }
 
 impl<F: GaFlavor> ConstraintSolver<F> {
-    /// `friction` defaults to `0` (no friction) — existing call sites
-    /// that only ever passed `restitution` keep their old behavior
-    /// unchanged; opt into friction via
-    /// [`with_friction`](Self::with_friction).
+    /// `friction` defaults to `0` (no friction) and
+    /// `restitution_velocity_threshold` to `0.5` — existing call sites
+    /// that only ever passed `restitution` keep essentially the same
+    /// behavior for real impacts (well above the threshold) while a
+    /// resting contact no longer bounces forever off residual
+    /// per-tick gravity velocity. Opt into friction via
+    /// [`with_friction`](Self::with_friction), or override the
+    /// threshold via [`with_restitution_velocity_threshold`](Self::with_restitution_velocity_threshold).
     pub fn new(restitution: F::Scalar) -> Self {
         Self {
             restitution,
             friction: F::Scalar::ZERO,
+            restitution_velocity_threshold: F::Scalar::from_f64(0.5),
         }
     }
 
     pub fn with_friction(mut self, friction: F::Scalar) -> Self {
         self.friction = friction;
+        self
+    }
+
+    pub fn with_restitution_velocity_threshold(mut self, threshold: F::Scalar) -> Self {
+        self.restitution_velocity_threshold = threshold;
         self
     }
 
@@ -800,7 +827,17 @@ impl<F: GaFlavor> ConstraintSolver<F> {
         let velocity_along_normal = relative_velocity.dot(contact.normal);
 
         if velocity_along_normal < F::Scalar::ZERO {
-            let j = -(F::Scalar::ONE + self.restitution) * velocity_along_normal / total_inv_mass;
+            // Below the threshold, treat this as a resting contact (no
+            // bounce) regardless of `restitution` — see
+            // `restitution_velocity_threshold`'s doc comment for why.
+            let effective_restitution =
+                if -velocity_along_normal > self.restitution_velocity_threshold {
+                    self.restitution
+                } else {
+                    F::Scalar::ZERO
+                };
+            let j =
+                -(F::Scalar::ONE + effective_restitution) * velocity_along_normal / total_inv_mass;
             let impulse = contact.normal * j;
             bodies[contact.a].velocity = bodies[contact.a].velocity - impulse * inv_mass_a;
             bodies[contact.b].velocity = bodies[contact.b].velocity + impulse * inv_mass_b;
