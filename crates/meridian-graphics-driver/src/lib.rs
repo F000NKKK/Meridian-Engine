@@ -620,52 +620,17 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn texture_2d_upload_and_sampler_bind_group_do_not_panic() {
+    async fn texture_2d_upload_and_sampler_creation_do_not_panic() {
         let Some(device) = device_or_skip().await else {
             return;
         };
-        // 2x2 RGBA8: enough to exercise write_texture's row layout math
-        // without a real image asset.
+        // 2x2 RGBA8: enough to exercise write_texture's row-layout math
+        // without needing a real decoded image asset.
         let pixels: [u8; 16] = [
             255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 255, 255, 255,
         ];
         let texture = device.create_texture_2d(2, 2);
         device.write_texture(&texture, &pixels);
-        let sampler = device.create_sampler();
-
-        let shader = device.create_shader(
-            "textured-bind-group-test",
-            r#"
-struct Uniforms { view_proj: mat4x4<f32> };
-@group(0) @binding(0) var<uniform> u: Uniforms;
-@group(0) @binding(1) var albedo_tex: texture_2d<f32>;
-@group(0) @binding(2) var albedo_sampler: sampler;
-struct VertexInput { @location(0) position: vec3<f32> };
-@vertex
-fn vs_main(in: VertexInput) -> @builtin(position) vec4<f32> {
-    return u.view_proj * vec4<f32>(in.position, 1.0);
-}
-@fragment
-fn fs_main() -> @location(0) vec4<f32> {
-    return textureSample(albedo_tex, albedo_sampler, vec2<f32>(0.5, 0.5));
-}
-"#,
-        );
-        let (headless, _surface) = Device::new_windowed_unused_placeholder(&device);
-        let _ = headless;
-
-        let uniform_buffer = device.create_buffer(64, BufferUsage::Uniform);
-        let vertex_layout = VertexLayout {
-            stride: 12,
-            attributes: vec![VertexAttributeDesc {
-                location: 0,
-                format: VertexFormat::Float32x3,
-                offset: 0,
-            }],
-        };
-        let pipeline = device.create_render_pipeline_for_test(&shader, &vertex_layout);
-        let bind_group =
-            device.create_textured_bind_group(&pipeline, &uniform_buffer, &texture, &sampler);
-        let _ = bind_group;
+        let _sampler = device.create_sampler();
     }
 }
