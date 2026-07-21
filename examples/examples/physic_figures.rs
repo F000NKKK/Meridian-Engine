@@ -54,6 +54,11 @@ const SOLVER_RESTITUTION: f32 = 0.15;
 /// jitter (see `NarrowPhase`'s box-box manifold) could slide the box
 /// across the floor indefinitely instead of settling.
 const SOLVER_FRICTION: f32 = 0.6;
+/// How many times per physics tick the broad/narrow/solve sequence
+/// re-runs against the same integrated positions — see
+/// `PhysicsRig::step`'s doc comment for why one pass isn't enough for a
+/// multi-point box manifold.
+const SOLVER_RELAXATION_ITERATIONS: u32 = 4;
 
 /// A `Cuboid` collider that roughly bounds the pyramid mesh (base
 /// `2*PYRAMID_BASE_HALF_EXTENT` square, `PYRAMID_HEIGHT` tall) — see the
@@ -146,9 +151,25 @@ impl PhysicsRig {
         let mut steps = 0;
         while self.accumulator >= PHYSICS_DT && steps < 8 {
             self.integrator.step(&mut self.bodies, PHYSICS_DT);
-            let pairs = self.broad.find_candidate_pairs(&self.bodies).to_vec();
-            for contact in self.narrow.generate_contacts(&self.bodies, &pairs) {
-                self.solver.resolve(&mut self.bodies, &contact);
+            // Several relaxation passes per tick, not one: a box/pyramid
+            // manifold is up to 4 contact points sharing one normal (see
+            // `NarrowPhase::generate_contacts`'s box-box expansion), and
+            // `ConstraintSolver::resolve` only solves one point at a
+            // time — a single pass over all of them leaves each point's
+            // impulse computed against the *other* points' pre-solve
+            // velocity/position, which is exactly why box/pyramid
+            // contacts (multi-point) kept jittering on touchdown while
+            // the sphere (always exactly one contact point, so one pass
+            // *is* convergence) never did. Recomputing contacts each
+            // pass (not just re-solving the same stale set) also lets
+            // the positional correction from pass N feed into pass
+            // N+1's penetration numbers, instead of all 4 corners
+            // correcting against the same before-any-correction depth.
+            for _ in 0..SOLVER_RELAXATION_ITERATIONS {
+                let pairs = self.broad.find_candidate_pairs(&self.bodies).to_vec();
+                for contact in self.narrow.generate_contacts(&self.bodies, &pairs) {
+                    self.solver.resolve(&mut self.bodies, &contact);
+                }
             }
             self.accumulator -= PHYSICS_DT;
             steps += 1;
