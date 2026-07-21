@@ -26,14 +26,14 @@ meridian-compute-runtime = { path = "crates/meridian-compute-runtime", version =
 meridian-gac-compute = { path = "crates/meridian-gac-compute", version = "0.20" }
 meridian-asset-core = { path = "crates/meridian-asset-core", version = "0.11" }
 meridian-ecs-core = { path = "crates/meridian-ecs-core", version = "0.14" }
-meridian-graphics-driver = { path = "crates/meridian-graphics-driver", version = "0.14" }
+meridian-graphics-driver = { path = "crates/meridian-graphics-driver", version = "0.15" }
 meridian-audio-driver = { path = "crates/meridian-audio-driver", version = "0.11" }
-meridian-graphics-core = { path = "crates/meridian-graphics-core", version = "0.22" }
+meridian-graphics-core = { path = "crates/meridian-graphics-core", version = "0.23" }
 meridian-physics-driver = { path = "crates/meridian-physics-driver", version = "0.9" }
 meridian-physics-core = { path = "crates/meridian-physics-core", version = "0.20" }
 meridian-physics-compute = { path = "crates/meridian-physics-compute", version = "0.1" }
 meridian-audio-core = { path = "crates/meridian-audio-core", version = "0.18" }
-meridian-engine-core = { path = "crates/meridian-engine-core", version = "0.24" }
+meridian-engine-core = { path = "crates/meridian-engine-core", version = "0.25" }
 
 # External dependencies shared by more than one crate go here too, same
 # reasoning: one place to bump a version instead of drifting per-crate
