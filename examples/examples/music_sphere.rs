@@ -18,6 +18,18 @@
 //! tracks the camera with at most one ring buffer of latency. The track
 //! loops.
 //!
+//! **Rendering converges on `graphics-core`'s submission bridge**
+//! (`SceneRenderer`/`MeshRegistry`/`MaterialRegistry`/`TextureRegistry`)
+//! instead of hand-rolling pipelines/buffers the way this example used
+//! to: a checkerboard floor (a procedurally generated `ImageData`
+//! uploaded through `TextureRegistry` — no image *file* needed for a
+//! flat two-color pattern, though `TextureRegistry::upload` takes any
+//! decoded asset the same way), a plain colored cube, and the music
+//! sphere itself as an unlit, emissive material — `BloomPass` turns
+//! that emissive value into a real glow around it. One directional
+//! light plus the scene's ambient does the (Blinn-Phong) shading on the
+//! floor and cube.
+//!
 //! Controls as in the soft-body examples: WASD + mouse (cursor grabbed
 //! on launch), Space/Ctrl up/down, Shift faster, Escape toggles the
 //! cursor grab.
@@ -26,20 +38,137 @@
 //!   ./build.sh run music_sphere
 
 use meridian_asset_core::{
-    AnyAudioDecoder, AudioAsset, DecodeStrategy, StreamingAudioDecoder, open_audio,
+    AnyAudioDecoder, AudioAsset, DecodeStrategy, ImageData, StreamingAudioDecoder, open_audio,
 };
 use meridian_audio_core::{
     AcousticMedium, AudioOutput, BinauralRenderer, Declicker, DspNode, Emitter, Listener,
     SpeakerLayout,
 };
-use meridian_examples::{
-    FlyCamera, GROUND_SHADER, SOFT_BODY_SHADER, ground_quad_buffers, mat4_to_bytes,
-    soft_body_render_buffers, soft_body_vertex_layout,
-};
+use meridian_examples::FlyCamera;
 use meridian_gac_core::{Motor3, Vec3, icosphere};
-use meridian_gpu_driver::{BindGroup, Buffer};
-use meridian_graphics_driver::{BufferUsage, DepthTexture, Device, RenderPipeline, Surface};
+use meridian_graphics_core::{
+    BloomPass, Camera, DrawBuffers, Light, Material, MaterialRegistry, Mesh as GraphicsMesh,
+    MeshRegistry, MeshSource, Renderable3D, Scene3D, SceneRenderer, TextureRegistry,
+};
+use meridian_graphics_driver::{DepthTexture, Device, Surface};
 use meridian_platform_core::{AppHandler, InputState, KeyCode, Window, run_windowed_app};
+
+/// Builds a [`MeshSource`] for a unit icosphere (radius 1, centered at
+/// its own local origin — world placement is `Renderable3D::frame`'s
+/// job): normals are the (already-unit-length) vertex positions
+/// themselves, UVs an equirectangular projection.
+fn icosphere_mesh_source(subdivisions: u32) -> MeshSource {
+    let mesh = icosphere(subdivisions);
+    let positions: Vec<[f32; 3]> = mesh.vertices.iter().map(|v| [v.x, v.y, v.z]).collect();
+    let normals = positions.clone();
+    let uvs: Vec<[f32; 2]> = mesh
+        .vertices
+        .iter()
+        .map(|v| {
+            let n = v.normalize();
+            let u = 0.5 + n.z.atan2(n.x) / std::f32::consts::TAU;
+            let v = 0.5 - n.y.asin() / std::f32::consts::PI;
+            [u, v]
+        })
+        .collect();
+    let mut indices = Vec::new();
+    for face in &mesh.faces {
+        for (a, b, c) in face.triangles() {
+            indices.push(a as u32);
+            indices.push(b as u32);
+            indices.push(c as u32);
+        }
+    }
+    MeshSource {
+        positions,
+        normals,
+        uvs,
+        indices,
+    }
+}
+
+/// A unit cube (half-extent 1 on every axis), one set of 4 vertices per
+/// face so each face gets its own flat normal and a full `[0,1]` UV.
+fn cube_mesh_source() -> MeshSource {
+    const FACES: [([f32; 3], [f32; 3], [f32; 3], [f32; 3], [f32; 3]); 6] = [
+        // (normal, corner00, corner10, corner11, corner01) — CCW as seen
+        // from outside the cube along `normal`, matching this crate's
+        // `FrontFace::Ccw` convention.
+        ([1.0, 0.0, 0.0], [1.0, -1.0, -1.0], [1.0, -1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, -1.0]),
+        ([-1.0, 0.0, 0.0], [-1.0, -1.0, 1.0], [-1.0, -1.0, -1.0], [-1.0, 1.0, -1.0], [-1.0, 1.0, 1.0]),
+        ([0.0, 1.0, 0.0], [-1.0, 1.0, -1.0], [1.0, 1.0, -1.0], [1.0, 1.0, 1.0], [-1.0, 1.0, 1.0]),
+        ([0.0, -1.0, 0.0], [-1.0, -1.0, 1.0], [1.0, -1.0, 1.0], [1.0, -1.0, -1.0], [-1.0, -1.0, -1.0]),
+        ([0.0, 0.0, 1.0], [-1.0, -1.0, 1.0], [1.0, -1.0, 1.0], [1.0, 1.0, 1.0], [-1.0, 1.0, 1.0]),
+        ([0.0, 0.0, -1.0], [1.0, -1.0, -1.0], [-1.0, -1.0, -1.0], [-1.0, 1.0, -1.0], [1.0, 1.0, -1.0]),
+    ];
+
+    let mut positions = Vec::new();
+    let mut normals = Vec::new();
+    let mut uvs = Vec::new();
+    let mut indices = Vec::new();
+    for (normal, c00, c10, c11, c01) in FACES {
+        let base = positions.len() as u32;
+        for corner in [c00, c10, c11, c01] {
+            positions.push(corner);
+            normals.push(normal);
+        }
+        uvs.extend_from_slice(&[[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]]);
+        indices.extend_from_slice(&[base, base + 2, base + 1, base, base + 3, base + 2]);
+    }
+    MeshSource {
+        positions,
+        normals,
+        uvs,
+        indices,
+    }
+}
+
+/// A flat quad in the local `y = 0` plane, `half_size` from center to
+/// edge, its UVs tiled `uv_tiles` times across — the floor's mesh, with
+/// world placement (and any further scale) left to
+/// `Renderable3D::frame`.
+fn ground_mesh_source(half_size: f32, uv_tiles: f32) -> MeshSource {
+    MeshSource {
+        positions: vec![
+            [-half_size, 0.0, -half_size],
+            [half_size, 0.0, -half_size],
+            [half_size, 0.0, half_size],
+            [-half_size, 0.0, half_size],
+        ],
+        normals: vec![[0.0, 1.0, 0.0]; 4],
+        uvs: vec![
+            [0.0, 0.0],
+            [uv_tiles, 0.0],
+            [uv_tiles, uv_tiles],
+            [0.0, uv_tiles],
+        ],
+        // Winding front-facing from +Y — see `examples::ground_quad_buffers`'s
+        // identical note on why [0,1,2, 0,2,3] would cull as invisible here.
+        indices: vec![0, 2, 1, 0, 3, 2],
+    }
+}
+
+/// A procedural black/white checkerboard, `cells`x`cells` squares across
+/// a `resolution`x`resolution` RGBA8 image — no external texture asset
+/// needed for a pattern this simple to generate directly (see the
+/// module doc; `TextureRegistry::upload` takes any decoded `ImageData`
+/// the same way a real loaded file's would arrive).
+fn checkerboard_image(resolution: u32, cells: u32) -> ImageData {
+    let cell_size = (resolution / cells).max(1);
+    let mut pixels = Vec::with_capacity((resolution * resolution * 4) as usize);
+    for y in 0..resolution {
+        for x in 0..resolution {
+            let light = ((x / cell_size) + (y / cell_size)).is_multiple_of(2);
+            let shade = if light { 230u8 } else { 30u8 };
+            pixels.extend_from_slice(&[shade, shade, shade, 255]);
+        }
+    }
+    ImageData {
+        width: resolution,
+        height: resolution,
+        pixels,
+    }
+}
 
 const SPHERE_CENTER: Vec3 = Vec3 {
     x: 0.0,
