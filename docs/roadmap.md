@@ -7,8 +7,7 @@ real implementations: `Vec3`, `Rotor`, `Motor3`, and the underlying 16-blade
 `Multivector` geometric product, with a test suite that cross-checks
 rotation against an independent Rodrigues-formula oracle and validates the
 parent/child transform-hierarchy milestone below (`cargo test -p
-meridian-gac-core`; runnable end to end via `./build.sh run
-gac_validation`).
+meridian-gac-core`).
 
 `meridian-foundation` also owns the workspace's diagnostics: the unified
 `logging` sink (`log_error!`..`log_trace!` macros, stderr + an in-memory
@@ -174,8 +173,7 @@ for stereo but not for 5.0/5.1), `AttenuationModel` (OpenAL's inverse-
 clamped-distance model), `Mixer`, and a small `DspGraph`
 (`Gain`/`LowPassFilter`). Validated against a listener at the origin
 facing `+X` with sources placed front/back/left/right and checked across
-every layout (`cargo test -p meridian-audio-core`; human-readable version
-via `./build.sh run audio_spatialization`) — including the front/back
+every layout (`cargo test -p meridian-audio-core`) — including the front/back
 ambiguity stereo genuinely can't resolve without HRTF (not implemented;
 documented as a real, known limitation, not hidden). On top of the
 `Mixer` path, `audio-core::effects` (one effect per file:
@@ -191,7 +189,7 @@ FFT/HRTF-convolution over many sources is the future
 real, `audio-core` also owns the output bridge: `Mixer::render_interleaved`
 (block rendering to interleaved speaker-order samples) and `AudioOutput`
 (opens the default device with one stream channel per speaker) — audible
-end-to-end via `./build.sh run audible_scene`.
+end-to-end via the `music_sphere` example (see below).
 
 `meridian-graphics-core`'s driver-independent half is real: `Camera`
 bridges a `Motor3` world frame into a classical view/projection matrix
@@ -204,8 +202,7 @@ derivation), `Frustum` does Gribb/Hartmann frustum culling against *any*
 resource reads/writes (Kahn's algorithm, the same pattern as `task-core`'s
 `JobGraph`, applied to resource conflicts instead of explicit
 dependencies), rejecting write conflicts and cycles rather than guessing
-(`cargo test -p meridian-graphics-core`; human-readable version via
-`./build.sh run graphics_validation`). Scene extraction, lighting,
+(`cargo test -p meridian-graphics-core`). Scene extraction, lighting,
 materials-as-shading-inputs, animation and post processing remain scaffolds
 — they need an actual GPU resource to shade against, `graphics-driver`
 now has real headless `wgpu` resources (see "Not yet decided" below) but
@@ -319,8 +316,7 @@ mailbox (`publish`/`drain`, frame-scoped — not a persistent log) that's
 the actual mechanism rule 7 exists to enable (subsystems communicating
 without depending on each other), and `Runtime::tick` advances physics
 then recomputes audio from the physics-updated emitter frames, publishing
-a `FrameCompleted` event each frame (`cargo test -p meridian-engine-core`;
-human-readable version via `./build.sh run runtime_loop`).
+a `FrameCompleted` event each frame (`cargo test -p meridian-engine-core`).
 `FrameScheduler` (task-core's `Scheduler` at the engine layer) is real and
 tested but not used by `Runtime::tick` itself — physics and audio are
 sequentially data-dependent today, not independent branches, so running
@@ -340,10 +336,9 @@ a blanket "every other crate is a scaffold." Audio is wired end-to-end:
 `audio-core::AudioOutput` + `Mixer::render_interleaved` bridge mixed
 samples into `audio-driver`'s real stream (the declared
 core→own-driver edge, used for the first time), composed with `Runtime`
-by the `audible_scene` example the same way `spinning_cube` composes
-`graphics-driver` — `Runtime` itself stays driver-free. On top of that,
-`audio_formats` plays real compressed assets decoded by signature (ADR
-013), and `music_sphere` is the full loop: a windowed scene where a
+composed with `Runtime` the same way `spinning_cube` composes
+`graphics-driver` — `Runtime` itself stays driver-free.
+`music_sphere` is the full loop: a windowed scene where a
 sphere emits the decoded music and the `FlyCamera` pose doubles as the
 `audio-core` listener (same local-forward-`+X` `Motor3` convention), so
 panning and distance attenuation track the camera live. Every crate not named above

@@ -29,8 +29,7 @@ Post Processing
 ```
 
 `Camera`, frustum culling, and render graph pass ordering are real and
-tested (`cargo test -p meridian-graphics-core`; human-readable version via
-`./build.sh run graphics_validation`) — see below for how each works.
+tested (`cargo test -p meridian-graphics-core`) — see below for how each works.
 `graphics-driver` itself is real now too: a headless `wgpu` `Device`
 (`Buffer`/`Texture`/`Shader`/compute `Pipeline`/`CommandBuffer`, no
 window/surface — see [roadmap.md](roadmap.md)'s `wgpu` entry). Scene

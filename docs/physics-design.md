@@ -137,5 +137,4 @@ named, deliberate precision-changing cast (see docs/gac-design.md's
 "Cross-flavor interop" section), not a `From`/`Into` that would make the
 cast look free. Proven with an actual bit-exact reproducibility test (the
 same scenario run twice produces identical `Fixed` bit patterns, not just
-approximately equal floats) — `cargo test -p meridian-physics-core`;
-human-readable version via `./build.sh run determinism_validation`.
+approximately equal floats) — `cargo test -p meridian-physics-core`.
