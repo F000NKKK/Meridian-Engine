@@ -485,7 +485,11 @@ fn face_manifold<F: GaFlavor>(
         .map(|(world, _)| world)
         .collect();
 
-    if points.is_empty() { None } else { Some(points) }
+    if points.is_empty() {
+        None
+    } else {
+        Some(points)
+    }
 }
 
 /// Cuboid-cuboid exact test via the separating axis theorem (SAT): a
@@ -505,16 +509,17 @@ fn face_manifold<F: GaFlavor>(
 /// box's own support point along the normal, via the same
 /// [`Shape::support`] interface `ConvexVolume`/`Frustum` are built on —
 /// is the geometrically correct manifold; there's no face to clip
-/// against. Every returned point shares the same `normal`; each point's
-/// `penetration` is `min_overlap` divided by the point count, so summing
-/// [`ConstraintSolver::resolve`]'s per-point positional correction across
-/// the whole manifold reproduces the same total correction magnitude a
-/// single-point contact would have applied, instead of over-correcting
-/// once per extra point.
+/// against. Returns every manifold point sharing this pair's one
+/// `normal` and total `penetration` (not divided per point — see
+/// [`NarrowPhase::generate_contacts`], the caller that divides it when
+/// expanding one pair into multiple [`Contact`]s, so the sum of
+/// per-point positional corrections reproduces the same total magnitude
+/// a single-point contact would have applied instead of over-correcting
+/// once per extra point).
 fn cuboid_vs_cuboid<F: GaFlavor>(
     obb_a: &Obb<F>,
     obb_b: &Obb<F>,
-) -> Option<Vec<(F::Vector, F::Scalar, F::Vector)>> {
+) -> Option<(Vec<F::Vector>, F::Scalar, F::Vector)> {
     let axes_a = obb_axes(obb_a);
     let axes_b = obb_axes(obb_b);
     let center_delta =
@@ -573,13 +578,7 @@ fn cuboid_vs_cuboid<F: GaFlavor>(
         vec![(obb_a.support(normal) + obb_b.support(-normal)) * (F::Scalar::ONE / two)]
     });
 
-    let point_count = F::Scalar::from_f64(points.len() as f64);
-    Some(
-        points
-            .into_iter()
-            .map(|point| (point, min_overlap / point_count, normal))
-            .collect(),
-    )
+    Some((points, min_overlap, normal))
 }
 
 /// Resolves candidate pairs from [`BroadPhase`] into exact [`Contact`]s.
@@ -627,7 +626,12 @@ impl<F: GaFlavor> NarrowPhase<F> {
             ) => {
                 let obb_a = bodies[a].as_obb(half_extents_a);
                 let obb_b = bodies[b].as_obb(half_extents_b);
-                cuboid_vs_cuboid(&obb_a, &obb_b)?
+                // `test_pair` reports the pair's total, undivided
+                // penetration and one representative manifold point —
+                // see `generate_contacts` for the multi-point expansion
+                // this single-`Contact` view intentionally doesn't do.
+                let (points, penetration, normal) = cuboid_vs_cuboid(&obb_a, &obb_b)?;
+                (points[0], penetration, normal)
             }
         };
         Some(Contact {
@@ -639,15 +643,48 @@ impl<F: GaFlavor> NarrowPhase<F> {
         })
     }
 
+    /// Like [`test_pair`](Self::test_pair), but expands a box-box pair's
+    /// full contact manifold (see [`face_manifold`]) into one [`Contact`]
+    /// per manifold point instead of collapsing it to one — this is what
+    /// [`ConstraintSolver::resolve`] should iterate over; `test_pair`'s
+    /// single-point view exists only for simple exact-overlap queries.
     pub fn generate_contacts(
         &self,
         bodies: &[RigidBody<F>],
         candidate_pairs: &[(usize, usize)],
     ) -> Vec<Contact<F>> {
-        candidate_pairs
-            .iter()
-            .filter_map(|&(a, b)| self.test_pair(bodies, a, b))
-            .collect()
+        let mut contacts = Vec::with_capacity(candidate_pairs.len());
+        for &(a, b) in candidate_pairs {
+            match (bodies[a].shape, bodies[b].shape) {
+                (
+                    ColliderShape::Cuboid { half_extents: he_a },
+                    ColliderShape::Cuboid { half_extents: he_b },
+                ) => {
+                    let obb_a = bodies[a].as_obb(he_a);
+                    let obb_b = bodies[b].as_obb(he_b);
+                    let Some((points, penetration, normal)) = cuboid_vs_cuboid(&obb_a, &obb_b)
+                    else {
+                        continue;
+                    };
+                    let point_count = F::Scalar::from_f64(points.len() as f64);
+                    for point in points {
+                        contacts.push(Contact {
+                            a,
+                            b,
+                            normal,
+                            penetration: penetration / point_count,
+                            point,
+                        });
+                    }
+                }
+                _ => {
+                    if let Some(contact) = self.test_pair(bodies, a, b) {
+                        contacts.push(contact);
+                    }
+                }
+            }
+        }
+        contacts
     }
 }
 
