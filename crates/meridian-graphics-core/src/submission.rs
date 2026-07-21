@@ -325,7 +325,11 @@ impl TextureRegistry {
 
     /// Uploads `image`'s pixels to a new GPU texture and returns its
     /// handle.
-    pub fn upload(&mut self, device: &Device, image: &meridian_asset_core::ImageData) -> TextureHandle {
+    pub fn upload(
+        &mut self,
+        device: &Device,
+        image: &meridian_asset_core::ImageData,
+    ) -> TextureHandle {
         let texture = device.create_texture_2d(image.width, image.height);
         device.write_texture(&texture, &image.pixels);
         TextureHandle::new(self.textures.insert(texture))
@@ -347,7 +351,9 @@ enum DrawKind {
     Colored,
     /// A fresh bind group naming this draw's specific texture — see the
     /// module doc's "no per-texture bind-group caching yet" note.
-    Textured { bind_group: BindGroup },
+    Textured {
+        bind_group: BindGroup,
+    },
 }
 
 /// One renderable's baked-for-this-frame GPU state — built by
@@ -472,7 +478,8 @@ impl SceneRenderer {
         );
 
         let uniform_buffer = device.create_buffer(64, BufferUsage::Uniform);
-        let colored_bind_group = device.create_uniform_bind_group(&colored_pipeline, &uniform_buffer);
+        let colored_bind_group =
+            device.create_uniform_bind_group(&colored_pipeline, &uniform_buffer);
         let sampler = device.create_sampler();
 
         Self {

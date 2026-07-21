@@ -17,7 +17,7 @@ pub use scene::{
 };
 pub use submission::{
     DrawBuffers, MaterialRegistry, MeshRegistry, MeshRegistryError, MeshSource, SceneRenderer,
-    UNLIT_SHADER_WGSL, prepare_draws, submit_scene3d,
+    TEXTURED_SHADER_WGSL, TextureRegistry, UNLIT_SHADER_WGSL, submit_scene3d,
 };
 
 /// Marker types distinguishing `ResourceId`s of different graphics resource
