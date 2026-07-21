@@ -899,25 +899,6 @@ impl SceneRenderer {
             true,
         );
 
-        let emissive_shader =
-            device.create_shader("meridian-emissive-extract", EMISSIVE_EXTRACT_SHADER_WGSL);
-        let emissive_from_colored_pipeline = device.create_render_pipeline(
-            &emissive_shader,
-            "vs_main",
-            "fs_main",
-            &emissive_from_colored_layout(),
-            surface,
-            false,
-        );
-        let emissive_from_textured_pipeline = device.create_render_pipeline(
-            &emissive_shader,
-            "vs_main",
-            "fs_main",
-            &emissive_from_textured_layout(),
-            surface,
-            false,
-        );
-
         // 304 bytes: see `lit_uniform_bytes`'s doc comment for the
         // layout. The unlit pipelines only read the first 64 (view_proj)
         // but share this same buffer — one write serves every pipeline.
@@ -926,8 +907,6 @@ impl SceneRenderer {
             device.create_uniform_bind_group(&colored_unlit_pipeline, &uniform_buffer);
         let colored_lit_bind_group =
             device.create_uniform_bind_group(&colored_lit_pipeline, &uniform_buffer);
-        let emissive_bind_group =
-            device.create_uniform_bind_group(&emissive_from_colored_pipeline, &uniform_buffer);
         let sampler = device.create_sampler();
 
         Self {
@@ -937,12 +916,19 @@ impl SceneRenderer {
             colored_lit_bind_group,
             textured_unlit_pipeline,
             textured_lit_pipeline,
-            emissive_from_colored_pipeline,
-            emissive_from_textured_pipeline,
-            emissive_bind_group,
             uniform_buffer,
             sampler,
         }
+    }
+
+    /// The shared view/lighting uniform buffer — [`crate::bloom::BloomPass`]
+    /// binds its own emissive-extraction pipelines against this same
+    /// buffer (it needs `view_proj` for its vertex shader), rebuilding a
+    /// fresh bind group against it each frame, the same "correct now,
+    /// cache later" trade-off already applied to per-texture bind groups
+    /// (see the module doc).
+    pub(crate) fn uniform_buffer(&self) -> &Buffer {
+        &self.uniform_buffer
     }
 
     /// Writes this view's camera, ambient and lights into the shared
@@ -1028,22 +1014,6 @@ impl SceneRenderer {
                     pass.set_bind_group(0, bind_group);
                 }
             }
-            pass.set_vertex_buffer(0, &entry.vertex_buffer);
-            pass.set_index_buffer_u16(&entry.index_buffer);
-            pass.draw_indexed(0..entry.index_count);
-        }
-    }
-
-    /// Redraws `buffers` through the emissive-extraction pipelines — see
-    /// [`crate::bloom`], which is the only caller.
-    pub(crate) fn draw_emissive(&self, pass: &mut DriverRenderPass<'_>, buffers: &[DrawBuffers]) {
-        pass.set_bind_group(0, &self.emissive_bind_group);
-        for entry in buffers {
-            let pipeline = match &entry.kind {
-                DrawKind::Colored => &self.emissive_from_colored_pipeline,
-                DrawKind::Textured { .. } => &self.emissive_from_textured_pipeline,
-            };
-            pass.set_pipeline(pipeline);
             pass.set_vertex_buffer(0, &entry.vertex_buffer);
             pass.set_index_buffer_u16(&entry.index_buffer);
             pass.draw_indexed(0..entry.index_count);
