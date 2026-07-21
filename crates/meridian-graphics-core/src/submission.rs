@@ -837,12 +837,15 @@ fn bake_draw_buffers(
 }
 
 /// Owns all four main pipelines (colored/textured × lit/unlit) plus the
-/// two emissive-extraction pipelines [`crate::bloom`] draws through, the
-/// shared view/lighting uniform, and the sampler for rendering a
+/// the shared view/lighting uniform, and the sampler for rendering a
 /// [`Scene3D`] view. One instance per view (a UI overlay's `Scene2D` is
 /// a separate, future-work sibling — see docs/graphics-design.md);
 /// building it needs a real GPU device and a surface to match color/
-/// depth formats against.
+/// depth formats against. The emissive-extraction pipelines
+/// [`crate::bloom::BloomPass`] draws through are *not* owned here — they
+/// render into `BloomPass`'s own offscreen texture, whose format is
+/// `BloomPass`'s to pick, not something this type should guess at (see
+/// `bloom.rs`'s module doc and [`uniform_buffer`](Self::uniform_buffer)).
 pub struct SceneRenderer {
     colored_unlit_pipeline: RenderPipeline,
     colored_unlit_bind_group: BindGroup,
@@ -850,9 +853,6 @@ pub struct SceneRenderer {
     colored_lit_bind_group: BindGroup,
     textured_unlit_pipeline: RenderPipeline,
     textured_lit_pipeline: RenderPipeline,
-    pub(crate) emissive_from_colored_pipeline: RenderPipeline,
-    pub(crate) emissive_from_textured_pipeline: RenderPipeline,
-    pub(crate) emissive_bind_group: BindGroup,
     uniform_buffer: Buffer,
     sampler: Sampler,
 }
