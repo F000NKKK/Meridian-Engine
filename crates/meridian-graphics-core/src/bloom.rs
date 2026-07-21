@@ -188,7 +188,7 @@ impl Default for BloomConfig {
 /// The emissive-extraction pipelines live here, not on `SceneRenderer`,
 /// deliberately: they only ever render into *this* struct's own
 /// `bright` texture, never the swapchain, so the format they're built
-/// against has to be `BloomPass`'s own [`OFFSCREEN_FORMAT`] — building
+/// against has to be `BloomPass`'s own `OFFSCREEN_FORMAT` — building
 /// them on `SceneRenderer` against the surface's format instead (an
 /// earlier version of this code did) is exactly the class of bug
 /// `graphics-driver::ColorFormat` exists to make structurally
