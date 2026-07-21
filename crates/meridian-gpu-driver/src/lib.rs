@@ -347,7 +347,7 @@ impl Device {
     }
 
     /// Uploads `rgba8_data` (tightly packed, `width * height * 4` bytes)
-    /// to `texture`'s full extent. The counterpart to [`write_buffer`]
+    /// to `texture`'s full extent. The counterpart to [`write_buffer`](Self::write_buffer)
     /// for textures — `wgpu`'s `write_texture` needs the row/image byte
     /// layout spelled out explicitly (no implicit tight-packing the way
     /// buffer writes get), so this fills that in for the common

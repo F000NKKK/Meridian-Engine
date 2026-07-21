@@ -230,26 +230,30 @@ driver.
 1. **Done.** Vocabulary + `FrameScene` + extraction + culling — CPU-only,
    fully tested without a GPU (`extract_scene3d`/`cull_scene3d` in
    `scene.rs`).
-2. **Done, first cut.** Submission bridge over `graphics-driver`
-   (`submission.rs`): `MeshRegistry`/`MaterialRegistry` (handle-addressed,
-   ADR 002-compliant), `prepare_draws`/`SceneRenderer`/`submit_scene3d`
-   turning a culled `Scene3D` into real draw calls. Deliberately scoped
-   down from the full design for now — disclosed in `submission.rs`'s
-   module doc, not hidden: every material renders as a flat, unlit
-   `base_color_factor` (no albedo texture sampling — `graphics-driver`
-   has no texture/sampler bind-group support yet, only buffer bind
-   groups), and each renderable's world-space vertices are baked fresh
-   per frame (no per-instance uniform exists, so no GPU instancing yet
-   — see the module doc's "no per-instance uniform" note and the
-   GPU-driven-rendering section below). Texture assets and the resulting
-   PNG/JPEG decoder trigger (glTF once real meshes ship — the ADR 013
-   when-a-concrete-asset-needs-it pattern) and the GPU-compute audit
-   under real load both wait on the texture/sampler bind-group
-   extension, tracked as the next follow-up. The windowed examples
-   converging onto this bridge (replacing their hand-rolled pipelines)
-   is also follow-up work, not yet done.
+2. **Done.** Submission bridge over `graphics-driver` (`submission.rs`):
+   `MeshRegistry`/`MaterialRegistry`/`TextureRegistry` (handle-addressed,
+   ADR 002-compliant), `SceneRenderer::prepare`/`draw`/`submit_scene3d`
+   turning a culled `Scene3D` into real draw calls. Texture upload from
+   `asset-core::ImageData` is real: `gpu-driver` gained
+   `Device::write_texture`/`create_sampler`/`create_texture_bind_group`,
+   `graphics-driver` gained the matching `create_texture_2d`/
+   `create_textured_bind_group` passthroughs, and `submission.rs` picks
+   between two unlit pipelines per renderable — `TEXTURED_SHADER_WGSL`
+   (samples `Material::albedo` when it resolves in the `TextureRegistry`)
+   or `UNLIT_SHADER_WGSL` (flat `base_color_factor` otherwise). Still
+   disclosed, not hidden, as scoped down: no *lighting* yet (both
+   pipelines are unlit — that's step 3), and no GPU instancing (no
+   per-instance uniform mechanism exists, so world-space vertices and
+   textured-draw bind groups are baked/rebuilt fresh every frame — see
+   the module doc's "no per-instance uniform" note and the
+   GPU-driven-rendering section below). PNG/JPEG decoders (glTF once
+   real meshes ship — the ADR 013 when-a-concrete-asset-needs-it
+   pattern) and the GPU-compute audit under real load are unblocked by
+   the texture path landing, but not yet done; neither is converging the
+   windowed examples onto this bridge (replacing their hand-rolled
+   pipelines) — both remain follow-up work.
 3. Lighting (directional + point, Blinn-Phong) and real material
-   handling — needs the texture/sampler bind-group extension above.
+   handling (blend modes, `unlit`/`always_on_top` actually honored).
 4. `Runtime::tick` integration (step 9 closes).
 5. `ui-core` (widgets/layout/input) and text rendering — separate,
    ADR-gated.

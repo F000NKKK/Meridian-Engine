@@ -535,7 +535,7 @@ impl SceneRenderer {
 
     /// Records one draw call per `buffers` entry against `pass`,
     /// switching pipeline/bind group per entry's baked
-    /// [`DrawKind`] — call inside the render pass, after
+    /// baked draw kind — call inside the render pass, after
     /// [`prepare`](Self::prepare) built `buffers` and
     /// [`set_camera`](Self::set_camera) wrote this frame's matrix.
     pub fn draw(&self, pass: &mut DriverRenderPass<'_>, buffers: &[DrawBuffers]) {
