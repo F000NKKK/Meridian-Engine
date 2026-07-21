@@ -22,7 +22,7 @@
 //! skip lighting entirely, for world-space UI and anything meant to
 //! read at a constant brightness. `Material::emissive` is added on top
 //! in both cases and baked into every vertex regardless of family — see
-//! [`bake_draw_buffers`] — so a mesh can glow (feed a bloom pass)
+//! `bake_draw_buffers` — so a mesh can glow (feed a bloom pass)
 //! whether or not it's lit.
 //!
 //! **No per-instance uniform, no GPU-side instancing yet.** A render
@@ -303,8 +303,8 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {{
 /// Emissive-only extraction: ignores lighting/base color entirely and
 /// outputs just the baked-in emissive term — [`crate::bloom`]'s
 /// bright-pass input. Shares the *same* vertex buffer bytes as whichever
-/// main pipeline drew this instance (see [`emissive_from_colored_layout`]/
-/// [`emissive_from_textured_layout`]): a material with `emissive =
+/// main pipeline drew this instance (see `emissive_from_colored_layout`/
+/// `emissive_from_textured_layout`): a material with `emissive =
 /// [0,0,0]` (the default) contributes pure black here, which an additive
 /// bloom composite treats as a no-op — no per-material filtering needed.
 pub const EMISSIVE_EXTRACT_SHADER_WGSL: &str = r#"

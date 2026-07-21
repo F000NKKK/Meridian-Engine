@@ -11,7 +11,7 @@
 //!    into the real render target (swapchain or an offscreen color
 //!    texture).
 //! 2. [`BloomPass::apply`]'s bright pass — the *same* `DrawBuffers`
-//!    redrawn through [`SceneRenderer::draw_emissive`] into an offscreen
+//!    redrawn through `SceneRenderer::draw_emissive` into an offscreen
 //!    "bright" texture. A material with `emissive = [0,0,0]` (the
 //!    default) contributes solid black here — harmless once additively
 //!    composited in step 4 — so no per-material bloom flag or threshold
