@@ -151,26 +151,36 @@ impl PhysicsRig {
         let mut steps = 0;
         while self.accumulator >= PHYSICS_DT && steps < 8 {
             self.integrator.step(&mut self.bodies, PHYSICS_DT);
-            // Several relaxation passes per tick, not one: a box/pyramid
-            // manifold is up to 4 contact points sharing one normal (see
-            // `NarrowPhase::generate_contacts`'s box-box expansion), and
-            // `ConstraintSolver::resolve` only solves one point at a
-            // time — a single pass over all of them leaves each point's
-            // impulse computed against the *other* points' pre-solve
-            // velocity/position, which is exactly why box/pyramid
-            // contacts (multi-point) kept jittering on touchdown while
-            // the sphere (always exactly one contact point, so one pass
-            // *is* convergence) never did. Recomputing contacts each
-            // pass (not just re-solving the same stale set) also lets
-            // the positional correction from pass N feed into pass
-            // N+1's penetration numbers, instead of all 4 corners
-            // correcting against the same before-any-correction depth.
+
+            // Several *velocity-only* relaxation passes per tick, not
+            // one: a box/pyramid manifold is up to 4 contact points
+            // sharing one normal (see `NarrowPhase::generate_contacts`'s
+            // box-box expansion), and one pass over all of them leaves
+            // each point's impulse computed against the *other* points'
+            // pre-solve velocity, which is why box/pyramid contacts kept
+            // jittering on touchdown while the sphere (always exactly
+            // one contact point) never did. Deliberately
+            // `resolve_velocity`, not `resolve`: calling the *full*
+            // `resolve` (which also applies positional correction) once
+            // per relaxation pass pushed the body upward by the same
+            // correction several times per tick, which is exactly the
+            // "cube/pyramid bounce up/down and clip through the floor"
+            // bug this split fixes — see `ConstraintSolver::resolve`'s
+            // doc comment.
             for _ in 0..SOLVER_RELAXATION_ITERATIONS {
                 let pairs = self.broad.find_candidate_pairs(&self.bodies).to_vec();
                 for contact in self.narrow.generate_contacts(&self.bodies, &pairs) {
-                    self.solver.resolve(&mut self.bodies, &contact);
+                    self.solver.resolve_velocity(&mut self.bodies, &contact);
                 }
             }
+            // Positional correction exactly once per tick, against the
+            // final (velocity-relaxed) contact set.
+            let pairs = self.broad.find_candidate_pairs(&self.bodies).to_vec();
+            for contact in self.narrow.generate_contacts(&self.bodies, &pairs) {
+                self.solver
+                    .apply_positional_correction(&mut self.bodies, &contact);
+            }
+
             self.accumulator -= PHYSICS_DT;
             steps += 1;
         }

@@ -764,7 +764,31 @@ impl<F: GaFlavor> ConstraintSolver<F> {
     /// Applies an impulse-based resolution for `contact`, mutating only
     /// `bodies[contact.a]` and `bodies[contact.b]`. A no-op if both bodies
     /// are static (infinite mass on both sides — nothing to resolve).
+    ///
+    /// Combines [`resolve_velocity`](Self::resolve_velocity) with a
+    /// single positional-correction push — fine for a single-contact
+    /// pair resolved once per tick, but calling `resolve` several times
+    /// per tick against the *same* resting contact (e.g. multiple
+    /// relaxation passes over a multi-point box manifold) applies that
+    /// positional push every time, over-correcting the body upward each
+    /// tick and producing a visible up/down bounce — the concrete
+    /// "cube/pyramid jitter down-up and clip through the floor" bug this
+    /// split exists to let a caller avoid: run
+    /// [`resolve_velocity`](Self::resolve_velocity) for every relaxation
+    /// pass, then [`apply_positional_correction`](Self::apply_positional_correction)
+    /// exactly once per tick (see `examples/examples/physic_figures.rs`).
     pub fn resolve(&self, bodies: &mut [RigidBody<F>], contact: &Contact<F>) {
+        self.resolve_velocity(bodies, contact);
+        self.apply_positional_correction(bodies, contact);
+    }
+
+    /// The velocity-only half of [`resolve`](Self::resolve): normal
+    /// impulse, angular response (unless
+    /// [`Contact::suppress_angular_response`]) and friction. Safe to call
+    /// repeatedly per tick (e.g. once per relaxation pass over a
+    /// multi-point manifold) without the positional over-correction
+    /// [`resolve`](Self::resolve) would apply each time.
+    pub fn resolve_velocity(&self, bodies: &mut [RigidBody<F>], contact: &Contact<F>) {
         let inv_mass_a = bodies[contact.a].inverse_mass();
         let inv_mass_b = bodies[contact.b].inverse_mass();
         let total_inv_mass = inv_mass_a + inv_mass_b;
@@ -833,6 +857,22 @@ impl<F: GaFlavor> ConstraintSolver<F> {
                     }
                 }
             }
+        }
+    }
+
+    /// The positional-correction half of [`resolve`](Self::resolve): a
+    /// small push separating `contact.a`/`contact.b` along `normal`,
+    /// proportional to `penetration` (past a small `slop` tolerance so
+    /// resting contacts don't endlessly correct a negligible overlap).
+    /// Call this exactly once per tick per pair — see
+    /// [`resolve`](Self::resolve)'s doc comment for why calling it once
+    /// per relaxation pass instead over-corrects.
+    pub fn apply_positional_correction(&self, bodies: &mut [RigidBody<F>], contact: &Contact<F>) {
+        let inv_mass_a = bodies[contact.a].inverse_mass();
+        let inv_mass_b = bodies[contact.b].inverse_mass();
+        let total_inv_mass = inv_mass_a + inv_mass_b;
+        if total_inv_mass <= F::Scalar::ZERO {
+            return;
         }
 
         let correction_percent = F::Scalar::from_f64(0.8);
