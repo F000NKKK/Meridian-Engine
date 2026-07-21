@@ -32,7 +32,13 @@
 
 use meridian_platform_core::{BackendCapabilities, CpuCapabilities, GpuCapabilities};
 
-pub use meridian_gpu_driver::{BufferUsage, DeviceError};
+// `Buffer`/`BindGroup` are re-exported so callers that already reach
+// this crate's API (which returns/consumes them directly, e.g.
+// `create_buffer`/`create_uniform_bind_group`) never need their own
+// edge to `gpu-driver` just to name the type — the same
+// resource-type-naming precedent as `gac-compute`'s direct `gpu-driver`
+// dependency (ADR 011), applied by re-export instead of a second edge.
+pub use meridian_gpu_driver::{BindGroup, Buffer, BufferUsage, DeviceError};
 
 /// A windowed-capable GPU device. Wraps [`meridian_gpu_driver::Device`]
 /// (which owns the actual `wgpu::Device`/`wgpu::Queue` and every

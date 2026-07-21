@@ -8,11 +8,16 @@ use meridian_gac_core::{ConvexVolume, Motor3, Plane, Projection, Vec3};
 use meridian_resource_core::ResourceId;
 
 pub mod scene;
+pub mod submission;
 
 pub use scene::{
     BlendMode, Camera2D, FrameScene, Light, Material, MaterialHandle, Mesh, MeshRenderer,
     Renderable3D, Scene2D, Scene3D, Sprite, View, cull_scene3d, extract_scene3d,
     world_space_bounds,
+};
+pub use submission::{
+    DrawBuffers, MaterialRegistry, MeshRegistry, MeshRegistryError, MeshSource, SceneRenderer,
+    UNLIT_SHADER_WGSL, prepare_draws, submit_scene3d,
 };
 
 /// Marker types distinguishing `ResourceId`s of different graphics resource
