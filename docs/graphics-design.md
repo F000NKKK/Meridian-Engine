@@ -227,19 +227,29 @@ driver.
 
 ### Implementation order
 
-1. Vocabulary + `FrameScene` + extraction + culling — CPU-only, fully
-   tested without a GPU.
-2. Submission bridge over `graphics-driver` (mesh/texture upload from
-   `asset-core` data, per-view passes) — the windowed examples converge
-   on it and stop hand-rolling pipelines. This step is also where two
-   standing follow-ups fire naturally: real texture assets trigger the
-   PNG/JPEG decoders (glTF once real meshes ship — the ADR 013
-   when-a-concrete-asset-needs-it pattern), and the GPU compute path
-   (`compute-driver::GpuComputeDevice`, device-type/capability
-   detection) gets audited under a real rendering workload rather than
-   assumed finished.
+1. **Done.** Vocabulary + `FrameScene` + extraction + culling — CPU-only,
+   fully tested without a GPU (`extract_scene3d`/`cull_scene3d` in
+   `scene.rs`).
+2. **Done, first cut.** Submission bridge over `graphics-driver`
+   (`submission.rs`): `MeshRegistry`/`MaterialRegistry` (handle-addressed,
+   ADR 002-compliant), `prepare_draws`/`SceneRenderer`/`submit_scene3d`
+   turning a culled `Scene3D` into real draw calls. Deliberately scoped
+   down from the full design for now — disclosed in `submission.rs`'s
+   module doc, not hidden: every material renders as a flat, unlit
+   `base_color_factor` (no albedo texture sampling — `graphics-driver`
+   has no texture/sampler bind-group support yet, only buffer bind
+   groups), and each renderable's world-space vertices are baked fresh
+   per frame (no per-instance uniform exists, so no GPU instancing yet
+   — see the module doc's "no per-instance uniform" note and the
+   GPU-driven-rendering section below). Texture assets and the resulting
+   PNG/JPEG decoder trigger (glTF once real meshes ship — the ADR 013
+   when-a-concrete-asset-needs-it pattern) and the GPU-compute audit
+   under real load both wait on the texture/sampler bind-group
+   extension, tracked as the next follow-up. The windowed examples
+   converging onto this bridge (replacing their hand-rolled pipelines)
+   is also follow-up work, not yet done.
 3. Lighting (directional + point, Blinn-Phong) and real material
-   handling.
+   handling — needs the texture/sampler bind-group extension above.
 4. `Runtime::tick` integration (step 9 closes).
 5. `ui-core` (widgets/layout/input) and text rendering — separate,
    ADR-gated.
