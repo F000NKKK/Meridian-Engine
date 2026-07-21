@@ -602,7 +602,7 @@ impl AppHandler for App {
         };
 
         let mut commands = gpu.device.create_command_buffer();
-        let draw_buffers: Vec<meridian_graphics_core::DrawBuffers>;
+        let draw_buffers: Vec<DrawBuffers>;
         {
             let mut pass =
                 commands.begin_render_pass(frame.view(), [0.05, 0.05, 0.08, 1.0], Some(&gpu.depth));
