@@ -323,6 +323,9 @@ struct GpuState {
     /// `on_redraw` can update each shape's frame every tick without
     /// re-walking `SHAPES`.
     shape_renderable_indices: [usize; 3],
+    /// Index into `scene.lights` of each shape's own `Light::Point`, so
+    /// `on_redraw` can move it along with the shape every frame.
+    point_light_indices: [usize; 3],
 }
 
 impl App {
@@ -412,17 +415,36 @@ impl AppHandler for App {
             });
         }
 
+        // One `Light::Point` per shape, in its own glow color, colocated
+        // with the shape — this is what actually casts colored light
+        // onto the floor and the other shapes as they orbit; the
+        // material's `emissive` alone (feeding `BloomPass`) only makes
+        // the shape itself glow, it doesn't illuminate anything nearby.
+        // `MAX_LIGHTS = 4` (see `submission.rs`) is exactly 1 directional
+        // + 3 shapes, no headroom to spare.
+        let mut lights = vec![Light::Directional {
+            direction: Motor3::from_rotation_translation(
+                look_at_rotor(Vec3::ZERO, Vec3::new(-0.4, -1.0, -0.3)),
+                Vec3::ZERO,
+            ),
+            color: [1.0, 0.96, 0.9],
+            intensity: 0.7,
+        }];
+        let mut point_light_indices = [0usize; 3];
+        for (i, shape) in SHAPES.iter().enumerate() {
+            point_light_indices[i] = lights.len();
+            lights.push(Light::Point {
+                position: Motor3::translation(orbit_position(shape, 0.0)),
+                color: shape.glow_color,
+                intensity: 2.5,
+                range: ORBIT_RADIUS * 2.2,
+            });
+        }
+
         let scene = Scene3D {
             renderables,
-            lights: vec![Light::Directional {
-                direction: Motor3::from_rotation_translation(
-                    look_at_rotor(Vec3::ZERO, Vec3::new(-0.4, -1.0, -0.3)),
-                    Vec3::ZERO,
-                ),
-                color: [1.0, 0.96, 0.9],
-                intensity: 1.1,
-            }],
-            ambient: [0.06, 0.06, 0.08],
+            lights,
+            ambient: [0.05, 0.05, 0.06],
             ..Scene3D::default()
         };
 
@@ -430,6 +452,7 @@ impl AppHandler for App {
             base,
             scene,
             shape_renderable_indices,
+            point_light_indices,
         });
     }
 
