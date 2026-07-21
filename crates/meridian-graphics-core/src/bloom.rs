@@ -1,0 +1,345 @@
+//! Bloom: a glow around bright (`Material::emissive`) surfaces — the
+//! first piece of docs/graphics-design.md's "Post Processing" scaffold.
+//! Built entirely on primitives [`crate::submission`] and
+//! `graphics-driver` already expose: an emissive-only redraw of the same
+//! [`crate::submission::DrawBuffers`] the main pass baked, a separable
+//! Gaussian blur, and an additive composite back onto the main render
+//! target.
+//!
+//! **Pipeline, once per frame a bloom-enabled view renders:**
+//! 1. [`SceneRenderer::draw`] — the ordinary lit/unlit scene, straight
+//!    into the real render target (swapchain or an offscreen color
+//!    texture).
+//! 2. [`BloomPass::apply`]'s bright pass — the *same* `DrawBuffers`
+//!    redrawn through [`SceneRenderer::draw_emissive`] into an offscreen
+//!    "bright" texture. A material with `emissive = [0,0,0]` (the
+//!    default) contributes solid black here — harmless once additively
+//!    composited in step 4 — so no per-material bloom flag or threshold
+//!    is needed; `emissive` itself *is* the mask.
+//! 3. Two blur passes (horizontal, then vertical — the standard
+//!    separable-Gaussian trick: an `N*N` blur becomes two `N`-tap passes)
+//!    ping-ponging between two same-sized offscreen textures, each a
+//!    full-screen-triangle draw sampling the previous pass's texture.
+//! 4. The composite pass: the blurred bright texture, scaled by
+//!    [`BloomConfig::intensity`], additively blended onto the *same*
+//!    view the main pass (step 1) already drew into — via
+//!    `CommandBuffer::begin_render_pass_loaded`, which preserves existing
+//!    contents instead of clearing them.
+//!
+//! **Deliberately not HDR.** Every texture here (bright/blur/main) is
+//! `Rgba8UnormSrgb`, the same format `TextureRegistry`/the swapchain
+//! already use — an emissive value is whatever a `Material` sets (no
+//! bloom-specific tone mapping or exposure control), clamped to `[0,1]`
+//! like every other color in this bridge. A true HDR pipeline
+//! (`Rgba16Float` intermediate targets, exposure/tone-mapping) is real
+//! future work if a scene ever needs emissive values above `1.0` to look
+//! right; the visible glow this produces today does not depend on it.
+//!
+//! **Fixed at construction size**, matching the swapchain/target it was
+//! built for — resize by constructing a new [`BloomPass`] (cheap: a
+//! handful of small offscreen textures and two tiny pipelines), the same
+//! "rebuild on resize" pattern `DepthTexture` already uses in every
+//! windowed example.
+
+use meridian_graphics_driver::{
+    BindGroup, Buffer, BufferUsage, Device, RenderPipeline, Sampler, Texture,
+};
+
+use crate::SceneRenderer;
+use crate::submission::DrawBuffers;
+
+/// A full-screen-triangle vertex shader shared by both blur directions
+/// and the composite pass — see `graphics-driver`'s
+/// `Device::create_fullscreen_pipeline` doc comment for why no vertex
+/// buffer is needed.
+const FULLSCREEN_VERTEX_WGSL: &str = r#"
+struct VsOut {
+    @builtin(position) clip_position: vec4<f32>,
+    @location(0) uv: vec2<f32>,
+};
+
+@vertex
+fn vs_main(@builtin(vertex_index) index: u32) -> VsOut {
+    var positions = array<vec2<f32>, 3>(
+        vec2<f32>(-1.0, -1.0),
+        vec2<f32>(3.0, -1.0),
+        vec2<f32>(-1.0, 3.0),
+    );
+    let p = positions[index];
+    var out: VsOut;
+    out.clip_position = vec4<f32>(p, 0.0, 1.0);
+    out.uv = vec2<f32>((p.x + 1.0) * 0.5, 1.0 - (p.y + 1.0) * 0.5);
+    return out;
+}
+"#;
+
+/// A 5-tap separable Gaussian blur (the classic LearnOpenGL weights),
+/// applied along `u.direction` — call once with a horizontal direction,
+/// once with vertical, ping-ponging the source/destination textures, for
+/// a full 2D blur at roughly half the cost of a naive 2D kernel.
+fn blur_shader_wgsl() -> String {
+    format!(
+        r#"
+{FULLSCREEN_VERTEX_WGSL}
+
+struct BlurUniforms {{
+    texel_size: vec2<f32>,
+    direction: vec2<f32>,
+}};
+
+@group(0) @binding(0)
+var<uniform> u: BlurUniforms;
+@group(0) @binding(1)
+var src_tex: texture_2d<f32>;
+@group(0) @binding(2)
+var src_sampler: sampler;
+
+@fragment
+fn fs_main(in: VsOut) -> @location(0) vec4<f32> {{
+    let weights = array<f32, 5>(0.227027, 0.1945946, 0.1216216, 0.054054, 0.016216);
+    var result = textureSample(src_tex, src_sampler, in.uv).rgb * weights[0];
+    for (var i = 1; i < 5; i = i + 1) {{
+        let offset = u.direction * u.texel_size * f32(i);
+        result += textureSample(src_tex, src_sampler, in.uv + offset).rgb * weights[i];
+        result += textureSample(src_tex, src_sampler, in.uv - offset).rgb * weights[i];
+    }}
+    return vec4<f32>(result, 1.0);
+}}
+"#
+    )
+}
+
+/// Samples the blurred bright texture, scaled by `u.intensity`, additive
+/// onto whatever [`meridian_graphics_driver::CommandBuffer::begin_render_pass_loaded`]
+/// targets.
+fn composite_shader_wgsl() -> String {
+    format!(
+        r#"
+{FULLSCREEN_VERTEX_WGSL}
+
+struct CompositeUniforms {{
+    intensity: vec4<f32>,
+}};
+
+@group(0) @binding(0)
+var<uniform> u: CompositeUniforms;
+@group(0) @binding(1)
+var bloom_tex: texture_2d<f32>;
+@group(0) @binding(2)
+var bloom_sampler: sampler;
+
+@fragment
+fn fs_main(in: VsOut) -> @location(0) vec4<f32> {{
+    let sampled = textureSample(bloom_tex, bloom_sampler, in.uv);
+    return vec4<f32>(sampled.rgb * u.intensity.x, 1.0);
+}}
+"#
+    )
+}
+
+/// The `BlurUniforms` bytes the blur shader reads: `texel_size` (1/width,
+/// 1/height) then `direction` (`(1,0)` horizontal, `(0,1)` vertical).
+fn blur_uniform_bytes(width: u32, height: u32, horizontal: bool) -> [u8; 16] {
+    let mut bytes = [0u8; 16];
+    bytes[0..4].copy_from_slice(&(1.0 / width as f32).to_le_bytes());
+    bytes[4..8].copy_from_slice(&(1.0 / height as f32).to_le_bytes());
+    bytes[8..12].copy_from_slice(&(if horizontal { 1.0f32 } else { 0.0f32 }).to_le_bytes());
+    bytes[12..16].copy_from_slice(&(if horizontal { 0.0f32 } else { 1.0f32 }).to_le_bytes());
+    bytes
+}
+
+/// Tunable bloom parameters.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct BloomConfig {
+    /// Multiplies the blurred bright texture before the additive
+    /// composite — `0.0` disables the visible effect without skipping
+    /// the passes (see [`BloomPass::apply`] for actually skipping them).
+    pub intensity: f32,
+}
+
+impl Default for BloomConfig {
+    fn default() -> Self {
+        Self { intensity: 1.0 }
+    }
+}
+
+/// Owns bloom's offscreen textures and its two small pipelines (blur,
+/// composite), sized for one `width`x`height` render target — see the
+/// module doc for the four-step pipeline and why this isn't HDR.
+pub struct BloomPass {
+    bright: Texture,
+    ping: Texture,
+    pong: Texture,
+    blur_pipeline: RenderPipeline,
+    composite_pipeline: RenderPipeline,
+    sampler: Sampler,
+    width: u32,
+    height: u32,
+    pub config: BloomConfig,
+}
+
+impl BloomPass {
+    pub fn new(
+        device: &Device,
+        width: u32,
+        height: u32,
+        target_format: wgpu::TextureFormat,
+    ) -> Self {
+        let bright = device.create_offscreen_color_texture(width, height);
+        let ping = device.create_offscreen_color_texture(width, height);
+        let pong = device.create_offscreen_color_texture(width, height);
+
+        let blur_shader = device.create_shader("meridian-bloom-blur", &blur_shader_wgsl());
+        // The bright/ping/pong textures are all Rgba8UnormSrgb (see
+        // `create_offscreen_color_texture`); the blur pass's own target
+        // format matches them, independent of `target_format` (the
+        // final composite's target, which may be the real swapchain
+        // format).
+        let blur_pipeline = device.create_fullscreen_pipeline(
+            &blur_shader,
+            "fs_main",
+            wgpu::TextureFormat::Rgba8UnormSrgb,
+            false,
+        );
+
+        let composite_shader =
+            device.create_shader("meridian-bloom-composite", &composite_shader_wgsl());
+        let composite_pipeline =
+            device.create_fullscreen_pipeline(&composite_shader, "fs_main", target_format, true);
+
+        let sampler = device.create_sampler();
+
+        Self {
+            bright,
+            ping,
+            pong,
+            blur_pipeline,
+            composite_pipeline,
+            sampler,
+            width,
+            height,
+            config: BloomConfig::default(),
+        }
+    }
+
+    fn blur_uniform_bytes(&self, horizontal: bool) -> [u8; 16] {
+        blur_uniform_bytes(self.width, self.height, horizontal)
+    }
+
+    /// Runs the full bloom pipeline for one view and composites the
+    /// result onto `target_view` — the *same* view `renderer`'s main
+    /// [`SceneRenderer::draw`] already rendered into earlier in this
+    /// `command_buffer`, per the module doc's step 4.
+    ///
+    /// `config.intensity <= 0.0` skips every pass (nothing to add), so a
+    /// caller can toggle bloom off per-frame without reconstructing this
+    /// `BloomPass`.
+    pub fn apply(
+        &self,
+        device: &Device,
+        command_buffer: &mut meridian_graphics_driver::CommandBuffer<'_>,
+        renderer: &SceneRenderer,
+        draw_buffers: &[DrawBuffers],
+        target_view: &wgpu::TextureView,
+    ) {
+        if self.config.intensity <= 0.0 {
+            return;
+        }
+
+        // Step 2: emissive-only bright pass.
+        {
+            let mut pass =
+                command_buffer.begin_render_pass(self.bright.view(), [0.0, 0.0, 0.0, 1.0], None);
+            renderer.draw_emissive(&mut pass, draw_buffers);
+        }
+
+        // Step 3: horizontal blur (bright -> ping), then vertical (ping -> pong).
+        let horizontal_uniform = device.create_buffer(16, BufferUsage::Uniform);
+        device.write_buffer(&horizontal_uniform, &self.blur_uniform_bytes(true));
+        let horizontal_bind_group = device.create_textured_bind_group(
+            &self.blur_pipeline,
+            &horizontal_uniform,
+            &self.bright,
+            &self.sampler,
+        );
+        {
+            let mut pass =
+                command_buffer.begin_render_pass(self.ping.view(), [0.0, 0.0, 0.0, 1.0], None);
+            pass.set_pipeline(&self.blur_pipeline);
+            pass.set_bind_group(0, &horizontal_bind_group);
+            pass.draw(0..3);
+        }
+
+        let vertical_uniform = device.create_buffer(16, BufferUsage::Uniform);
+        device.write_buffer(&vertical_uniform, &self.blur_uniform_bytes(false));
+        let vertical_bind_group = device.create_textured_bind_group(
+            &self.blur_pipeline,
+            &vertical_uniform,
+            &self.ping,
+            &self.sampler,
+        );
+        {
+            let mut pass =
+                command_buffer.begin_render_pass(self.pong.view(), [0.0, 0.0, 0.0, 1.0], None);
+            pass.set_pipeline(&self.blur_pipeline);
+            pass.set_bind_group(0, &vertical_bind_group);
+            pass.draw(0..3);
+        }
+
+        // Step 4: additive composite onto the already-drawn target.
+        let mut intensity_bytes = [0u8; 16];
+        intensity_bytes[0..4].copy_from_slice(&self.config.intensity.to_le_bytes());
+        let composite_uniform = device.create_buffer(16, BufferUsage::Uniform);
+        device.write_buffer(&composite_uniform, &intensity_bytes);
+        let composite_bind_group: BindGroup = device.create_textured_bind_group(
+            &self.composite_pipeline,
+            &composite_uniform,
+            &self.pong,
+            &self.sampler,
+        );
+        {
+            let mut pass = command_buffer.begin_render_pass_loaded(target_view);
+            pass.set_pipeline(&self.composite_pipeline);
+            pass.set_bind_group(0, &composite_bind_group);
+            pass.draw(0..3);
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// `BloomPass::new`/`apply` need a real windowed `Surface`/GPU device
+    /// (the same convention as `SceneRenderer` — see `submission.rs`'s
+    /// own tests module doc comment); this test covers the one piece
+    /// that's pure CPU math: the blur uniform's byte layout, which the
+    /// WGSL side reads as `vec2<f32> texel_size, vec2<f32> direction`.
+    #[test]
+    fn blur_uniform_bytes_encode_texel_size_and_direction() {
+        let horizontal = blur_uniform_bytes(100, 200, true);
+        assert_eq!(
+            f32::from_le_bytes(horizontal[0..4].try_into().unwrap()),
+            0.01
+        );
+        assert_eq!(
+            f32::from_le_bytes(horizontal[4..8].try_into().unwrap()),
+            0.005
+        );
+        assert_eq!(
+            f32::from_le_bytes(horizontal[8..12].try_into().unwrap()),
+            1.0
+        );
+        assert_eq!(
+            f32::from_le_bytes(horizontal[12..16].try_into().unwrap()),
+            0.0
+        );
+
+        let vertical = blur_uniform_bytes(100, 200, false);
+        assert_eq!(f32::from_le_bytes(vertical[8..12].try_into().unwrap()), 0.0);
+        assert_eq!(
+            f32::from_le_bytes(vertical[12..16].try_into().unwrap()),
+            1.0
+        );
+    }
+}

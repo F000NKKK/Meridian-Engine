@@ -576,7 +576,10 @@ impl core::fmt::Display for MeshRegistryError {
                 write!(f, "{positions} positions but {uvs} uvs — must match")
             }
             MeshRegistryError::NormalCountMismatch { positions, normals } => {
-                write!(f, "{positions} positions but {normals} normals — must match")
+                write!(
+                    f,
+                    "{positions} positions but {normals} normals — must match"
+                )
             }
         }
     }
@@ -706,7 +709,9 @@ enum DrawKind {
     Colored,
     /// A fresh bind group naming this draw's specific texture — see the
     /// module doc's "no per-texture bind-group caching yet" note.
-    Textured { bind_group: BindGroup },
+    Textured {
+        bind_group: BindGroup,
+    },
 }
 
 /// One renderable's baked-for-this-frame GPU state — built by
@@ -853,7 +858,8 @@ pub struct SceneRenderer {
 
 impl SceneRenderer {
     pub fn new(device: &Device, surface: &Surface) -> Self {
-        let colored_unlit_shader = device.create_shader("meridian-unlit-colored", UNLIT_SHADER_WGSL);
+        let colored_unlit_shader =
+            device.create_shader("meridian-unlit-colored", UNLIT_SHADER_WGSL);
         let colored_unlit_pipeline = device.create_render_pipeline(
             &colored_unlit_shader,
             "vs_main",
@@ -951,7 +957,10 @@ impl SceneRenderer {
                 lights.len() - MAX_LIGHTS
             );
         }
-        device.write_buffer(&self.uniform_buffer, &lit_uniform_bytes(camera, ambient, lights));
+        device.write_buffer(
+            &self.uniform_buffer,
+            &lit_uniform_bytes(camera, ambient, lights),
+        );
     }
 
     /// Builds one [`DrawBuffers`] per renderable whose mesh/material both
@@ -1197,7 +1206,11 @@ mod tests {
 
         // First light's kind field (offset 112 + 16 [lights array start] + 12).
         let lights_start = 64 + 16 + 16 + 16;
-        let first_kind = f32::from_le_bytes(bytes[lights_start + 12..lights_start + 16].try_into().unwrap());
+        let first_kind = f32::from_le_bytes(
+            bytes[lights_start + 12..lights_start + 16]
+                .try_into()
+                .unwrap(),
+        );
         assert_eq!(first_kind, 0.0); // directional
         let second_kind = f32::from_le_bytes(
             bytes[lights_start + 48 + 12..lights_start + 48 + 16]
