@@ -17,3 +17,6 @@ meridian-asset-core = { workspace = true }
 meridian-graphics-driver = { workspace = true }
 meridian-compute-runtime = { workspace = true }
 meridian-resource-core = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true }
