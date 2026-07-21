@@ -189,7 +189,7 @@ FFT/HRTF-convolution over many sources is the future
 real, `audio-core` also owns the output bridge: `Mixer::render_interleaved`
 (block rendering to interleaved speaker-order samples) and `AudioOutput`
 (opens the default device with one stream channel per speaker) — audible
-end-to-end via the `music_sphere` example (see below).
+end-to-end via the `magic_figures` example (see below).
 
 `meridian-graphics-core`'s driver-independent half is real: `Camera`
 bridges a `Motor3` world frame into a classical view/projection matrix
@@ -338,10 +338,15 @@ samples into `audio-driver`'s real stream (the declared
 core→own-driver edge, used for the first time), composed with `Runtime`
 composed with `Runtime` the same way `spinning_cube` composes
 `graphics-driver` — `Runtime` itself stays driver-free.
-`music_sphere` is the full loop: a windowed scene where a
-sphere emits the decoded music and the `FlyCamera` pose doubles as the
-`audio-core` listener (same local-forward-`+X` `Motor3` convention), so
-panning and distance attenuation track the camera live. Every crate not named above
+`magic_figures` is the full loop: a windowed scene with three orbiting
+shapes (sphere, cube, pyramid), each emitting its own decoded music
+track (a different container/codec format per shape) while the
+`FlyCamera` pose doubles as the shared `audio-core` listener (same
+local-forward-`+X` `Motor3` convention), so panning and distance
+attenuation track the camera live; `physic_figures` runs the same shapes
+as real `physics-core` rigid bodies settling onto a textured floor,
+sharing `examples::scene_base`'s `GraphicsBase` with `magic_figures`.
+Every crate not named above
 has a real, tested implementation; see each crate's own section above
 for specifics. This staged order is intentional — see "Why implementation
 is deliberately last" below.

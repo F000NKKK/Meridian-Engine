@@ -29,7 +29,9 @@ use meridian_examples::{
 use meridian_gac_core::{Motor3, Vec3};
 use meridian_graphics_core::{DrawBuffers, Light, Material, Renderable3D, Scene3D, submit_scene3d};
 use meridian_graphics_driver::Device;
-use meridian_physics_core::{BroadPhase, ColliderShape, ConstraintSolver, Integrator, NarrowPhase, RigidBody};
+use meridian_physics_core::{
+    BroadPhase, ColliderShape, ConstraintSolver, Integrator, NarrowPhase, RigidBody,
+};
 use meridian_platform_core::{AppHandler, InputState, KeyCode, Window, run_windowed_app};
 
 const FLOOR_HALF_EXTENT: f32 = 14.0;
@@ -230,7 +232,10 @@ impl AppHandler for App {
         // bottom face.
         let pyramid_mesh = base
             .meshes
-            .register(pyramid_mesh_source(PYRAMID_BASE_HALF_EXTENT, PYRAMID_HEIGHT))
+            .register(pyramid_mesh_source(
+                PYRAMID_BASE_HALF_EXTENT,
+                PYRAMID_HEIGHT,
+            ))
             .expect("pyramid mesh must be valid");
 
         let renderables = vec![
@@ -299,8 +304,7 @@ impl AppHandler for App {
         }
 
         self.physics.step(frame_dt);
-        for (renderable_index, body_index) in
-            gpu.body_renderable_indices.iter().zip([1usize, 2, 3])
+        for (renderable_index, body_index) in gpu.body_renderable_indices.iter().zip([1usize, 2, 3])
         {
             gpu.scene.renderables[*renderable_index].frame = self.physics.bodies[body_index].frame;
         }
@@ -311,7 +315,7 @@ impl AppHandler for App {
         // point instead of floating at the collider's vertical center.
         let pyramid_renderable = &mut gpu.scene.renderables[gpu.body_renderable_indices[2]];
         let drop = Motor3::translation(Vec3::new(0.0, -pyramid_collider_half_extents().y, 0.0));
-        pyramid_renderable.frame = pyramid_renderable.frame * drop;
+        pyramid_renderable.frame = pyramid_renderable.frame.compose(drop);
 
         let aspect = window.width() as f32 / window.height().max(1) as f32;
         gpu.scene.camera = self.camera.camera(aspect);
@@ -345,9 +349,13 @@ impl AppHandler for App {
                 &gpu.base.textures,
             );
         }
-        gpu.base
-            .bloom
-            .apply(&gpu.base.device, &mut commands, &gpu.base.renderer, &draw_buffers, &frame);
+        gpu.base.bloom.apply(
+            &gpu.base.device,
+            &mut commands,
+            &gpu.base.renderer,
+            &draw_buffers,
+            &frame,
+        );
         commands.submit();
         frame.present(&gpu.base.device);
 

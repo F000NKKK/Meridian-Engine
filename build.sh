@@ -32,7 +32,7 @@ Examples:
   ./build.sh build
   ./build.sh build -p meridian-gac-core
   ./build.sh test
-  ./build.sh run hello_engine -- --foo bar
+  ./build.sh run magic_figures -- --foo bar
   ./build.sh clean
 EOF
 }
