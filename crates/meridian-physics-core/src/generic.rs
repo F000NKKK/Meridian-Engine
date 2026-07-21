@@ -516,10 +516,13 @@ fn face_manifold<F: GaFlavor>(
 /// per-point positional corrections reproduces the same total magnitude
 /// a single-point contact would have applied instead of over-correcting
 /// once per extra point).
-fn cuboid_vs_cuboid<F: GaFlavor>(
-    obb_a: &Obb<F>,
-    obb_b: &Obb<F>,
-) -> Option<(Vec<F::Vector>, F::Scalar, F::Vector)> {
+type Manifold<F> = (
+    Vec<<F as GaFlavor>::Vector>,
+    <F as GaFlavor>::Scalar,
+    <F as GaFlavor>::Vector,
+);
+
+fn cuboid_vs_cuboid<F: GaFlavor>(obb_a: &Obb<F>, obb_b: &Obb<F>) -> Option<Manifold<F>> {
     let axes_a = obb_axes(obb_a);
     let axes_b = obb_axes(obb_b);
     let center_delta =
