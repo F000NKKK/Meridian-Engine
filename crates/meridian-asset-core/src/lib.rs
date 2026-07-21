@@ -13,8 +13,10 @@
 //! OGG/Opus) use external codec crates per
 //! docs/adr/013-compressed-audio-codecs.md and are identified by leading
 //! magic bytes ([`AudioFormat::detect`]), never by file extension.
-//! PNG/JPEG and glTF remain future work on the same
-//! when-a-concrete-asset-needs-it trigger.
+//! PNG decoding uses the `png` crate — see [`PngDecoder`] and
+//! docs/adr/013-compressed-audio-codecs.md's DEFLATE-is-too-big-to-hand-roll
+//! reasoning, which applies identically here. JPEG and glTF remain
+//! future work on the same when-a-concrete-asset-needs-it trigger.
 
 pub mod audio;
 
