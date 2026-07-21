@@ -45,6 +45,13 @@ pub struct Material {
     /// world-space UI (a cockpit readout that must never be occluded).
     pub always_on_top: bool,
     pub blend: BlendMode,
+    /// Light the surface *emits*, added on top of whatever `Light`/
+    /// ambient shading it receives — not affected by scene lighting
+    /// itself (a real emissive surface doesn't get dimmer in the dark).
+    /// This is also bloom's bright-pass input: a surface with
+    /// `emissive` above the bridge's bloom threshold blooms; zero (the
+    /// default) never does.
+    pub emissive: [f32; 3],
 }
 
 /// A mesh's identity plus the CPU-side info culling needs. The GPU
@@ -149,12 +156,29 @@ impl Camera2D {
 }
 
 /// The world: a camera, its visible [`Renderable3D`]s, and the lights
-/// shading them.
-#[derive(Debug, Clone, Default)]
+/// shading them. `ambient` is a flat constant-color fill light (not
+/// image-based/environment lighting — that's future work), applied even
+/// where no [`Light`] reaches; a scene with `lights` empty and
+/// `ambient` zero renders pure black, same as a real unlit room.
+#[derive(Debug, Clone)]
 pub struct Scene3D {
     pub camera: crate::Camera,
     pub renderables: Vec<Renderable3D>,
     pub lights: Vec<Light>,
+    pub ambient: [f32; 3],
+}
+
+impl Default for Scene3D {
+    fn default() -> Self {
+        Self {
+            camera: crate::Camera::default(),
+            renderables: Vec::new(),
+            lights: Vec::new(),
+            // A small flat fill so an unlit-by-Light scene isn't pure
+            // black by default — tune per-scene via the field directly.
+            ambient: [0.03, 0.03, 0.03],
+        }
+    }
 }
 
 /// A layer-sorted plane: an orthographic camera and its [`Sprite`]s.
@@ -218,7 +242,7 @@ pub fn extract_scene3d(world: &World, camera: crate::Camera) -> Scene3D {
     Scene3D {
         camera,
         renderables,
-        lights: Vec::new(),
+        ..Scene3D::default()
     }
 }
 
@@ -365,9 +389,8 @@ mod tests {
             billboard: false,
         };
         let scene = Scene3D {
-            camera: crate::Camera::default(),
             renderables: vec![ahead.clone(), behind],
-            lights: Vec::new(),
+            ..Scene3D::default()
         };
 
         let unit_cube = Aabb {
@@ -389,9 +412,8 @@ mod tests {
             billboard: false,
         };
         let scene = Scene3D {
-            camera: crate::Camera::default(),
             renderables: vec![renderable],
-            lights: Vec::new(),
+            ..Scene3D::default()
         };
 
         let visible = cull_scene3d(&scene, &forward_frustum(), |_| None);
