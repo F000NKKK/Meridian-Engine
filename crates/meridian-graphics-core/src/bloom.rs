@@ -11,11 +11,13 @@
 //!    into the real render target (swapchain or an offscreen color
 //!    texture).
 //! 2. [`BloomPass::apply`]'s bright pass — the *same* `DrawBuffers`
-//!    redrawn through `SceneRenderer::draw_emissive` into an offscreen
-//!    "bright" texture. A material with `emissive = [0,0,0]` (the
-//!    default) contributes solid black here — harmless once additively
-//!    composited in step 4 — so no per-material bloom flag or threshold
-//!    is needed; `emissive` itself *is* the mask.
+//!    redrawn through this module's own emissive-extraction pipelines
+//!    (built here, not on `SceneRenderer` — see [`BloomPass::new`]'s doc
+//!    comment for why) into an offscreen "bright" texture. A material
+//!    with `emissive = [0,0,0]` (the default) contributes solid black
+//!    here — harmless once additively composited in step 4 — so no
+//!    per-material bloom flag or threshold is needed; `emissive` itself
+//!    *is* the mask.
 //! 3. Two blur passes (horizontal, then vertical — the standard
 //!    separable-Gaussian trick: an `N*N` blur becomes two `N`-tap passes)
 //!    ping-ponging between two same-sized offscreen textures, each a
@@ -26,27 +28,42 @@
 //!    `CommandBuffer::begin_render_pass_loaded`, which preserves existing
 //!    contents instead of clearing them.
 //!
-//! **Deliberately not HDR.** Every texture here (bright/blur/main) is
-//! `Rgba8UnormSrgb`, the same format `TextureRegistry`/the swapchain
-//! already use — an emissive value is whatever a `Material` sets (no
-//! bloom-specific tone mapping or exposure control), clamped to `[0,1]`
-//! like every other color in this bridge. A true HDR pipeline
-//! (`Rgba16Float` intermediate targets, exposure/tone-mapping) is real
-//! future work if a scene ever needs emissive values above `1.0` to look
-//! right; the visible glow this produces today does not depend on it.
+//! **Deliberately not HDR.** Every offscreen texture here (bright/ping/
+//! pong) is [`ColorFormat::SrgbRgba8`], the same format `TextureRegistry`
+//! uses for uploaded textures — an emissive value is whatever a
+//! `Material` sets (no bloom-specific tone mapping or exposure control),
+//! clamped to `[0,1]` like every other color in this bridge. A true HDR
+//! pipeline (`Rgba16Float` intermediate targets, exposure/tone-mapping)
+//! is real future work if a scene ever needs emissive values above `1.0`
+//! to look right — it would only mean adding a variant to
+//! `graphics-driver::ColorFormat` and passing it through, not a redesign
+//! here; the visible glow this produces today does not depend on it.
 //!
 //! **Fixed at construction size**, matching the swapchain/target it was
 //! built for — resize by constructing a new [`BloomPass`] (cheap: a
-//! handful of small offscreen textures and two tiny pipelines), the same
-//! "rebuild on resize" pattern `DepthTexture` already uses in every
+//! handful of small offscreen textures and three tiny pipelines), the
+//! same "rebuild on resize" pattern `DepthTexture` already uses in every
 //! windowed example.
 
 use meridian_graphics_driver::{
-    BindGroup, BufferUsage, Device, RenderPipeline, Sampler, Surface, SurfaceFrame, Texture,
+    BindGroup, BufferUsage, ColorFormat, Device, RenderPipeline, Sampler, Surface, SurfaceFrame,
+    Texture,
 };
 
 use crate::SceneRenderer;
-use crate::submission::DrawBuffers;
+use crate::submission::{
+    DrawBuffers, DrawKind, EMISSIVE_EXTRACT_SHADER_WGSL, emissive_from_colored_layout,
+    emissive_from_textured_layout,
+};
+
+/// Every offscreen texture [`BloomPass`] creates uses this format — one
+/// value threaded through both texture and pipeline creation (see
+/// `graphics-driver::ColorFormat`'s own doc comment for why that
+/// matters: a mismatch between the two is exactly the `wgpu` validation
+/// error this module used to be able to trigger before the format
+/// became one shared value instead of two independently-hardcoded
+/// assumptions).
+const OFFSCREEN_FORMAT: ColorFormat = ColorFormat::SrgbRgba8;
 
 /// A full-screen-triangle vertex shader shared by both blur directions
 /// and the composite pass — see `graphics-driver`'s
@@ -163,13 +180,25 @@ impl Default for BloomConfig {
     }
 }
 
-/// Owns bloom's offscreen textures and its two small pipelines (blur,
-/// composite), sized for one `width`x`height` render target — see the
-/// module doc for the four-step pipeline and why this isn't HDR.
+/// Owns bloom's offscreen textures and its three small pipelines
+/// (emissive extraction x2 — colored/textured, blur, composite), sized
+/// for one `width`x`height` render target — see the module doc for the
+/// four-step pipeline and why this isn't HDR.
+///
+/// The emissive-extraction pipelines live here, not on `SceneRenderer`,
+/// deliberately: they only ever render into *this* struct's own
+/// `bright` texture, never the swapchain, so the format they're built
+/// against has to be `BloomPass`'s own [`OFFSCREEN_FORMAT`] — building
+/// them on `SceneRenderer` against the surface's format instead (an
+/// earlier version of this code did) is exactly the class of bug
+/// `graphics-driver::ColorFormat` exists to make structurally
+/// impossible: a mesh pipeline built for the wrong render pass's format.
 pub struct BloomPass {
     bright: Texture,
     ping: Texture,
     pong: Texture,
+    emissive_from_colored_pipeline: RenderPipeline,
+    emissive_from_textured_pipeline: RenderPipeline,
     blur_pipeline: RenderPipeline,
     composite_pipeline: RenderPipeline,
     sampler: Sampler,
@@ -184,17 +213,40 @@ impl BloomPass {
     /// so the bloom textures are the same resolution as what's actually
     /// being rendered.
     pub fn new(device: &Device, width: u32, height: u32, surface: &Surface) -> Self {
-        let bright = device.create_offscreen_color_texture(width, height);
-        let ping = device.create_offscreen_color_texture(width, height);
-        let pong = device.create_offscreen_color_texture(width, height);
+        let bright = device.create_offscreen_color_texture(width, height, OFFSCREEN_FORMAT);
+        let ping = device.create_offscreen_color_texture(width, height, OFFSCREEN_FORMAT);
+        let pong = device.create_offscreen_color_texture(width, height, OFFSCREEN_FORMAT);
+
+        let emissive_shader =
+            device.create_shader("meridian-emissive-extract", EMISSIVE_EXTRACT_SHADER_WGSL);
+        let emissive_from_colored_pipeline = device.create_render_pipeline_for_offscreen(
+            &emissive_shader,
+            "vs_main",
+            "fs_main",
+            &emissive_from_colored_layout(),
+            OFFSCREEN_FORMAT,
+            false,
+        );
+        let emissive_from_textured_pipeline = device.create_render_pipeline_for_offscreen(
+            &emissive_shader,
+            "vs_main",
+            "fs_main",
+            &emissive_from_textured_layout(),
+            OFFSCREEN_FORMAT,
+            false,
+        );
 
         let blur_shader = device.create_shader("meridian-bloom-blur", &blur_shader_wgsl());
-        // The bright/ping/pong textures are all Rgba8UnormSrgb (see
-        // `create_offscreen_color_texture`); the blur pass's own target
-        // format matches them, independent of the composite pass's
-        // target format below (the real swapchain format).
-        let blur_pipeline =
-            device.create_fullscreen_pipeline_for_offscreen(&blur_shader, "fs_main", false);
+        // The bright/ping/pong textures all share OFFSCREEN_FORMAT; the
+        // blur pass's own target format matches them, independent of
+        // the composite pass's target format below (the real swapchain
+        // format).
+        let blur_pipeline = device.create_fullscreen_pipeline_for_offscreen(
+            &blur_shader,
+            "fs_main",
+            OFFSCREEN_FORMAT,
+            false,
+        );
 
         let composite_shader =
             device.create_shader("meridian-bloom-composite", &composite_shader_wgsl());
@@ -207,12 +259,46 @@ impl BloomPass {
             bright,
             ping,
             pong,
+            emissive_from_colored_pipeline,
+            emissive_from_textured_pipeline,
             blur_pipeline,
             composite_pipeline,
             sampler,
             width,
             height,
             config: BloomConfig::default(),
+        }
+    }
+
+    /// Redraws `buffers` through this `BloomPass`'s own emissive-
+    /// extraction pipelines into `self.bright` — step 2 of the module
+    /// doc's pipeline. `renderer` supplies only the shared view/lighting
+    /// uniform buffer (for `view_proj`); the pipelines themselves are
+    /// this struct's, not `renderer`'s (see [`BloomPass::new`]'s doc
+    /// comment for why).
+    fn draw_emissive(
+        &self,
+        device: &Device,
+        renderer: &SceneRenderer,
+        pass: &mut meridian_graphics_driver::RenderPass<'_>,
+        buffers: &[DrawBuffers],
+    ) {
+        // Rebuilt every frame, same "correct now, cache later" trade-off
+        // as the per-texture bind groups in `submission.rs`.
+        let bind_group = device.create_uniform_bind_group(
+            &self.emissive_from_colored_pipeline,
+            renderer.uniform_buffer(),
+        );
+        pass.set_bind_group(0, &bind_group);
+        for entry in buffers {
+            let pipeline = match &entry.kind {
+                DrawKind::Colored => &self.emissive_from_colored_pipeline,
+                DrawKind::Textured { .. } => &self.emissive_from_textured_pipeline,
+            };
+            pass.set_pipeline(pipeline);
+            pass.set_vertex_buffer(0, &entry.vertex_buffer);
+            pass.set_index_buffer_u16(&entry.index_buffer);
+            pass.draw_indexed(0..entry.index_count);
         }
     }
 
