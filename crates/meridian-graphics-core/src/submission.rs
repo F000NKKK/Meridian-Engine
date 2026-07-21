@@ -472,9 +472,12 @@ fn vec3_to_padded_bytes(v: [f32; 3]) -> [u8; 16] {
 fn lit_uniform_bytes(camera: &Camera, ambient: [f32; 3], lights: &[Light]) -> Vec<u8> {
     let mut bytes = Vec::with_capacity(304);
     bytes.extend_from_slice(&mat4_to_bytes(camera.view_projection_matrix()));
-    bytes.extend_from_slice(&vec3_to_padded_bytes(
-        camera.frame.transform_point(Vec3::ZERO).into(),
-    ));
+    let camera_pos = camera.frame.transform_point(Vec3::ZERO);
+    bytes.extend_from_slice(&vec3_to_padded_bytes([
+        camera_pos.x,
+        camera_pos.y,
+        camera_pos.z,
+    ]));
     bytes.extend_from_slice(&vec3_to_padded_bytes(ambient));
     let count = lights.len().min(MAX_LIGHTS) as u32;
     bytes.extend_from_slice(&count.to_le_bytes());

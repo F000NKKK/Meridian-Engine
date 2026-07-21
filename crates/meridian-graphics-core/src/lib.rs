@@ -7,17 +7,19 @@ use meridian_gac_core::generic::Shape;
 use meridian_gac_core::{ConvexVolume, Motor3, Plane, Projection, Vec3};
 use meridian_resource_core::ResourceId;
 
+pub mod bloom;
 pub mod scene;
 pub mod submission;
 
+pub use bloom::{BloomConfig, BloomPass};
 pub use scene::{
     BlendMode, Camera2D, FrameScene, Light, Material, MaterialHandle, Mesh, MeshRenderer,
     Renderable3D, Scene2D, Scene3D, Sprite, View, cull_scene3d, extract_scene3d,
     world_space_bounds,
 };
 pub use submission::{
-    DrawBuffers, MaterialRegistry, MeshRegistry, MeshRegistryError, MeshSource, SceneRenderer,
-    TEXTURED_SHADER_WGSL, TextureRegistry, UNLIT_SHADER_WGSL, submit_scene3d,
+    DrawBuffers, MAX_LIGHTS, MaterialRegistry, MeshRegistry, MeshRegistryError, MeshSource,
+    SceneRenderer, TEXTURED_SHADER_WGSL, TextureRegistry, UNLIT_SHADER_WGSL, submit_scene3d,
 };
 
 /// Marker types distinguishing `ResourceId`s of different graphics resource
