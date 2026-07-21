@@ -48,7 +48,12 @@ const PYRAMID_BASE_HALF_EXTENT: f32 = 0.65;
 const PYRAMID_HEIGHT: f32 = 1.2;
 
 const PHYSICS_DT: f32 = 1.0 / 60.0;
-const SOLVER_RESTITUTION: f32 = 0.15;
+/// `0`: a settled body must not bounce at all. Combined with
+/// `ConstraintSolver`'s `restitution_velocity_threshold` (which already
+/// suppresses bounce below a small closing speed regardless of this
+/// value), this makes landing fully inelastic — no perpetual "settles,
+/// then bounces off residual gravity velocity" jitter, ever.
+const SOLVER_RESTITUTION: f32 = 0.0;
 /// Coulomb friction coefficient — without this, resting bodies had
 /// nothing slowing lateral sliding, so any small rotational/positional
 /// jitter (see `NarrowPhase`'s box-box manifold) could slide the box
