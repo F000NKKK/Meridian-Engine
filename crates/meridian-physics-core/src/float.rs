@@ -444,13 +444,28 @@ mod tests {
         let dt = 1.0 / 60.0;
 
         let mut max_angular_speed_after_landing: f32 = 0.0;
+        let mut min_height_after_landing = f32::MAX;
+        let mut max_height_after_landing = f32::MIN;
         for step in 0..600 {
             integrator.step(&mut bodies, dt);
+            // Velocity-only relaxation passes, then positional
+            // correction exactly once — matching
+            // `examples/examples/physic_figures.rs`'s loop. Calling the
+            // combined `resolve` (velocity + position) once per
+            // relaxation pass instead applied the positional push
+            // several times per tick, which is the "cube/pyramid bounce
+            // up/down and clip through the floor" bug this test's
+            // height-stability assertion below catches — see
+            // `ConstraintSolver::resolve`'s doc comment.
             for _ in 0..4 {
                 let pairs = broad.find_candidate_pairs(&bodies).to_vec();
                 for contact in narrow.generate_contacts(&bodies, &pairs) {
-                    solver.resolve(&mut bodies, &contact);
+                    solver.resolve_velocity(&mut bodies, &contact);
                 }
+            }
+            let pairs = broad.find_candidate_pairs(&bodies).to_vec();
+            for contact in narrow.generate_contacts(&bodies, &pairs) {
+                solver.apply_positional_correction(&mut bodies, &contact);
             }
             // Give the box a couple hundred steps to make first contact
             // and let any initial-impact wobble die down before tracking
@@ -458,6 +473,9 @@ mod tests {
             if step > 200 {
                 max_angular_speed_after_landing =
                     max_angular_speed_after_landing.max(bodies[1].angular_velocity.length());
+                let height = bodies[1].position().y;
+                min_height_after_landing = min_height_after_landing.min(height);
+                max_height_after_landing = max_height_after_landing.max(height);
             }
             assert!(
                 bodies[1].position().y.is_finite()
@@ -470,6 +488,15 @@ mod tests {
             max_angular_speed_after_landing < 1.0,
             "a flat box dropped with no initial spin should settle, not keep spinning \
              (max angular speed after landing: {max_angular_speed_after_landing} rad/s)"
+        );
+        assert!(
+            max_height_after_landing - min_height_after_landing < 0.05,
+            "a settled box's resting height must not bounce up/down every tick \
+             (min {min_height_after_landing}, max {max_height_after_landing})"
+        );
+        assert!(
+            min_height_after_landing > 0.0,
+            "a settled box must not clip through the floor (min height {min_height_after_landing})"
         );
     }
 }
