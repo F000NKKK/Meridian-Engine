@@ -38,7 +38,7 @@ use meridian_platform_core::{BackendCapabilities, CpuCapabilities, GpuCapabiliti
 // edge to `gpu-driver` just to name the type — the same
 // resource-type-naming precedent as `gac-compute`'s direct `gpu-driver`
 // dependency (ADR 011), applied by re-export instead of a second edge.
-pub use meridian_gpu_driver::{BindGroup, Buffer, BufferUsage, DeviceError};
+pub use meridian_gpu_driver::{BindGroup, Buffer, BufferUsage, DeviceError, Sampler, Texture};
 
 /// A windowed-capable GPU device. Wraps [`meridian_gpu_driver::Device`]
 /// (which owns the actual `wgpu::Device`/`wgpu::Queue` and every
@@ -137,6 +137,54 @@ impl Device {
             wgpu::TextureUsages::RENDER_ATTACHMENT,
         );
         DepthTexture { texture }
+    }
+
+    /// An `Rgba8UnormSrgb`, sampleable color texture — the shape a
+    /// decoded `asset-core::ImageData` (already RGBA8) uploads into for
+    /// use as a material's albedo. sRGB, matching this crate's swapchain
+    /// format choice (see [`Device::new_windowed`]'s doc comment), so a
+    /// texture authored in sRGB (almost every image file is) reads back
+    /// linear in the shader without a manual gamma-correction step.
+    pub fn create_texture_2d(&self, width: u32, height: u32) -> Texture {
+        self.0.create_texture(
+            width,
+            height,
+            wgpu::TextureFormat::Rgba8UnormSrgb,
+            wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+        )
+    }
+
+    /// Uploads tightly-packed RGBA8 pixel data to `texture`'s full
+    /// extent — see [`meridian_gpu_driver::Device::write_texture`].
+    pub fn write_texture(&self, texture: &Texture, rgba8_data: &[u8]) {
+        self.0.write_texture(texture, rgba8_data);
+    }
+
+    /// A linear-filtered, clamp-to-edge sampler — see
+    /// [`meridian_gpu_driver::Device::create_sampler`].
+    pub fn create_sampler(&self) -> Sampler {
+        self.0.create_sampler()
+    }
+
+    /// Builds a bind group binding `buffer` (a uniform, as in
+    /// [`create_uniform_bind_group`](Self::create_uniform_bind_group)) at
+    /// binding 0, `texture`'s view at binding 1 and `sampler` at binding
+    /// 2 of `pipeline`'s auto-derived layout — the shape a shader that
+    /// samples one albedo texture alongside its view-projection uniform
+    /// needs.
+    pub fn create_textured_bind_group(
+        &self,
+        pipeline: &RenderPipeline,
+        buffer: &Buffer,
+        texture: &Texture,
+        sampler: &Sampler,
+    ) -> BindGroup {
+        self.0.create_texture_bind_group(
+            &pipeline.raw.get_bind_group_layout(0),
+            buffer,
+            texture,
+            sampler,
+        )
     }
 
     /// Builds a render pipeline: `vertex_entry`/`fragment_entry` are two

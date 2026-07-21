@@ -26,7 +26,7 @@ meridian-compute-runtime = { path = "crates/meridian-compute-runtime", version =
 meridian-gac-compute = { path = "crates/meridian-gac-compute", version = "0.19" }
 meridian-asset-core = { path = "crates/meridian-asset-core", version = "0.10" }
 meridian-ecs-core = { path = "crates/meridian-ecs-core", version = "0.13" }
-meridian-graphics-driver = { path = "crates/meridian-graphics-driver", version = "0.11" }
+meridian-graphics-driver = { path = "crates/meridian-graphics-driver", version = "0.12" }
 meridian-audio-driver = { path = "crates/meridian-audio-driver", version = "0.10" }
 meridian-graphics-core = { path = "crates/meridian-graphics-core", version = "0.21" }
 meridian-physics-driver = { path = "crates/meridian-physics-driver", version = "0.8" }
