@@ -407,7 +407,7 @@ fn textured_vertex_layout() -> VertexLayout {
 /// Reinterprets [`colored_vertex_layout`]'s buffer bytes as just
 /// position + emissive (same stride, two attributes) — what
 /// [`EMISSIVE_EXTRACT_SHADER_WGSL`] reads for a colored-family draw.
-fn emissive_from_colored_layout() -> VertexLayout {
+pub(crate) fn emissive_from_colored_layout() -> VertexLayout {
     VertexLayout {
         stride: 52,
         attributes: vec![
@@ -426,7 +426,7 @@ fn emissive_from_colored_layout() -> VertexLayout {
 }
 
 /// [`emissive_from_colored_layout`]'s textured-family counterpart.
-fn emissive_from_textured_layout() -> VertexLayout {
+pub(crate) fn emissive_from_textured_layout() -> VertexLayout {
     VertexLayout {
         stride: 60,
         attributes: vec![
@@ -706,7 +706,7 @@ impl TextureRegistry {
 /// Which family (colored vs. textured) one [`DrawBuffers`] entry belongs
 /// to, and the per-draw state its main pipeline needs beyond the shared
 /// vertex/index buffers.
-enum DrawKind {
+pub(crate) enum DrawKind {
     Colored,
     /// A fresh bind group naming this draw's specific texture — see the
     /// module doc's "no per-texture bind-group caching yet" note.
@@ -729,7 +729,7 @@ pub struct DrawBuffers {
     pub(crate) index_buffer: Buffer,
     pub(crate) index_count: u32,
     lit: bool,
-    kind: DrawKind,
+    pub(crate) kind: DrawKind,
 }
 
 /// Transforms `source`'s local-space positions/normals by `frame`, bakes
