@@ -220,11 +220,36 @@ impl Device {
         )
     }
 
-    /// [`create_render_pipeline`](Self::create_render_pipeline)'s general
-    /// form: takes the target color format directly instead of reading
-    /// it off a [`Surface`], for pipelines that render into an offscreen
-    /// texture rather than the swapchain (e.g. a post-process pass's
-    /// intermediate target — see [`create_offscreen_color_texture`](Self::create_offscreen_color_texture)).
+    /// [`create_render_pipeline`](Self::create_render_pipeline)'s
+    /// offscreen counterpart: targets `format` directly — pass whatever
+    /// [`ColorFormat`] the offscreen texture this pipeline draws into
+    /// actually used (see [`create_offscreen_color_texture`](Self::create_offscreen_color_texture)),
+    /// so the two can never silently drift apart (see [`ColorFormat`]'s
+    /// own doc comment).
+    pub fn create_render_pipeline_for_offscreen(
+        &self,
+        shader: &meridian_gpu_driver::Shader,
+        vertex_entry: &str,
+        fragment_entry: &str,
+        vertex_layout: &VertexLayout,
+        format: ColorFormat,
+        depth_enabled: bool,
+    ) -> RenderPipeline {
+        self.create_render_pipeline_for_format(
+            shader,
+            vertex_entry,
+            fragment_entry,
+            vertex_layout,
+            format.to_wgpu(),
+            depth_enabled,
+        )
+    }
+
+    /// General form taking the target color format directly instead of
+    /// reading it off a [`Surface`] or a [`ColorFormat`] — the primitive
+    /// [`create_render_pipeline`](Self::create_render_pipeline) and
+    /// [`create_render_pipeline_for_offscreen`](Self::create_render_pipeline_for_offscreen)
+    /// both delegate to.
     pub fn create_render_pipeline_for_format(
         &self,
         shader: &meridian_gpu_driver::Shader,
@@ -292,18 +317,23 @@ impl Device {
         RenderPipeline { raw }
     }
 
-    /// A sampleable *and* renderable color texture (`Rgba8UnormSrgb`,
-    /// `TEXTURE_BINDING | RENDER_ATTACHMENT`) — the shape a post-process
-    /// pass's intermediate target needs: something to render into, then
-    /// read back from in the next pass. [`create_texture_2d`](Self::create_texture_2d)
-    /// is sampleable but not renderable (an uploaded asset texture is
-    /// never a render target); this is that plus render-attachment
-    /// usage.
-    pub fn create_offscreen_color_texture(&self, width: u32, height: u32) -> Texture {
+    /// A sampleable *and* renderable color texture
+    /// (`TEXTURE_BINDING | RENDER_ATTACHMENT`, in `format`) — the shape a
+    /// post-process pass's intermediate target needs: something to
+    /// render into, then read back from in the next pass.
+    /// [`create_texture_2d`](Self::create_texture_2d) is sampleable but
+    /// not renderable (an uploaded asset texture is never a render
+    /// target); this is that plus render-attachment usage.
+    pub fn create_offscreen_color_texture(
+        &self,
+        width: u32,
+        height: u32,
+        format: ColorFormat,
+    ) -> Texture {
         self.0.create_texture(
             width,
             height,
-            wgpu::TextureFormat::Rgba8UnormSrgb,
+            format.to_wgpu(),
             wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
         )
     }
@@ -334,21 +364,22 @@ impl Device {
     }
 
     /// [`create_fullscreen_pipeline`](Self::create_fullscreen_pipeline)'s
-    /// offscreen counterpart: targets
-    /// [`create_offscreen_color_texture`](Self::create_offscreen_color_texture)'s
-    /// fixed `Rgba8UnormSrgb` format directly, for a post-process pass
-    /// that renders into an intermediate texture rather than the
-    /// swapchain (e.g. bloom's blur passes).
+    /// offscreen counterpart: targets `format` directly — pass whatever
+    /// [`ColorFormat`] the offscreen texture this pipeline draws into
+    /// (see [`create_offscreen_color_texture`](Self::create_offscreen_color_texture))
+    /// actually used, so the two can never silently drift apart the way
+    /// two independent hardcoded formats could.
     pub fn create_fullscreen_pipeline_for_offscreen(
         &self,
         shader: &meridian_gpu_driver::Shader,
         fragment_entry: &str,
+        format: ColorFormat,
         additive: bool,
     ) -> RenderPipeline {
         self.create_fullscreen_pipeline_for_format(
             shader,
             fragment_entry,
-            wgpu::TextureFormat::Rgba8UnormSrgb,
+            format.to_wgpu(),
             additive,
         )
     }
@@ -727,6 +758,34 @@ impl VertexFormat {
             VertexFormat::Float32x2 => wgpu::VertexFormat::Float32x2,
             VertexFormat::Float32x3 => wgpu::VertexFormat::Float32x3,
             VertexFormat::Float32x4 => wgpu::VertexFormat::Float32x4,
+        }
+    }
+}
+
+/// A color texture format callers can name without depending on `wgpu`
+/// directly — the same "small enum, extend additively" shape as
+/// [`VertexFormat`]. Threading an explicit `ColorFormat` through
+/// [`Device::create_offscreen_color_texture`] and its matching pipeline
+/// constructors ([`Device::create_fullscreen_pipeline_for_offscreen`],
+/// [`Device::create_render_pipeline_for_offscreen`]) is what makes an
+/// offscreen texture's format and the pipeline that renders into it
+/// *one* value instead of two independently-hardcoded assumptions that
+/// can silently drift apart — the wgpu validation error this replaces
+/// ("RenderPass uses textures with format X but the RenderPipeline
+/// uses Y") is exactly what happens when they do.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ColorFormat {
+    /// 8-bit sRGB RGBA — what [`Device::create_texture_2d`] and every
+    /// offscreen target in this workspace uses today. An HDR variant
+    /// (`Rgba16Float`) is real future work (see `bloom.rs`'s module doc
+    /// in `graphics-core`), additive here when something needs it.
+    SrgbRgba8,
+}
+
+impl ColorFormat {
+    fn to_wgpu(self) -> wgpu::TextureFormat {
+        match self {
+            ColorFormat::SrgbRgba8 => wgpu::TextureFormat::Rgba8UnormSrgb,
         }
     }
 }
