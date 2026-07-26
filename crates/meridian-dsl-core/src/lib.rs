@@ -20,6 +20,10 @@
 
 use std::fmt;
 
+mod tag;
+
+pub use tag::{BuiltNode, DslRegistry, DslTag, TagParseError};
+
 /// One parsed element: its tag name, its attributes (in source order,
 /// duplicates rejected at parse time rather than silently
 /// last-write-wins — a duplicate attribute is almost always a typo, not
