@@ -378,46 +378,12 @@ impl AppHandler for App {
         let aspect = window.width() as f32 / window.height().max(1) as f32;
         gpu.scene.camera = self.camera.camera(aspect);
 
-        let frame = match gpu.base.surface.acquire_frame() {
-            Ok(frame) => frame,
-            Err(err) => {
-                meridian_sdk::log_warn!(
-                    "swapchain frame unavailable ({err}); reconfiguring surface"
-                );
-                gpu.base.resize(window.width(), window.height());
-                return;
-            }
-        };
-
-        let mut commands = gpu.base.device.create_command_buffer();
-        let draw_buffers: Vec<DrawBuffers>;
-        {
-            let mut pass = commands.begin_render_pass(
-                frame.view(),
-                [0.05, 0.05, 0.08, 1.0],
-                Some(&gpu.base.depth),
-            );
-            draw_buffers = submit_scene3d(
-                &gpu.base.device,
-                &gpu.base.renderer,
-                &mut pass,
-                &gpu.scene,
-                &gpu.base.meshes,
-                &gpu.base.materials,
-                &gpu.base.textures,
-            );
-        }
-        gpu.base.bloom.apply(
-            &gpu.base.device,
-            &mut commands,
-            &gpu.base.renderer,
-            &draw_buffers,
-            &frame,
+        meridian_examples::render::render_frame(
+            &mut gpu.base,
+            &gpu.scene,
+            [0.05, 0.05, 0.08, 1.0],
+            window,
         );
-        commands.submit();
-        frame.present(&gpu.base.device);
-
-        window.request_redraw();
     }
 
     fn on_resized(&mut self, width: u32, height: u32) {
@@ -428,10 +394,7 @@ impl AppHandler for App {
 }
 
 fn main() {
-    meridian_sdk::crash_reporting::install(meridian_sdk::CrashReportConfig::new("physic_figures"));
-    meridian_sdk::logging::file::init(meridian_sdk::logging::file::FileLogConfig::new(
-        "physic_figures",
-    ));
+    meridian_examples::app_main::install_diagnostics("physic_figures");
     run_windowed_app("Meridian Engine — Physic Figures", 1024, 768, App::new())
         .expect("windowed app exited with an error");
 }

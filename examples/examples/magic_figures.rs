@@ -8,8 +8,9 @@
 //! (`examples/assets/textures/*.{png,bmp}` — signature-sniffed the same
 //! way via `asset-core::AnyImageDecoder`).
 //!
-//! **Scene composition lives in `assets/scenes/magic_figures.dsl`**,
-//! parsed through `meridian_sdk::dsl` — same as `physic_figures`, but
+//! **Scene composition lives in `assets/scenes/magic_figures.mel`**,
+//! parsed through `meridian_sdk::dsl` (via the shared
+//! `meridian_examples::scene_loader`) — same as `physic_figures`, but
 //! this scene needs data the SDK's built-in tags don't carry (glow
 //! color, orbit phase/speed, which audio file to play), so this file
 //! defines its *own* tags ([`Glow`]/[`Orbit`]/[`AudioTag`]) with the
@@ -55,21 +56,16 @@
 //! Run with:
 //!   ./build.sh run magic_figures
 
+use meridian_examples::paths::asset_path;
+use meridian_examples::scene_loader::load_dsl_scene;
 use meridian_sdk::dsl::{self, dsl_tag};
 use meridian_sdk::{
     AcousticMedium, AppHandler, AudioOutput, AudioTrack, BinauralRenderer, Declicker, Device,
-    DrawBuffers, DspNode, Emitter, FlyCamera, GraphicsBase, InputState, KeyCode, Light, Listener,
-    Material, Motor3, Renderable3D, Rotor, Scene3D, SpeakerLayout, Vec3, Window, cube_mesh_source,
+    DspNode, Emitter, FlyCamera, GraphicsBase, InputState, KeyCode, Light, Listener, Material,
+    Motor3, Renderable3D, Rotor, Scene3D, SpeakerLayout, Vec3, Window, cube_mesh_source,
     ground_mesh_source, icosphere_mesh_source, load_audio_track, look_at_rotor,
-    pyramid_mesh_source, run_windowed_app, submit_scene3d,
+    pyramid_mesh_source, run_windowed_app,
 };
-
-/// Joins `relative` onto this crate's own `CARGO_MANIFEST_DIR` — see
-/// `physic_figures`' identical helper for why the path join lives at
-/// the call site, not inside `meridian_sdk`.
-fn asset_path(relative: &str) -> String {
-    format!("{}/{}", env!("CARGO_MANIFEST_DIR"), relative)
-}
 
 const ORBIT_RADIUS: f32 = 3.2;
 const ORBIT_HEIGHT: f32 = 2.0;
