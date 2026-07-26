@@ -150,11 +150,11 @@ impl PhysicsRig {
         // No audio in this example — `SubsystemManager::new` still
         // requires a `Mixer` (it owns the audio pipeline too, per
         // dependency-rules.md rule 7), left unused here.
-        let mut subsystems = SubsystemManager::new(Mixer::new(
-            meridian_audio_core::SpeakerLayout::mono(),
-        ));
+        let mut subsystems =
+            SubsystemManager::new(Mixer::new(meridian_audio_core::SpeakerLayout::mono()));
         subsystems.bodies = vec![floor, sphere, cube, pyramid];
-        subsystems.solver = ConstraintSolver::new(SOLVER_RESTITUTION).with_friction(SOLVER_FRICTION);
+        subsystems.solver =
+            ConstraintSolver::new(SOLVER_RESTITUTION).with_friction(SOLVER_FRICTION);
 
         Self {
             subsystems,
@@ -332,7 +332,8 @@ impl AppHandler for App {
         self.physics.step(frame_dt);
         for (renderable_index, body_index) in gpu.body_renderable_indices.iter().zip([1usize, 2, 3])
         {
-            gpu.scene.renderables[*renderable_index].frame = self.physics.bodies()[body_index].frame;
+            gpu.scene.renderables[*renderable_index].frame =
+                self.physics.bodies()[body_index].frame;
         }
         // The pyramid mesh's origin is its base center, but its
         // `Cuboid` collider is centered on the body — shift the
