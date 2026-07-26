@@ -21,11 +21,12 @@
 //!   attribute per field (`Option<T>` fields are optional). This is how
 //!   a game adds `<MyGameSpecificWidget hp="100" />` without touching
 //!   this crate at all.
-//! - This module's own [`Entity`]/[`Mesh`]/[`Material`]/[`RigidBody`]/
-//!   [`Transform`] — built-in tags for the composition primitives every
-//!   application needs, registered by [`default_registry`]. An
-//!   application that doesn't want one of these can build its own
-//!   `DslRegistry` from scratch instead of calling [`default_registry`].
+//! - This module's own [`Scene`]/[`Entity`]/[`Mesh`]/[`Material`]/
+//!   [`RigidBody`]/[`Transform`] — built-in tags for the composition
+//!   primitives every application needs, registered by
+//!   [`default_registry`]. An application that doesn't want one of
+//!   these can build its own `DslRegistry` from scratch instead of
+//!   calling [`default_registry`].
 //!
 //! ## Scope, deliberately
 //!
