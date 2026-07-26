@@ -252,11 +252,14 @@ driver.
    pattern), real BMP/PNG textures per shape, and (in `magic_figures`)
    each orbiting shape as an unlit+emissive material with `BloomPass`
    applied, replacing the old hand-rolled pipelines/buffers entirely.
-   The remaining windowed examples (`spinning_cube`, the soft-body ones)
-   haven't converged yet — glTF decoding (once real meshes ship — the
-   ADR 013 when-a-concrete-asset-needs-it pattern) and the GPU-compute
-   audit under real load are also still open, unblocked by the texture
-   path landing but not yet done.
+   `magic_figures`/`physic_figures` are the only two windowed examples in
+   the workspace now (`spinning_cube` and the standalone soft-body
+   examples were folded into them during a later rename/consolidation —
+   see git history if you're chasing an old reference to either name),
+   so there's no other windowed example left to converge. glTF decoding
+   (once real meshes ship — the ADR 013 when-a-concrete-asset-needs-it
+   pattern) and the GPU-compute audit under real load are still open,
+   unblocked by the texture path landing but not yet done.
 3. **Done, core lighting; material handling partially open.**
    `submission.rs` gained Blinn-Phong forward lighting: `Scene3D` now
    carries `ambient: [f32; 3]`, and every renderable's family (colored/
