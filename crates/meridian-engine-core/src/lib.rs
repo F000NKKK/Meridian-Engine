@@ -44,7 +44,7 @@
 use std::any::{Any, TypeId};
 use std::collections::HashMap;
 
-use meridian_audio_core::{Emitter, Listener, Mixer};
+use meridian_audio_core::{BinauralRenderer, Declicker, Emitter, Listener, Mixer};
 use meridian_ecs_core::World;
 use meridian_physics_core::{BroadPhase, ConstraintSolver, Integrator, NarrowPhase, RigidBody};
 use meridian_platform_core::{Clock, CpuCapabilities, Time};
@@ -143,8 +143,28 @@ const RELAXATION_ITERATIONS: u32 = 4;
 /// inventing one here would be new, undocumented design, not wiring
 /// together what already exists), `physics-core`'s body list plus its
 /// broad/narrow-phase and solver/integrator, and `audio-core`'s listener,
-/// emitters and mixer. The only place in the workspace allowed to know
-/// about every `*-core` at once — see docs/dependency-rules.md rule 7.
+/// emitters, mixer and (optional) binaural renderer. The only place in
+/// the workspace allowed to know about every `*-core` at once — see
+/// docs/dependency-rules.md rule 7.
+///
+/// **Two independent, non-overlapping audio paths**, not one API with
+/// two modes: [`mixer`](Self::mixer)/[`mix_audio`](Self::mix_audio) is
+/// the simple per-channel *gain* model (`Mixer::mix` — VBAP-lite panning
+/// + distance attenuation, no sample synthesis of its own; the caller
+/// applies the returned gains to whatever samples it already has).
+/// [`binaural`](Self::binaural)/[`render_binaural`](Self::render_binaural)
+/// is the richer, headphone-specific model: real per-sample stereo
+/// synthesis (ITD via fractional-delay lines, azimuth-dependent
+/// head-shadow low-pass, declicked parameter ramps — see
+/// `audio_core::effects::BinauralRenderer`'s own module doc), which
+/// `mix_audio`'s gain-only output can't express. `binaural` is `None`
+/// by default (most apps that only need simple channel routing shouldn't
+/// pay for a renderer they never call); an app that wants real
+/// spatialized playback opts in via
+/// [`SubsystemManager::with_binaural`]. This split exists because a
+/// real consumer (`examples/magic_figures`) needed the binaural path and
+/// `mix_audio` genuinely can't provide it — not because "gains" and
+/// "samples" were ever meant to be the same API.
 pub struct SubsystemManager {
     pub world: World,
 
@@ -157,6 +177,13 @@ pub struct SubsystemManager {
     pub listener: Listener,
     pub emitters: Vec<(Emitter, f32)>,
     pub mixer: Mixer,
+    pub binaural: Option<BinauralRenderer>,
+    /// Anti-zipper declicker for [`render_binaural`](Self::render_binaural)'s
+    /// output — always stereo (`BinauralRenderer::render` always produces
+    /// 2 channels), so this is sized once and kept in lockstep with
+    /// `binaural` rather than being a second `Option` callers must set up
+    /// themselves.
+    binaural_declicker: Declicker,
 }
 
 impl std::fmt::Debug for SubsystemManager {
@@ -184,7 +211,17 @@ impl SubsystemManager {
             listener: Listener::default(),
             emitters: Vec::new(),
             mixer,
+            binaural: None,
+            binaural_declicker: Declicker::new(2),
         }
+    }
+
+    /// Opts into the binaural audio path — see [`SubsystemManager`]'s own
+    /// doc comment for why this is a separate path from
+    /// [`mixer`](Self::mixer), not a mode flag on it.
+    pub fn with_binaural(mut self, binaural: BinauralRenderer) -> Self {
+        self.binaural = Some(binaural);
+        self
     }
 
     /// Advances every body by `dt`: integrate, then relax contacts over
@@ -230,6 +267,31 @@ impl SubsystemManager {
     /// reflects physics-updated positions.
     pub fn mix_audio(&self) -> Vec<(meridian_audio_core::Channel, f32)> {
         self.mixer.mix(&self.listener, &self.emitters)
+    }
+
+    /// Renders `frames` interleaved stereo samples for `sources` against
+    /// [`listener`](Self::listener)'s current pose through
+    /// [`binaural`](Self::binaural), declicked, in one call — the same
+    /// render-then-declick sequence `examples/magic_figures`' own
+    /// `MusicRig::refill` used to hand-roll. `sources` (mono sample
+    /// blocks, not stored state — the same "rebuilt every call, never
+    /// retained" shape `graphics-core::FrameScene` uses for the same
+    /// reason: this is per-block data, not persistent subsystem state)
+    /// mirrors `BinauralRenderer::render`'s own signature directly.
+    ///
+    /// `None` if [`with_binaural`](Self::with_binaural) was never called
+    /// — a caller that wants spatialized playback must opt in first; this
+    /// never silently falls back to [`mix_audio`](Self::mix_audio)'s
+    /// different (gain-only) output shape.
+    pub fn render_binaural(
+        &mut self,
+        sources: &[(Emitter, &[f32])],
+        frames: usize,
+    ) -> Option<Vec<f32>> {
+        let binaural = self.binaural.as_mut()?;
+        let mut interleaved = binaural.render(&self.listener, sources, frames);
+        self.binaural_declicker.process(&mut interleaved);
+        Some(interleaved)
     }
 }
 
