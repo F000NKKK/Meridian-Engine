@@ -315,6 +315,30 @@ mod tests {
         }
     }
 
+    /// A wide, flat floor and a small box resting flush on top — the
+    /// same shape `physics-core::float`'s own
+    /// `full_step_cuboid_settles_on_static_cuboid_floor_without_sinking_through`
+    /// test uses, chosen specifically because the box's face sits well
+    /// inside the floor's much larger face, guaranteeing `face_manifold`
+    /// keeps all 4 corners (a real multi-point manifold, not a
+    /// degenerate edge/corner contact).
+    fn floor_and_box() -> Vec<RigidBody<FloatFlavor>> {
+        vec![
+            RigidBody {
+                shape: ColliderShape::Cuboid {
+                    half_extents: Vec3::new(10.0, 5.0, 10.0),
+                },
+                ..cuboid_at(0.0, -5.0, 0.0)
+            },
+            RigidBody {
+                shape: ColliderShape::Cuboid {
+                    half_extents: Vec3::new(0.5, 0.5, 0.5),
+                },
+                ..cuboid_at(0.0, 0.45, 0.0)
+            },
+        ]
+    }
+
     /// `GenerateContactsKernel`'s batched (one-dispatch-per-pair) output,
     /// flattened back in pair order, must be identical to calling
     /// `NarrowPhase::generate_contacts` once directly on the whole
@@ -323,9 +347,7 @@ mod tests {
     /// only ever sees `test_pair`'s single-point collapse).
     #[test]
     fn dispatch_matches_direct_generate_contacts() {
-        // A box resting flush on top of a larger box: a real face-face
-        // manifold (multiple points), not a single edge/corner contact.
-        let bodies = vec![cuboid_at(0.0, 0.0, 2.0), cuboid_at(0.0, 2.45, 0.5)];
+        let bodies = floor_and_box();
         let pairs = vec![(0usize, 1usize)];
 
         let narrow_phase = NarrowPhase::<FloatFlavor>::new();
@@ -358,12 +380,9 @@ mod tests {
     /// kernel must reproduce both shapes correctly in the same batch.
     #[test]
     fn dispatch_matches_direct_generate_contacts_mixed_pairs() {
-        let bodies = vec![
-            cuboid_at(0.0, 0.0, 2.0),   // 0: floor
-            cuboid_at(0.0, 2.45, 0.5),  // 1: box resting on floor (multi-point)
-            sphere_at(0.6),             // 2: overlaps nothing here directly
-            cuboid_at(100.0, 0.0, 1.0), // 3: far away, no overlap with 0
-        ];
+        let mut bodies = floor_and_box(); // 0: floor, 1: box resting on floor (multi-point)
+        bodies.push(sphere_at(0.6)); // 2: elsewhere, doesn't overlap 0 or 1
+        bodies.push(cuboid_at(100.0, 0.0, 1.0)); // 3: far away, no overlap with 0
         let pairs = vec![(0usize, 1usize), (0, 3), (1, 2)];
 
         let narrow_phase = NarrowPhase::<FloatFlavor>::new();
