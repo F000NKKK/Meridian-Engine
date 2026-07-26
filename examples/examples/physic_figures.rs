@@ -78,26 +78,17 @@ struct SceneEntity {
     collider: ColliderShape,
 }
 
-/// Reads and parses `assets/scenes/physic_figures.dsl` against
+/// Parses `assets/scenes/physic_figures.mel` against
 /// `meridian_sdk::dsl::default_registry()` (this scene only uses
 /// built-in tags — no custom `#[dsl_tag]` needed here, unlike
 /// `magic_figures`) and flattens every `<Entity>` into a [`SceneEntity`].
-/// A malformed scene file is a real, disclosed dead end: both the read
-/// and the parse log via `log_error!` before panicking, so
-/// `crash_reporting`'s post-mortem captures exactly what went wrong,
-/// same as any other engine error (see `meridian_sdk::dsl`'s own module
-/// doc on why DSL errors implement `EngineError`).
+/// The read/parse/error-logging sequence itself is
+/// `meridian_examples::scene_loader::load_dsl_scene` — shared with
+/// every other example, since it's identical regardless of which tags
+/// a scene uses.
 fn load_scene() -> Vec<SceneEntity> {
-    let path = asset_path("assets/scenes/physic_figures.dsl");
-    let source = std::fs::read_to_string(&path).unwrap_or_else(|e| {
-        meridian_sdk::log_error!("failed to read scene {path}: {e}");
-        panic!("failed to read scene {path}: {e}");
-    });
     let registry = dsl::default_registry();
-    let root = dsl::build_scene(&source, &registry).unwrap_or_else(|e| {
-        meridian_sdk::log_error!("failed to parse scene {path}: {e}");
-        panic!("failed to parse scene {path}: {e}");
-    });
+    let root = load_dsl_scene("assets/scenes/physic_figures.mel", &registry);
 
     root.children
         .iter()
