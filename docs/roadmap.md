@@ -581,7 +581,10 @@ priority before writing implementations is keeping that document and the
     own tags rather than picking from a fixed schema; see
     [ADR 015](adr/015-extensible-scene-dsl.md) and `meridian_sdk::dsl`'s
     own module doc). **Both examples now build their scenes from a real
-    `.dsl` file** (`examples/assets/scenes/{physic_figures,magic_figures}.dsl`),
+    `.mel` file** (`examples/assets/scenes/{physic_figures,magic_figures}.mel`,
+    Meridian Engine Language — today just the tag/attribute DSL; the
+    planned direction is a Razor-style extension embedding real scripts
+    in the same file, hot-reloadable without a Rust rebuild),
     parsed via `dsl::build_scene` — `physic_figures` uses only the
     SDK's built-in tags (`Entity`/`Transform`/`Mesh`/`Material`/
     `RigidBody`); `magic_figures` additionally defines its own

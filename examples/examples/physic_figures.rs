@@ -64,7 +64,7 @@ const SOLVER_RESTITUTION: f32 = 0.0;
 /// across the floor indefinitely instead of settling.
 const SOLVER_FRICTION: f32 = 0.6;
 
-/// One `<Entity>` from `assets/scenes/physic_figures.dsl`, flattened
+/// One `<Entity>` from `assets/scenes/physic_figures.mel`, flattened
 /// out of its typed `<Transform>`/`<Mesh>`/`<Material>`/`<RigidBody>`
 /// children into the plain fields this example actually needs — the
 /// DSL tree itself is only walked once, here, in [`load_scene`].

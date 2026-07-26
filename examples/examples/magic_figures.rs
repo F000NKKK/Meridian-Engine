@@ -110,7 +110,7 @@ struct AudioTag {
     file: String,
 }
 
-/// One shape's fixed identity, flattened out of `assets/scenes/magic_figures.dsl`
+/// One shape's fixed identity, flattened out of `assets/scenes/magic_figures.mel`
 /// by [`load_scene`] — the DSL tree itself is only walked once, at
 /// startup.
 struct ShapeSpec {
