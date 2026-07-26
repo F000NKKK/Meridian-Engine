@@ -8,6 +8,16 @@
 //! (`examples/assets/textures/*.{png,bmp}` — signature-sniffed the same
 //! way via `asset-core::AnyImageDecoder`).
 //!
+//! **Scene composition lives in `assets/scenes/magic_figures.dsl`**,
+//! parsed through `meridian_sdk::dsl` — same as `physic_figures`, but
+//! this scene needs data the SDK's built-in tags don't carry (glow
+//! color, orbit phase/speed, which audio file to play), so this file
+//! defines its *own* tags ([`Glow`]/[`Orbit`]/[`AudioTag`]) with the
+//! exact same `#[dsl_tag(name = "...")]` macro the SDK's built-ins use
+//! — this is the concrete demonstration of the DSL's whole point: a
+//! game adds its own vocabulary without touching `meridian-sdk` at all
+//! (see [ADR 015](../../docs/adr/015-extensible-scene-dsl.md)).
+//!
 //! Rendering goes entirely through `graphics-core`'s submission bridge
 //! (`meridian_sdk::GraphicsBase` bundles `SceneRenderer`/`BloomPass`/the
 //! three registries — the same base `physic_figures` builds): the floor
@@ -31,7 +41,10 @@
 //! for — `BinauralRenderer`'s real per-sample synthesis doesn't fit
 //! `AudioSubsystem::mix`'s per-channel-gain model, so it stays
 //! hand-assembled here rather than forced through it (see
-//! `meridian_sdk::pipeline`'s own module doc).
+//! `meridian_sdk::pipeline`'s own module doc). Orbit/spin motion itself
+//! stays genuine per-frame Rust logic (the DSL describes composition,
+//! not behavior) — only each shape's *fixed* identity comes from the
+//! scene file.
 //!
 //! This example depends on `meridian-sdk` alone (plus `tokio`, for its
 //! own async GPU/audio-device handshakes) — every type below is reached
@@ -42,6 +55,7 @@
 //! Run with:
 //!   ./build.sh run magic_figures
 
+use meridian_sdk::dsl::{self, dsl_tag};
 use meridian_sdk::{
     AcousticMedium, AppHandler, AudioOutput, AudioTrack, BinauralRenderer, Declicker, Device,
     DrawBuffers, DspNode, Emitter, FlyCamera, GraphicsBase, InputState, KeyCode, Light, Listener,
@@ -72,13 +86,44 @@ const CHUNK_SECONDS: f32 = 0.01;
 /// note, now superseded by this one.
 const RING_SECONDS: f32 = 0.08;
 
-/// One shape's fixed identity: mesh/texture/glow color, its audio file,
-/// and its orbital phase offset (120 degrees apart around the shared
-/// center).
+/// This example's own glow color tag — not part of `meridian_sdk::dsl`
+/// (the SDK has no concept of "emissive tint"), registered alongside
+/// the SDK's built-ins in [`load_scene`].
+#[dsl_tag(name = "Glow")]
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct Glow {
+    r: f32,
+    g: f32,
+    b: f32,
+}
+
+/// This example's own orbital-motion tag — `phase`/`spin_speed` are
+/// meaningless outside this specific "shapes orbiting a point" demo,
+/// exactly the kind of thing that belongs in the example, not the SDK.
+#[dsl_tag(name = "Orbit")]
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct OrbitTag {
+    phase: f32,
+    spin_speed: f32,
+}
+
+/// This example's own "which file plays for this shape" tag.
+#[dsl_tag(name = "Audio")]
+#[derive(Debug, Clone, PartialEq)]
+struct AudioTag {
+    file: String,
+}
+
+/// One shape's fixed identity, flattened out of `assets/scenes/magic_figures.dsl`
+/// by [`load_scene`] — the DSL tree itself is only walked once, at
+/// startup.
 struct ShapeSpec {
-    name: &'static str,
-    audio_file: &'static str,
-    texture_file: &'static str,
+    name: String,
+    audio_file: String,
+    texture_file: String,
+    mesh_shape: String,
+    size: f32,
+    size2: f32,
     glow_color: [f32; 3],
     phase: f32,
     /// Radians per second around its own local axis — visually
@@ -86,46 +131,109 @@ struct ShapeSpec {
     spin_speed: f32,
 }
 
-const SHAPES: [ShapeSpec; 3] = [
-    ShapeSpec {
-        name: "cube",
-        audio_file: "assets/audio/demo-music.mp3",
-        texture_file: "assets/textures/cube.bmp",
-        glow_color: [0.25, 0.55, 1.0],
-        phase: 0.0,
-        spin_speed: 0.9,
-    },
-    ShapeSpec {
-        name: "sphere",
-        audio_file: "assets/audio/demo-music.opus",
-        texture_file: "assets/textures/sphere.png",
-        glow_color: [1.0, 0.55, 0.2],
-        phase: std::f32::consts::TAU / 3.0,
-        spin_speed: 1.4,
-    },
-    ShapeSpec {
-        name: "pyramid",
-        audio_file: "assets/audio/demo-music.ogg",
-        texture_file: "assets/textures/pyramid.bmp",
-        glow_color: [0.35, 0.95, 0.45],
-        phase: 2.0 * std::f32::consts::TAU / 3.0,
-        spin_speed: -0.7,
-    },
-];
+/// Reads and parses `assets/scenes/magic_figures.dsl` against the SDK's
+/// built-in tags plus this example's own [`Glow`]/[`OrbitTag`]/
+/// [`AudioTag`] and flattens every `<Entity>` into a [`ShapeSpec`]. A
+/// malformed scene file logs via `log_error!` before panicking, so
+/// `crash_reporting`'s post-mortem captures exactly what went wrong —
+/// see `physic_figures::load_scene`'s identical convention.
+fn load_scene() -> Vec<ShapeSpec> {
+    let path = asset_path("assets/scenes/magic_figures.dsl");
+    let source = std::fs::read_to_string(&path).unwrap_or_else(|e| {
+        meridian_sdk::log_error!("failed to read scene {path}: {e}");
+        panic!("failed to read scene {path}: {e}");
+    });
 
-/// Loads all three [`SHAPES`] tracks through `meridian_sdk::load_audio_track`
+    let mut registry = dsl::default_registry();
+    registry.register::<Glow>();
+    registry.register::<OrbitTag>();
+    registry.register::<AudioTag>();
+
+    let root = dsl::build_scene(&source, &registry).unwrap_or_else(|e| {
+        meridian_sdk::log_error!("failed to parse scene {path}: {e}");
+        panic!("failed to parse scene {path}: {e}");
+    });
+
+    root.children
+        .iter()
+        .map(|entity_node| {
+            let entity = entity_node
+                .downcast_ref::<dsl::Entity>()
+                .unwrap_or_else(|| panic!("<{}> at scene root must be <Entity>", entity_node.tag));
+
+            let mut mesh_shape = String::new();
+            let mut size = 0.0f32;
+            let mut size2 = 0.0f32;
+            let mut texture_file = String::new();
+            let mut glow_color = [1.0f32, 1.0, 1.0];
+            let mut phase = 0.0f32;
+            let mut spin_speed = 0.0f32;
+            let mut audio_file = String::new();
+
+            for child in &entity_node.children {
+                if let Some(m) = child.downcast_ref::<dsl::Mesh>() {
+                    mesh_shape = m
+                        .shape
+                        .clone()
+                        .unwrap_or_else(|| panic!("{}: <Mesh> needs a 'shape'", entity.name));
+                    size = m
+                        .size
+                        .unwrap_or_else(|| panic!("{}: <Mesh> needs a 'size'", entity.name));
+                    size2 = m.size2.unwrap_or(0.0);
+                } else if let Some(mat) = child.downcast_ref::<dsl::Material>() {
+                    texture_file = mat
+                        .texture
+                        .clone()
+                        .unwrap_or_else(|| panic!("{}: <Material> needs a 'texture'", entity.name));
+                } else if let Some(g) = child.downcast_ref::<Glow>() {
+                    glow_color = [g.r, g.g, g.b];
+                } else if let Some(o) = child.downcast_ref::<OrbitTag>() {
+                    phase = o.phase;
+                    spin_speed = o.spin_speed;
+                } else if let Some(a) = child.downcast_ref::<AudioTag>() {
+                    audio_file = a.file.clone();
+                }
+            }
+
+            ShapeSpec {
+                name: entity.name.clone(),
+                audio_file,
+                texture_file,
+                mesh_shape,
+                size,
+                size2,
+                glow_color,
+                phase,
+                spin_speed,
+            }
+        })
+        .collect()
+}
+
+/// Builds the real `MeshSource` for one [`ShapeSpec`] — see
+/// `dsl::Mesh`'s own doc for what `size`/`size2` mean per shape.
+fn mesh_source_for(shape: &ShapeSpec) -> meridian_sdk::MeshSource {
+    match shape.mesh_shape.as_str() {
+        "cube" => cube_mesh_source(shape.size),
+        "sphere" => icosphere_mesh_source(2, shape.size),
+        "pyramid" => pyramid_mesh_source(shape.size, shape.size2),
+        other => panic!("{}: unknown mesh shape '{other}'", shape.name),
+    }
+}
+
+/// Loads every [`ShapeSpec`]'s track through `meridian_sdk::load_audio_track`
 /// (decode/downmix/loop-seam-fade is generic asset-loading logic, owned
-/// by the SDK — see [`meridian_sdk::assets`]'s module doc; only "which
+/// by the SDK — see `meridian_sdk::assets`'s module doc; only "which
 /// files, what to do if one fails" is this example's own policy). A
 /// shape whose file fails to load or decode plays silence (an all-zero
 /// `AudioTrack::Memory`) rather than aborting the whole example — one
 /// bad asset shouldn't take the other two down with it.
-fn load_music_tracks() -> (Vec<AudioTrack>, u32) {
+fn load_music_tracks(shapes: &[ShapeSpec]) -> (Vec<AudioTrack>, u32) {
     let mut sample_rate = 48_000;
-    let tracks = SHAPES
+    let tracks = shapes
         .iter()
         .map(
-            |shape| match load_audio_track(&asset_path(shape.audio_file)) {
+            |shape| match load_audio_track(&asset_path(&shape.audio_file)) {
                 Ok((track, rate)) => {
                     sample_rate = rate;
                     println!("{}: playing {} ({rate} Hz)", shape.name, shape.audio_file);
@@ -144,10 +252,10 @@ fn load_music_tracks() -> (Vec<AudioTrack>, u32) {
     (tracks, sample_rate)
 }
 
-/// All three tracks, spatialized in one shared `BinauralRenderer` and
-/// pushed into one `AudioOutput` — see the module doc for why one
-/// stream suffices, and for why this is a hand-assembled pipeline
-/// rather than `meridian_sdk::AudioSubsystem::mix`.
+/// All tracks, spatialized in one shared `BinauralRenderer` and pushed
+/// into one `AudioOutput` — see the module doc for why one stream
+/// suffices, and for why this is a hand-assembled pipeline rather than
+/// `meridian_sdk::AudioSubsystem::mix`.
 struct MusicRig {
     output: AudioOutput,
     renderer: BinauralRenderer,
@@ -157,8 +265,8 @@ struct MusicRig {
 }
 
 impl MusicRig {
-    async fn load() -> Result<Self, String> {
-        let (tracks, sample_rate) = load_music_tracks();
+    async fn load(shapes: &[ShapeSpec]) -> Result<Self, String> {
+        let (tracks, sample_rate) = load_music_tracks(shapes);
         let renderer =
             BinauralRenderer::new(sample_rate).with_medium(AcousticMedium::air_sea_level());
         let ring_frames = (sample_rate as f32 * RING_SECONDS) as u32;
@@ -182,7 +290,7 @@ impl MusicRig {
     /// `listener`'s current pose and each shape's current
     /// `positions[i]`. Never blocks: pushes only while the stream
     /// reports room for a whole block.
-    fn refill(&mut self, listener: &Listener, positions: &[Vec3; 3]) {
+    fn refill(&mut self, listener: &Listener, positions: &[Vec3]) {
         while self.output.can_push(self.chunk_frames * 2) {
             let chunks: Vec<Vec<f32>> = self
                 .tracks
@@ -208,8 +316,8 @@ impl MusicRig {
     }
 }
 
-/// This frame's world position for shape `i` — a circular orbit around
-/// the origin at `ORBIT_HEIGHT`, `120°` phase-separated.
+/// This frame's world position for `shape` — a circular orbit around
+/// the origin at `ORBIT_HEIGHT`, phase-separated per [`ShapeSpec::phase`].
 fn orbit_position(shape: &ShapeSpec, elapsed: f32) -> Vec3 {
     let angle = elapsed / ORBIT_PERIOD * std::f32::consts::TAU + shape.phase;
     Vec3::new(
@@ -222,6 +330,7 @@ fn orbit_position(shape: &ShapeSpec, elapsed: f32) -> Vec3 {
 struct App {
     tokio_runtime: tokio::runtime::Runtime,
     camera: FlyCamera,
+    shapes: Vec<ShapeSpec>,
     music: Option<MusicRig>,
     cursor_grabbed: bool,
     start: std::time::Instant,
@@ -232,19 +341,20 @@ struct App {
 struct GpuState {
     base: GraphicsBase,
     scene: Scene3D,
-    /// Per-shape (mesh index into `scene.renderables`, spin speed) so
-    /// `on_redraw` can update each shape's frame every tick without
-    /// re-walking `SHAPES`.
-    shape_renderable_indices: [usize; 3],
+    /// Per-shape index into `scene.renderables`, in the same order as
+    /// `App::shapes`, so `on_redraw` can update each shape's frame every
+    /// tick without re-walking `shapes`.
+    shape_renderable_indices: Vec<usize>,
     /// Index into `scene.lights` of each shape's own `Light::Point`, so
     /// `on_redraw` can move it along with the shape every frame.
-    point_light_indices: [usize; 3],
+    point_light_indices: Vec<usize>,
 }
 
 impl App {
     fn new() -> Self {
         let tokio_runtime = tokio::runtime::Runtime::new().expect("failed to start tokio runtime");
-        let music = match tokio_runtime.block_on(MusicRig::load()) {
+        let shapes = load_scene();
+        let music = match tokio_runtime.block_on(MusicRig::load(&shapes)) {
             Ok(music) => Some(music),
             Err(err) => {
                 meridian_sdk::log_warn!("running silent: {err}");
@@ -254,6 +364,7 @@ impl App {
         Self {
             tokio_runtime,
             camera: FlyCamera::new(Vec3::new(0.0, 2.0, 7.0)),
+            shapes,
             music,
             cursor_grabbed: true,
             start: std::time::Instant::now(),
@@ -292,18 +403,13 @@ impl AppHandler for App {
             billboard: false,
         }];
 
-        let mut shape_renderable_indices = [0usize; 3];
-        for (i, shape) in SHAPES.iter().enumerate() {
-            let mesh_source = match shape.name {
-                "cube" => cube_mesh_source(0.8),
-                "sphere" => icosphere_mesh_source(2, 0.8),
-                _ => pyramid_mesh_source(0.85, 1.4),
-            };
+        let mut shape_renderable_indices = Vec::with_capacity(self.shapes.len());
+        for shape in &self.shapes {
             let mesh = base
                 .meshes
-                .register(mesh_source)
+                .register(mesh_source_for(shape))
                 .unwrap_or_else(|e| panic!("{} mesh must be valid: {e}", shape.name));
-            let texture = base.load_texture(&asset_path(shape.texture_file));
+            let texture = base.load_texture(&asset_path(&shape.texture_file));
             let material = base.materials.register(Material {
                 albedo: Some(texture),
                 base_color_factor: [
@@ -319,7 +425,7 @@ impl AppHandler for App {
                 emissive: shape.glow_color,
                 ..Default::default()
             });
-            shape_renderable_indices[i] = renderables.len();
+            shape_renderable_indices.push(renderables.len());
             renderables.push(Renderable3D {
                 mesh,
                 material,
@@ -343,9 +449,9 @@ impl AppHandler for App {
             color: [1.0, 0.96, 0.9],
             intensity: 0.7,
         }];
-        let mut point_light_indices = [0usize; 3];
-        for (i, shape) in SHAPES.iter().enumerate() {
-            point_light_indices[i] = lights.len();
+        let mut point_light_indices = Vec::with_capacity(self.shapes.len());
+        for shape in &self.shapes {
+            point_light_indices.push(lights.len());
             lights.push(Light::Point {
                 position: Motor3::translation(orbit_position(shape, 0.0)),
                 color: shape.glow_color,
@@ -387,10 +493,10 @@ impl AppHandler for App {
         }
 
         let elapsed = now.duration_since(self.start).as_secs_f32();
-        let mut positions = [Vec3::ZERO; 3];
-        for (i, shape) in SHAPES.iter().enumerate() {
+        let mut positions = Vec::with_capacity(self.shapes.len());
+        for (i, shape) in self.shapes.iter().enumerate() {
             let position = orbit_position(shape, elapsed);
-            positions[i] = position;
+            positions.push(position);
             let spin = Rotor::from_axis_angle(Vec3::Y, elapsed * shape.spin_speed);
             let renderable = &mut gpu.scene.renderables[gpu.shape_renderable_indices[i]];
             renderable.frame = Motor3::from_rotation_translation(spin, position);
