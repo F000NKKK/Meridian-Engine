@@ -221,7 +221,7 @@ fn compute_shadow_factor(world_pos: vec3<f32>) -> f32 {{
     if (lsuv.x < 0.0 || lsuv.x > 1.0 || lsuv.y < 0.0 || lsuv.y > 1.0) {{
         return 1.0;
     }}
-    let bias = 0.003;
+    let bias = 0.0015;
     return textureSampleCompare(shadow_map, shadow_sampler, lsuv.xy, lsuv.z - bias);
 }}
 
@@ -330,7 +330,7 @@ fn compute_shadow_factor(world_pos: vec3<f32>) -> f32 {{
     if (lsuv.x < 0.0 || lsuv.x > 1.0 || lsuv.y < 0.0 || lsuv.y > 1.0) {{
         return 1.0;
     }}
-    let bias = 0.003;
+    let bias = 0.0015;
     return textureSampleCompare(shadow_map, shadow_sampler, lsuv.xy, lsuv.z - bias);
 }}
 

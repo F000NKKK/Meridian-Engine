@@ -307,18 +307,21 @@ impl Device {
                 primitive: wgpu::PrimitiveState {
                     topology: wgpu::PrimitiveTopology::TriangleList,
                     strip_index_format: None,
-                    // Cull front faces (not back) for the shadow pass —
-                    // the standard "peter-panning" mitigation: writing
-                    // back-face depth into the shadow map pushes the
-                    // recorded occluder depth slightly *away* from the
-                    // light versus front-face depth, which is the
-                    // opposite bias direction from what
-                    // `lit_*_shadow_shader_wgsl`'s bias constant already
-                    // pushes in the main pass — the two partially
-                    // cancel rather than stacking into either
-                    // shadow-acne or peter-panning on their own.
+                    // Same winding/cull convention as the main pass
+                    // (back-face culling) — an earlier version of this
+                    // pipeline culled *front* faces instead, reasoning
+                    // that it would offset the recorded depth away from
+                    // the light to "cancel" the lookup shader's own
+                    // bias. In practice the two stacked instead of
+                    // cancelling: a resting object's contact point
+                    // showed a visible shadow *gap* right next to it
+                    // (classic over-biased peter-panning) before the
+                    // shadow reappeared a short distance away. Back-face
+                    // culling here, with the lookup shader's bias alone
+                    // handling acne, is the standard, easier-to-reason-
+                    // about combination.
                     front_face: wgpu::FrontFace::Ccw,
-                    cull_mode: Some(wgpu::Face::Front),
+                    cull_mode: Some(wgpu::Face::Back),
                     ..Default::default()
                 },
                 depth_stencil: Some(wgpu::DepthStencilState {
