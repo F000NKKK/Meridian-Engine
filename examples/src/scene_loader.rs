@@ -3,8 +3,8 @@
 //! `physic_figures`/`magic_figures`; only the registry (which tags are
 //! known) and what each example does with the resulting tree differ.
 
-use meridian_sdk::dsl::dsl_core::BuiltNode;
-use meridian_sdk::dsl::{DslRegistry, build_scene};
+use meridian_sdk::dsl::build_scene;
+use meridian_sdk::dsl::dsl_core::{BuiltNode, DslRegistry};
 
 use crate::paths::asset_path;
 
