@@ -26,15 +26,15 @@ meridian-compute-runtime = { path = "crates/meridian-compute-runtime", version =
 meridian-gac-compute = { path = "crates/meridian-gac-compute", version = "0.23" }
 meridian-asset-core = { path = "crates/meridian-asset-core", version = "0.13" }
 meridian-ecs-core = { path = "crates/meridian-ecs-core", version = "0.14" }
-meridian-graphics-driver = { path = "crates/meridian-graphics-driver", version = "0.17" }
+meridian-graphics-driver = { path = "crates/meridian-graphics-driver", version = "0.18" }
 meridian-audio-driver = { path = "crates/meridian-audio-driver", version = "0.12" }
-meridian-graphics-core = { path = "crates/meridian-graphics-core", version = "0.25" }
+meridian-graphics-core = { path = "crates/meridian-graphics-core", version = "0.26" }
 meridian-physics-driver = { path = "crates/meridian-physics-driver", version = "0.10" }
 meridian-physics-core = { path = "crates/meridian-physics-core", version = "0.24" }
 meridian-physics-compute = { path = "crates/meridian-physics-compute", version = "0.4" }
 meridian-audio-core = { path = "crates/meridian-audio-core", version = "0.19" }
-meridian-engine-core = { path = "crates/meridian-engine-core", version = "0.29" }
-meridian-sdk = { path = "crates/meridian-sdk", version = "0.3" }
+meridian-engine-core = { path = "crates/meridian-engine-core", version = "0.30" }
+meridian-sdk = { path = "crates/meridian-sdk", version = "0.4" }
 meridian-dsl-core = { path = "crates/meridian-dsl-core", version = "0.1" }
 meridian-dsl-macros = { path = "crates/meridian-dsl-macros", version = "0.1" }
 
