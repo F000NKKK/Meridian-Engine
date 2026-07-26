@@ -56,6 +56,7 @@ ALLOWED = {
         "meridian-resource-core",
     },
     "meridian-physics-compute": {
+        "meridian-foundation",
         "meridian-physics-core",
         "meridian-gac-core",
         "meridian-gac-compute",
