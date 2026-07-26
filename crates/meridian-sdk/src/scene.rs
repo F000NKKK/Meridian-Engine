@@ -1,39 +1,21 @@
 //! Windowed-app rendering scaffolding: mesh builders (sphere/cube/
 //! pyramid/ground, each producing a real `graphics-core::MeshSource` —
-//! positions, normals, UVs, indices — not raw bytes), texture loading
-//! (sniffed by signature, never by extension, mirroring `asset-core`'s
-//! own rule), and the `SceneRenderer`/`BloomPass`/registry bundle
-//! ([`GraphicsBase`]) an application builds once. No application
+//! positions, normals, UVs, indices — not raw bytes, all procedural, no
+//! file I/O — see [`crate::assets`] for loading meshes/textures *from*
+//! files) and the `SceneRenderer`/`BloomPass`/registry/asset-cache
+//! bundle ([`GraphicsBase`]) an application builds once. No application
 //! hand-rolls a pipeline or vertex buffer itself — that's exactly what
 //! `graphics-core`'s submission bridge exists to replace (see
 //! docs/graphics-design.md).
 
-use std::collections::HashMap;
-
-use meridian_asset_core::{AnyImageDecoder, Decoder, ImageData, ObjDecoder};
 use meridian_gac_core::icosphere;
 use meridian_graphics_core::{
-    BloomPass, MaterialRegistry, MeshHandle, MeshRegistry, MeshRegistryError, MeshSource,
-    SceneRenderer, TextureHandle, TextureRegistry,
+    BloomPass, MaterialRegistry, MeshHandle, MeshRegistry, MeshSource, SceneRenderer,
+    TextureHandle, TextureRegistry,
 };
 use meridian_graphics_driver::{DepthTexture, Device, Surface};
 
-/// Reads and decodes a real image asset file, identified by its magic
-/// bytes (never its extension — the same rule
-/// `asset-core::AudioFormat::detect` follows for audio). `path` must
-/// already be a path this process can open directly (absolute, or
-/// relative to the current working directory) — this function doesn't
-/// resolve it against any particular crate's `CARGO_MANIFEST_DIR`,
-/// since this crate is a shared dependency of every application, not
-/// the one that owns the asset directory; a caller with assets under
-/// its own crate joins `env!("CARGO_MANIFEST_DIR")` itself before
-/// calling this.
-pub fn load_image_asset(path: &str) -> ImageData {
-    let bytes = std::fs::read(path).unwrap_or_else(|e| panic!("failed to read asset {path}: {e}"));
-    AnyImageDecoder
-        .decode(&bytes)
-        .unwrap_or_else(|e| panic!("failed to decode asset {path}: {e}"))
-}
+use crate::assets::AssetCache;
 
 /// Builds a [`MeshSource`] for an icosphere of the given `radius`,
 /// centered at its own local origin (world placement is
@@ -228,41 +210,6 @@ pub fn pyramid_mesh_source(base_half_extent: f32, height: f32) -> MeshSource {
 fn normalize(v: [f32; 3]) -> [f32; 3] {
     let len = (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt().max(1e-8);
     [v[0] / len, v[1] / len, v[2] / len]
-}
-
-fn sub3(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
-    [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
-}
-
-fn cross3(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
-    [
-        a[1] * b[2] - a[2] * b[1],
-        a[2] * b[0] - a[0] * b[2],
-        a[0] * b[1] - a[1] * b[0],
-    ]
-}
-
-/// Per-vertex smooth normals for an arbitrary imported triangle mesh
-/// (positions + shared-vertex indices, the shape [`ObjDecoder`]
-/// produces) — each triangle's area-weighted face normal (the raw,
-/// unnormalized cross product already scales with the triangle's area)
-/// accumulates into its three vertices, normalized once at the end.
-/// Unlike [`cube_mesh_source`]'s flat per-face normals (which need each
-/// face to own unshared vertices), this works directly against shared
-/// OBJ-style topology without duplicating any vertex.
-fn compute_smooth_normals(positions: &[[f32; 3]], indices: &[u32]) -> Vec<[f32; 3]> {
-    let mut accum = vec![[0.0f32; 3]; positions.len()];
-    for tri in indices.chunks_exact(3) {
-        let (i0, i1, i2) = (tri[0] as usize, tri[1] as usize, tri[2] as usize);
-        let (p0, p1, p2) = (positions[i0], positions[i1], positions[i2]);
-        let face_normal = cross3(sub3(p1, p0), sub3(p2, p0));
-        for i in [i0, i1, i2] {
-            accum[i][0] += face_normal[0];
-            accum[i][1] += face_normal[1];
-            accum[i][2] += face_normal[2];
-        }
-    }
-    accum.into_iter().map(normalize).collect()
 }
 
 /// A flat quad in the local `y = 0` plane, `half_size` from center to
