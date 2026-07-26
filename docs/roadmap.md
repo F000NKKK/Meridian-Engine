@@ -36,8 +36,9 @@ Step 3 (`memory-core`/`task-core`/`platform-core`) is also real and tested:
   pressed-this-frame/released-this-frame key state, mouse position+delta)
   are real; `BackendCapabilities`/`CpuCapabilities`/`GpuCapabilities`
   (shared by every `*-driver` crate's own capability type) are real;
-  `Window` and `DynamicLibrary` are deliberately still stubs — see "Not
-  yet decided" below.
+  `Window` (a real `winit::window::Window`, see "Not yet decided" below
+  for the `winit` decision) and `DynamicLibrary` (real hand-written
+  `dlopen`/`LoadLibrary` FFI) are real too — neither is a stub anymore.
 
 Steps 4-6 are real and tested:
 - `meridian-resource-core` — `Version::next()`, and `DependencyGraph`
