@@ -101,18 +101,20 @@ pub struct Material {
 }
 
 /// A rigid-body collider description — `shape` is `"sphere"` (using
-/// `radius`) or `"cuboid"` (using `half_extent`, applied to all three
-/// axes; a per-axis cuboid is exactly the kind of shape-specific detail
-/// a game's own tag would carry instead), `mass` of `0.0` meaning
-/// static/immovable, matching `physics-core::RigidBody`'s own
-/// convention.
+/// `radius`) or `"cuboid"` (using `hx`/`hy`/`hz`, one half-extent per
+/// axis — a floor slab and a cube prop need different aspect ratios, so
+/// this doesn't collapse to a single uniform `size` the way procedural
+/// `Mesh` shapes mostly do), `mass` of `0.0` meaning static/immovable,
+/// matching `physics-core::RigidBody`'s own convention.
 #[dsl_tag(name = "RigidBody")]
 #[derive(Debug, Clone, PartialEq)]
 pub struct RigidBody {
     pub shape: String,
     pub mass: f32,
     pub radius: Option<f32>,
-    pub half_extent: Option<f32>,
+    pub hx: Option<f32>,
+    pub hy: Option<f32>,
+    pub hz: Option<f32>,
 }
 
 /// World placement: translation only (rotation/scale composition
@@ -139,6 +141,7 @@ pub struct Transform {
 /// ```
 pub fn default_registry() -> DslRegistry {
     let mut registry = DslRegistry::new();
+    registry.register::<Scene>();
     registry.register::<Entity>();
     registry.register::<Mesh>();
     registry.register::<Material>();
@@ -186,14 +189,18 @@ mod tests {
     #[test]
     fn built_in_tags_parse_a_small_scene() {
         let src = r#"
-            <Entity name="cube">
-                <Transform x="0" y="2" z="0" />
-                <Mesh shape="cube" size="1.0" />
-                <Material texture="cube.bmp" unlit="false" />
-                <RigidBody shape="cuboid" mass="1.0" half_extent="0.6" />
-            </Entity>
+            <Scene>
+                <Entity name="cube">
+                    <Transform x="0" y="2" z="0" />
+                    <Mesh shape="cube" size="1.0" />
+                    <Material texture="cube.bmp" unlit="false" />
+                    <RigidBody shape="cuboid" mass="1.0" hx="0.6" hy="0.6" hz="0.6" />
+                </Entity>
+            </Scene>
         "#;
-        let node = build_scene(src, &default_registry()).unwrap();
+        let root = build_scene(src, &default_registry()).unwrap();
+        assert_eq!(root.children.len(), 1);
+        let node = &root.children[0];
         assert_eq!(node.downcast_ref::<Entity>().unwrap().name, "cube");
         assert_eq!(node.children.len(), 4);
         assert_eq!(
@@ -209,7 +216,7 @@ mod tests {
         assert_eq!(mesh.path, None);
         let body = node.children[3].downcast_ref::<RigidBody>().unwrap();
         assert_eq!(body.mass, 1.0);
-        assert_eq!(body.half_extent, Some(0.6));
+        assert_eq!(body.hx, Some(0.6));
     }
 
     #[test]
@@ -225,6 +232,9 @@ mod tests {
 
         let src = r#"<Entity name="player"><Health hp="100" /></Entity>"#;
         let node = build_scene(src, &registry).unwrap();
+        // Not wrapped in `<Scene>` here — proves `build_scene` doesn't
+        // require the root to be that specific tag, only that it and
+        // everything below it is registered.
         assert_eq!(
             node.children[0].downcast_ref::<Health>(),
             Some(&Health { hp: 100.0 })
