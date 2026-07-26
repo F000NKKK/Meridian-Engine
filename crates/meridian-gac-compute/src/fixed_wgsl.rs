@@ -14,10 +14,19 @@
 //! just "close") via [`FixedArithmeticKernels::dispatch`]'s own test
 //! suite below.
 //!
-//! **Scope so far: `+`/`-`/`*`/`/`/`sqrt`.** The CORDIC `sin_cos`/`atan2`
-//! are still real follow-up work, not done here — CORDIC needs the full
-//! `atan` table ported, a larger, separable piece of work building on
-//! the arithmetic emulation this module already proves out.
+//! **Scope: `+`/`-`/`*`/`/`/`sqrt`/`sin_cos`/`atan2`.** The CORDIC
+//! `sin_cos`/`atan2` port (see [`CORDIC_LIB_WGSL`]) needs no 64-bit
+//! emulation, unlike the arithmetic above — CORDIC is only shifts and
+//! adds on a single `i32`, and WGSL's `>>` on `i32` is already an
+//! arithmetic (sign-extending) shift, exactly matching
+//! `meridian_numeric_core::fixed`'s `Fixed(x.0 >> i)` — so it's a near-
+//! literal translation of `cordic_rotate`/`cordic_vector_angle`, not a
+//! second emulation layer. The `atan` table and gain/pi constants are
+//! precomputed on the Rust side (`Fixed::from_num`'s exact
+//! round-half-away-from-zero rounding, replicated by hand — see
+//! [`CORDIC_LIB_WGSL`]'s constants) and embedded as WGSL literals rather
+//! than recomputed in-shader, since they're fixed at compile time either
+//! way.
 //!
 //! [`FixedArithmeticKernels`] compiles the four binary-op compute
 //! pipelines once against a [`meridian_compute_runtime::ComputeContext`]'s
