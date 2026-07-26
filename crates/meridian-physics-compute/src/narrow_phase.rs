@@ -1,8 +1,9 @@
 //! Batch [`NarrowPhase::test_pair`](meridian_physics_core::generic::NarrowPhase)
 //! across many candidate pairs through `compute-runtime` — the
-//! `NarrowPhase` half of the "`BroadPhase`/`NarrowPhase`/
-//! `ConstraintSolver` aren't batched yet" follow-up
-//! [`crate::rigid_body`] left open. Deliberately targets `test_pair`, not
+//! `NarrowPhase` half of the rigid-body-pipeline batching this crate's
+//! own module doc describes (see [`crate::broad_phase`] for the broad
+//! phase half, [`crate::constraint_solver`] for the solver half).
+//! Deliberately targets `test_pair`, not
 //! `NarrowPhase::generate_contacts`: `test_pair` is one candidate pair in,
 //! one `Option<Contact<F>>` out — the same fixed 1:1 shape
 //! [`meridian_gac_compute::MotorComposeKernel`] batches independent

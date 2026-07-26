@@ -92,7 +92,7 @@ where
         self.candidate_pairs
             .iter()
             .zip(overlaps.iter())
-            .filter(|(_, &overlaps)| overlaps)
+            .filter(|&(_, &overlaps)| overlaps)
             .map(|(&pair, _)| pair)
             .collect()
     }

@@ -160,15 +160,40 @@ kernel slot). Same proof shape as `RigidBodyIntegratorKernel`: matches
 calling `test_pair` directly pair-for-pair, including which pairs come
 back `None`, across a batch above the parallel-dispatch threshold
 (`cargo test -p meridian-physics-compute narrow_phase`).
-`BroadPhase::find_candidate_pairs` and `NarrowPhase::generate_contacts`/
-`ConstraintSolver` batching is still open follow-up:
-`find_candidate_pairs`' AABB sweep isn't an independent per-item
-computation the way `Integrator::step`/`test_pair` are, and
-`generate_contacts`/the solver carry more per-pair/per-contact state
-(variable-size manifolds, accumulated impulses) than a fixed-output-slot
-kernel covers — batching `generate_contacts` needs a per-pair count
+`BroadPhase::find_candidate_pairs` is batched too, the same fixed
+one-output-per-item shape:
+`meridian-physics-compute::broad_phase::BroadPhasePairsKernel` tests
+every candidate pair's AABB overlap in parallel (via `RigidBody::aabb`
+— a new public method exposing the same bound `find_candidate_pairs`
+already computed internally, reused rather than re-derived) and returns
+the exact same surviving pairs in the exact same order.
+
+`ConstraintSolver` is batched too, closing out the rigid-body pipeline
+— the hardest of the four, since `resolve_velocity`/
+`apply_positional_correction` each mutate *two* bodies, so naively
+running distinct contacts in parallel races whenever they share a body
+(the common case for a multi-point manifold) and would silently turn
+the solver's deliberately Gauss-Seidel sequential relaxation into
+Jacobi instead, a real behavior change, not just a speed one.
+`meridian-physics-compute::constraint_solver::ConstraintSolverBatchKernel`
+solves this with graph coloring (`color_contacts`): contacts are
+grouped so no two contacts sharing a body land in the same group, each
+group's contacts run concurrently (real per-body `Mutex` locking, not
+one shared lock), and groups run in sequence — reproducing the
+sequential solver's exact dependency order. Proven bit-for-bit
+identical to the sequential `resolve_velocity`/
+`apply_positional_correction` loop on a real multi-point box-on-floor
+manifold, plus a 600-tick settling regression test matching
+`engine-core`'s own sequential-solver test (`cargo test -p
+meridian-physics-compute constraint_solver`). This closes every item
+`docs/physics-design.md`'s Compute section named as open — see that
+document for the full breakdown. `NarrowPhase::generate_contacts`
+itself is the one piece still CPU-only: a box-box pair expands to a
+*variable* number of manifold points, which doesn't fit a
+fixed-output-slot kernel — batching it needs a per-pair count
 prefix-sum into a flattened output buffer (the standard GPU technique
-for variable-output-per-thread work), not the same direct lift.
+for variable-output-per-thread work), real further follow-up, not the
+same direct lift as the other four.
 
 Step 7 (`asset-core`) is real: BMP (uncompressed 24/32-bit), WAV (PCM
 16-bit), and a minimal OBJ (positions + triangles) decoder — formats

@@ -38,22 +38,26 @@
 //! `meridian_compute_runtime`'s `HybridKernel` module doc for the same
 //! tradeoff acknowledged there), not an oversight.
 
-//! [`rigid_body`] and [`narrow_phase`] are a third, independent kind of
-//! work this crate hosts: batching `physics-core`'s rigid-body pipeline
-//! (`Integrator`, `NarrowPhase::test_pair`) through `compute-runtime`
-//! instead of a plain `for` loop — docs/roadmap.md's "batching is
-//! additive later" note for `BroadPhase`/`NarrowPhase`/
-//! `ConstraintSolver`/`Integrator`. Unlike the soft-body kernels above,
-//! both are generic over `GaFlavor` rather than float/fixed-split, since
-//! (like `physics-core`'s own engine) neither has a GPU-dispatch
+//! [`rigid_body`], [`broad_phase`], [`narrow_phase`] and
+//! [`constraint_solver`] are a third, independent kind of work this
+//! crate hosts: batching `physics-core`'s entire rigid-body pipeline
+//! (`Integrator`, `BroadPhase::find_candidate_pairs`,
+//! `NarrowPhase::test_pair`, `ConstraintSolver`) through
+//! `compute-runtime` instead of a plain `for` loop — closing out
+//! docs/roadmap.md's "batching is additive later" note. All four are
+//! generic over `GaFlavor` rather than float/fixed-split, since (like
+//! `physics-core`'s own engine) none of them has a GPU-dispatch
 //! constraint of its own — see each module's doc comment.
-//! `BroadPhase::find_candidate_pairs` and
-//! `NarrowPhase::generate_contacts`/`ConstraintSolver` aren't batched
-//! yet: broad phase's own state (the AABB sweep) isn't an independent
-//! per-item computation the way `Integrator::step`/`test_pair` are, and
-//! `generate_contacts`/the solver carry more per-pair/per-contact state
-//! (variable-size manifolds, accumulated impulses) — real further
-//! follow-up, not the same direct lift.
+//! `NarrowPhase::generate_contacts` (as opposed to `test_pair`) is the
+//! one piece still CPU-only: a box-box pair expands into a *variable*
+//! number of manifold points, which doesn't fit a kernel whose per-item
+//! output is a fixed-size slot — see [`narrow_phase`]'s own doc comment
+//! for the prefix-sum technique that would batch it, not attempted here.
+//! [`constraint_solver`] is the hardest of the four (each contact
+//! mutates two bodies, so naive parallelism races) — see that module's
+//! own doc comment for the graph-coloring fix and why it reproduces the
+//! sequential Gauss-Seidel solver's result exactly, not just
+//! approximately.
 
 pub mod broad_phase;
 pub mod constraint_solver;

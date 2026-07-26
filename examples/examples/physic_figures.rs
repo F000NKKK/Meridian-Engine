@@ -1,13 +1,16 @@
 //! Real rigid-body physics: a sphere, a cube and a pyramid dropped above
-//! a textured floor and stepped every frame through
-//! `meridian_sdk::SubsystemManager::step_physics` — this example's own
-//! [`PhysicsRig`] only adds a fixed-timestep accumulator around it, not
-//! a hand-rolled `Integrator`/`BroadPhase`/`NarrowPhase`/
-//! `ConstraintSolver` pipeline (see [`PhysicsRig`]'s own doc comment for
-//! why that split, and the first real proof that `SubsystemManager`'s
-//! physics pipeline works end-to-end in an actual application). Each
-//! body's resulting `Motor3` frame feeds straight to its `Renderable3D`
-//! — no separate "visual" transform, physics *is* the transform.
+//! a textured floor and stepped every frame through a real
+//! `meridian_sdk::pipeline::Pipeline` — a single `"physics"` stage
+//! (`PhysicsStepStage`, a thin wrapper around
+//! `PhysicsSubsystem::step`) run through `Pipeline::tick`. This
+//! example's own [`PhysicsRig`] only adds a fixed-timestep accumulator
+//! around it (see [`PhysicsRig`]'s own doc comment for why that split);
+//! the pipeline mechanism itself — job-graph dispatch, fine-grained
+//! locking — is `meridian-sdk`'s, not hand-rolled here, and this is the
+//! first real proof it works end-to-end in an actual application (it
+//! previously had zero callers outside its own unit tests). Each body's
+//! resulting `Motor3` frame feeds straight to its `Renderable3D` — no
+//! separate "visual" transform, physics *is* the transform.
 //!
 //! `physics-core` only has two collider shapes today, `Sphere` and
 //! `Cuboid` (see `ColliderShape`) — there is no dedicated pyramid
@@ -32,11 +35,13 @@
 //! Run with:
 //!   ./build.sh run physic_figures
 
+use meridian_sdk::pipeline::{PhysicsStepStage, Pipeline, PipelineState};
 use meridian_sdk::{
-    AppHandler, ColliderShape, ConstraintSolver, Device, DrawBuffers, FlyCamera, GraphicsBase,
-    InputState, KeyCode, Light, Material, Mixer, Motor3, Renderable3D, RigidBody, Scene3D,
-    SpeakerLayout, SubsystemManager, Vec3, Window, cube_mesh_source, ground_mesh_source,
-    icosphere_mesh_source, look_at_rotor, pyramid_mesh_source, run_windowed_app, submit_scene3d,
+    AppHandler, AudioSubsystem, ColliderShape, ConstraintSolver, Device, DrawBuffers, FlyCamera,
+    GraphicsBase, InputState, KeyCode, Light, Material, Mixer, Motor3, PhysicsSubsystem,
+    Renderable3D, RigidBody, Scene3D, SpeakerLayout, Vec3, Window, cube_mesh_source,
+    ground_mesh_source, icosphere_mesh_source, look_at_rotor, pyramid_mesh_source,
+    run_windowed_app, submit_scene3d,
 };
 
 /// Joins `relative` onto this crate's own `CARGO_MANIFEST_DIR` — asset
@@ -99,27 +104,24 @@ struct GpuState {
     body_renderable_indices: [usize; 3],
 }
 
-/// Fixed-timestep driver around `engine-core`'s real
-/// [`SubsystemManager::step_physics`] — the physics pipeline itself
-/// (integrate, relax contacts, resolve) is no longer hand-rolled here;
-/// see that method's own doc comment for the multi-point-manifold
-/// relaxation it does internally. What's left at this layer is
-/// deliberately application policy, not engine plumbing: the render
-/// loop's `frame_dt` varies with frame rate, but the solver is only
-/// validated at a constant [`PHYSICS_DT`], so this accumulates
-/// wall-clock time and steps in whole [`PHYSICS_DT`] increments,
-/// capped so a stall (e.g. window drag) can't spiral into running
-/// hundreds of catch-up steps at once. `SubsystemManager::step_physics`
-/// takes an arbitrary `dt` per call — it has no opinion on fixed vs.
-/// variable timestep — so this accumulator stays here rather than
-/// forcing that policy onto `engine-core` itself (see
-/// docs/roadmap.md's `Runtime`-adoption entry: `Runtime::tick` measures
-/// its own real, variable-length `dt` via `Clock`, a different, equally
-/// legitimate policy that doesn't fit this example's fixed-step need,
-/// which is why this composes `SubsystemManager` directly rather than
-/// `Runtime` as a whole).
+/// Fixed-timestep driver around a real `meridian_sdk::pipeline::Pipeline`
+/// running one `"physics"` stage — the physics pipeline itself
+/// (job-graph dispatch, fine-grained locking, and — inside
+/// `PhysicsStepStage` — integrate/relax-contacts/resolve) is no longer
+/// hand-rolled here; see `PhysicsSubsystem::step`'s own doc comment for
+/// the multi-point-manifold relaxation it does internally. What's left
+/// at this layer is deliberately application policy, not engine
+/// plumbing: the render loop's `frame_dt` varies with frame rate, but
+/// the solver is only validated at a constant [`PHYSICS_DT`], so this
+/// accumulates wall-clock time and calls [`Pipeline::tick`] once per
+/// whole [`PHYSICS_DT`] increment, capped so a stall (e.g. window drag)
+/// can't spiral into running hundreds of catch-up ticks at once.
+/// `Pipeline`/`PhysicsStepStage` have no opinion on fixed vs. variable
+/// timestep — a stage's `dt` is just whatever the app configured it
+/// with — so this accumulator stays application-level policy rather
+/// than something `meridian-sdk` forces on every pipeline user.
 struct PhysicsRig {
-    subsystems: SubsystemManager,
+    pipeline: Pipeline,
     accumulator: f32,
 }
 
@@ -158,29 +160,35 @@ impl PhysicsRig {
             ..Default::default()
         };
 
-        // No audio in this example — `SubsystemManager::new` still
-        // requires a `Mixer` (it owns the audio pipeline too, per
-        // dependency-rules.md rule 7), left unused here.
-        let mut subsystems = SubsystemManager::new(Mixer::new(SpeakerLayout::mono()));
-        subsystems.physics.bodies = vec![floor, sphere, cube, pyramid];
-        subsystems.physics.solver =
-            ConstraintSolver::new(SOLVER_RESTITUTION).with_friction(SOLVER_FRICTION);
+        let mut physics = PhysicsSubsystem::default();
+        physics.bodies = vec![floor, sphere, cube, pyramid];
+        physics.solver = ConstraintSolver::new(SOLVER_RESTITUTION).with_friction(SOLVER_FRICTION);
+
+        // No audio in this example — `PipelineState::new` still
+        // requires an `AudioSubsystem` (physics and audio are the two
+        // independently-lockable pieces every pipeline shares, per
+        // `meridian_sdk::pipeline`'s own module doc), left unused here.
+        let audio = AudioSubsystem::new(Mixer::new(SpeakerLayout::mono()));
+        let state = PipelineState::new(physics, audio);
+
+        let mut pipeline = Pipeline::new(state, 4);
+        pipeline.add_stage("physics", &[], PhysicsStepStage::new(PHYSICS_DT));
 
         Self {
-            subsystems,
+            pipeline,
             accumulator: 0.0,
         }
     }
 
-    fn bodies(&self) -> &[RigidBody] {
-        &self.subsystems.physics.bodies
+    fn bodies(&self) -> Vec<RigidBody> {
+        self.pipeline.state().physics().bodies.clone()
     }
 
     fn step(&mut self, frame_dt: f32) {
         self.accumulator += frame_dt;
         let mut steps = 0;
         while self.accumulator >= PHYSICS_DT && steps < 8 {
-            self.subsystems.step_physics(PHYSICS_DT);
+            self.pipeline.tick();
             self.accumulator -= PHYSICS_DT;
             steps += 1;
         }

@@ -10,7 +10,10 @@
 //! [`Stage`]s (physics stepping, audio mixing, binaural rendering,
 //! scene submission, or anything else) in whatever order and
 //! dependency shape it needs, and [`Pipeline`] only owns *running*
-//! them, never *what* they do.
+//! them, never *what* they do. `examples/physic_figures` proves this
+//! end-to-end: a real windowed app driving `PhysicsStepStage` through
+//! `Pipeline::tick` every fixed-timestep increment, not just this
+//! module's own unit tests.
 //!
 //! **Built on [`meridian_task_core::JobGraph`], not a hand-rolled
 //! scheduler** — `JobGraph` already is "dependency-ordered per-frame
@@ -83,6 +86,22 @@ impl PipelineState {
             physics: self.physics.clone(),
             audio: self.audio.clone(),
         }
+    }
+
+    /// Locks the physics state directly — for reading results (or
+    /// seeding initial bodies) between [`Pipeline::tick`] calls, from
+    /// application code that isn't itself a [`Stage`]. No stage runs
+    /// concurrently with application code between ticks, so there's no
+    /// lock-order-inversion risk to guard against here the way
+    /// [`StageContext`] does mid-tick — this is a plain, single lock.
+    pub fn physics(&self) -> MutexGuard<'_, PhysicsSubsystem> {
+        self.physics.lock().unwrap()
+    }
+
+    /// Locks the audio state directly — see [`physics`](Self::physics)'s
+    /// doc comment for the same "between ticks, not mid-tick" scoping.
+    pub fn audio(&self) -> MutexGuard<'_, AudioSubsystem> {
+        self.audio.lock().unwrap()
     }
 }
 

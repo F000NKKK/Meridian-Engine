@@ -152,16 +152,43 @@ tests many candidate pairs for exact overlap through one dispatch,
 mirroring `gac-compute::MotorComposeKernel`'s independent-pairs shape
 (`test_pair` is one pair in, one `Option<Contact<F>>` out — a fixed 1:1
 shape, unlike `generate_contacts`' variable-size manifold output, see
-below). `BroadPhase::find_candidate_pairs` and
-`NarrowPhase::generate_contacts`/`ConstraintSolver` aren't batched yet:
-`find_candidate_pairs`' AABB sweep isn't an independent per-item
-computation the way `Integrator::step`/`test_pair` are, and
-`generate_contacts`/the solver carry more per-pair/per-contact state
-(box-box pairs expand to a *variable* number of manifold points,
-accumulated impulses) than a fixed-size-per-item kernel shape covers —
+below). `BroadPhase::find_candidate_pairs` is batched too:
+`meridian-physics-compute::broad_phase::BroadPhasePairsKernel` tests
+every candidate pair's AABB overlap in parallel (reusing
+`RigidBody::aabb`/`Aabb::overlaps` directly, not re-deriving the bound),
+then filters the fixed-size overlap array down to survivors — same
+"fixed one-output-per-item slot" shape as `test_pair`, proven to return
+the exact same pairs in the exact same order as
+`find_candidate_pairs` itself.
+
+`ConstraintSolver` is batched too — the hardest of the four, since each
+contact mutates *two* bodies (`resolve_velocity`/
+`apply_positional_correction` write both `contact.a` and `contact.b`),
+so naively parallelizing distinct contacts that happen to share a body
+(the common case: every point of a box's floor manifold touches the
+same two bodies) would race, and would silently turn the solver's
+deliberately Gauss-Seidel sequential-relaxation behavior into Jacobi
+instead — a real numerical-behavior change, not just a performance
+change.
+`meridian-physics-compute::constraint_solver::ConstraintSolverBatchKernel`
+fixes this with graph coloring
+(`constraint_solver::color_contacts`): contacts are partitioned into
+groups where no two contacts in the same group share a body, so a
+group's contacts can run concurrently (each locks only its own two
+bodies, via a `Vec<Mutex<RigidBody<F>>>` — real per-body locking, not
+one shared lock serializing everything) with zero race risk, while
+groups themselves still run in sequence, in the same order the
+sequential loop would have processed them — reproducing the exact
+Gauss-Seidel dependency chain. Proven bit-for-bit identical to the
+sequential `resolve_velocity`/`apply_positional_correction` loop across
+a real multi-point box-on-floor manifold, plus a 600-tick settling
+regression test (no bounce, no sinking) matching `engine-core`'s own
+sequential-solver test. `NarrowPhase::generate_contacts` is the one
+piece still CPU-only: a box-box pair expands to a *variable* number of
+manifold points, which doesn't fit a fixed-size-per-item kernel slot —
 real follow-up (a per-pair count prefix-sum into a flattened output
-buffer, the standard GPU technique for variable-output-per-thread work,
-for `generate_contacts`), not done here.
+buffer, the standard GPU technique for variable-output-per-thread
+work), not done here.
 
 `physics-driver`'s `PhysicsBackend` reports real CPU thread count (via
 `platform-core::DeviceCapabilities`, the same shared shape
