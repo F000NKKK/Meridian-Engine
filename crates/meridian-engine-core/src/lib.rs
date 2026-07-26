@@ -44,7 +44,7 @@
 use std::any::{Any, TypeId};
 use std::collections::HashMap;
 
-use meridian_audio_core::{BinauralRenderer, Declicker, Emitter, Listener, Mixer};
+use meridian_audio_core::{Emitter, Listener, Mixer};
 use meridian_ecs_core::World;
 use meridian_physics_core::{BroadPhase, ConstraintSolver, Integrator, NarrowPhase, RigidBody};
 use meridian_platform_core::{Clock, CpuCapabilities, Time};
@@ -249,31 +249,6 @@ impl SubsystemManager {
     /// reflects physics-updated positions.
     pub fn mix_audio(&self) -> Vec<(meridian_audio_core::Channel, f32)> {
         self.mixer.mix(&self.listener, &self.emitters)
-    }
-
-    /// Renders `frames` interleaved stereo samples for `sources` against
-    /// [`listener`](Self::listener)'s current pose through
-    /// [`binaural`](Self::binaural), declicked, in one call — the same
-    /// render-then-declick sequence `examples/magic_figures`' own
-    /// `MusicRig::refill` used to hand-roll. `sources` (mono sample
-    /// blocks, not stored state — the same "rebuilt every call, never
-    /// retained" shape `graphics-core::FrameScene` uses for the same
-    /// reason: this is per-block data, not persistent subsystem state)
-    /// mirrors `BinauralRenderer::render`'s own signature directly.
-    ///
-    /// `None` if [`with_binaural`](Self::with_binaural) was never called
-    /// — a caller that wants spatialized playback must opt in first; this
-    /// never silently falls back to [`mix_audio`](Self::mix_audio)'s
-    /// different (gain-only) output shape.
-    pub fn render_binaural(
-        &mut self,
-        sources: &[(Emitter, &[f32])],
-        frames: usize,
-    ) -> Option<Vec<f32>> {
-        let binaural = self.binaural.as_mut()?;
-        let mut interleaved = binaural.render(&self.listener, sources, frames);
-        self.binaural_declicker.process(&mut interleaved);
-        Some(interleaved)
     }
 }
 
