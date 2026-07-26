@@ -19,25 +19,25 @@ adding one is out of scope until there's a concrete backend to build (see
 
 ```text
 Render Graph        automatic pass ordering + resource dependency tracking  -- real
-Scene Extraction     pulling renderable state out of the ECS each frame
+Scene Extraction     pulling renderable state out of the ECS each frame     -- real
 Visibility / Culling -- real (frustum vs AABB)
-Lighting
-Materials
+Lighting             -- real (Blinn-Phong forward, directional + point)
+Materials            -- real (albedo/base color, unlit, emissive, blend mode field)
 Camera                -- real (Motor3 -> view/projection matrix bridge)
 Animation
-Post Processing
+Post Processing      -- real (bloom); HDR/tone-mapping still open
 ```
 
-`Camera`, frustum culling, and render graph pass ordering are real and
-tested (`cargo test -p meridian-graphics-core`) — see below for how each works.
-`graphics-driver` itself is real now too: a headless `wgpu` `Device`
-(`Buffer`/`Texture`/`Shader`/compute `Pipeline`/`CommandBuffer`, no
-window/surface — see [roadmap.md](roadmap.md)'s `wgpu` entry). Scene
-extraction, lighting, materials-as-shading-inputs, animation and post
-processing are still scaffolds: they need a window/swapchain surface to
-present to and a mesh/material vocabulary, neither of which exists yet —
-not blocked on `graphics-driver` having a GPU device anymore, just on
-those two separate follow-ups.
+`Camera`, frustum culling, render graph pass ordering, scene extraction,
+lighting and the submission bridge are all real and tested (`cargo test
+-p meridian-graphics-core`) — see "Implementation order" below for the
+step-by-step history and exactly what's still open (shadow mapping,
+per-material roughness/specular, blend-mode/`always_on_top` handling,
+HDR). `graphics-driver` is real too, both headless (`Device::new`) and
+windowed (`Device::new_windowed`, a real swapchain `Surface` —
+`Buffer`/`Texture`/`Shader`/compute `Pipeline`/`CommandBuffer` either
+way). `Animation` is the one row above with no work started yet — no
+vocabulary, no scaffold.
 
 ## `Motor3` to view/projection matrix
 
