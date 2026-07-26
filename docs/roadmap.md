@@ -398,17 +398,37 @@ tested but not used by `Runtime::tick` itself — physics and audio are
 sequentially data-dependent today, not independent branches, so running
 them through a job graph would be decorative; see
 docs/threading-model.md's `FrameScheduler` section for why, and what makes
-it load-bearing later. `graphics-core` isn't wired into `Runtime::tick`
-either — window/swapchain presentation is real now (`Device::new_windowed`,
-the `spinning_cube` example), but `graphics-core` has no scene/material
-vocabulary yet for `Runtime` to extract a frame from; wiring it in
-without one would be decorative.
+it load-bearing later. `graphics-core`'s scene/material/lighting/
+submission layers are real now too (see the `submission` entry above:
+`SceneRenderer`, real `Blinn`-Phong lit draws, bloom) — but
+`graphics-core` still isn't wired into `Runtime::tick` itself, for a
+different reason than "no vocabulary yet": presenting a frame needs a
+real windowed `Device`/`Surface`, which is driver state, and
+`engine-core` deliberately never depends on `graphics-driver` (only
+`graphics-core` — see dependency-rules.md's edge list; `engine-core`
+does list `graphics-core` as an allowed dependency, per rule 7, it's
+just not used yet). `Runtime::tick` is also a plain synchronous method
+call today, with no per-frame hook for "here's this frame's `Surface`
+to submit into" — `magic_figures`/`physic_figures` instead compose
+`Runtime` themselves inside their own `winit` event loop (via
+`platform_core::run_windowed_app`), calling `Runtime::tick` for
+physics/audio timing and driving `graphics-core::SceneRenderer`
+directly against their own `Device`/`Surface`, the same composition
+pattern audio output already uses (see below). Moving that composition
+into `Runtime::tick` itself would mean either giving `engine-core` a
+`graphics-driver` edge (forbidden) or threading a `Surface` handle
+through `tick`'s signature every call — a real design decision, not
+wiring together what already exists, so it stays at the application
+layer until there's a concrete reason to centralize it.
 
-The remaining incomplete areas are, specifically: `graphics-core`'s
-scene/material/lighting layers (window/swapchain presentation they
-needed is real now — see the `wgpu` entry below) and `DynamicLibrary`
-(still a stub, on the original hand-written-FFI plan per ADR 010) — not
-a blanket "every other crate is a scaffold." Audio is wired end-to-end:
+The remaining incomplete areas in `graphics-core`'s own lighting/
+post-processing model are specifically: image-based/environment
+lighting (`Scene3D::ambient` is a flat constant-color fill, not real
+IBL — see that field's own doc comment), shadow mapping (the Blinn-Phong
+lit pipelines have no shadow term yet), and HDR values above `1.0`
+feeding bloom's bright-pass beyond what it already does (see
+`bloom`'s own module doc) — not a blanket "every other crate is a
+scaffold." Audio is wired end-to-end:
 `audio-core::AudioOutput` + `Mixer::render_interleaved` bridge mixed
 samples into `audio-driver`'s real stream (the declared
 core→own-driver edge, used for the first time), composed with `Runtime`
