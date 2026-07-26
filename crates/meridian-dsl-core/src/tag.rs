@@ -45,11 +45,19 @@ pub trait DslTag: Sized + 'static {
 /// by tag name, the same pattern `ecs-core`'s type-erased component
 /// storage uses for the same reason), and its children, recursively
 /// built the same way.
-#[derive(Debug)]
 pub struct BuiltNode {
     pub tag: String,
     pub value: Box<dyn Any>,
     pub children: Vec<BuiltNode>,
+}
+
+impl fmt::Debug for BuiltNode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("BuiltNode")
+            .field("tag", &self.tag)
+            .field("children", &self.children)
+            .finish_non_exhaustive()
+    }
 }
 
 impl BuiltNode {

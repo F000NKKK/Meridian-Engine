@@ -8,3 +8,4 @@ repository.workspace = true
 description = "Generic tag/attribute/children text parser underlying the SDK's extensible scene DSL — no knowledge of any domain tag (Mesh, RigidBody, ...); see meridian-sdk::dsl for that layer."
 
 [dependencies]
+meridian-foundation = { workspace = true }
