@@ -52,4 +52,5 @@
 pub mod fixed;
 pub mod float;
 pub mod generic;
+pub mod narrow_phase;
 pub mod rigid_body;
