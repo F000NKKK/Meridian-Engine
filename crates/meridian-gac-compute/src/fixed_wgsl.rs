@@ -531,8 +531,27 @@ fn dispatch_div(@builtin(global_invocation_id) id: vec3<u32>) {{
 fn dispatch_sqrt(@builtin(global_invocation_id) id: vec3<u32>) {{
     results[id.x] = fixed_sqrt(operands[id.x]);
 }}
+
+// Binary, like dispatch_add/etc: atan2(a, b) is one result per pair.
+@compute @workgroup_size(64)
+fn dispatch_atan2(@builtin(global_invocation_id) id: vec3<u32>) {{
+    results[id.x] = fixed_atan2(operands[2u * id.x], operands[2u * id.x + 1u]);
+}}
+
+// Unary input, binary output: one operand per invocation
+// (`operands[id.x]`), two results (`results[2*id.x]` = sin,
+// `results[2*id.x+1]` = cos) — see
+// `FixedArithmeticKernels::dispatch_sin_cos`, which sizes/unpacks the
+// `results` buffer accordingly.
+@compute @workgroup_size(64)
+fn dispatch_sin_cos(@builtin(global_invocation_id) id: vec3<u32>) {{
+    let sc = fixed_sin_cos(operands[id.x]);
+    results[2u * id.x] = sc.x;
+    results[2u * id.x + 1u] = sc.y;
+}}
 "#,
-        lib = FIXED_ARITHMETIC_LIB_WGSL
+        lib = FIXED_ARITHMETIC_LIB_WGSL,
+        cordic = CORDIC_LIB_WGSL,
     )
 }
 
@@ -548,6 +567,8 @@ pub struct FixedArithmeticKernels {
     mul: ComputePipeline,
     div: ComputePipeline,
     sqrt: ComputePipeline,
+    atan2: ComputePipeline,
+    sin_cos: ComputePipeline,
 }
 
 impl FixedArithmeticKernels {
