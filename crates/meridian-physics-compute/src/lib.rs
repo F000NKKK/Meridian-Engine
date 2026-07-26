@@ -55,6 +55,8 @@
 //! (variable-size manifolds, accumulated impulses) — real further
 //! follow-up, not the same direct lift.
 
+pub mod broad_phase;
+pub mod constraint_solver;
 pub mod fixed;
 pub mod float;
 pub mod generic;

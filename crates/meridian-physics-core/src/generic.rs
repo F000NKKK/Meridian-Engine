@@ -137,8 +137,25 @@ impl<F: GaFlavor> RigidBody<F> {
     pub fn position(&self) -> F::Vector {
         self.frame.transform_point(F::Vector::ZERO)
     }
+
+    /// This body's world-space [`Aabb`] — the same bound
+    /// [`BroadPhase::find_candidate_pairs`] uses internally, exposed so
+    /// an external batching adapter (e.g.
+    /// `meridian-physics-compute`'s own broad-phase kernel) can reuse
+    /// the real bound instead of re-deriving it.
+    pub fn aabb(&self) -> Aabb<F> {
+        aabb_of(self)
+    }
 }
 
+/// Computes `body`'s world-space AABB — a free function (rather than a
+/// method) purely because it's called through `.map(aabb_of)` below;
+/// [`RigidBody::aabb`] is the public entry point, defined right after
+/// `impl RigidBody` above and forwarding here, so this logic exists in
+/// exactly one place regardless of caller (`BroadPhase` itself, or an
+/// external adapter crate like `meridian-physics-compute` batching the
+/// same broad-phase sweep — see docs/dependency-rules.md and CLAUDE.md's
+/// "don't drag another crate's logic into your own" rule).
 fn aabb_of<F: GaFlavor>(body: &RigidBody<F>) -> Aabb<F> {
     match body.shape {
         ColliderShape::Sphere { radius } => Aabb::from_sphere(body.position(), radius),
