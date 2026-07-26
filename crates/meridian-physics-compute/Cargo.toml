@@ -8,6 +8,7 @@ repository.workspace = true
 description = "Compute adapter for physics-core: WGSL soft-body (mass-spring) GPU kernels (float and Fixed flavors), plus compute-runtime-batched rigid-body Integrator and NarrowPhase::test_pair kernels (generic over GaFlavor, CPU dispatch today). The adapter between physics-core's domain model and compute-runtime's dispatch interface — mirrors meridian-gac-compute's role for GAC batch ops (see docs/dependency-rules.md rule 11)."
 
 [dependencies]
+meridian-foundation = { workspace = true }
 meridian-physics-core = { workspace = true }
 meridian-gac-core = { workspace = true }
 meridian-gac-compute = { workspace = true }
