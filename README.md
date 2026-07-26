@@ -51,10 +51,10 @@ async-native on genuine I/O only — a `tokio` runtime drives OS/driver
 handshakes and GPU readbacks, everything else (recording, allocation, ECS
 queries, GA math) stays synchronous (see
 [ADR 009](docs/adr/009-async-io-via-tokio.md)). `./build.sh run
-spinning_cube` renders a real spinning, lit cube to a real window end to
-end; `./build.sh run magic_figures` renders three orbiting, textured,
+magic_figures` renders three orbiting, textured,
 glowing shapes (sphere/cube/pyramid) each playing their own spatialized
-music track in a different audio format, with bloom; `./build.sh run
+music track in a different audio format, with bloom, to a real window end
+to end; `./build.sh run
 physic_figures` drops the same three shapes as real `physics-core`
 rigid bodies onto a textured floor.
 
