@@ -203,17 +203,7 @@ impl SubsystemManager {
             listener: Listener::default(),
             emitters: Vec::new(),
             mixer,
-            binaural: None,
-            binaural_declicker: Declicker::new(2),
         }
-    }
-
-    /// Opts into the binaural audio path — see [`SubsystemManager`]'s own
-    /// doc comment for why this is a separate path from
-    /// [`mixer`](Self::mixer), not a mode flag on it.
-    pub fn with_binaural(mut self, binaural: BinauralRenderer) -> Self {
-        self.binaural = Some(binaural);
-        self
     }
 
     /// Advances every body by `dt`: integrate, then relax contacts over
