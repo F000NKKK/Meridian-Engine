@@ -9,7 +9,7 @@
 //! way via `asset-core::AnyImageDecoder`).
 //!
 //! Rendering goes entirely through `graphics-core`'s submission bridge
-//! (`examples::GraphicsBase` bundles `SceneRenderer`/`BloomPass`/the
+//! (`meridian_sdk::GraphicsBase` bundles `SceneRenderer`/`BloomPass`/the
 //! three registries — the same base `physic_figures` builds): the floor
 //! is a real Blinn-Phong-lit material under one directional light +
 //! ambient; each shape is `unlit` + `emissive` in its own color, so it
@@ -25,26 +25,40 @@
 //! `audio-core::BinauralRenderer` as you fly around, mixed down to one
 //! output stream in a single `render` call per frame (all three source
 //! files happen to share a sample rate, so one `BinauralRenderer`/
-//! `AudioOutput` pair suffices — see [`load_music_tracks`]).
+//! `AudioOutput` pair suffices — see [`load_music_tracks`]). This
+//! example's own [`MusicRig`] is exactly the kind of custom
+//! `meridian_sdk::pipeline::Stage` the SDK's composable pipeline exists
+//! for — `BinauralRenderer`'s real per-sample synthesis doesn't fit
+//! `AudioSubsystem::mix`'s per-channel-gain model, so it stays
+//! hand-assembled here rather than forced through it (see
+//! `meridian_sdk::pipeline`'s own module doc).
+//!
+//! This example depends on `meridian-sdk` alone (plus `tokio`, for its
+//! own async GPU/audio-device handshakes) — every type below is reached
+//! through `meridian_sdk`'s re-exports, never through
+//! `meridian-gac-core`/`meridian-audio-core`/`meridian-graphics-core`/
+//! etc. directly.
 //!
 //! Run with:
 //!   ./build.sh run magic_figures
 
 use std::collections::VecDeque;
 
-use meridian_asset_core::{AudioAsset, DecodeStrategy, StreamingAudioDecoder, open_audio};
-use meridian_audio_core::{
-    AcousticMedium, AudioOutput, BinauralRenderer, Declicker, DspNode, Emitter, Listener,
-    SpeakerLayout,
+use meridian_sdk::{
+    AcousticMedium, AppHandler, AudioAsset, AudioOutput, BinauralRenderer, Declicker,
+    DecodeStrategy, Device, DrawBuffers, Emitter, FlyCamera, GraphicsBase, InputState, KeyCode,
+    Light, Listener, Material, Motor3, Renderable3D, Rotor, Scene3D, SpeakerLayout,
+    StreamingAudioDecoder, Vec3, Window, cube_mesh_source, ground_mesh_source,
+    icosphere_mesh_source, look_at_rotor, open_audio, pyramid_mesh_source, run_windowed_app,
+    submit_scene3d,
 };
-use meridian_examples::{
-    FlyCamera, GraphicsBase, cube_mesh_source, ground_mesh_source, icosphere_mesh_source,
-    look_at_rotor, pyramid_mesh_source,
-};
-use meridian_gac_core::{Motor3, Rotor, Vec3};
-use meridian_graphics_core::{DrawBuffers, Light, Material, Renderable3D, Scene3D, submit_scene3d};
-use meridian_graphics_driver::Device;
-use meridian_platform_core::{AppHandler, InputState, KeyCode, Window, run_windowed_app};
+
+/// Joins `relative` onto this crate's own `CARGO_MANIFEST_DIR` — see
+/// `physic_figures`' identical helper for why the path join lives at
+/// the call site, not inside `meridian_sdk`.
+fn asset_path(relative: &str) -> String {
+    format!("{}/{}", env!("CARGO_MANIFEST_DIR"), relative)
+}
 
 const ORBIT_RADIUS: f32 = 3.2;
 const ORBIT_HEIGHT: f32 = 2.0;
@@ -153,7 +167,7 @@ impl Track {
                             }
                         }
                         Err(err) => {
-                            meridian_foundation::log_warn!("stream decode error: {err}");
+                            meridian_sdk::log_warn!("stream decode error: {err}");
                             chunk.resize(frames, 0.0);
                             break;
                         }
@@ -171,7 +185,7 @@ impl Track {
 /// handles both arms. Returns the track plus its sample rate (all three
 /// callers happen to agree, but nothing here assumes it).
 fn load_track(relative_path: &str) -> Result<(Track, u32), String> {
-    let full_path = format!("{}/{}", env!("CARGO_MANIFEST_DIR"), relative_path);
+    let full_path = asset_path(relative_path);
     let bytes = std::fs::read(&full_path).map_err(|e| format!("{full_path}: {e}"))?;
     let asset =
         open_audio(&bytes, &DecodeStrategy::default()).map_err(|e| format!("{full_path}: {e}"))?;
@@ -221,7 +235,7 @@ fn load_music_tracks() -> (Vec<Track>, u32) {
                 track
             }
             Err(err) => {
-                meridian_foundation::log_warn!("{}: running silent ({err})", shape.name);
+                meridian_sdk::log_warn!("{}: running silent ({err})", shape.name);
                 Track::Memory {
                     mono: vec![0.0; 48_000],
                     cursor: 0,
@@ -234,7 +248,8 @@ fn load_music_tracks() -> (Vec<Track>, u32) {
 
 /// All three tracks, spatialized in one shared `BinauralRenderer` and
 /// pushed into one `AudioOutput` — see the module doc for why one
-/// stream suffices.
+/// stream suffices, and for why this is a hand-assembled pipeline
+/// rather than `meridian_sdk::AudioSubsystem::mix`.
 struct MusicRig {
     output: AudioOutput,
     renderer: BinauralRenderer,
@@ -334,7 +349,7 @@ impl App {
         let music = match tokio_runtime.block_on(MusicRig::load()) {
             Ok(music) => Some(music),
             Err(err) => {
-                meridian_foundation::log_warn!("running silent: {err}");
+                meridian_sdk::log_warn!("running silent: {err}");
                 None
             }
         };
@@ -361,7 +376,7 @@ impl AppHandler for App {
             .expect("failed to create windowed GPU device");
         let mut base = GraphicsBase::new(device, surface, width, height);
 
-        let floor_texture = base.load_texture("assets/textures/floor.png");
+        let floor_texture = base.load_texture(&asset_path("assets/textures/floor.png"));
         let floor_material = base.materials.register(Material {
             albedo: Some(floor_texture),
             base_color_factor: [1.0, 1.0, 1.0, 1.0],
@@ -390,7 +405,7 @@ impl AppHandler for App {
                 .meshes
                 .register(mesh_source)
                 .unwrap_or_else(|e| panic!("{} mesh must be valid: {e}", shape.name));
-            let texture = base.load_texture(shape.texture_file);
+            let texture = base.load_texture(&asset_path(shape.texture_file));
             let material = base.materials.register(Material {
                 albedo: Some(texture),
                 base_color_factor: [
@@ -505,7 +520,7 @@ impl AppHandler for App {
         let frame = match gpu.base.surface.acquire_frame() {
             Ok(frame) => frame,
             Err(err) => {
-                meridian_foundation::log_warn!(
+                meridian_sdk::log_warn!(
                     "swapchain frame unavailable ({err}); reconfiguring surface"
                 );
                 gpu.base.resize(window.width(), window.height());
@@ -552,12 +567,10 @@ impl AppHandler for App {
 }
 
 fn main() {
-    meridian_foundation::crash_reporting::install(meridian_foundation::CrashReportConfig::new(
+    meridian_sdk::crash_reporting::install(meridian_sdk::CrashReportConfig::new("magic_figures"));
+    meridian_sdk::logging::file::init(meridian_sdk::logging::file::FileLogConfig::new(
         "magic_figures",
     ));
-    meridian_foundation::logging::file::init(
-        meridian_foundation::logging::file::FileLogConfig::new("magic_figures"),
-    );
     run_windowed_app("Meridian Engine — Magic Figures", 1024, 768, App::new())
         .expect("windowed app exited with an error");
 }
