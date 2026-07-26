@@ -14,7 +14,7 @@ use meridian_sdk::{DrawBuffers, GraphicsBase, Scene3D, Window, submit_scene3d};
 pub fn render_frame(
     base: &mut GraphicsBase,
     scene: &Scene3D,
-    clear_color: [f32; 4],
+    clear_color: [f64; 4],
     window: &Window,
 ) {
     let frame = match base.surface.acquire_frame() {

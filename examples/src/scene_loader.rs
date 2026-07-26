@@ -41,7 +41,7 @@ pub fn find_child<T: 'static>(node: &BuiltNode) -> Option<&T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use meridian_sdk::dsl::{DslTag, TagParseError, dsl_tag};
+    use meridian_sdk::dsl::dsl_tag;
 
     #[dsl_tag(name = "Widget")]
     #[derive(Debug, PartialEq)]
