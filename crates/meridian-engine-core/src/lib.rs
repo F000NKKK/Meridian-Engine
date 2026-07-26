@@ -3,30 +3,43 @@
 //! [`SubsystemManager`] is the one place in the workspace allowed to know
 //! about every `*-core` at once (see docs/dependency-rules.md rule 7) — it
 //! owns real instances of the driver-independent subsystems that exist
-//! today: an `ecs-core` [`World`], `physics-core`'s body list and
-//! pipeline, and `audio-core`'s listener/mixer. `graphics-core` itself
-//! has a real scene/material vocabulary and GPU-submission bridge now
-//! (`Scene3D`/`Material`/`Light`, `SceneRenderer` — see
-//! `graphics-core::scene`/`submission`); it isn't wired into
-//! [`Runtime::tick`] anyway, for a different reason: presenting a frame
-//! needs a real windowed `Device`/`Surface` (driver state), and this
-//! crate deliberately never depends on `graphics-driver` (see
-//! docs/dependency-rules.md: `engine-core` depends on `graphics-core`,
-//! not drivers) — a windowed app would compose
-//! [`platform_core::run_windowed_app`](meridian_platform_core::run_windowed_app)
-//! with its own `graphics-driver::Device`/`Surface` and
-//! `graphics-core::SceneRenderer` around [`Runtime::tick`]'s [`Time`]
-//! for animation/physics timing, gaining `graphics-driver`/`Surface`
-//! access without `Runtime` itself ever depending on either.
+//! today: an `ecs-core` [`World`], [`PhysicsSubsystem`] (`physics-core`'s
+//! body list, broad/narrow-phase, solver/integrator) and
+//! [`AudioSubsystem`] (`audio-core`'s listener, emitters, mixer). Those
+//! two are split into their own types — not flat fields directly on
+//! `SubsystemManager` — specifically so a caller that wants to run them
+//! concurrently (behind independent locks, e.g. `meridian-sdk`'s
+//! job-graph pipeline) can take just the lock it needs without also
+//! blocking on `World`'s or the other subsystem's; `SubsystemManager`
+//! itself still owns the actual stepping *logic*
+//! ([`PhysicsSubsystem::step`]/[`AudioSubsystem::mix`]), not a
+//! downstream orchestration crate re-deriving it (rule 7 again — that
+//! logic stays here even though its *lock granularity* is a
+//! `meridian-sdk` concern).
 //!
-//! **That composition pattern is designed, not yet proven — no example
-//! in this workspace actually uses `Runtime`/`SubsystemManager` today.**
-//! `magic_figures` and `physic_figures` each hand-roll their own
-//! physics stepping and audio wiring directly against
-//! `physics-core`/`audio-core` (see each example's own code), not
-//! through this crate — a real, open gap between "tested in isolation"
-//! and "proven end-to-end," not a documentation nit. See
-//! docs/roadmap.md's `Runtime`-adoption entry for the follow-up.
+//! `graphics-core` has a real scene/material vocabulary and
+//! GPU-submission bridge now (`Scene3D`/`Material`/`Light`,
+//! `SceneRenderer` — see `graphics-core::scene`/`submission`); it isn't
+//! wired into [`Runtime::tick`] anyway, for a different reason:
+//! presenting a frame needs a real windowed `Device`/`Surface` (driver
+//! state), and this crate deliberately never depends on
+//! `graphics-driver` (see docs/dependency-rules.md: `engine-core`
+//! depends on `graphics-core`, not drivers). `meridian-sdk` is the
+//! sanctioned place for that composition — it's allowed to depend on
+//! `*-driver` crates `engine-core` cannot.
+//!
+//! **`Runtime`/`SubsystemManager` adoption by real applications is
+//! partial, not complete.** `examples/physic_figures` uses
+//! `SubsystemManager` for real (its physics stepping goes through
+//! [`PhysicsSubsystem::step`], not a hand-rolled loop) — the first real
+//! proof this composition works end-to-end. `examples/magic_figures`
+//! still doesn't: it needs `audio-core::BinauralRenderer`'s real
+//! per-sample stereo synthesis, which [`AudioSubsystem::mix`]'s
+//! per-channel-gain model can't express (see that method's own doc
+//! comment for why a second, `BinauralRenderer`-shaped field wasn't
+//! bolted onto `AudioSubsystem` to force the fit). Reconciling that is
+//! `meridian-sdk`'s composable-pipeline job, not this crate's — see
+//! docs/roadmap.md's `Runtime`-adoption entry.
 //!
 //! [`Runtime::tick`] advances physics, then recomputes audio gains from
 //! the physics-updated emitter frames, in that order — not through
@@ -39,7 +52,8 @@
 //! (see that crate's module doc). [`FrameScheduler`] is real and tested on
 //! its own terms; it becomes load-bearing once a second real per-frame
 //! system exists that's genuinely independent of physics (animation,
-//! particles, ...) to run alongside it.
+//! particles, ...) to run alongside it — `meridian-sdk`'s job-graph
+//! pipeline is exactly that second system, one layer up.
 
 use std::any::{Any, TypeId};
 use std::collections::HashMap;
