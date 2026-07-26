@@ -8,24 +8,7 @@ repository.workspace = true
 publish = false
 
 [dependencies]
-meridian-engine-core = { workspace = true }
-meridian-foundation = { workspace = true, features = ["file-logging"] }
-meridian-gac-core = { workspace = true }
-meridian-ecs-core = { workspace = true }
-meridian-memory-core = { workspace = true }
-meridian-resource-core = { workspace = true }
-meridian-task-core = { workspace = true }
-meridian-platform-core = { workspace = true }
-meridian-audio-core = { workspace = true }
-meridian-asset-core = { workspace = true }
-meridian-graphics-core = { workspace = true }
-meridian-graphics-driver = { workspace = true }
-meridian-physics-core = { workspace = true }
-meridian-physics-compute = { workspace = true }
-meridian-compute-runtime = { workspace = true }
-meridian-numeric-core = { workspace = true }
-meridian-gpu-driver.workspace = true
-
+meridian-sdk = { workspace = true }
 tokio = { workspace = true }
 
 [[example]]
