@@ -111,8 +111,8 @@ domain-logic crate built on top of the driver. This is what lets a
 `compute` is named `compute-runtime` rather than `compute-core`: unlike
 graphics/audio/physics, it has no domain concepts of its own (no algorithm
 lives in it) — it's dispatch infrastructure that domain crates
-(`gac-compute`, and future `particle-compute`/`physics-compute`/...) build
-on top of, so it doesn't get the "core" name reserved for
+(`gac-compute` and `physics-compute` today, a future `particle-compute`/...)
+build on top of, so it doesn't get the "core" name reserved for
 `graphics-core`/`physics-core`/`audio-core`-style domain layers. See
 [ADR 007](adr/007-batch-transforms-via-compute.md).
 
@@ -133,18 +133,28 @@ order, not a hand-written sequence of system calls. See
 
 ## Current state
 
-Every crate except the audio-device driver backend (blocked on the same
-`Window`/`DynamicLibrary`-class OS-device decision as `platform-core::Window`,
-see [roadmap.md](roadmap.md)) now has a real implementation, up through
-`meridian-engine-core`: `Runtime` owns a `SubsystemManager` (real
-`ecs-core`/`physics-core`/`audio-core` instances) and an `EventSystem`
-(type-erased pub/sub, the mechanism rule 7 exists for — subsystems
-communicate through it instead of depending on each other), and
-`Runtime::tick` advances physics then recomputes audio from the result
-each frame. `graphics-driver` has a real, headless `wgpu` `Device` (see
-[roadmap.md](roadmap.md)'s `wgpu` entry), and `graphics-core`'s render
-graph/camera/culling are real too, but neither is wired into
-`Runtime::tick` yet — rendering has nothing to present a frame to without
-a window/swapchain surface. See [roadmap.md](roadmap.md) for the exact
-state of each crate and what's
-still a scaffold.
+Every crate has a real implementation now, including every `*-driver`
+(`audio-driver` is real, backed by `cpal` — see
+[ADR 012](adr/012-audio-output-via-cpal.md); `platform-core::Window`/
+`DynamicLibrary` are real too, `Window` via `winit` — see
+[ADR 010](adr/010-windowing-via-winit.md) — `DynamicLibrary` via
+hand-written `dlopen`/`LoadLibrary` FFI). `graphics-driver` has a real
+*windowed* `wgpu` `Device` (`Device::new_windowed`, a real swapchain
+`Surface`), and `graphics-core`'s scene/material/lighting/submission
+bridge (`Scene3D`, `SceneRenderer`, real Blinn-Phong lit draws through
+it) is real too — proven end-to-end by the `magic_figures`/
+`physic_figures` examples.
+
+`meridian-engine-core`'s `Runtime`/`SubsystemManager`/`EventSystem` are
+real and tested in isolation (`Runtime::tick` advances physics then
+recomputes audio from the result each frame, `EventSystem` is the
+type-erased pub/sub mechanism rule 7 exists for), but — unlike every
+other crate named above — **no example actually composes `Runtime` yet**:
+`magic_figures`/`physic_figures` each hand-roll their own physics/audio
+wiring directly against `physics-core`/`audio-core` instead of going
+through `SubsystemManager`, and `graphics-core` was never wired into
+`Runtime::tick` at all (not because it lacks a scene vocabulary — it
+doesn't, see above — but because presenting a frame needs a real
+windowed `Device`/`Surface`, driver state `engine-core` deliberately
+never depends on). See [roadmap.md](roadmap.md) for the exact state of
+each crate and the `Runtime`-adoption follow-up.
