@@ -310,7 +310,7 @@ fn fixed_sqrt(a: i32) -> i32 {
 
 /// `sin_cos`/`atan2` via CORDIC — see the module doc for why this needs
 /// no 64-bit emulation. Concatenated after [`FIXED_ARITHMETIC_LIB_WGSL`]
-/// in [`dispatch_entry_points_wgsl`] (the two constants are independent;
+/// in `dispatch_entry_points_wgsl` (the two constants are independent;
 /// `pub` for the same cross-crate-reuse reason as
 /// `FIXED_ARITHMETIC_LIB_WGSL`).
 ///

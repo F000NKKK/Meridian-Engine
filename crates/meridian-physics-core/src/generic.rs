@@ -664,7 +664,7 @@ impl<F: GaFlavor> NarrowPhase<F> {
     }
 
     /// Like [`test_pair`](Self::test_pair), but expands a box-box pair's
-    /// full contact manifold (see [`face_manifold`]) into one [`Contact`]
+    /// full contact manifold (see `face_manifold`) into one [`Contact`]
     /// per manifold point instead of collapsing it to one — this is what
     /// [`ConstraintSolver::resolve`] should iterate over; `test_pair`'s
     /// single-point view exists only for simple exact-overlap queries.

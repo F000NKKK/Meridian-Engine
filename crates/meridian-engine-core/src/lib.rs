@@ -170,7 +170,7 @@ impl Default for PhysicsSubsystem {
 
 impl PhysicsSubsystem {
     /// Advances every body by `dt`: integrate, then relax contacts over
-    /// [`RELAXATION_ITERATIONS`] velocity-only passes before a single
+    /// `RELAXATION_ITERATIONS` velocity-only passes before a single
     /// final positional correction pass. **Not** one `resolve()` call per
     /// contact — that was this method's original shape (back when it
     /// lived directly on `SubsystemManager`), and it carries the exact
