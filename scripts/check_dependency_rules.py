@@ -91,6 +91,14 @@ ALLOWED = {
         "meridian-asset-core",
         "meridian-compute-runtime",
     },
+    "meridian-sdk": {
+        "meridian-engine-core",
+        "meridian-task-core",
+        "meridian-platform-core",
+        "meridian-graphics-driver",
+        "meridian-graphics-core",
+        "meridian-foundation",
+    },
 }
 
 NAME_RE = re.compile(r'^name *= *"([^"]+)"', re.M)

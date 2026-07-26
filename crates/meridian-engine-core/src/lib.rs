@@ -129,102 +129,66 @@ impl FrameScheduler {
     }
 }
 
-/// Velocity-relaxation pass count for [`SubsystemManager::step_physics`] —
-/// matches `examples/physic_figures`' own tuned value, chosen because a
+/// Velocity-relaxation pass count for [`PhysicsSubsystem::step`] — matches
+/// `examples/physic_figures`' own tuned value, chosen because a
 /// box/pyramid face-face manifold (up to 4 points) needs several passes
 /// before each point's impulse is computed against the others' relaxed
 /// (not stale pre-solve) velocity.
 const RELAXATION_ITERATIONS: u32 = 4;
 
-/// Registry of active subsystems for the current [`Runtime`] — real owned
-/// instances, not stubs: an `ecs-core` [`World`] (available for
-/// application-level entity/`Transform` use; not synced with `bodies`
-/// below — no such mapping is defined anywhere in the workspace yet, and
-/// inventing one here would be new, undocumented design, not wiring
-/// together what already exists), `physics-core`'s body list plus its
-/// broad/narrow-phase and solver/integrator, and `audio-core`'s listener,
-/// emitters and mixer. The only place in the workspace allowed to know
-/// about every `*-core` at once — see docs/dependency-rules.md rule 7.
-///
-/// **`mixer`/[`mix_audio`](Self::mix_audio) is one specific, opinionated
-/// audio path (`Mixer::mix`'s per-channel gain model), not "the" audio
-/// pipeline every consumer must fit.** A richer consumer
-/// (`examples/magic_figures`, which needs `BinauralRenderer`'s real
-/// per-sample stereo synthesis — ITD, head-shadow filtering, its own
-/// declick stage — none of which `Mixer::mix`'s gains can express) is
-/// deliberately **not** forced through this field: bolting a second
-/// fixed pipeline (a `binaural: Option<BinauralRenderer>` field plus a
-/// matching hardcoded declick stage) onto `SubsystemManager` alongside
-/// this one would repeat the same mistake — engine-core dictating a
-/// specific effect chain — rather than fixing it. A real, composable
-/// rendering-pipeline abstraction (stages an app assembles itself,
-/// `mixer` becoming one possible stage among others) is real design
-/// work, tracked as follow-up rather than improvised mid-migration — see
-/// docs/roadmap.md's `Runtime`-adoption entry. Until that exists,
-/// `examples/magic_figures` keeps owning its `BinauralRenderer`/
-/// `Declicker` pipeline directly, reading only
-/// [`listener`](Self::listener) from here.
-pub struct SubsystemManager {
-    pub world: World,
-
+/// `physics-core`'s body list plus its broad/narrow-phase and
+/// solver/integrator — everything [`PhysicsSubsystem::step`] needs,
+/// bundled as one independently-ownable/-lockable unit. Split out of
+/// [`SubsystemManager`] (which used to hold these fields directly) so a
+/// caller that wants to run physics on its own thread/lock (e.g.
+/// `meridian-sdk`'s job-graph pipeline — see docs/roadmap.md's
+/// `Runtime`-adoption entry) can do so without also taking
+/// [`AudioSubsystem`]'s or `World`'s lock, while `SubsystemManager`
+/// itself keeps owning the actual stepping *logic* (rule 7: engine-core
+/// is where cross-`*-core` domain logic like this lives, not a
+/// downstream orchestration crate re-deriving it).
+#[derive(Debug)]
+pub struct PhysicsSubsystem {
     pub bodies: Vec<RigidBody>,
     pub broad_phase: BroadPhase,
     pub narrow_phase: NarrowPhase,
     pub solver: ConstraintSolver,
     pub integrator: Integrator,
-
-    pub listener: Listener,
-    pub emitters: Vec<(Emitter, f32)>,
-    pub mixer: Mixer,
 }
 
-impl std::fmt::Debug for SubsystemManager {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // `World` doesn't derive `Debug` (it holds type-erased archetype
-        // storage — see meridian-ecs-core), so this summarizes it rather
-        // than deriving through it.
-        f.debug_struct("SubsystemManager")
-            .field("bodies", &self.bodies.len())
-            .field("emitters", &self.emitters.len())
-            .field("listener", &self.listener)
-            .finish_non_exhaustive()
-    }
-}
-
-impl SubsystemManager {
-    pub fn new(mixer: Mixer) -> Self {
+impl Default for PhysicsSubsystem {
+    fn default() -> Self {
         Self {
-            world: World::new(),
             bodies: Vec::new(),
             broad_phase: BroadPhase::new(),
             narrow_phase: NarrowPhase::new(),
             solver: ConstraintSolver::default(),
             integrator: Integrator::default(),
-            listener: Listener::default(),
-            emitters: Vec::new(),
-            mixer,
         }
     }
+}
 
+impl PhysicsSubsystem {
     /// Advances every body by `dt`: integrate, then relax contacts over
     /// [`RELAXATION_ITERATIONS`] velocity-only passes before a single
     /// final positional correction pass. **Not** one `resolve()` call per
-    /// contact — that was this method's original shape, and it carries
-    /// the exact "cube/pyramid bounces up/down and clips through the
-    /// floor" bug `ConstraintSolver::resolve`'s own doc comment
-    /// describes: a box/pyramid manifold is up to 4 contact points
-    /// sharing one normal, and a single combined velocity+positional
-    /// pass over all of them pushes the body's position by the same
-    /// correction several times per tick. A single sphere-sphere contact
-    /// (this method's own regression test) never exhibited it, so the
-    /// bug went unnoticed here even after `examples/physic_figures`
-    /// independently discovered and fixed it in its own hand-rolled
-    /// physics stepping — see docs/roadmap.md's `Runtime`-adoption entry
-    /// for that history. This method now mirrors
-    /// `physic_figures::PhysicsRig::step`'s proven-correct shape exactly,
-    /// centralized here so every caller gets multi-point-manifold
-    /// stability for free instead of rediscovering it.
-    pub fn step_physics(&mut self, dt: f32) {
+    /// contact — that was this method's original shape (back when it
+    /// lived directly on `SubsystemManager`), and it carries the exact
+    /// "cube/pyramid bounces up/down and clips through the floor" bug
+    /// `ConstraintSolver::resolve`'s own doc comment describes: a
+    /// box/pyramid manifold is up to 4 contact points sharing one normal,
+    /// and a single combined velocity+positional pass over all of them
+    /// pushes the body's position by the same correction several times
+    /// per tick. A single sphere-sphere contact (this method's own
+    /// regression test) never exhibited it, so the bug went unnoticed
+    /// here even after `examples/physic_figures` independently
+    /// discovered and fixed it in its own hand-rolled physics stepping —
+    /// see docs/roadmap.md's `Runtime`-adoption entry for that history.
+    /// This method now mirrors `physic_figures::PhysicsRig::step`'s
+    /// proven-correct shape exactly, centralized here so every caller
+    /// gets multi-point-manifold stability for free instead of
+    /// rediscovering it.
+    pub fn step(&mut self, dt: f32) {
         self.integrator.step(&mut self.bodies, dt);
 
         for _ in 0..RELAXATION_ITERATIONS {
@@ -242,13 +206,104 @@ impl SubsystemManager {
                 .apply_positional_correction(&mut self.bodies, &contact);
         }
     }
+}
+
+/// `audio-core`'s listener, emitters and gain mixer — bundled as one
+/// independently-ownable/-lockable unit for the same reason
+/// [`PhysicsSubsystem`] is split out. **One specific, opinionated audio
+/// path (`Mixer::mix`'s per-channel gain model), not "the" audio
+/// pipeline every consumer must fit** — see [`AudioSubsystem::mix`]'s
+/// own doc comment.
+#[derive(Debug)]
+pub struct AudioSubsystem {
+    pub listener: Listener,
+    pub emitters: Vec<(Emitter, f32)>,
+    pub mixer: Mixer,
+}
+
+impl AudioSubsystem {
+    pub fn new(mixer: Mixer) -> Self {
+        Self {
+            listener: Listener::default(),
+            emitters: Vec::new(),
+            mixer,
+        }
+    }
 
     /// Per-channel gains for every emitter against the current listener,
     /// via `audio-core`'s `Mixer` — reads whatever `emitters`' frames are
-    /// *right now*, so calling this after [`step_physics`](Self::step_physics)
-    /// reflects physics-updated positions.
-    pub fn mix_audio(&self) -> Vec<(meridian_audio_core::Channel, f32)> {
+    /// *right now*, so calling this after
+    /// [`PhysicsSubsystem::step`] reflects physics-updated positions.
+    ///
+    /// This is one specific, opinionated audio path (`Mixer::mix`'s
+    /// per-channel gain model), not "the" audio pipeline every consumer
+    /// must fit. A richer consumer (`examples/magic_figures`, which
+    /// needs `BinauralRenderer`'s real per-sample stereo synthesis —
+    /// ITD, head-shadow filtering, its own declick stage — none of which
+    /// `Mixer::mix`'s gains can express) is deliberately **not** forced
+    /// through this type: bolting a second fixed pipeline (a
+    /// `binaural: Option<BinauralRenderer>` field plus a matching
+    /// hardcoded declick stage) onto `AudioSubsystem` alongside this one
+    /// would repeat the same mistake — engine-core dictating a specific
+    /// effect chain — rather than fixing it. A real, composable
+    /// rendering-pipeline abstraction (stages an app assembles itself,
+    /// `mixer` becoming one possible stage among others) is real design
+    /// work, tracked as follow-up rather than improvised mid-migration —
+    /// see docs/roadmap.md's `Runtime`-adoption entry. Until that
+    /// exists, `examples/magic_figures` keeps owning its
+    /// `BinauralRenderer`/`Declicker` pipeline directly.
+    pub fn mix(&self) -> Vec<(meridian_audio_core::Channel, f32)> {
         self.mixer.mix(&self.listener, &self.emitters)
+    }
+}
+
+/// Registry of active subsystems for the current [`Runtime`] — real owned
+/// instances, not stubs: an `ecs-core` [`World`] (available for
+/// application-level entity/`Transform` use; not synced with
+/// [`physics`](Self::physics)'s bodies — no such mapping is defined
+/// anywhere in the workspace yet, and inventing one here would be new,
+/// undocumented design, not wiring together what already exists),
+/// [`PhysicsSubsystem`] and [`AudioSubsystem`]. The only place in the
+/// workspace allowed to know about every `*-core` at once — see
+/// docs/dependency-rules.md rule 7.
+pub struct SubsystemManager {
+    pub world: World,
+    pub physics: PhysicsSubsystem,
+    pub audio: AudioSubsystem,
+}
+
+impl std::fmt::Debug for SubsystemManager {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // `World` doesn't derive `Debug` (it holds type-erased archetype
+        // storage — see meridian-ecs-core), so this summarizes it rather
+        // than deriving through it.
+        f.debug_struct("SubsystemManager")
+            .field("bodies", &self.physics.bodies.len())
+            .field("emitters", &self.audio.emitters.len())
+            .field("listener", &self.audio.listener)
+            .finish_non_exhaustive()
+    }
+}
+
+impl SubsystemManager {
+    pub fn new(mixer: Mixer) -> Self {
+        Self {
+            world: World::new(),
+            physics: PhysicsSubsystem::default(),
+            audio: AudioSubsystem::new(mixer),
+        }
+    }
+
+    /// Forwards to [`PhysicsSubsystem::step`] — see that method's own
+    /// doc comment.
+    pub fn step_physics(&mut self, dt: f32) {
+        self.physics.step(dt);
+    }
+
+    /// Forwards to [`AudioSubsystem::mix`] — see that method's own doc
+    /// comment.
+    pub fn mix_audio(&self) -> Vec<(meridian_audio_core::Channel, f32)> {
+        self.audio.mix()
     }
 }
 
@@ -361,7 +416,7 @@ mod tests {
     #[test]
     fn runtime_tick_advances_physics_under_gravity() {
         let mut subsystems = SubsystemManager::new(Mixer::new(SpeakerLayout::mono()));
-        subsystems.bodies.push(falling_body());
+        subsystems.physics.bodies.push(falling_body());
         let mut runtime = Runtime::new(subsystems);
 
         // Checking velocity, not position: position starts at y=10.0, and
@@ -375,7 +430,7 @@ mod tests {
             runtime.tick();
         }
         assert!(
-            runtime.subsystems.bodies[0].velocity.y < 0.0,
+            runtime.subsystems.physics.bodies[0].velocity.y < 0.0,
             "gravity must have been applied across ticks"
         );
     }
@@ -406,11 +461,11 @@ mod tests {
                 max_distance: 1000.0,
             }),
         );
-        subsystems.listener = Listener {
+        subsystems.audio.listener = Listener {
             frame: Motor3::identity(),
         };
         // Local +Z is "right" per audio-core's listener convention.
-        subsystems.emitters.push((
+        subsystems.audio.emitters.push((
             Emitter {
                 frame: Motor3::translation(Vec3::new(0.0, 0.0, 5.0)),
             },
@@ -432,19 +487,19 @@ mod tests {
     #[test]
     fn subsystem_manager_step_physics_resolves_a_resting_contact() {
         let mut subsystems = SubsystemManager::new(Mixer::new(SpeakerLayout::mono()));
-        subsystems.bodies.push(RigidBody {
+        subsystems.physics.bodies.push(RigidBody {
             frame: Motor3::translation(Vec3::new(0.0, -50.0, 0.0)),
             mass: 0.0, // static floor
             shape: ColliderShape::Sphere { radius: 50.0 },
             ..Default::default()
         });
-        subsystems.bodies.push(falling_body());
+        subsystems.physics.bodies.push(falling_body());
 
         for _ in 0..600 {
             subsystems.step_physics(1.0 / 60.0);
         }
 
-        let resting_height = subsystems.bodies[1].position().y;
+        let resting_height = subsystems.physics.bodies[1].position().y;
         assert!(
             (resting_height - 0.5).abs() < 0.5,
             "ball should settle near the floor surface, got y={resting_height}"
@@ -469,8 +524,8 @@ mod tests {
         use meridian_physics_core::ConstraintSolver;
 
         let mut subsystems = SubsystemManager::new(Mixer::new(SpeakerLayout::mono()));
-        subsystems.solver = ConstraintSolver::new(0.0).with_friction(0.6);
-        subsystems.bodies.push(RigidBody {
+        subsystems.physics.solver = ConstraintSolver::new(0.0).with_friction(0.6);
+        subsystems.physics.bodies.push(RigidBody {
             frame: Motor3::translation(Vec3::new(0.0, -0.5, 0.0)),
             mass: 0.0, // static floor
             shape: ColliderShape::Cuboid {
@@ -478,7 +533,7 @@ mod tests {
             },
             ..Default::default()
         });
-        subsystems.bodies.push(RigidBody {
+        subsystems.physics.bodies.push(RigidBody {
             frame: Motor3::translation(Vec3::new(0.0, 3.0, 0.0)),
             mass: 1.0,
             shape: ColliderShape::Cuboid {
@@ -492,7 +547,7 @@ mod tests {
         for step in 0..600 {
             subsystems.step_physics(1.0 / 60.0);
             if step > 200 {
-                let height = subsystems.bodies[1].position().y;
+                let height = subsystems.physics.bodies[1].position().y;
                 min_height_after_landing = min_height_after_landing.min(height);
                 max_height_after_landing = max_height_after_landing.max(height);
             }

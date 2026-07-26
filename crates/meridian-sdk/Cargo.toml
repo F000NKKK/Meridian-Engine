@@ -1,0 +1,16 @@
+[package]
+name = "meridian-sdk"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Application-facing composition layer: a job-graph-based, composable frame pipeline over engine-core's Runtime/SubsystemManager plus the *-driver crates engine-core itself is forbidden from touching. Not a hub crate for domain logic (that stays in engine-core, per dependency-rules.md rule 7) — this is where driver access legitimately lives for a windowed application."
+
+[dependencies]
+meridian-engine-core = { workspace = true }
+meridian-task-core = { workspace = true }
+meridian-platform-core = { workspace = true }
+meridian-graphics-driver = { workspace = true }
+meridian-graphics-core = { workspace = true }
+meridian-foundation = { workspace = true }

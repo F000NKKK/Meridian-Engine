@@ -152,8 +152,8 @@ impl PhysicsRig {
         // dependency-rules.md rule 7), left unused here.
         let mut subsystems =
             SubsystemManager::new(Mixer::new(meridian_audio_core::SpeakerLayout::mono()));
-        subsystems.bodies = vec![floor, sphere, cube, pyramid];
-        subsystems.solver =
+        subsystems.physics.bodies = vec![floor, sphere, cube, pyramid];
+        subsystems.physics.solver =
             ConstraintSolver::new(SOLVER_RESTITUTION).with_friction(SOLVER_FRICTION);
 
         Self {
@@ -163,7 +163,7 @@ impl PhysicsRig {
     }
 
     fn bodies(&self) -> &[RigidBody] {
-        &self.subsystems.bodies
+        &self.subsystems.physics.bodies
     }
 
     fn step(&mut self, frame_dt: f32) {
