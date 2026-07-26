@@ -187,13 +187,23 @@ manifold, plus a 600-tick settling regression test matching
 `engine-core`'s own sequential-solver test (`cargo test -p
 meridian-physics-compute constraint_solver`). This closes every item
 `docs/physics-design.md`'s Compute section named as open — see that
-document for the full breakdown. `NarrowPhase::generate_contacts`
-itself is the one piece still CPU-only: a box-box pair expands to a
-*variable* number of manifold points, which doesn't fit a
-fixed-output-slot kernel — batching it needs a per-pair count
-prefix-sum into a flattened output buffer (the standard GPU technique
-for variable-output-per-thread work), real further follow-up, not the
-same direct lift as the other four.
+document for the full breakdown. `NarrowPhase::generate_contacts` is
+batched too — earlier than the other four, in fact:
+`meridian-physics-compute::narrow_phase::GenerateContactsKernel`
+handles its variable-per-pair manifold output (a box-box pair expands
+to up to `MAX_CONTACTS_PER_PAIR` points) with a fixed-size-per-pair
+output slot (`[Option<Contact<F>>; MAX_CONTACTS_PER_PAIR]`, flattened
+back to pair order for the result), rather than a true dynamic
+prefix-sum — the same `MAX_LIGHTS`-style fixed-capacity-array approach
+`graphics-core::submission` uses for its own per-frame uniform array,
+truncating (with a logged warning) only if a pair's manifold ever
+exceeds the cap, which `physics-core::generic::face_manifold`'s own
+`.take(4)` currently guarantees it never does. So all five rigid-body
+pipeline steps — `Integrator`, `BroadPhase::find_candidate_pairs`,
+`NarrowPhase::test_pair`, `NarrowPhase::generate_contacts` and
+`ConstraintSolver` — are batched now; a true dynamic prefix-sum (for a
+manifold cap that might someday grow past a small fixed bound) remains
+a hypothetical future refinement, not an open gap.
 
 Step 7 (`asset-core`) is real: BMP (uncompressed 24/32-bit), WAV (PCM
 16-bit), and a minimal OBJ (positions + triangles) decoder — formats
