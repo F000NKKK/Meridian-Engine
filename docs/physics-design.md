@@ -123,13 +123,23 @@ Broad-phase and constraint solving are natural candidates for SIMD/GPU
 parallelism at scale. `physics-core` reaches that through
 `meridian-compute-runtime`, not by depending on `compute-driver` directly or
 building its own scheduler — see
-[dependency-rules.md](dependency-rules.md) rule 5. Not wired in yet: the
-current `BroadPhase`/`NarrowPhase`/`ConstraintSolver`/`Integrator` are
-correct sequential CPU implementations, called once per pair/body.
-Batching them through `compute-runtime` (the same way
-`gac-compute::MotorTransformKernel` batches `Motor3` composition) is
-additive later — the same algorithm, called per-pair via a
-`ComputeKernel` instead of a loop — not a rewrite.
+[dependency-rules.md](dependency-rules.md) rule 5. `BroadPhase`/
+`NarrowPhase`/`ConstraintSolver`/`Integrator` are still correct
+sequential CPU implementations in `physics-core` itself, called once per
+pair/body — batching is an adapter-crate concern (rule 11), not
+something `physics-core` does itself. `Integrator` is batched now:
+`meridian-physics-compute::rigid_body::RigidBodyIntegratorKernel` runs
+`Integrator::step` across many bodies through one `ComputeKernel`
+dispatch (the same shape `gac-compute::MotorTransformKernel` batches
+`Motor3` composition with), generic over `GaFlavor` and CPU-dispatched
+via `ComputeContext::parallel_for` — `Integrator::step` has no
+GPU-dispatch constraint of its own, so there's no WGSL kernel to write,
+unlike this crate's soft-body kernels. `BroadPhase`/`NarrowPhase`/
+`ConstraintSolver` aren't batched yet: each carries more per-pair state
+(contact manifolds, accumulated impulses) than `Integrator`'s
+one-body-in-one-body-out shape, so batching them is a bigger lift than a
+direct `MotorTransformKernel`-style port — real follow-up, not done
+here.
 
 `physics-driver`'s `PhysicsBackend` reports real CPU thread count (via
 `platform-core::DeviceCapabilities`, the same shared shape
