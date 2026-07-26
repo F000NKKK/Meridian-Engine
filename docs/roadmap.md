@@ -568,6 +568,28 @@ priority before writing implementations is keeping that document and the
    `ecs-core`/`physics-core`/`audio-core` into a real per-frame loop (see
    "Current state" above). `graphics-core` joins once a window/swapchain
    exists for `graphics-driver` to submit frames to.
+10. `meridian-sdk` — **done** for its current scope: a single
+    application-facing re-export crate (`examples/` depends on it
+    alone), its own composable `pipeline::Pipeline` (job-graph-based,
+    fine-grained locking over `PhysicsSubsystem`/`AudioSubsystem`,
+    replacing the earlier hand-rolled per-example physics stepping —
+    proven end-to-end in `physic_figures`), resource loading
+    (`assets::AssetCache::load_texture`/`load_mesh_obj`,
+    `assets::load_audio_track` — all decode/cache/downmix logic lives
+    here, not duplicated per example), and the extensible scene DSL
+    (`dsl` module — `#[dsl_tag(name = "...")]` lets a game register its
+    own tags rather than picking from a fixed schema; see
+    [ADR 015](adr/015-extensible-scene-dsl.md) and `meridian_sdk::dsl`'s
+    own module doc). **Not yet done:** neither example actually
+    consumes the DSL to build its scene (both still compose entities in
+    plain Rust) — wiring one example onto `dsl::build_scene` is the
+    concrete next step before any further DSL surface (an app-shell
+    schema, `Transform`/rotation support, ECS-backed tag application)
+    gets designed against a pattern that's never been exercised
+    end-to-end. `meridian-engine-core::Runtime`/`SubsystemManager` are
+    also still unproven end-to-end for the same reason noted above —
+    `physic_figures` goes through `meridian-sdk::pipeline` directly
+    (built on the same `PhysicsSubsystem` type), not through `Runtime`.
 
 ## Explicitly out of scope for now
 

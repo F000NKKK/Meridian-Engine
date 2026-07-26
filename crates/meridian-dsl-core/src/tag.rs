@@ -164,7 +164,10 @@ mod tests {
         let element = parse(r#"<RigidBody mass="2.5" />"#).unwrap();
         let node = registry.build(&element).unwrap();
         assert_eq!(node.tag, "RigidBody");
-        assert_eq!(node.downcast_ref::<RigidBodyTag>(), Some(&RigidBodyTag { mass: 2.5 }));
+        assert_eq!(
+            node.downcast_ref::<RigidBodyTag>(),
+            Some(&RigidBodyTag { mass: 2.5 })
+        );
     }
 
     #[test]

@@ -91,6 +91,8 @@ ALLOWED = {
         "meridian-asset-core",
         "meridian-compute-runtime",
     },
+    "meridian-dsl-core": {"meridian-foundation"},
+    "meridian-dsl-macros": set(),
     "meridian-sdk": {
         "meridian-foundation",
         "meridian-gac-core",
@@ -102,6 +104,8 @@ ALLOWED = {
         "meridian-physics-core",
         "meridian-audio-core",
         "meridian-engine-core",
+        "meridian-dsl-core",
+        "meridian-dsl-macros",
     },
 }
 

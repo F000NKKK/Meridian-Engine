@@ -22,8 +22,27 @@
 //! from a crate that doesn't depend on `meridian-sdk`.
 
 use proc_macro::TokenStream;
+use proc_macro_crate::{FoundCrate, crate_name};
 use quote::quote;
 use syn::{Data, DeriveInput, Fields, parse_macro_input};
+
+/// The path prefix for reaching `meridian_sdk::dsl_core` from wherever
+/// this macro is expanded: `crate::dsl_core` when expanding *inside*
+/// `meridian-sdk` itself (its own built-in tags, e.g. this crate's
+/// `dsl::Entity`/`dsl::Mesh` — `meridian_sdk` isn't a name a crate can
+/// use to refer to itself), `::meridian_sdk::dsl_core` everywhere else
+/// (a game crate's own `#[dsl_tag]`-annotated struct, which reaches
+/// `meridian-sdk` only as an ordinary dependency).
+fn sdk_path() -> proc_macro2::TokenStream {
+    match crate_name("meridian-sdk") {
+        Ok(FoundCrate::Itself) => quote! { crate },
+        Ok(FoundCrate::Name(name)) => {
+            let ident = syn::Ident::new(&name, proc_macro2::Span::call_site());
+            quote! { ::#ident }
+        }
+        Err(_) => quote! { ::meridian_sdk },
+    }
+}
 
 /// See the module doc comment for the full contract.
 #[proc_macro_attribute]
@@ -68,6 +87,8 @@ pub fn dsl_tag(attr: TokenStream, item: TokenStream) -> TokenStream {
         }
     };
 
+    let sdk = sdk_path();
+
     let mut field_inits = Vec::new();
     for field in fields {
         let field_name = field.ident.as_ref().expect("named field has an ident");
@@ -78,7 +99,7 @@ pub fn dsl_tag(attr: TokenStream, item: TokenStream) -> TokenStream {
             quote! {
                 #field_name: match attrs.iter().find(|(k, _)| k == #field_name_str) {
                     Some((_, v)) => Some(v.parse::<#inner_ty>().map_err(|e| {
-                        ::meridian_sdk::dsl_core::TagParseError {
+                        #sdk::dsl_core::TagParseError {
                             message: format!(
                                 concat!(#tag_name, ".", #field_name_str, ": {}"),
                                 e
@@ -94,12 +115,12 @@ pub fn dsl_tag(attr: TokenStream, item: TokenStream) -> TokenStream {
                 #field_name: attrs
                     .iter()
                     .find(|(k, _)| k == #field_name_str)
-                    .ok_or_else(|| ::meridian_sdk::dsl_core::TagParseError {
+                    .ok_or_else(|| #sdk::dsl_core::TagParseError {
                         message: concat!(#tag_name, ": missing attribute '", #field_name_str, "'").to_string(),
                     })?
                     .1
                     .parse::<#field_ty>()
-                    .map_err(|e| ::meridian_sdk::dsl_core::TagParseError {
+                    .map_err(|e| #sdk::dsl_core::TagParseError {
                         message: format!(concat!(#tag_name, ".", #field_name_str, ": {}"), e),
                     })?
             }
@@ -110,12 +131,12 @@ pub fn dsl_tag(attr: TokenStream, item: TokenStream) -> TokenStream {
     let expanded = quote! {
         #input
 
-        impl ::meridian_sdk::dsl_core::DslTag for #struct_name {
+        impl #sdk::dsl_core::DslTag for #struct_name {
             const TAG_NAME: &'static str = #tag_name;
 
             fn from_attrs(
                 attrs: &[(String, String)],
-            ) -> Result<Self, ::meridian_sdk::dsl_core::TagParseError> {
+            ) -> Result<Self, #sdk::dsl_core::TagParseError> {
                 Ok(Self {
                     #(#field_inits),*
                 })

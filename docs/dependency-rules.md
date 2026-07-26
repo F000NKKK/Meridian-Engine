@@ -34,8 +34,8 @@ depend on crates in tiers `0..N`, never a same-tier or higher-tier one
 (that's what makes the graph a DAG):
 
 ```text
-tier 0  foundation, memory-core, task-core
-tier 1  numeric-core, platform-core, resource-core
+tier 0  foundation, memory-core, task-core, dsl-macros
+tier 1  numeric-core, platform-core, resource-core, dsl-core
 tier 2  asset-core, audio-driver, gac-core, gpu-driver, physics-driver
 tier 3  audio-core, compute-driver, ecs-core, graphics-driver
 tier 4  compute-runtime
@@ -44,6 +44,20 @@ tier 6  graphics-core, physics-core
 tier 7  engine-core, physics-compute
 tier 8  sdk
 ```
+
+`meridian-dsl-core`/`meridian-dsl-macros` are the two crates behind the
+SDK's extensible scene DSL (see [ADR 015](adr/015-extensible-scene-dsl.md)
+and `meridian-sdk::dsl`'s own module doc): `dsl-core` is a domain-blind
+tag/attribute-markup parser plus the generic `DslTag`/`DslRegistry`
+machinery (tier 1: it depends only on `foundation`, for its
+`EngineError` impls); `dsl-macros` is the `#[dsl_tag(name = "...")]`
+proc-macro that implements `DslTag` for a plain struct (tier 0: a
+proc-macro crate, no meridian-* runtime dependency at all — it depends
+on `syn`/`quote`/`proc-macro-crate` externally, not shown here since
+this diagram only tracks internal `meridian-*` edges). Neither knows
+about `Entity`/`Mesh`/`RigidBody` or any other specific tag — those are
+defined in `meridian-sdk::dsl` (built-ins) or in a game's own crate
+(custom tags), both just ordinary `#[dsl_tag]`-annotated structs.
 
 This shows *depth*, not *which crate depends on which* — two crates in
 the same tier aren't necessarily related at all (`audio-core` and
@@ -171,7 +185,9 @@ bottom-up.
 - `meridian-physics-core` -> `meridian-compute-runtime`, `meridian-ecs-core`, `meridian-gac-compute`, `meridian-gac-core`, `meridian-numeric-core`, `meridian-physics-driver`, `meridian-resource-core`
 - `meridian-physics-compute` -> `meridian-compute-runtime`, `meridian-foundation`, `meridian-gac-compute`, `meridian-gac-core`, `meridian-gpu-driver`, `meridian-numeric-core`, `meridian-physics-core`
 - `meridian-engine-core` -> `meridian-asset-core`, `meridian-audio-core`, `meridian-compute-runtime`, `meridian-ecs-core`, `meridian-foundation`, `meridian-gac-core`, `meridian-graphics-core`, `meridian-memory-core`, `meridian-physics-core`, `meridian-platform-core`, `meridian-task-core`
-- `meridian-sdk` -> `meridian-asset-core`, `meridian-audio-core`, `meridian-engine-core`, `meridian-foundation`, `meridian-gac-core`, `meridian-graphics-core`, `meridian-graphics-driver`, `meridian-physics-core`, `meridian-platform-core`, `meridian-task-core`
+- `meridian-dsl-core` -> `meridian-foundation`
+- `meridian-dsl-macros` -> (nothing; external `syn`/`quote`/`proc-macro-crate` only)
+- `meridian-sdk` -> `meridian-asset-core`, `meridian-audio-core`, `meridian-dsl-core`, `meridian-dsl-macros`, `meridian-engine-core`, `meridian-foundation`, `meridian-gac-core`, `meridian-graphics-core`, `meridian-graphics-driver`, `meridian-physics-core`, `meridian-platform-core`, `meridian-task-core`
 
 `meridian-engine-core` lists `meridian-graphics-core` as an allowed edge
 (rule 7) but doesn't use it yet — `Runtime::tick` doesn't render a

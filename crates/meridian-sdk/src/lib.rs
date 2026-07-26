@@ -26,6 +26,12 @@
 //!   couldn't be the place for this — it's the direct fix for
 //!   `AudioSubsystem::mix`'s "one opinionated path, not the pipeline
 //!   every consumer must fit" limitation).
+//! - [`dsl`] — the extensible scene-composition DSL: parse a small
+//!   tag-markup document into typed nodes, where a game registers its
+//!   own tags via `#[dsl_tag(name = "...")]` rather than picking from a
+//!   fixed schema (see that module's own doc for the full three-layer
+//!   design and why this replaced an earlier, rejected fixed-schema
+//!   approach).
 //! - [`assets`] — resource loading: turning a file path into a real,
 //!   cached, GPU-registered handle (textures, OBJ meshes) or a decoded,
 //!   loopable audio source ([`AudioTrack`]/[`load_audio_track`]).
@@ -44,11 +50,13 @@
 
 pub mod assets;
 pub mod camera;
+pub mod dsl;
 pub mod pipeline;
 pub mod scene;
 
 pub use assets::{AssetCache, AudioTrack, load_audio_track, load_image_asset};
 pub use camera::{FlyCamera, look_at_rotor};
+pub use dsl::dsl_core;
 pub use pipeline::{PhysicsStepStage, Pipeline, PipelineState, Stage, StageContext, StageId};
 pub use scene::{
     GraphicsBase, cube_mesh_source, ground_mesh_source, icosphere_mesh_source, pyramid_mesh_source,
