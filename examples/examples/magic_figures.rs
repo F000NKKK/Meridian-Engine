@@ -42,15 +42,12 @@
 //! Run with:
 //!   ./build.sh run magic_figures
 
-use std::collections::VecDeque;
-
 use meridian_sdk::{
-    AcousticMedium, AppHandler, AudioAsset, AudioOutput, BinauralRenderer, Declicker,
-    DecodeStrategy, Device, DrawBuffers, DspNode, Emitter, FlyCamera, GraphicsBase, InputState,
-    KeyCode, Light, Listener, Material, Motor3, Renderable3D, Rotor, Scene3D, SpeakerLayout,
-    StreamingAudioDecoder, Vec3, Window, cube_mesh_source, ground_mesh_source,
-    icosphere_mesh_source, look_at_rotor, open_audio, pyramid_mesh_source, run_windowed_app,
-    submit_scene3d,
+    AcousticMedium, AppHandler, AudioOutput, AudioTrack, BinauralRenderer, Declicker, Device,
+    DrawBuffers, DspNode, Emitter, FlyCamera, GraphicsBase, InputState, KeyCode, Light, Listener,
+    Material, Motor3, Renderable3D, Rotor, Scene3D, SpeakerLayout, Vec3, Window, cube_mesh_source,
+    ground_mesh_source, icosphere_mesh_source, load_audio_track, look_at_rotor,
+    pyramid_mesh_source, run_windowed_app, submit_scene3d,
 };
 
 /// Joins `relative` onto this crate's own `CARGO_MANIFEST_DIR` — see
@@ -116,132 +113,33 @@ const SHAPES: [ShapeSpec; 3] = [
     },
 ];
 
-/// Where one shape's looping mono samples come from — the two arms of
-/// `asset-core::AudioAsset`, behind one [`next_mono_chunk`](Self::next_mono_chunk)
-/// face. See the former `music_sphere` example for the identical design
-/// this is lifted from (now shared across three simultaneous tracks
-/// instead of one).
-enum Track {
-    Memory {
-        mono: Vec<f32>,
-        cursor: usize,
-    },
-    Streamed {
-        decoder: StreamingAudioDecoder,
-        channels: usize,
-        queue: VecDeque<f32>,
-    },
-}
-
-impl Track {
-    fn next_mono_chunk(&mut self, frames: usize) -> Vec<f32> {
-        let mut chunk = Vec::with_capacity(frames);
-        match self {
-            Track::Memory { mono, cursor } => {
-                for _ in 0..frames {
-                    chunk.push(mono[*cursor]);
-                    *cursor = (*cursor + 1) % mono.len();
-                }
-            }
-            Track::Streamed {
-                decoder,
-                channels,
-                queue,
-            } => {
-                while chunk.len() < frames {
-                    if let Some(sample) = queue.pop_front() {
-                        chunk.push(sample);
-                        continue;
-                    }
-                    match decoder.next_block() {
-                        Ok(Some(block)) => {
-                            for frame in block.chunks_exact(*channels) {
-                                let sum: f32 = frame.iter().map(|&s| s as f32 / 32768.0).sum();
-                                queue.push_back(sum / *channels as f32);
-                            }
-                        }
-                        Ok(None) => {
-                            if decoder.rewind().is_err() {
-                                chunk.resize(frames, 0.0);
-                                break;
-                            }
-                        }
-                        Err(err) => {
-                            meridian_sdk::log_warn!("stream decode error: {err}");
-                            chunk.resize(frames, 0.0);
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-        chunk
-    }
-}
-
-/// Loads one file at `relative_path` (relative to `CARGO_MANIFEST_DIR`)
-/// through `asset-core::open_audio`'s strategy-driven front door —
-/// `Auto` decodes short tracks eagerly and streams long ones; this
-/// handles both arms. Returns the track plus its sample rate (all three
-/// callers happen to agree, but nothing here assumes it).
-fn load_track(relative_path: &str) -> Result<(Track, u32), String> {
-    let full_path = asset_path(relative_path);
-    let bytes = std::fs::read(&full_path).map_err(|e| format!("{full_path}: {e}"))?;
-    let asset =
-        open_audio(&bytes, &DecodeStrategy::default()).map_err(|e| format!("{full_path}: {e}"))?;
-    let (sample_rate, channels) = (asset.sample_rate(), asset.channels().max(1) as usize);
-    let track = match asset {
-        AudioAsset::Decoded(audio) => {
-            let mut mono: Vec<f32> = audio
-                .samples
-                .chunks_exact(channels)
-                .map(|frame| {
-                    frame.iter().map(|&s| s as f32 / 32768.0).sum::<f32>() / channels as f32
-                })
-                .collect();
-            // The loop seam (last sample -> first) is an arbitrary
-            // discontinuity; fade both edges over ~10 ms so it passes
-            // through silence.
-            let fade = (sample_rate as usize / 100).min(mono.len() / 2);
-            for i in 0..fade {
-                let ramp = i as f32 / fade as f32;
-                mono[i] *= ramp;
-                let end = mono.len() - 1 - i;
-                mono[end] *= ramp;
-            }
-            Track::Memory { mono, cursor: 0 }
-        }
-        AudioAsset::Streaming(decoder) => Track::Streamed {
-            decoder,
-            channels,
-            queue: VecDeque::new(),
-        },
-    };
-    Ok((track, sample_rate))
-}
-
-/// Loads all three [`SHAPES`] tracks. A shape whose file fails to load
-/// or decode plays silence (an all-zero `Track::Memory`) rather than
-/// aborting the whole example — one bad asset shouldn't take the other
-/// two down with it.
-fn load_music_tracks() -> (Vec<Track>, u32) {
+/// Loads all three [`SHAPES`] tracks through `meridian_sdk::load_audio_track`
+/// (decode/downmix/loop-seam-fade is generic asset-loading logic, owned
+/// by the SDK — see [`meridian_sdk::assets`]'s module doc; only "which
+/// files, what to do if one fails" is this example's own policy). A
+/// shape whose file fails to load or decode plays silence (an all-zero
+/// `AudioTrack::Memory`) rather than aborting the whole example — one
+/// bad asset shouldn't take the other two down with it.
+fn load_music_tracks() -> (Vec<AudioTrack>, u32) {
     let mut sample_rate = 48_000;
     let tracks = SHAPES
         .iter()
-        .map(|shape| match load_track(shape.audio_file) {
-            Ok((track, rate)) => {
-                sample_rate = rate;
-                println!("{}: playing {} ({rate} Hz)", shape.name, shape.audio_file);
-                track
-            }
-            Err(err) => {
-                meridian_sdk::log_warn!("{}: running silent ({err})", shape.name);
-                Track::Memory {
-                    mono: vec![0.0; 48_000],
-                    cursor: 0,
+        .map(
+            |shape| match load_audio_track(&asset_path(shape.audio_file)) {
+                Ok((track, rate)) => {
+                    sample_rate = rate;
+                    println!("{}: playing {} ({rate} Hz)", shape.name, shape.audio_file);
+                    track
                 }
-            }
-        })
+                Err(err) => {
+                    meridian_sdk::log_warn!("{}: running silent ({err})", shape.name);
+                    AudioTrack::Memory {
+                        mono: vec![0.0; 48_000],
+                        cursor: 0,
+                    }
+                }
+            },
+        )
         .collect();
     (tracks, sample_rate)
 }
@@ -254,7 +152,7 @@ struct MusicRig {
     output: AudioOutput,
     renderer: BinauralRenderer,
     declicker: Declicker,
-    tracks: Vec<Track>,
+    tracks: Vec<AudioTrack>,
     chunk_frames: usize,
 }
 

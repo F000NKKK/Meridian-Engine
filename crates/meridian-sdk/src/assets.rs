@@ -16,9 +16,12 @@
 //! or GPU handles) or `graphics-core` (whose registries shouldn't know
 //! about file paths or decoders).
 
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 
-use meridian_asset_core::{AnyImageDecoder, Decoder, ImageData, ObjDecoder};
+use meridian_asset_core::{
+    AnyImageDecoder, AudioAsset, DecodeStrategy, Decoder, ImageData, ObjDecoder,
+    StreamingAudioDecoder, open_audio,
+};
 use meridian_graphics_core::{
     MeshHandle, MeshRegistry, MeshRegistryError, MeshSource, TextureHandle, TextureRegistry,
 };
@@ -79,6 +82,118 @@ fn compute_smooth_normals(positions: &[[f32; 3]], indices: &[u32]) -> Vec<[f32; 
         }
     }
     accum.into_iter().map(normalize).collect()
+}
+
+/// One looping mono audio source's decoded samples, however
+/// [`load_audio_track`] chose to get them — the two arms of
+/// `asset-core::AudioAsset`, exposed behind one
+/// [`next_mono_chunk`](Self::next_mono_chunk) face so a caller never
+/// needs to know which one it got. Downmixed to mono here (spatializers
+/// like `audio-core::BinauralRenderer` take one channel per source and
+/// pan it themselves) — not cached by [`AssetCache`] like textures/
+/// meshes, since a track carries its own playback cursor and two
+/// listeners of the same file need two independent cursors, not one
+/// shared handle.
+pub enum AudioTrack {
+    Memory {
+        mono: Vec<f32>,
+        cursor: usize,
+    },
+    Streamed {
+        decoder: StreamingAudioDecoder,
+        channels: usize,
+        queue: VecDeque<f32>,
+    },
+}
+
+impl AudioTrack {
+    /// Pulls the next `frames` mono samples, looping seamlessly when the
+    /// source ends (rewinding a streamed decoder, wrapping a decoded
+    /// buffer's cursor) — every track this loads is meant to loop
+    /// indefinitely, e.g. background music, not a one-shot sound effect.
+    pub fn next_mono_chunk(&mut self, frames: usize) -> Vec<f32> {
+        let mut chunk = Vec::with_capacity(frames);
+        match self {
+            AudioTrack::Memory { mono, cursor } => {
+                for _ in 0..frames {
+                    chunk.push(mono[*cursor]);
+                    *cursor = (*cursor + 1) % mono.len();
+                }
+            }
+            AudioTrack::Streamed {
+                decoder,
+                channels,
+                queue,
+            } => {
+                while chunk.len() < frames {
+                    if let Some(sample) = queue.pop_front() {
+                        chunk.push(sample);
+                        continue;
+                    }
+                    match decoder.next_block() {
+                        Ok(Some(block)) => {
+                            for frame in block.chunks_exact(*channels) {
+                                let sum: f32 = frame.iter().map(|&s| s as f32 / 32768.0).sum();
+                                queue.push_back(sum / *channels as f32);
+                            }
+                        }
+                        Ok(None) => {
+                            if decoder.rewind().is_err() {
+                                chunk.resize(frames, 0.0);
+                                break;
+                            }
+                        }
+                        Err(_) => {
+                            chunk.resize(frames, 0.0);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        chunk
+    }
+}
+
+/// Loads one audio file at `path` through `asset-core::open_audio`'s
+/// strategy-driven front door (`DecodeStrategy::default()` decodes short
+/// tracks eagerly and streams long ones — this handles both arms
+/// transparently) and downmixes it to mono. Returns the track plus its
+/// native sample rate. A short in-memory track gets its loop seam
+/// (last sample -> first) faded over ~10 ms so looping passes through
+/// silence instead of clicking; a streamed track loops via
+/// `StreamingAudioDecoder::rewind` instead, so no seam fade is needed
+/// there.
+pub fn load_audio_track(path: &str) -> Result<(AudioTrack, u32), String> {
+    let bytes = std::fs::read(path).map_err(|e| format!("failed to read {path}: {e}"))?;
+    let asset = open_audio(&bytes, &DecodeStrategy::default())
+        .map_err(|e| format!("failed to decode {path}: {e}"))?;
+    let (sample_rate, channels) = (asset.sample_rate(), asset.channels().max(1) as usize);
+    let track = match asset {
+        AudioAsset::Decoded(audio) => {
+            let mut mono: Vec<f32> = audio
+                .samples
+                .chunks_exact(channels)
+                .map(|frame| {
+                    frame.iter().map(|&s| s as f32 / 32768.0).sum::<f32>() / channels as f32
+                })
+                .collect();
+            let fade = (sample_rate as usize / 100).min(mono.len() / 2);
+            for i in 0..fade {
+                let ramp = i as f32 / fade as f32;
+                mono[i] *= ramp;
+                let end = mono.len() - 1 - i;
+                mono[end] *= ramp;
+            }
+            AudioTrack::Memory { mono, cursor: 0 }
+        }
+        AudioAsset::Streaming(decoder) => AudioTrack::Streamed {
+            decoder,
+            channels,
+            queue: VecDeque::new(),
+        },
+    };
+    Ok((track, sample_rate))
 }
 
 /// Path-keyed cache over texture/mesh loading — an application (or

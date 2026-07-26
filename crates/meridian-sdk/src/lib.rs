@@ -27,10 +27,11 @@
 //!   `AudioSubsystem::mix`'s "one opinionated path, not the pipeline
 //!   every consumer must fit" limitation).
 //! - [`assets`] — resource loading: turning a file path into a real,
-//!   cached, GPU-registered handle (textures, OBJ meshes). Deliberately
-//!   separate from [`scene`]: this module never touches scene
-//!   composition, only decode+cache+register (see its own doc comment
-//!   for the full `asset-core`/here/`resource-core` layering).
+//!   cached, GPU-registered handle (textures, OBJ meshes) or a decoded,
+//!   loopable audio source ([`AudioTrack`]/[`load_audio_track`]).
+//!   Deliberately separate from [`scene`]: this module never touches
+//!   scene composition, only decode+cache+register (see its own doc
+//!   comment for the full `asset-core`/here/`resource-core` layering).
 //! - [`scene`]/[`camera`] — windowed-app scaffolding (procedural mesh
 //!   builders, `GraphicsBase`, `FlyCamera`) every windowed application
 //!   needs identically; not domain logic, just reusable application
@@ -46,7 +47,7 @@ pub mod camera;
 pub mod pipeline;
 pub mod scene;
 
-pub use assets::{AssetCache, load_image_asset};
+pub use assets::{AssetCache, AudioTrack, load_audio_track, load_image_asset};
 pub use camera::{FlyCamera, look_at_rotor};
 pub use pipeline::{PhysicsStepStage, Pipeline, PipelineState, Stage, StageContext, StageId};
 pub use scene::{
