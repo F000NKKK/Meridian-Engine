@@ -42,6 +42,7 @@ tier 4  compute-runtime
 tier 5  gac-compute
 tier 6  graphics-core, physics-core
 tier 7  engine-core, physics-compute
+tier 8  sdk
 ```
 
 This shows *depth*, not *which crate depends on which* — two crates in
