@@ -62,7 +62,7 @@ use std::sync::Mutex;
 
 use meridian_compute_runtime::ComputeContext;
 use meridian_gac_core::generic::GaFlavor;
-use meridian_physics_core::generic::{Contact, ConstraintSolver, RigidBody};
+use meridian_physics_core::generic::{ConstraintSolver, Contact, RigidBody};
 
 /// Partitions `contacts` into color groups: no two contacts in the same
 /// group share `contact.a` or `contact.b`. Greedy, contacts assigned in
