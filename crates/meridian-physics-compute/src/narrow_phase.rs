@@ -302,4 +302,84 @@ mod tests {
             }
         }
     }
+
+    fn cuboid_at(x: f32, y: f32, half: f32) -> RigidBody<FloatFlavor> {
+        RigidBody {
+            frame: Motor3::translation(Vec3::new(x, y, 0.0)),
+            velocity: Vec3::ZERO,
+            angular_velocity: meridian_gac_core::Bivector3::ZERO,
+            mass: 1.0,
+            shape: ColliderShape::Cuboid {
+                half_extents: Vec3::new(half, half, half),
+            },
+        }
+    }
+
+    /// `GenerateContactsKernel`'s batched (one-dispatch-per-pair) output,
+    /// flattened back in pair order, must be identical to calling
+    /// `NarrowPhase::generate_contacts` once directly on the whole
+    /// `pairs` slice — including the multi-point box-box manifold case
+    /// this kernel exists for (unlike `NarrowPhaseTestPairKernel`, which
+    /// only ever sees `test_pair`'s single-point collapse).
+    #[test]
+    fn dispatch_matches_direct_generate_contacts() {
+        // A box resting flush on top of a larger box: a real face-face
+        // manifold (multiple points), not a single edge/corner contact.
+        let bodies = vec![cuboid_at(0.0, 0.0, 2.0), cuboid_at(0.0, 2.45, 0.5)];
+        let pairs = vec![(0usize, 1usize)];
+
+        let narrow_phase = NarrowPhase::<FloatFlavor>::new();
+        let expected = narrow_phase.generate_contacts(&bodies, &pairs);
+        assert!(
+            expected.len() > 1,
+            "test setup should produce a multi-point manifold, got {}",
+            expected.len()
+        );
+
+        let context = ComputeContext::new();
+        let kernel = GenerateContactsKernel::new(bodies, pairs);
+        kernel.dispatch(&context, DispatchSize::linear(kernel.pairs.len() as u32));
+
+        let got = kernel.results();
+        assert_eq!(got.len(), expected.len());
+        for (g, e) in got.iter().zip(expected.iter()) {
+            assert_eq!(g.a, e.a);
+            assert_eq!(g.b, e.b);
+            assert_eq!(g.normal, e.normal);
+            assert_eq!(g.penetration, e.penetration);
+            assert_eq!(g.point, e.point);
+            assert_eq!(g.suppress_angular_response, e.suppress_angular_response);
+        }
+    }
+
+    /// A mix of overlapping and non-overlapping pairs, and a
+    /// non-cuboid-cuboid pair (single-point `test_pair` fallback inside
+    /// `generate_contacts` itself) alongside a multi-point one — the
+    /// kernel must reproduce both shapes correctly in the same batch.
+    #[test]
+    fn dispatch_matches_direct_generate_contacts_mixed_pairs() {
+        let bodies = vec![
+            cuboid_at(0.0, 0.0, 2.0),   // 0: floor
+            cuboid_at(0.0, 2.45, 0.5),  // 1: box resting on floor (multi-point)
+            sphere_at(0.6),             // 2: overlaps nothing here directly
+            cuboid_at(100.0, 0.0, 1.0), // 3: far away, no overlap with 0
+        ];
+        let pairs = vec![(0usize, 1usize), (0, 3), (1, 2)];
+
+        let narrow_phase = NarrowPhase::<FloatFlavor>::new();
+        let expected = narrow_phase.generate_contacts(&bodies, &pairs);
+
+        let context = ComputeContext::new();
+        let kernel = GenerateContactsKernel::new(bodies, pairs);
+        kernel.dispatch(&context, DispatchSize::linear(kernel.pairs.len() as u32));
+
+        let got = kernel.results();
+        assert_eq!(got.len(), expected.len());
+        for (g, e) in got.iter().zip(expected.iter()) {
+            assert_eq!(g.a, e.a);
+            assert_eq!(g.b, e.b);
+            assert_eq!(g.point, e.point);
+            assert_eq!(g.penetration, e.penetration);
+        }
+    }
 }
