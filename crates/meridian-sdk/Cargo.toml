@@ -18,6 +18,8 @@ meridian-graphics-core = { workspace = true }
 meridian-physics-core = { workspace = true }
 meridian-audio-core = { workspace = true }
 meridian-engine-core = { workspace = true }
+meridian-dsl-core = { workspace = true }
+meridian-dsl-macros = { workspace = true }
 
 # Forwards straight to `meridian-foundation`'s own feature (the buffered
 # async file-log sink, `logging::file`) — this crate re-exports
