@@ -213,9 +213,11 @@ var shadow_sampler: sampler_comparison;
 
 // `bias` below pushes the compared depth slightly toward the light to
 // avoid "shadow acne" (a surface self-shadowing every texel due to
-// depth-map quantization) — paired with the shadow pass's own
-// front-face culling (see graphics-driver's create_shadow_pipeline)
-// for the other half of that mitigation.
+// depth-map quantization) — kept small: the shadow pass itself uses
+// ordinary back-face culling (see graphics-driver's
+// create_shadow_pipeline), not a front-face-culling offset stacked on
+// top of this, since that combination previously over-biased contact
+// shadows into a visible gap right next to a resting object.
 fn compute_shadow_factor(world_pos: vec3<f32>) -> f32 {{
     let lsuv = light_space_uv_and_depth(world_pos);
     if (lsuv.x < 0.0 || lsuv.x > 1.0 || lsuv.y < 0.0 || lsuv.y > 1.0) {{
