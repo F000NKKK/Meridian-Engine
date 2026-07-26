@@ -283,7 +283,15 @@ driver.
    blend-mode/`always_on_top` handling (both fields exist on `Material`
    but the submission bridge doesn't act on either yet — every draw is
    still opaque, depth-tested).
-4. `Runtime::tick` integration (step 9 closes).
+4. `Runtime::tick` integration — **not** blocked on vocabulary anymore
+   (steps 1-3 above cover it); blocked on an actual architecture
+   decision instead, since presenting a frame needs a windowed
+   `Device`/`Surface` (driver state) and `engine-core` deliberately
+   never depends on `graphics-driver`. `magic_figures`/`physic_figures`
+   compose `graphics-core::SceneRenderer` directly against their own
+   `Device`/`Surface` inside their own `winit` event loop today, rather
+   than through `Runtime::tick` — see docs/roadmap.md's
+   `Runtime`-adoption entry for the current state of that decision.
 5. `ui-core` (widgets/layout/input) and text rendering — separate,
    ADR-gated.
 
