@@ -65,10 +65,21 @@ interface" idea, just not the boolean containment test. Sphere-cuboid uses
 a closest-point-on-box formula; cuboid-cuboid uses the separating axis
 theorem (SAT: 6 face-normal axes + 9 edge-cross-product axes for a box
 pair) — the two techniques `roadmap.md` already anticipated for this step.
-Both produce a single contact point, matching `Contact`'s existing
-single-point shape (no multi-point manifold) — the same simplification
-`ConstraintSolver`'s doc comment already discloses for its angular
-response. `RigidBody::moment_of_inertia` for `Cuboid` is the average of
+`NarrowPhase::test_pair` collapses both to a single contact point per
+pair — the simple exact-overlap query, and the same simplification
+`ConstraintSolver`'s doc comment discloses for its angular response.
+`NarrowPhase::generate_contacts` (what `ConstraintSolver::resolve`
+should actually iterate over — see "Resting-contact stabilization"
+below) is the manifold-aware sibling: a cuboid-cuboid pair expands into
+up to 4 face-manifold contact points (`face_manifold`, one per corner of
+the incident box's near face that falls inside the reference face's
+bounds), each carrying an equal share of the pair's total penetration
+and `suppress_angular_response: true` (per-corner torque isn't a
+coupled solve — see that field's own doc comment for why). Sphere pairs
+and edge/corner cuboid contacts still collapse to `test_pair`'s single
+point inside `generate_contacts` too — only a face-face box manifold
+actually produces more than one. `RigidBody::moment_of_inertia` for
+`Cuboid` is the average of
 the box's three true principal moments, not the full anisotropic tensor —
 disclosed on that method's own doc comment, needed because
 `ConstraintSolver` only has a single scalar `inverse_inertia` to work
