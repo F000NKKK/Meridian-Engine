@@ -244,19 +244,12 @@ pub fn ground_mesh_source(half_size: f32, uv_tiles: f32) -> MeshSource {
 /// the only place that needs to name `winit`/`wgpu`-adjacent types at
 /// all).
 ///
-/// **Owns a path-keyed cache for [`load_texture`](Self::load_texture)/
-/// [`load_mesh_obj`](Self::load_mesh_obj)** — loading the same path
-/// twice (a texture shared by several materials, a mesh instanced by
-/// several entities) decodes and uploads once and returns the same
-/// handle after that, rather than re-decoding and re-uploading a
-/// duplicate GPU resource every call. This is the resource-loading
-/// convenience layer the SDK owns on top of `asset-core`'s decoders
-/// (which only turn bytes into CPU-side data, nothing path- or
-/// cache-aware) and `resource-core`'s generational handles (which
-/// `MeshRegistry`/`TextureRegistry` are already built on) — see this
-/// crate's own module doc for why that split (decode vs. cache vs.
-/// identity) lives across `asset-core`/here/`resource-core`
-/// respectively, not blurred into one type.
+/// **Owns an [`AssetCache`]** for [`load_texture`](Self::load_texture)/
+/// [`load_mesh_obj`](Self::load_mesh_obj) — thin forwarding methods so
+/// existing call sites (`base.load_texture(path)`) don't need to change;
+/// the actual decode/cache/register logic lives in [`crate::assets`],
+/// which has nothing to do with scene composition (see that module's
+/// own doc comment for why it's split out from this one).
 pub struct GraphicsBase {
     pub device: Device,
     pub surface: Surface,
@@ -266,8 +259,7 @@ pub struct GraphicsBase {
     pub meshes: MeshRegistry,
     pub materials: MaterialRegistry,
     pub textures: TextureRegistry,
-    texture_cache: HashMap<String, TextureHandle>,
-    mesh_cache: HashMap<String, MeshHandle>,
+    pub assets: AssetCache,
 }
 
 impl GraphicsBase {
@@ -284,8 +276,7 @@ impl GraphicsBase {
             meshes: MeshRegistry::new(),
             materials: MaterialRegistry::new(),
             textures: TextureRegistry::new(),
-            texture_cache: HashMap::new(),
-            mesh_cache: HashMap::new(),
+            assets: AssetCache::new(),
         }
     }
 
@@ -299,124 +290,14 @@ impl GraphicsBase {
         self.bloom = BloomPass::new(&self.device, width, height, &self.surface);
     }
 
-    /// Uploads `path` (see [`load_image_asset`]) as a GPU texture and
-    /// returns its handle — cached by `path`: a second call with the
-    /// same path returns the same handle without re-reading, decoding
-    /// or uploading the file again.
+    /// Forwards to [`AssetCache::load_texture`].
     pub fn load_texture(&mut self, path: &str) -> TextureHandle {
-        if let Some(&handle) = self.texture_cache.get(path) {
-            return handle;
-        }
-        let image = load_image_asset(path);
-        let handle = self.textures.upload(&self.device, &image);
-        self.texture_cache.insert(path.to_string(), handle);
-        handle
+        self.assets
+            .load_texture(&self.device, &mut self.textures, path)
     }
 
-    /// Loads an OBJ model file at `path` through `asset-core::ObjDecoder`
-    /// (positions + triangle indices only — see that decoder's own
-    /// module doc for the current "no `vt`/`vn` parsing" scope), derives
-    /// smooth per-vertex normals from the triangle topology (this
-    /// module's own private `compute_smooth_normals`), and registers the result as a real
-    /// [`MeshHandle`] — cached by `path`, same as
-    /// [`load_texture`](Self::load_texture). UVs are `[0.0, 0.0]` for
-    /// every vertex until the decoder itself gains `vt` support; a
-    /// textured material still renders (uniformly sampling the
-    /// texture's corner), it just won't be UV-mapped correctly yet —
-    /// disclosed, not hidden.
+    /// Forwards to [`AssetCache::load_mesh_obj`].
     pub fn load_mesh_obj(&mut self, path: &str) -> Result<MeshHandle, String> {
-        if let Some(&handle) = self.mesh_cache.get(path) {
-            return Ok(handle);
-        }
-        let bytes = std::fs::read(path).map_err(|e| format!("failed to read {path}: {e}"))?;
-        let mesh_data = ObjDecoder
-            .decode(&bytes)
-            .map_err(|e| format!("failed to decode {path}: {e}"))?;
-        let normals = compute_smooth_normals(&mesh_data.positions, &mesh_data.indices);
-        let uvs = vec![[0.0, 0.0]; mesh_data.positions.len()];
-        let source = MeshSource {
-            positions: mesh_data.positions,
-            normals,
-            uvs,
-            indices: mesh_data.indices,
-        };
-        let handle = self
-            .meshes
-            .register(source)
-            .map_err(|e: MeshRegistryError| format!("{path}: {e}"))?;
-        self.mesh_cache.insert(path.to_string(), handle);
-        Ok(handle)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// A flat quad (two triangles sharing an edge, all four corners
-    /// coplanar) — every vertex's smooth normal must come out the same
-    /// (the shared face normal), the simplest real check that
-    /// `compute_smooth_normals` actually averages contributions from
-    /// every adjacent triangle rather than only the first or last one
-    /// touching a vertex.
-    #[test]
-    fn compute_smooth_normals_agree_across_a_flat_shared_quad() {
-        let positions = vec![
-            [-1.0, 0.0, -1.0],
-            [1.0, 0.0, -1.0],
-            [1.0, 0.0, 1.0],
-            [-1.0, 0.0, 1.0],
-        ];
-        // Two triangles sharing the (0, 2) diagonal.
-        let indices = vec![0, 1, 2, 0, 2, 3];
-
-        let normals = compute_smooth_normals(&positions, &indices);
-        assert_eq!(normals.len(), 4);
-        // The exact sign depends on winding (not the point of this
-        // test); what matters is every vertex agreeing on the *same*
-        // normal, proving contributions from both triangles were
-        // actually averaged together rather than one overwriting the
-        // other.
-        let first = normals[0];
-        for normal in &normals {
-            assert!(
-                (normal[0] - first[0]).abs() < 1e-6
-                    && (normal[1] - first[1]).abs() < 1e-6
-                    && (normal[2] - first[2]).abs() < 1e-6,
-                "all four coplanar vertices must share one normal: {first:?} vs {normal:?}"
-            );
-        }
-        assert!(
-            (normal_length(first) - 1.0).abs() < 1e-6,
-            "normal must be unit length, got {first:?}"
-        );
-    }
-
-    fn normal_length(n: [f32; 3]) -> f32 {
-        (n[0] * n[0] + n[1] * n[1] + n[2] * n[2]).sqrt()
-    }
-
-    /// A single triangle: every normal must be unit-length and match the
-    /// plain cross-product direction — the base case
-    /// `compute_smooth_normals` reduces to before any averaging happens.
-    #[test]
-    fn compute_smooth_normals_matches_face_normal_for_a_single_triangle() {
-        let positions = vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 1.0]];
-        let indices = vec![0, 1, 2];
-
-        let normals = compute_smooth_normals(&positions, &indices);
-        // cross((1,0,0), (0,0,1)) = (0*1 - 0*0, 0*0 - 1*1, 1*0 - 0*0) = (0, -1, 0)
-        for normal in &normals {
-            let length =
-                (normal[0] * normal[0] + normal[1] * normal[1] + normal[2] * normal[2]).sqrt();
-            assert!(
-                (length - 1.0).abs() < 1e-6,
-                "normal must be unit length, got {normal:?}"
-            );
-            assert!(
-                (normal[1] - (-1.0)).abs() < 1e-6,
-                "expected -Y normal, got {normal:?}"
-            );
-        }
+        self.assets.load_mesh_obj(&mut self.meshes, path)
     }
 }

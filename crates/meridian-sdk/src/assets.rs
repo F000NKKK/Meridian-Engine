@@ -19,9 +19,10 @@
 use std::collections::HashMap;
 
 use meridian_asset_core::{AnyImageDecoder, Decoder, ImageData, ObjDecoder};
+use meridian_graphics_core::{
+    MeshHandle, MeshRegistry, MeshRegistryError, MeshSource, TextureHandle, TextureRegistry,
+};
 use meridian_graphics_driver::Device;
-
-use crate::{MeshHandle, MeshRegistry, MeshRegistryError, MeshSource, TextureHandle, TextureRegistry};
 
 /// Reads and decodes a real image asset file, identified by its magic
 /// bytes (never its extension — the same rule
