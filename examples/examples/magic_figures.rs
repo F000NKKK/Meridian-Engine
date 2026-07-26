@@ -46,8 +46,8 @@ use std::collections::VecDeque;
 
 use meridian_sdk::{
     AcousticMedium, AppHandler, AudioAsset, AudioOutput, BinauralRenderer, Declicker,
-    DecodeStrategy, Device, DrawBuffers, Emitter, FlyCamera, GraphicsBase, InputState, KeyCode,
-    Light, Listener, Material, Motor3, Renderable3D, Rotor, Scene3D, SpeakerLayout,
+    DecodeStrategy, Device, DrawBuffers, DspNode, Emitter, FlyCamera, GraphicsBase, InputState,
+    KeyCode, Light, Listener, Material, Motor3, Renderable3D, Rotor, Scene3D, SpeakerLayout,
     StreamingAudioDecoder, Vec3, Window, cube_mesh_source, ground_mesh_source,
     icosphere_mesh_source, look_at_rotor, open_audio, pyramid_mesh_source, run_windowed_app,
     submit_scene3d,
