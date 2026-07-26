@@ -37,7 +37,10 @@ Real, tested (not stub) as of this writing:
 Geometry              Sphere, Cuboid (ColliderShape) — capsule/mesh later
 Broad Phase           Naive O(n²) AABB sweep — spatial hash/BVH once profiling calls for it
 Narrow Phase          Sphere-sphere, sphere-cuboid, cuboid-cuboid (SAT) exact tests
-Constraint Solver     Impulse-based + positional correction against sinking
+Constraint Solver     Impulse-based + positional correction against sinking,
+                       resolve split into resolve_velocity/
+                       apply_positional_correction, restitution velocity
+                       threshold for resting contacts
 Integration           Semi-implicit Euler
 ```
 
@@ -70,6 +73,29 @@ the box's three true principal moments, not the full anisotropic tensor —
 disclosed on that method's own doc comment, needed because
 `ConstraintSolver` only has a single scalar `inverse_inertia` to work
 with, not per-axis.
+
+## Resting-contact stabilization
+
+`ConstraintSolver::resolve` originally applied both the velocity impulse
+and the positional (Baumgarte-style) correction in one call. Multi-point
+manifolds relax over several passes per tick, so calling `resolve`
+per-pass over-applied the positional push each time — visible as jitter
+and floor-clipping on settled boxes/pyramids. `resolve` is now split:
+`resolve_velocity` is safe to call once per relaxation pass,
+`apply_positional_correction` must be called exactly once per tick, after
+the relaxation loop — callers control the pass count without compounding
+position correction.
+
+Separately, `ConstraintSolver` has a `restitution_velocity_threshold`
+field (default 0.5 world-units/second, set via
+`with_restitution_velocity_threshold`): below that closing speed,
+restitution is suppressed. Without it, gravity re-applied every tick
+against a nonzero restitution produces a never-ending,
+shrinking-but-nonzero bounce on resting contacts — negligible for a
+single sphere, visible as continuous up/down micro-jitter on multi-point
+manifolds. Real impacts (well above the threshold) are unaffected.
+`examples/physic_figures` additionally sets its solver restitution to
+`0.0`, making landings fully inelastic on top of the threshold.
 
 ## `RigidBody` uses the GAC frame, not a bespoke transform
 

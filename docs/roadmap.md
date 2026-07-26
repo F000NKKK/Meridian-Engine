@@ -164,6 +164,33 @@ exponential map composed onto `Motor3`) rather than a naive "add angle"
 — the same reason `Transform` is a `Motor3` at all instead of a
 quaternion+vector pair (ADR 001). See docs/physics-design.md.
 
+`ConstraintSolver` resting-contact stabilization is also real now, after
+a jitter/clipping bug found via the `physic_figures` example (multi-point
+box/pyramid contacts visibly bouncing and sinking into the floor at
+rest): `resolve` used to apply both the velocity impulse and the
+positional (Baumgarte-style) correction in one call, so calling it more
+than once per tick — the normal relaxation-pass pattern for multi-point
+manifolds — over-applied the positional push each pass. `resolve` is now
+split into `resolve_velocity` (safe to call once per relaxation pass)
+and `apply_positional_correction` (call exactly once per tick, after the
+relaxation loop), so callers control the pass count without compounding
+position correction. Separately, gravity re-applied every tick against a
+nonzero restitution produced a never-ending, shrinking-but-nonzero
+bounce on resting contacts (imperceptible for a single sphere, visible
+as continuous up/down micro-jitter on multi-point manifolds);
+`ConstraintSolver` gained a `restitution_velocity_threshold` field
+(default 0.5 world-units/second, opt-in via
+`with_restitution_velocity_threshold`) that suppresses restitution below
+that closing speed while leaving real-impact behaviour (well above the
+threshold) unchanged, and `physic_figures` additionally sets its solver
+restitution to `0.0` so landings are fully inelastic. Covered by a
+settled-body regression test asserting height stability (no
+bounce-then-clip) across many ticks (`cargo test -p
+meridian-physics-core`, the `drop`/settling tests). See
+docs/physics-design.md's "Resting-contact stabilization" section for the
+`resolve_velocity`/`apply_positional_correction` split and the
+restitution threshold in detail.
+
 `meridian-audio-core` (the driver-independent half of step 8) is real:
 `SpeakerLayout` (mono/stereo-headphones/stereo-speakers/5.0/5.1, one VBAP-lite
 panning algorithm for all of them — see the crate's module doc for the
