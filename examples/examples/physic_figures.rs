@@ -160,9 +160,11 @@ impl PhysicsRig {
             ..Default::default()
         };
 
-        let mut physics = PhysicsSubsystem::default();
-        physics.bodies = vec![floor, sphere, cube, pyramid];
-        physics.solver = ConstraintSolver::new(SOLVER_RESTITUTION).with_friction(SOLVER_FRICTION);
+        let physics = PhysicsSubsystem {
+            bodies: vec![floor, sphere, cube, pyramid],
+            solver: ConstraintSolver::new(SOLVER_RESTITUTION).with_friction(SOLVER_FRICTION),
+            ..Default::default()
+        };
 
         // No audio in this example — `PipelineState::new` still
         // requires an `AudioSubsystem` (physics and audio are the two
