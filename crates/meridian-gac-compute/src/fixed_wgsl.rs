@@ -954,4 +954,62 @@ mod tests {
             );
         }
     }
+
+    /// A spread of angles covering multiple full turns in both
+    /// directions and every quadrant-reduction branch in
+    /// `fixed_sin_cos`/`Fixed::sin_cos` (inside `[-pi/2, pi/2]`, and past
+    /// it on both sides, forcing the `pi - reduced`/`-pi - reduced`
+    /// negate-cos branches).
+    fn interesting_angles() -> Vec<Fixed> {
+        let mut degrees = -720i32;
+        let mut angles = Vec::new();
+        while degrees <= 720 {
+            let radians = degrees as f64 * core::f64::consts::PI / 180.0;
+            angles.push(Fixed::from_num(radians));
+            degrees += 15;
+        }
+        angles
+    }
+
+    /// The whole point of the CORDIC port: every `sin_cos` computed on
+    /// the GPU must be bit-for-bit identical to the CPU
+    /// `Fixed::sin_cos` result, across the full quadrant-reduction
+    /// state machine, not just the `[-pi/2, pi/2]` core CORDIC loop.
+    #[tokio::test]
+    async fn gpu_sin_cos_matches_cpu_bit_exact() {
+        let Some((context, kernels)) = kernels_or_skip().await else {
+            return;
+        };
+        let angles = interesting_angles();
+        let gpu_results = kernels.dispatch_sin_cos(&context, &angles).await;
+        for (i, &theta) in angles.iter().enumerate() {
+            let expected = theta.sin_cos();
+            assert_eq!(
+                gpu_results[i], expected,
+                "sin_cos mismatch for {theta:?}: cpu={expected:?} gpu={:?}",
+                gpu_results[i]
+            );
+        }
+    }
+
+    /// Same bit-exactness bar for `atan2`, across every quadrant
+    /// (including the `x < 0` reflection branch) and the origin
+    /// special case.
+    #[tokio::test]
+    async fn gpu_atan2_matches_cpu_bit_exact() {
+        let Some((context, kernels)) = kernels_or_skip().await else {
+            return;
+        };
+        let values = interesting_values();
+        let pairs = all_pairs(&values);
+        let gpu_results = kernels.dispatch(&context, FixedBinaryOp::Atan2, &pairs).await;
+        for (i, &(y, x)) in pairs.iter().enumerate() {
+            let expected = y.atan2(x);
+            assert_eq!(
+                gpu_results[i], expected,
+                "atan2 mismatch for (y={y:?}, x={x:?}): cpu={expected:?} gpu={:?}",
+                gpu_results[i]
+            );
+        }
+    }
 }
