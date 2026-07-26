@@ -1,33 +1,16 @@
-//! A free-fly camera and its `look_at_rotor` helper — extracted from
-//! `lib.rs` so the camera logic and tests are their own file, keeping
-//! `lib.rs` focused on the rendering scaffolding both windowed examples
-//! share.
+//! A free-fly camera — extracted from `lib.rs` so the camera logic and
+//! tests are their own file, keeping `lib.rs` focused on the rendering
+//! scaffolding both windowed examples share.
 //!
 //! The camera uses `gac-core`'s local-forward `+X` convention (see
-//! `look_at_rotor` and [`FlyCamera::yaw`]'s own doc) and composes its
+//! [`look_at_rotor`] and [`FlyCamera::yaw`]'s own doc) and composes its
 //! view rotor as yaw-then-pitch around the yawed local-right axis,
 //! avoiding the roll problem [`look_at_rotor`] has when pitch changes.
 
 use meridian_gac_core::{Motor3, Vec3};
 use meridian_graphics_core::Camera;
+pub use meridian_graphics_core::look_at_rotor;
 use meridian_platform_core::{InputState, KeyCode};
-
-/// A camera rotor turning `gac-core`'s local-forward `+X` toward
-/// `target - eye`.
-pub fn look_at_rotor(eye: Vec3, target: Vec3) -> meridian_gac_core::Rotor {
-    use meridian_gac_core::Rotor;
-    let forward = (target - eye).normalize();
-    let local_forward = Vec3::X;
-    let cos_angle = local_forward.dot(forward).clamp(-1.0, 1.0);
-    if cos_angle > 0.9999 {
-        return Rotor::identity();
-    }
-    if cos_angle < -0.9999 {
-        return Rotor::from_axis_angle(Vec3::Y, core::f32::consts::PI);
-    }
-    let axis = local_forward.cross(forward).normalize();
-    Rotor::from_axis_angle(axis, cos_angle.acos())
-}
 
 /// A free-fly camera: WASD to move (relative to the way it's currently
 /// looking, not world axes), Space/Ctrl for up/down, mouse to look

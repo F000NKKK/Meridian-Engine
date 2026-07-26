@@ -139,6 +139,31 @@ impl Device {
         DepthTexture { texture }
     }
 
+    /// A `Depth32Float` texture usable *both* as a render target (for a
+    /// depth-only pass — see [`CommandBuffer::begin_shadow_pass`]) and
+    /// as a sampled `texture_depth_2d` (for the shadow lookup in a later
+    /// lit-shader pass) — unlike [`create_depth_texture`](Self::create_depth_texture)'s
+    /// plain [`DepthTexture`], which is only ever a render target
+    /// (nothing samples the main pass's own depth buffer). Square, since
+    /// every real caller today wants a square shadow map; nothing about
+    /// the type requires it.
+    pub fn create_shadow_map_texture(&self, size: u32) -> Texture {
+        self.0.create_texture(
+            size,
+            size,
+            wgpu::TextureFormat::Depth32Float,
+            wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+        )
+    }
+
+    /// A comparison sampler for shadow lookups — see
+    /// [`meridian_gpu_driver::Device::create_comparison_sampler`]'s own
+    /// doc for why a plain [`create_sampler`](Self::create_sampler)
+    /// can't be reused here.
+    pub fn create_comparison_sampler(&self) -> Sampler {
+        self.0.create_comparison_sampler()
+    }
+
     /// An `Rgba8UnormSrgb`, sampleable color texture — the shape a
     /// decoded `asset-core::ImageData` (already RGBA8) uploads into for
     /// use as a material's albedo. sRGB, matching this crate's swapchain
@@ -192,6 +217,122 @@ impl Device {
             texture,
             sampler,
         )
+    }
+
+    /// Like [`create_textured_bind_group`](Self::create_textured_bind_group)
+    /// plus a shadow map and its comparison sampler — the bind group a
+    /// textured, shadow-receiving lit pipeline needs (see
+    /// `graphics-core::submission`'s `lit_textured_shadow_shader_wgsl`
+    /// for the binding declarations this must match).
+    #[allow(clippy::too_many_arguments)]
+    pub fn create_textured_shadow_bind_group(
+        &self,
+        pipeline: &RenderPipeline,
+        buffer: &Buffer,
+        texture: &Texture,
+        sampler: &Sampler,
+        shadow_map: &Texture,
+        shadow_sampler: &Sampler,
+    ) -> BindGroup {
+        self.0.create_textured_shadow_bind_group(
+            &pipeline.raw.get_bind_group_layout(0),
+            buffer,
+            texture,
+            sampler,
+            shadow_map,
+            shadow_sampler,
+        )
+    }
+
+    /// Like [`create_uniform_bind_group`](Self::create_uniform_bind_group)
+    /// plus a shadow map and its comparison sampler — the bind group an
+    /// untextured (vertex-colored), shadow-receiving lit pipeline needs.
+    pub fn create_shadow_bind_group(
+        &self,
+        pipeline: &RenderPipeline,
+        buffer: &Buffer,
+        shadow_map: &Texture,
+        shadow_sampler: &Sampler,
+    ) -> BindGroup {
+        self.0.create_shadow_bind_group(
+            &pipeline.raw.get_bind_group_layout(0),
+            buffer,
+            shadow_map,
+            shadow_sampler,
+        )
+    }
+
+    /// Builds a depth-only pipeline — no fragment stage, no color
+    /// target, just the vertex shader writing depth — for
+    /// [`CommandBuffer::begin_shadow_pass`]'s shadow-map render. Shares
+    /// the same [`VertexLayout`] every mesh already uploads (position,
+    /// normal, UV — the shadow pass only needs position, but reusing one
+    /// vertex buffer/layout for both the main and shadow pass means a
+    /// mesh's buffers are never re-uploaded in a different shape just
+    /// for shadows).
+    pub fn create_shadow_pipeline(
+        &self,
+        shader: &meridian_gpu_driver::Shader,
+        vertex_entry: &str,
+        vertex_layout: &VertexLayout,
+    ) -> RenderPipeline {
+        let wgpu_attributes: Vec<wgpu::VertexAttribute> = vertex_layout
+            .attributes
+            .iter()
+            .map(|a| wgpu::VertexAttribute {
+                format: a.format.to_wgpu(),
+                offset: a.offset,
+                shader_location: a.location,
+            })
+            .collect();
+        let buffer_layout = wgpu::VertexBufferLayout {
+            array_stride: vertex_layout.stride,
+            step_mode: wgpu::VertexStepMode::Vertex,
+            attributes: &wgpu_attributes,
+        };
+
+        let raw = self
+            .0
+            .wgpu_device()
+            .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: None,
+                layout: None,
+                vertex: wgpu::VertexState {
+                    module: shader.wgpu_shader(),
+                    entry_point: Some(vertex_entry),
+                    compilation_options: wgpu::PipelineCompilationOptions::default(),
+                    buffers: &[Some(buffer_layout)],
+                },
+                fragment: None,
+                primitive: wgpu::PrimitiveState {
+                    topology: wgpu::PrimitiveTopology::TriangleList,
+                    strip_index_format: None,
+                    // Cull front faces (not back) for the shadow pass —
+                    // the standard "peter-panning" mitigation: writing
+                    // back-face depth into the shadow map pushes the
+                    // recorded occluder depth slightly *away* from the
+                    // light versus front-face depth, which is the
+                    // opposite bias direction from what
+                    // `lit_*_shadow_shader_wgsl`'s bias constant already
+                    // pushes in the main pass — the two partially
+                    // cancel rather than stacking into either
+                    // shadow-acne or peter-panning on their own.
+                    front_face: wgpu::FrontFace::Ccw,
+                    cull_mode: Some(wgpu::Face::Front),
+                    ..Default::default()
+                },
+                depth_stencil: Some(wgpu::DepthStencilState {
+                    format: wgpu::TextureFormat::Depth32Float,
+                    depth_write_enabled: Some(true),
+                    depth_compare: Some(wgpu::CompareFunction::Less),
+                    stencil: wgpu::StencilState::default(),
+                    bias: wgpu::DepthBiasState::default(),
+                }),
+                multisample: wgpu::MultisampleState::default(),
+                multiview_mask: None,
+                cache: None,
+            });
+        RenderPipeline { raw }
     }
 
     /// Builds a render pipeline: `vertex_entry`/`fragment_entry` are two
@@ -563,6 +704,37 @@ impl<'a> CommandBuffer<'a> {
                     },
                 })],
                 depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+                multiview_mask: None,
+            });
+        RenderPass { raw }
+    }
+
+    /// Opens a depth-only pass rendering into `shadow_map` (a
+    /// [`Device::create_shadow_map_texture`] result), cleared to `1.0`
+    /// first — the shadow-casting geometry pass, recorded through
+    /// [`Device::create_shadow_pipeline`], before the main
+    /// [`begin_render_pass`](Self::begin_render_pass) that samples the
+    /// result.
+    pub fn begin_shadow_pass<'pass>(
+        &'pass mut self,
+        shadow_map: &'pass meridian_gpu_driver::Texture,
+    ) -> RenderPass<'pass> {
+        let raw = self
+            .inner
+            .encoder_mut()
+            .begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: None,
+                color_attachments: &[],
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: shadow_map.view(),
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(1.0),
+                        store: wgpu::StoreOp::Store,
+                    }),
+                    stencil_ops: None,
+                }),
                 timestamp_writes: None,
                 occlusion_query_set: None,
                 multiview_mask: None,

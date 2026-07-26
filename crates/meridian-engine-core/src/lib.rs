@@ -28,28 +28,28 @@
 //! sanctioned place for that composition — it's allowed to depend on
 //! `*-driver` crates `engine-core` cannot.
 //!
-//! **`Runtime`/`SubsystemManager` adoption by real applications is
-//! partial, not complete.** `examples/physic_figures` uses
-//! `SubsystemManager` for real (its physics stepping goes through
-//! [`PhysicsSubsystem::step`], not a hand-rolled loop) — the first real
-//! proof this composition works end-to-end. `examples/magic_figures`
-//! still doesn't: it needs `audio-core::BinauralRenderer`'s real
-//! per-sample stereo synthesis, which [`AudioSubsystem::mix`]'s
-//! per-channel-gain model can't express (see that method's own doc
-//! comment for why a second, `BinauralRenderer`-shaped field wasn't
-//! bolted onto `AudioSubsystem` to force the fit). Reconciling that is
-//! `meridian-sdk`'s composable-pipeline job, not this crate's — see
-//! docs/roadmap.md's `Runtime`-adoption entry.
+//! **`Runtime`/`SubsystemManager` is now proven end-to-end.**
+//! `examples/physic_figures` drives its physics stepping through a real
+//! [`Runtime`] (via [`Runtime::tick_fixed`] — see that method's own doc
+//! for why a fixed-timestep variant exists alongside [`Runtime::tick`]),
+//! not a hand-rolled loop. `examples/magic_figures` still doesn't: it
+//! needs `audio-core::BinauralRenderer`'s real per-sample stereo
+//! synthesis, which [`AudioSubsystem::mix`]'s per-channel-gain model
+//! can't express (see that method's own doc comment for why a second,
+//! `BinauralRenderer`-shaped field wasn't bolted onto `AudioSubsystem`
+//! to force the fit) — it uses `meridian-sdk`'s composable pipeline
+//! instead, exactly the case that mechanism exists for.
 //!
-//! [`Runtime::tick`] advances physics, then recomputes audio gains from
-//! the physics-updated emitter frames, in that order — not through
-//! [`FrameScheduler`]/`task-core`'s `JobGraph`, deliberately: physics and
-//! audio are the only two real per-frame systems today, and they have a
-//! genuine sequential data dependency (audio reads positions physics just
-//! wrote), not two independent branches. Wrapping a strictly sequential
-//! two-step in a job graph would be decorative, not functional — the same
-//! reason `compute-runtime`'s `task-core` dependency isn't wired in yet
-//! (see that crate's module doc). [`FrameScheduler`] is real and tested on
+//! [`Runtime::tick`]/[`Runtime::tick_fixed`] advance physics, then
+//! recompute audio gains from the physics-updated emitter frames, in
+//! that order — not through [`FrameScheduler`]/`task-core`'s
+//! `JobGraph`, deliberately: physics and audio are the only two real
+//! per-frame systems today, and they have a genuine sequential data
+//! dependency (audio reads positions physics just wrote), not two
+//! independent branches. Wrapping a strictly sequential two-step in a
+//! job graph would be decorative, not functional — the same reason
+//! `compute-runtime`'s `task-core` dependency isn't wired in yet (see
+//! that crate's module doc). [`FrameScheduler`] is real and tested on
 //! its own terms; it becomes load-bearing once a second real per-frame
 //! system exists that's genuinely independent of physics (animation,
 //! particles, ...) to run alongside it — `meridian-sdk`'s job-graph
@@ -331,7 +331,8 @@ pub struct FrameCompleted {
 }
 
 /// Owns subsystem instances and drives the frame loop. Construct once with
-/// [`Runtime::new`], then call [`Runtime::tick`] once per frame.
+/// [`Runtime::new`], then call [`Runtime::tick`]/[`Runtime::tick_fixed`]
+/// once per frame (or once per fixed-timestep increment).
 #[derive(Debug)]
 pub struct Runtime {
     pub subsystems: SubsystemManager,
@@ -339,6 +340,11 @@ pub struct Runtime {
     pub frame_scheduler: FrameScheduler,
     clock: Clock,
     frame_index: u64,
+    /// Total simulated time, advanced only by [`tick_fixed`](Self::tick_fixed)
+    /// (`tick`'s own total comes from `self.clock` instead) — kept
+    /// separate so a caller using one method never sees the other's
+    /// notion of elapsed time bleed into its `Time::total_seconds`.
+    fixed_total_seconds: f64,
 }
 
 impl Runtime {
@@ -350,6 +356,7 @@ impl Runtime {
             frame_scheduler: FrameScheduler::default(),
             clock: Clock::new(),
             frame_index: 0,
+            fixed_total_seconds: 0.0,
         }
     }
 
@@ -367,6 +374,34 @@ impl Runtime {
         });
         self.frame_index += 1;
         time
+    }
+
+    /// Advances the simulation by exactly `dt` seconds, bypassing the
+    /// internal wall-clock entirely — for a caller that needs a fixed
+    /// physics timestep (the accumulator pattern: keep calling this with
+    /// a constant `dt` until a wall-clock-measured frame delta is
+    /// consumed) rather than [`tick`](Self::tick)'s variable,
+    /// wall-clock-driven step. `physics-core`'s solver is only validated
+    /// at a constant timestep (see `PhysicsSubsystem::step`'s own doc),
+    /// so any application with real rigid bodies needs this, not `tick`,
+    /// for its physics loop. Steps physics, publishes `FrameCompleted`,
+    /// and advances `frame_index` identically to `tick` — only the
+    /// `dt`'s source differs, and `self.clock` itself is left untouched
+    /// (a caller mixing `tick`/`tick_fixed` would otherwise see `tick`'s
+    /// next `delta_seconds` include time this method already accounted
+    /// for).
+    pub fn tick_fixed(&mut self, dt: f32) -> Time {
+        self.subsystems.step_physics(dt);
+        self.fixed_total_seconds += dt as f64;
+        self.events.publish(FrameCompleted {
+            frame_index: self.frame_index,
+            delta_seconds: dt as f64,
+        });
+        self.frame_index += 1;
+        Time {
+            delta_seconds: dt as f64,
+            total_seconds: self.fixed_total_seconds,
+        }
     }
 }
 
@@ -576,5 +611,50 @@ mod tests {
             min_height_after_landing > 0.0,
             "a settled box must not clip through the floor (min height {min_height_after_landing})"
         );
+    }
+
+    /// `tick_fixed` must actually step physics (not a no-op wrapper) and
+    /// track its own `total_seconds` independent of wall-clock `tick` —
+    /// a free-falling body's height after N fixed steps must match
+    /// calling `step_physics` directly that many times.
+    #[test]
+    fn tick_fixed_steps_physics_and_accumulates_its_own_total_seconds() {
+        let mut subsystems = SubsystemManager::new(Mixer::new(SpeakerLayout::mono()));
+        subsystems.physics.bodies.push(RigidBody {
+            frame: Motor3::translation(Vec3::new(0.0, 10.0, 0.0)),
+            mass: 1.0,
+            shape: ColliderShape::Sphere { radius: 0.5 },
+            ..Default::default()
+        });
+        let mut runtime = Runtime::new(subsystems);
+
+        const DT: f32 = 1.0 / 60.0;
+        let mut last_time = Time::default();
+        for _ in 0..30 {
+            last_time = runtime.tick_fixed(DT);
+        }
+
+        let mut reference = SubsystemManager::new(Mixer::new(SpeakerLayout::mono()));
+        reference.physics.bodies.push(RigidBody {
+            frame: Motor3::translation(Vec3::new(0.0, 10.0, 0.0)),
+            mass: 1.0,
+            shape: ColliderShape::Sphere { radius: 0.5 },
+            ..Default::default()
+        });
+        for _ in 0..30 {
+            reference.step_physics(DT);
+        }
+
+        assert_eq!(
+            runtime.subsystems.physics.bodies[0].position(),
+            reference.physics.bodies[0].position(),
+            "tick_fixed must step physics identically to calling step_physics directly"
+        );
+        assert!(
+            (last_time.total_seconds - 30.0 * DT as f64).abs() < 1e-9,
+            "tick_fixed's own total_seconds must accumulate by dt each call, got {}",
+            last_time.total_seconds
+        );
+        assert_eq!(last_time.delta_seconds, DT as f64);
     }
 }

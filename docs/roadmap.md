@@ -425,11 +425,17 @@ workspace allowed to know about every `*-core` at once, per
 dependency-rules.md rule 7), `EventSystem` is a type-erased pub/sub
 mailbox (`publish`/`drain`, frame-scoped — not a persistent log) that's
 the actual mechanism rule 7 exists to enable (subsystems communicating
-without depending on each other), and `Runtime::tick` advances physics
-then recomputes audio from the physics-updated emitter frames, publishing
-a `FrameCompleted` event each frame (`cargo test -p meridian-engine-core`).
-`FrameScheduler` (task-core's `Scheduler` at the engine layer) is real and
-tested but not used by `Runtime::tick` itself — physics and audio are
+without depending on each other), and `Runtime::tick`/`Runtime::tick_fixed`
+advance physics then recompute audio from the physics-updated emitter
+frames, publishing a `FrameCompleted` event each frame (`cargo test -p
+meridian-engine-core`). `tick_fixed(dt)` bypasses the internal
+wall-clock entirely (steps by exactly `dt`, tracks its own
+`total_seconds`) — added because `physics-core`'s solver is only
+validated at a constant timestep, so a real application's accumulator
+loop needs to call *something* with a fixed `dt`, not `tick`'s
+variable wall-clock-driven one. `FrameScheduler` (task-core's
+`Scheduler` at the engine layer) is real and tested but not used by
+`Runtime::tick`/`tick_fixed` themselves — physics and audio are
 sequentially data-dependent today, not independent branches, so running
 them through a job graph would be decorative; see
 docs/threading-model.md's `FrameScheduler` section for why, and what makes
@@ -442,56 +448,69 @@ real windowed `Device`/`Surface`, which is driver state, and
 `engine-core` deliberately never depends on `graphics-driver` (only
 `graphics-core` — see dependency-rules.md's edge list; `engine-core`
 does list `graphics-core` as an allowed dependency, per rule 7, it's
-just not used yet). `Runtime::tick` is also a plain synchronous method
-call today, with no per-frame hook for "here's this frame's `Surface`
-to submit into."
+just not used yet); an application (`meridian-sdk`, which is allowed to
+depend on `*-driver` crates) calls `Runtime::tick_fixed` for physics and
+does its own render submission separately, the same split
+`physic_figures` uses today.
 
-**`Runtime`/`SubsystemManager` are real and tested in isolation
-(`cargo test -p meridian-engine-core`) but not proven end-to-end —
-no example in the workspace actually uses them.** This document used to
-claim `magic_figures`/`physic_figures` "compose `Runtime`" for
-physics/audio timing; that was aspirational, not true of the code:
-both examples hand-roll their own physics stepping (a `PhysicsRig`-style
-wrapper calling `physics-core` directly, timed off `std::time::Instant`,
-not `platform-core::Clock`/`Time`) and their own audio wiring
-(`audio-core::AudioOutput` opened and fed by hand), never importing
-`meridian_engine_core` at all. This is real, open follow-up — not a
-documentation nit — since it means the one crate whose whole job is
-cross-subsystem orchestration (rule 7) has never actually orchestrated a
-real application. Migrating at least one example (`physic_figures` is
-the simpler candidate — no audio) onto `Runtime`/`SubsystemManager` for
-real, replacing its hand-rolled physics wrapper, is the concrete next
-step before any further `Runtime` API (a render hook, an SDK facade
-crate, ...) gets designed against a pattern that's never actually been
-exercised.
+**`Runtime`/`SubsystemManager` are now proven end-to-end, not just
+tested in isolation.** `examples/physic_figures` drives its physics
+stepping through a real `Runtime` (`Runtime::tick_fixed` inside a
+fixed-timestep accumulator, replacing the `meridian_sdk::pipeline::Pipeline`
+it used before that) — the first real application in this workspace to
+actually construct and step a `Runtime`. `examples/magic_figures` still
+doesn't go through `Runtime`: it needs `audio-core::BinauralRenderer`'s
+real per-sample stereo synthesis, which `AudioSubsystem::mix`'s
+per-channel-gain model can't express, so it hand-assembles its own
+audio rig instead (see `meridian_sdk::pipeline`'s own module doc for
+why that's the documented escape hatch, not a gap). `meridian_sdk::pipeline::Pipeline`
+itself remains real, tested (`cargo test -p meridian-sdk`), and
+available for exactly that kind of custom multi-stage composition — it
+just isn't `physic_figures`' driver anymore, since a single fixed
+physics step is `Runtime`'s job now that `Runtime` has the API for it.
 
-The remaining incomplete areas in `graphics-core`'s own lighting/
-post-processing model are specifically: image-based/environment
-lighting (`Scene3D::ambient` is a flat constant-color fill, not real
-IBL — see that field's own doc comment), shadow mapping (the Blinn-Phong
-lit pipelines have no shadow term yet), and HDR values above `1.0`
-feeding bloom's bright-pass beyond what it already does (see
-`bloom`'s own module doc) — not a blanket "every other crate is a
-scaffold." Audio is wired end-to-end:
+**Shadow mapping and hemisphere ambient are real now, not future
+work.** `Scene3D::ambient_ground`/`ambient_sky` replace the old flat
+`ambient` fill — a two-color hemisphere gradient lerped by each
+fragment's world-normal.y, a disclosed lightweight step toward real
+image-based lighting (a full convolved-cubemap IBL pipeline is still
+future work, just no longer the *only* option). The first
+`Light::Directional` in a scene's `lights` now casts a real shadow: a
+depth-only pass (`SceneRenderer::render_shadow_pass`, `graphics-driver`'s
+new `create_shadow_map_texture`/`create_shadow_pipeline`/
+`begin_shadow_pass`) renders occluder depth into a
+`Depth32Float` shadow map from the light's own orthographic view (see
+`directional_shadow_camera` — a fixed, scene-independent shadow volume,
+not a per-frame frustum-fit cascade, the disclosed simplification), and
+both lit shader flavors (`lit_shader_wgsl`/`lit_textured_shader_wgsl`)
+sample it via `textureSampleCompare` (hardware PCF via a comparison
+sampler) with a small constant bias, combined with front-face culling
+in the shadow pass itself, against "shadow acne." Proven in both
+examples (`physic_figures`/`magic_figures`, via
+`meridian_examples::render::render_frame`) running many frames without
+a `wgpu` validation error — `directional_shadow_camera`'s own matrix
+math (depth ordering, scene-center centering) is unit-tested in
+isolation (`cargo test -p meridian-graphics-core`), the same
+"unverifiable-without-a-window, so windowed examples are the proof"
+convention this crate's own test module already documents for
+`SceneRenderer` itself. **Not yet done:** a real convolved-environment-map
+IBL pipeline, shadow cascades/frustum-fitting, soft point-light
+shadows, and HDR values above `1.0` feeding bloom's bright-pass beyond
+what it already does (see `bloom`'s own module doc) — not a blanket
+"every other crate is a scaffold." Audio is wired end-to-end:
 `audio-core::AudioOutput` + `Mixer::render_interleaved` bridge mixed
 samples into `audio-driver`'s real stream (the declared
-core→own-driver edge, used for the first time). **Not** composed with
-`engine-core::Runtime`, though, despite the composition pattern this
-document used to describe here: `magic_figures` and `physic_figures`
-each hand-roll their own physics/audio state directly against
-`physics-core`/`audio-core` (a `PhysicsRig`-style wrapper, `AudioOutput`
-wired by hand) rather than going through `SubsystemManager`/
-`Runtime::tick`. `Runtime` itself is real and tested in isolation
-(`cargo test -p meridian-engine-core`) but genuinely unproven end-to-end
-— no example in the workspace uses it today; see the `Runtime`-adoption
-entry below for the follow-up. `magic_figures` is the full loop: a
-windowed scene with three orbiting shapes (sphere, cube, pyramid), each
-emitting its own decoded music track (a different container/codec
-format per shape) while the `FlyCamera` pose doubles as the shared
-`audio-core` listener (same local-forward-`+X` `Motor3` convention), so
-panning and distance attenuation track the camera live; `physic_figures`
-runs the same shapes as real `physics-core` rigid bodies settling onto a
-textured floor, sharing `examples::scene_base`'s `GraphicsBase` with
+core→own-driver edge, used for the first time), and — for
+`physic_figures`, which has no audio needs of its own — through
+`engine-core::Runtime`/`SubsystemManager` for real, per the entry
+above. `magic_figures` is the full audio+graphics loop: a windowed
+scene with three orbiting shapes (sphere, cube, pyramid), each emitting
+its own decoded music track (a different container/codec format per
+shape) while the `FlyCamera` pose doubles as the shared `audio-core`
+listener (same local-forward-`+X` `Motor3` convention), so panning and
+distance attenuation track the camera live; `physic_figures` runs the
+same shapes as real `physics-core` rigid bodies settling onto a
+textured floor, sharing `meridian_sdk::scene::GraphicsBase` with
 `magic_figures`. Every crate not named above
 has a real, tested implementation; see each crate's own section above
 for specifics. This staged order is intentional — see "Why implementation
@@ -593,12 +612,18 @@ priority before writing implementations is keeping that document and the
     game-specific tag composing with SDK built-ins in one document).
     Per-frame *behavior* (orbit/spin motion, the fixed-timestep physics
     accumulator) stays genuine Rust — the DSL describes composition
-    only, per its documented scope. **Not yet done:** an app-shell
-    schema (window title, logging, crash-report config) was considered
-    and deliberately deferred; `meridian-engine-core::Runtime`/
-    `SubsystemManager` are still unproven end-to-end — `physic_figures`
-    goes through `meridian-sdk::pipeline` directly (built on the same
-    `PhysicsSubsystem` type), not through `Runtime`.
+    only, per its documented scope. `physic_figures` now drives its
+    physics through `meridian-engine-core::Runtime`/`SubsystemManager`
+    for real (`Runtime::tick_fixed`, see that crate's "Current state"
+    entry above) — no longer an open item. Real shadow mapping and
+    hemisphere ambient lighting in `graphics-core` are also done now
+    (see the "shadow mapping and hemisphere ambient" entry above) — no
+    longer an open item either. **Not yet done:** an app-shell schema
+    (window title, logging, crash-report config) was considered and
+    deliberately deferred; a `.mel` scripting extension (Razor-style
+    embedded scripts, hot-reloadable without a Rust rebuild) — see
+    [ADR 015](adr/015-extensible-scene-dsl.md)'s
+    own "not yet" note.
 
 ## Explicitly out of scope for now
 

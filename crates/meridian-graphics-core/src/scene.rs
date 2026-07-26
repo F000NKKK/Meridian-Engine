@@ -156,16 +156,27 @@ impl Camera2D {
 }
 
 /// The world: a camera, its visible [`Renderable3D`]s, and the lights
-/// shading them. `ambient` is a flat constant-color fill light (not
-/// image-based/environment lighting — that's future work), applied even
-/// where no [`Light`] reaches; a scene with `lights` empty and
-/// `ambient` zero renders pure black, same as a real unlit room.
+/// shading them. `ambient_ground`/`ambient_sky` are a two-color
+/// hemisphere fill (lerped by each fragment's world-space normal.y in
+/// [`crate::submission`]'s shared shading code) — a lightweight,
+/// disclosed step toward real image-based/environment lighting (a full
+/// convolved-cubemap IBL pipeline is still future work), applied even
+/// where no [`Light`] reaches; a scene with `lights` empty and both
+/// ambient colors zero renders pure black, same as a real unlit room.
+/// The first [`Light::Directional`] in `lights` (if any) casts real
+/// shadows — see [`crate::submission::SceneRenderer::render_shadow_pass`]'s
+/// own doc comment for the fixed-volume shadow map this feeds.
 #[derive(Debug, Clone)]
 pub struct Scene3D {
     pub camera: crate::Camera,
     pub renderables: Vec<Renderable3D>,
     pub lights: Vec<Light>,
-    pub ambient: [f32; 3],
+    /// Ambient color a downward-facing surface (`normal.y = -1`)
+    /// receives — the color light bouncing off the ground would be.
+    pub ambient_ground: [f32; 3],
+    /// Ambient color an upward-facing surface (`normal.y = 1`)
+    /// receives — the color of the sky/open air.
+    pub ambient_sky: [f32; 3],
 }
 
 impl Default for Scene3D {
@@ -174,9 +185,11 @@ impl Default for Scene3D {
             camera: crate::Camera::default(),
             renderables: Vec::new(),
             lights: Vec::new(),
-            // A small flat fill so an unlit-by-Light scene isn't pure
-            // black by default — tune per-scene via the field directly.
-            ambient: [0.03, 0.03, 0.03],
+            // A small flat-ish fill (sky barely brighter than ground) so
+            // an unlit-by-Light scene isn't pure black by default — tune
+            // per-scene via the fields directly.
+            ambient_ground: [0.025, 0.025, 0.03],
+            ambient_sky: [0.035, 0.035, 0.045],
         }
     }
 }

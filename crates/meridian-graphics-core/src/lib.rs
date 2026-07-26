@@ -4,7 +4,7 @@ use std::collections::{HashMap, VecDeque};
 
 use meridian_gac_core::float_ga::{FloatFlavor, mat4_mul};
 use meridian_gac_core::generic::Shape;
-use meridian_gac_core::{ConvexVolume, Motor3, Plane, Projection, Vec3};
+use meridian_gac_core::{ConvexVolume, Motor3, Plane, Projection, Rotor, Vec3};
 use meridian_resource_core::ResourceId;
 
 pub mod bloom;
@@ -19,7 +19,8 @@ pub use scene::{
 };
 pub use submission::{
     DrawBuffers, MAX_LIGHTS, MaterialRegistry, MeshRegistry, MeshRegistryError, MeshSource,
-    SceneRenderer, TEXTURED_SHADER_WGSL, TextureRegistry, UNLIT_SHADER_WGSL, submit_scene3d,
+    SHADOW_VOLUME_HALF_EXTENT, SceneRenderer, TEXTURED_SHADER_WGSL, TextureRegistry,
+    UNLIT_SHADER_WGSL, directional_shadow_camera, submit_scene3d,
 };
 
 /// Marker types distinguishing `ResourceId`s of different graphics resource
@@ -198,6 +199,27 @@ const LOCAL_TO_VIEW_REMAP: [[f32; 4]; 4] = [
     [1.0, 0.0, 0.0, 0.0],
     [0.0, 0.0, 0.0, 1.0],
 ];
+
+/// The `Rotor` whose local-forward `+X` axis (`gac-core`'s convention,
+/// see `LOCAL_TO_VIEW_REMAP`'s doc comment) points from `eye` toward
+/// `target` — the shared "aim this frame at that point" building block
+/// [`Camera::frame`]/a directional light's frame both need. Falls back
+/// to a fixed rotation when `eye == target` or `target` is exactly
+/// behind `eye`'s forward axis (an undefined/degenerate cross product
+/// otherwise) rather than producing a `NaN` rotor.
+pub fn look_at_rotor(eye: Vec3, target: Vec3) -> Rotor {
+    let forward = (target - eye).normalize();
+    let local_forward = Vec3::X;
+    let cos_angle = local_forward.dot(forward).clamp(-1.0, 1.0);
+    if cos_angle > 0.9999 {
+        return Rotor::identity();
+    }
+    if cos_angle < -0.9999 {
+        return Rotor::from_axis_angle(Vec3::Y, core::f32::consts::PI);
+    }
+    let axis = local_forward.cross(forward).normalize();
+    Rotor::from_axis_angle(axis, cos_angle.acos())
+}
 
 /// A camera's view + projection: `frame` is the camera's world transform
 /// (local-forward `+X`, see `LOCAL_TO_VIEW_REMAP`'s doc comment below),

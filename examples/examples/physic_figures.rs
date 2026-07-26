@@ -1,8 +1,14 @@
 //! Real rigid-body physics: a sphere, a cube and a pyramid dropped above
 //! a textured floor and stepped every frame through a real
-//! `meridian_sdk::pipeline::Pipeline` — a single `"physics"` stage
-//! (`PhysicsStepStage`, a thin wrapper around
-//! `PhysicsSubsystem::step`) run through `Pipeline::tick`.
+//! `meridian_sdk::Runtime` (`engine-core`'s subsystem manager +
+//! frame-scheduler, via [`Runtime::tick_fixed`]) — the first proof in
+//! this workspace that `Runtime`/`SubsystemManager` composes end-to-end
+//! in a real windowed application, not just in `engine-core`'s own unit
+//! tests (see that crate's own module doc). `meridian_sdk::pipeline::Pipeline`
+//! remains available and tested for applications that need a custom
+//! multi-stage composition (`magic_figures`' hand-assembled audio rig is
+//! exactly that case) — this example just no longer needs it, since a
+//! single fixed-timestep physics step *is* `Runtime`'s job.
 //!
 //! **Scene composition itself lives in
 //! `assets/scenes/physic_figures.mel`**, parsed through
@@ -43,11 +49,10 @@
 use meridian_examples::paths::asset_path;
 use meridian_examples::scene_loader::load_dsl_scene;
 use meridian_sdk::dsl;
-use meridian_sdk::pipeline::{PhysicsStepStage, Pipeline, PipelineState};
 use meridian_sdk::{
-    AppHandler, AudioSubsystem, ColliderShape, ConstraintSolver, Device, FlyCamera, GraphicsBase,
-    InputState, KeyCode, Light, Material, Mixer, Motor3, PhysicsSubsystem, Renderable3D, RigidBody,
-    Scene3D, SpeakerLayout, Vec3, Window, cube_mesh_source, ground_mesh_source,
+    AppHandler, ColliderShape, ConstraintSolver, Device, FlyCamera, GraphicsBase, InputState,
+    KeyCode, Light, Material, Mixer, Motor3, PhysicsSubsystem, Renderable3D, RigidBody, Runtime,
+    Scene3D, SpeakerLayout, SubsystemManager, Vec3, Window, cube_mesh_source, ground_mesh_source,
     icosphere_mesh_source, look_at_rotor, pyramid_mesh_source, run_windowed_app,
 };
 
@@ -196,20 +201,20 @@ fn mesh_render_frame(entity: &SceneEntity, body_frame: Motor3) -> Motor3 {
     }
 }
 
-/// Fixed-timestep driver around a real `meridian_sdk::pipeline::Pipeline`
-/// running one `"physics"` stage — the physics pipeline itself
-/// (job-graph dispatch, fine-grained locking, and — inside
-/// `PhysicsStepStage` — integrate/relax-contacts/resolve) is no longer
-/// hand-rolled here; see `PhysicsSubsystem::step`'s own doc comment for
-/// the multi-point-manifold relaxation it does internally. What's left
-/// at this layer is deliberately application policy, not engine
-/// plumbing: the render loop's `frame_dt` varies with frame rate, but
-/// the solver is only validated at a constant [`PHYSICS_DT`], so this
-/// accumulates wall-clock time and calls [`Pipeline::tick`] once per
-/// whole [`PHYSICS_DT`] increment, capped so a stall (e.g. window drag)
-/// can't spiral into running hundreds of catch-up ticks at once.
+/// Fixed-timestep driver around a real `meridian_sdk::Runtime` — the
+/// physics stepping itself (integrate/relax-contacts/resolve) is no
+/// longer hand-rolled here; see `PhysicsSubsystem::step`'s own doc
+/// comment for the multi-point-manifold relaxation it does internally.
+/// What's left at this layer is deliberately application policy, not
+/// engine plumbing: the render loop's `frame_dt` varies with frame
+/// rate, but the solver is only validated at a constant [`PHYSICS_DT`]
+/// (see `Runtime::tick_fixed`'s own doc for why that method exists
+/// instead of `Runtime::tick`'s wall-clock-driven step), so this
+/// accumulates wall-clock time and calls [`Runtime::tick_fixed`] once
+/// per whole [`PHYSICS_DT`] increment, capped so a stall (e.g. window
+/// drag) can't spiral into running hundreds of catch-up ticks at once.
 struct PhysicsRig {
-    pipeline: Pipeline,
+    runtime: Runtime,
     accumulator: f32,
 }
 
@@ -225,37 +230,34 @@ impl PhysicsRig {
             })
             .collect();
 
-        let physics = PhysicsSubsystem {
-            bodies,
-            solver: ConstraintSolver::new(SOLVER_RESTITUTION).with_friction(SOLVER_FRICTION),
-            ..Default::default()
+        // No audio in this example — `SubsystemManager::new` still
+        // requires a `Mixer` (physics and audio are the two subsystems
+        // every `Runtime` owns, per `engine-core`'s own module doc),
+        // left unused here.
+        let subsystems = SubsystemManager {
+            physics: PhysicsSubsystem {
+                bodies,
+                solver: ConstraintSolver::new(SOLVER_RESTITUTION).with_friction(SOLVER_FRICTION),
+                ..Default::default()
+            },
+            ..SubsystemManager::new(Mixer::new(SpeakerLayout::mono()))
         };
 
-        // No audio in this example — `PipelineState::new` still
-        // requires an `AudioSubsystem` (physics and audio are the two
-        // independently-lockable pieces every pipeline shares, per
-        // `meridian_sdk::pipeline`'s own module doc), left unused here.
-        let audio = AudioSubsystem::new(Mixer::new(SpeakerLayout::mono()));
-        let state = PipelineState::new(physics, audio);
-
-        let mut pipeline = Pipeline::new(state, 4);
-        pipeline.add_stage("physics", &[], PhysicsStepStage::new(PHYSICS_DT));
-
         Self {
-            pipeline,
+            runtime: Runtime::new(subsystems),
             accumulator: 0.0,
         }
     }
 
     fn bodies(&self) -> Vec<RigidBody> {
-        self.pipeline.state().physics().bodies.clone()
+        self.runtime.subsystems.physics.bodies.clone()
     }
 
     fn step(&mut self, frame_dt: f32) {
         self.accumulator += frame_dt;
         let mut steps = 0;
         while self.accumulator >= PHYSICS_DT && steps < 8 {
-            self.pipeline.tick();
+            self.runtime.tick_fixed(PHYSICS_DT);
             self.accumulator -= PHYSICS_DT;
             steps += 1;
         }
@@ -340,7 +342,8 @@ impl AppHandler for App {
                 color: [1.0, 0.96, 0.9],
                 intensity: 1.1,
             }],
-            ambient: [0.1, 0.1, 0.12],
+            ambient_ground: [0.08, 0.08, 0.09],
+            ambient_sky: [0.12, 0.12, 0.15],
             ..Scene3D::default()
         };
 

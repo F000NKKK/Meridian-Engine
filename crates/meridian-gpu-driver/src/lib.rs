@@ -466,6 +466,108 @@ impl Device {
         BindGroup { raw }
     }
 
+    /// A comparison sampler — the only kind WGSL's `textureSampleCompare`
+    /// accepts (a plain [`create_sampler`](Self::create_sampler)/
+    /// [`create_clamp_sampler`](Self::create_clamp_sampler) sampler
+    /// can't be bound to a `sampler_comparison` binding; `wgpu` rejects
+    /// the mismatch at bind-group-creation time). `LessEqual`: a
+    /// fragment is lit when its light-space depth is less than or equal
+    /// to the shadow map's stored depth at that texel — the standard
+    /// shadow-mapping comparison (see `graphics-core::submission`'s
+    /// shadow-lookup WGSL for the bias that keeps this from
+    /// self-shadowing every lit surface, "shadow acne").
+    pub fn create_comparison_sampler(&self) -> Sampler {
+        let raw = self.device.create_sampler(&wgpu::SamplerDescriptor {
+            label: None,
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            address_mode_w: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            mipmap_filter: wgpu::MipmapFilterMode::Nearest,
+            compare: Some(wgpu::CompareFunction::LessEqual),
+            ..Default::default()
+        });
+        Sampler { raw }
+    }
+
+    /// [`create_texture_bind_group`](Self::create_texture_bind_group)
+    /// plus a shadow map at `@binding(3)` and its comparison sampler at
+    /// `@binding(4)` — the shape a textured, shadow-receiving lit shader
+    /// needs (uniform, albedo texture, albedo sampler, shadow map,
+    /// shadow sampler, in that binding order).
+    #[allow(clippy::too_many_arguments)]
+    pub fn create_textured_shadow_bind_group(
+        &self,
+        pipeline_layout: &wgpu::BindGroupLayout,
+        buffer: &Buffer,
+        texture: &Texture,
+        sampler: &Sampler,
+        shadow_map: &Texture,
+        shadow_sampler: &Sampler,
+    ) -> BindGroup {
+        let raw = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: None,
+            layout: pipeline_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: buffer.raw.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureView(&texture.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::Sampler(&sampler.raw),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::TextureView(&shadow_map.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: wgpu::BindingResource::Sampler(&shadow_sampler.raw),
+                },
+            ],
+        });
+        BindGroup { raw }
+    }
+
+    /// Like [`create_textured_shadow_bind_group`](Self::create_textured_shadow_bind_group)
+    /// but without an albedo texture/sampler — the shape an *untextured*
+    /// (vertex-colored) shadow-receiving lit shader needs: uniform at
+    /// `@binding(0)`, shadow map at `@binding(1)`, shadow sampler at
+    /// `@binding(2)`.
+    pub fn create_shadow_bind_group(
+        &self,
+        pipeline_layout: &wgpu::BindGroupLayout,
+        buffer: &Buffer,
+        shadow_map: &Texture,
+        shadow_sampler: &Sampler,
+    ) -> BindGroup {
+        let raw = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: None,
+            layout: pipeline_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: buffer.raw.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureView(&shadow_map.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::Sampler(&shadow_sampler.raw),
+                },
+            ],
+        });
+        BindGroup { raw }
+    }
+
     /// Opens a new [`CommandBuffer`] for recording. Nothing reaches the
     /// GPU until [`CommandBuffer::submit`] is called.
     pub fn create_command_buffer(&self) -> CommandBuffer<'_> {

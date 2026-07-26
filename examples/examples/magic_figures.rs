@@ -450,7 +450,8 @@ impl AppHandler for App {
         let scene = Scene3D {
             renderables,
             lights,
-            ambient: [0.05, 0.05, 0.06],
+            ambient_ground: [0.04, 0.04, 0.05],
+            ambient_sky: [0.06, 0.06, 0.08],
             ..Scene3D::default()
         };
 
