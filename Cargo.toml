@@ -34,7 +34,7 @@ meridian-physics-core = { path = "crates/meridian-physics-core", version = "0.22
 meridian-physics-compute = { path = "crates/meridian-physics-compute", version = "0.3" }
 meridian-audio-core = { path = "crates/meridian-audio-core", version = "0.19" }
 meridian-engine-core = { path = "crates/meridian-engine-core", version = "0.26" }
-meridian-sdk = { path = "crates/meridian-sdk", version = "0.1" }
+meridian-sdk = { path = "crates/meridian-sdk", version = "0.2" }
 
 # External dependencies shared by more than one crate go here too, same
 # reasoning: one place to bump a version instead of drifting per-crate

@@ -5,7 +5,7 @@
 //! are covered by [`crate::rigid_body`]/[`crate::narrow_phase`]; this
 //! module and [`crate::constraint_solver`] close out the remaining two).
 //!
-//! **Reuses [`RigidBody::aabb`] and [`gac_core::generic::Aabb::overlaps`]
+//! **Reuses [`RigidBody::aabb`] and `gac_core::generic::Aabb::overlaps`
 //! directly — does not reimplement the bounding-box math.** Per
 //! CLAUDE.md's "don't drag another crate's logic into your own" rule,
 //! bounding-box geometry belongs to `gac-core`, and which AABB a body
