@@ -1,8 +1,7 @@
-//! Batch [`ConstraintSolver`](meridian_physics_core::generic::ConstraintSolver)
-//! through `compute-runtime` — the last of the three "aren't batched
-//! yet" items, and the hardest, which is exactly why it was left for
-//! last (see [`crate::broad_phase`]/[`crate::narrow_phase`] for the
-//! other two).
+//! Batch [`ConstraintSolver`] through `compute-runtime` — the last of
+//! the three "aren't batched yet" items, and the hardest, which is
+//! exactly why it was left for last (see [`crate::broad_phase`]/
+//! [`crate::narrow_phase`] for the other two).
 //!
 //! **Why this one is different from every other kernel in this crate.**
 //! `Integrator::step`/`NarrowPhase::test_pair` are embarrassingly
