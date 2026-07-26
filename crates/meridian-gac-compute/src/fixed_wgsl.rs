@@ -1007,7 +1007,9 @@ mod tests {
         };
         let values = moderate_values();
         let pairs = all_pairs(&values);
-        let gpu_results = kernels.dispatch(&context, FixedBinaryOp::Atan2, &pairs).await;
+        let gpu_results = kernels
+            .dispatch(&context, FixedBinaryOp::Atan2, &pairs)
+            .await;
         for (i, &(y, x)) in pairs.iter().enumerate() {
             let expected = y.atan2(x);
             assert_eq!(
