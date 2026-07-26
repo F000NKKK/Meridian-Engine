@@ -2,29 +2,33 @@
 //! a textured floor and stepped every frame through a real
 //! `meridian_sdk::pipeline::Pipeline` — a single `"physics"` stage
 //! (`PhysicsStepStage`, a thin wrapper around
-//! `PhysicsSubsystem::step`) run through `Pipeline::tick`. This
-//! example's own [`PhysicsRig`] only adds a fixed-timestep accumulator
-//! around it (see [`PhysicsRig`]'s own doc comment for why that split);
-//! the pipeline mechanism itself — job-graph dispatch, fine-grained
-//! locking — is `meridian-sdk`'s, not hand-rolled here, and this is the
-//! first real proof it works end-to-end in an actual application (it
-//! previously had zero callers outside its own unit tests). Each body's
-//! resulting `Motor3` frame feeds straight to its `Renderable3D` — no
-//! separate "visual" transform, physics *is* the transform.
+//! `PhysicsSubsystem::step`) run through `Pipeline::tick`.
+//!
+//! **Scene composition itself lives in
+//! `assets/scenes/physic_figures.dsl`**, parsed through
+//! `meridian_sdk::dsl` — every entity's position, mesh shape, texture
+//! and collider is data, not Rust code; this file only reads it once
+//! ([`load_scene`]) and turns it into real physics bodies
+//! ([`PhysicsRig::new`]) and renderables ([`AppHandler::on_ready`]).
+//! What stays genuine Rust logic (per this workspace's rule that the
+//! DSL describes composition, not behavior): the fixed-timestep
+//! accumulator ([`PhysicsRig::step`]), the free-fly camera, and each
+//! shape's own render-frame quirk (the floor mesh is a thin visual quad
+//! rendered at identity while its *collider* is a thicker slab; the
+//! pyramid mesh's origin is its base center while its *collider* is
+//! centered on the body — both disclosed per-shape offsets in
+//! [`mesh_render_frame`], the same simplification the hand-written
+//! version had, just no longer duplicated as four hardcoded literals).
 //!
 //! `physics-core` only has two collider shapes today, `Sphere` and
-//! `Cuboid` (see `ColliderShape`) — there is no dedicated pyramid
-//! collider. The pyramid body uses a `Cuboid` collider sized to roughly
-//! bound it (a disclosed simplification: it settles and rests like a
-//! box, while the mesh drawn at its frame is the real pyramid shape) —
-//! see [`pyramid_collider_half_extents`].
+//! `Cuboid` — there is no dedicated pyramid collider, so the DSL scene
+//! gives the pyramid entity a `Cuboid` collider roughly bounding its
+//! mesh (it settles and rests like a box).
 //!
 //! Shares its base with `magic_figures` (`meridian_sdk::scene`'s
-//! `GraphicsBase`): same mesh builders, same textures (reused here for
-//! the physics bodies too — same cube/sphere/pyramid files as
-//! `magic_figures`, plus the same floor texture), same lighting. No
-//! bloom emissive glow here — these are ordinary lit, textured physics
-//! props, not the "magic" glowing shapes.
+//! `GraphicsBase`): same mesh builders, same lighting model. No bloom
+//! emissive glow here — these are ordinary lit, textured physics props,
+//! not the "magic" glowing shapes.
 //!
 //! This example depends on `meridian-sdk` alone (plus `tokio`, for its
 //! own async GPU-device handshake) — every type below is reached
@@ -35,6 +39,7 @@
 //! Run with:
 //!   ./build.sh run physic_figures
 
+use meridian_sdk::dsl;
 use meridian_sdk::pipeline::{PhysicsStepStage, Pipeline, PipelineState};
 use meridian_sdk::{
     AppHandler, AudioSubsystem, ColliderShape, ConstraintSolver, Device, DrawBuffers, FlyCamera,
@@ -45,27 +50,14 @@ use meridian_sdk::{
 };
 
 /// Joins `relative` onto this crate's own `CARGO_MANIFEST_DIR` — asset
-/// paths are relative to `examples/`, and `meridian_sdk::load_image_asset`
-/// deliberately doesn't assume any particular crate's manifest
-/// directory (it's a shared dependency of every application), so each
-/// caller resolves its own path before handing it a plain, directly
-/// openable path.
+/// paths are relative to `examples/`, and `meridian_sdk`'s asset/scene
+/// loaders deliberately don't assume any particular crate's manifest
+/// directory (they're a shared dependency of every application), so
+/// each caller resolves its own path before handing them a plain,
+/// directly openable path.
 fn asset_path(relative: &str) -> String {
     format!("{}/{}", env!("CARGO_MANIFEST_DIR"), relative)
 }
-
-const FLOOR_HALF_EXTENT: f32 = 14.0;
-/// Floor collider is a thin static `Cuboid` slab, top surface at `y =
-/// 0` (matching the rendered floor quad) — centering it at `-FLOOR_HALF_THICKNESS`
-/// puts its top face exactly there.
-const FLOOR_HALF_THICKNESS: f32 = 0.5;
-
-const SPHERE_RADIUS: f32 = 0.6;
-const CUBE_HALF_EXTENT: f32 = 0.6;
-/// The pyramid's rendered mesh (see `pyramid_mesh_source`): base
-/// half-extent and height below.
-const PYRAMID_BASE_HALF_EXTENT: f32 = 0.65;
-const PYRAMID_HEIGHT: f32 = 1.2;
 
 const PHYSICS_DT: f32 = 1.0 / 60.0;
 /// `0`: a settled body must not bounce at all. Combined with
@@ -80,28 +72,145 @@ const SOLVER_RESTITUTION: f32 = 0.0;
 /// across the floor indefinitely instead of settling.
 const SOLVER_FRICTION: f32 = 0.6;
 
-/// A `Cuboid` collider that roughly bounds the pyramid mesh (base
-/// `2*PYRAMID_BASE_HALF_EXTENT` square, `PYRAMID_HEIGHT` tall) — see the
-/// module doc for why this is a disclosed simplification rather than a
-/// true pyramid collider. `RigidBody::frame`'s translation is the mesh's
-/// own origin (the base center, per `pyramid_mesh_source`'s doc
-/// comment), so the collider's vertical center must be offset up by
-/// half its own height to bound the pyramid rather than being centered
-/// on the ground plane the mesh sits on.
-fn pyramid_collider_half_extents() -> Vec3 {
-    Vec3::new(
-        PYRAMID_BASE_HALF_EXTENT,
-        PYRAMID_HEIGHT / 2.0,
-        PYRAMID_BASE_HALF_EXTENT,
-    )
+/// One `<Entity>` from `assets/scenes/physic_figures.dsl`, flattened
+/// out of its typed `<Transform>`/`<Mesh>`/`<Material>`/`<RigidBody>`
+/// children into the plain fields this example actually needs — the
+/// DSL tree itself is only walked once, here, in [`load_scene`].
+struct SceneEntity {
+    position: Vec3,
+    mesh_shape: String,
+    size: f32,
+    size2: f32,
+    texture: String,
+    mass: f32,
+    collider: ColliderShape,
 }
 
-struct GpuState {
-    base: GraphicsBase,
-    scene: Scene3D,
-    /// Index into `scene.renderables` for each physics body, in the same
-    /// order as `bodies` below.
-    body_renderable_indices: [usize; 3],
+/// Reads and parses `assets/scenes/physic_figures.dsl` against
+/// `meridian_sdk::dsl::default_registry()` (this scene only uses
+/// built-in tags — no custom `#[dsl_tag]` needed here, unlike
+/// `magic_figures`) and flattens every `<Entity>` into a [`SceneEntity`].
+/// A malformed scene file is a real, disclosed dead end: both the read
+/// and the parse log via `log_error!` before panicking, so
+/// `crash_reporting`'s post-mortem captures exactly what went wrong,
+/// same as any other engine error (see `meridian_sdk::dsl`'s own module
+/// doc on why DSL errors implement `EngineError`).
+fn load_scene() -> Vec<SceneEntity> {
+    let path = asset_path("assets/scenes/physic_figures.dsl");
+    let source = std::fs::read_to_string(&path).unwrap_or_else(|e| {
+        meridian_sdk::log_error!("failed to read scene {path}: {e}");
+        panic!("failed to read scene {path}: {e}");
+    });
+    let registry = dsl::default_registry();
+    let root = dsl::build_scene(&source, &registry).unwrap_or_else(|e| {
+        meridian_sdk::log_error!("failed to parse scene {path}: {e}");
+        panic!("failed to parse scene {path}: {e}");
+    });
+
+    root.children
+        .iter()
+        .map(|entity_node| {
+            let entity = entity_node
+                .downcast_ref::<dsl::Entity>()
+                .unwrap_or_else(|| panic!("<{}> at scene root must be <Entity>", entity_node.tag));
+
+            let mut position = Vec3::ZERO;
+            let mut mesh_shape = String::new();
+            let mut size = 0.0f32;
+            let mut size2 = 0.0f32;
+            let mut texture = String::new();
+            let mut mass = 0.0f32;
+            let mut collider = ColliderShape::Sphere { radius: 0.0 };
+
+            for child in &entity_node.children {
+                if let Some(t) = child.downcast_ref::<dsl::Transform>() {
+                    position = Vec3::new(t.x, t.y, t.z);
+                } else if let Some(m) = child.downcast_ref::<dsl::Mesh>() {
+                    mesh_shape = m
+                        .shape
+                        .clone()
+                        .unwrap_or_else(|| panic!("{}: <Mesh> needs a 'shape'", entity.name));
+                    size = m
+                        .size
+                        .unwrap_or_else(|| panic!("{}: <Mesh> needs a 'size'", entity.name));
+                    size2 = m.size2.unwrap_or(0.0);
+                } else if let Some(mat) = child.downcast_ref::<dsl::Material>() {
+                    texture = mat
+                        .texture
+                        .clone()
+                        .unwrap_or_else(|| panic!("{}: <Material> needs a 'texture'", entity.name));
+                } else if let Some(rb) = child.downcast_ref::<dsl::RigidBody>() {
+                    mass = rb.mass;
+                    collider = match rb.shape.as_str() {
+                        "sphere" => ColliderShape::Sphere {
+                            radius: rb.radius.unwrap_or_else(|| {
+                                panic!("{}: sphere <RigidBody> needs 'radius'", entity.name)
+                            }),
+                        },
+                        "cuboid" => ColliderShape::Cuboid {
+                            half_extents: Vec3::new(
+                                rb.hx.unwrap_or_else(|| {
+                                    panic!("{}: cuboid <RigidBody> needs 'hx'", entity.name)
+                                }),
+                                rb.hy.unwrap_or_else(|| {
+                                    panic!("{}: cuboid <RigidBody> needs 'hy'", entity.name)
+                                }),
+                                rb.hz.unwrap_or_else(|| {
+                                    panic!("{}: cuboid <RigidBody> needs 'hz'", entity.name)
+                                }),
+                            ),
+                        },
+                        other => panic!("{}: unknown RigidBody shape '{other}'", entity.name),
+                    };
+                }
+            }
+
+            SceneEntity {
+                position,
+                mesh_shape,
+                size,
+                size2,
+                texture,
+                mass,
+                collider,
+            }
+        })
+        .collect()
+}
+
+/// Builds the real `MeshSource` for one [`SceneEntity`], dispatching on
+/// its `mesh_shape`/`size`/`size2` — see `dsl::Mesh`'s own doc comment
+/// for what each shape's `size`/`size2` mean.
+fn mesh_source_for(entity: &SceneEntity) -> meridian_sdk::MeshSource {
+    match entity.mesh_shape.as_str() {
+        "ground" => ground_mesh_source(entity.size, entity.size2),
+        "sphere" => icosphere_mesh_source(2, entity.size),
+        "cube" => cube_mesh_source(entity.size),
+        "pyramid" => pyramid_mesh_source(entity.size, entity.size2),
+        other => panic!("unknown mesh shape '{other}'"),
+    }
+}
+
+/// This shape's rendered frame, given its current physics `body_frame`
+/// — identical for most shapes, except two disclosed per-shape offsets
+/// (both already present in the DSL-free version of this example, just
+/// no longer duplicated as four hardcoded call sites): the floor mesh
+/// is a thin visual quad at `y = 0`, rendered at identity regardless of
+/// its (thicker, lower) collider's frame; the pyramid mesh's origin is
+/// its own base center, but its `Cuboid` collider is centered on the
+/// body, so the mesh renders shifted down by the collider's
+/// half-height to keep the base flush with the resting contact point.
+fn mesh_render_frame(entity: &SceneEntity, body_frame: Motor3) -> Motor3 {
+    match entity.mesh_shape.as_str() {
+        "ground" => Motor3::identity(),
+        "pyramid" => {
+            let ColliderShape::Cuboid { half_extents } = entity.collider else {
+                panic!("pyramid entity must have a cuboid collider");
+            };
+            body_frame.compose(Motor3::translation(Vec3::new(0.0, -half_extents.y, 0.0)))
+        }
+        _ => body_frame,
+    }
 }
 
 /// Fixed-timestep driver around a real `meridian_sdk::pipeline::Pipeline`
@@ -116,52 +225,25 @@ struct GpuState {
 /// accumulates wall-clock time and calls [`Pipeline::tick`] once per
 /// whole [`PHYSICS_DT`] increment, capped so a stall (e.g. window drag)
 /// can't spiral into running hundreds of catch-up ticks at once.
-/// `Pipeline`/`PhysicsStepStage` have no opinion on fixed vs. variable
-/// timestep — a stage's `dt` is just whatever the app configured it
-/// with — so this accumulator stays application-level policy rather
-/// than something `meridian-sdk` forces on every pipeline user.
 struct PhysicsRig {
     pipeline: Pipeline,
     accumulator: f32,
 }
 
 impl PhysicsRig {
-    fn new() -> Self {
-        let floor = RigidBody {
-            frame: Motor3::translation(Vec3::new(0.0, -FLOOR_HALF_THICKNESS, 0.0)),
-            mass: 0.0,
-            shape: ColliderShape::Cuboid {
-                half_extents: Vec3::new(FLOOR_HALF_EXTENT, FLOOR_HALF_THICKNESS, FLOOR_HALF_EXTENT),
-            },
-            ..Default::default()
-        };
-        let sphere = RigidBody {
-            frame: Motor3::translation(Vec3::new(-1.8, 4.0, 0.0)),
-            mass: 1.0,
-            shape: ColliderShape::Sphere {
-                radius: SPHERE_RADIUS,
-            },
-            ..Default::default()
-        };
-        let cube = RigidBody {
-            frame: Motor3::translation(Vec3::new(0.0, 6.0, 0.0)),
-            mass: 1.0,
-            shape: ColliderShape::Cuboid {
-                half_extents: Vec3::new(CUBE_HALF_EXTENT, CUBE_HALF_EXTENT, CUBE_HALF_EXTENT),
-            },
-            ..Default::default()
-        };
-        let pyramid = RigidBody {
-            frame: Motor3::translation(Vec3::new(1.8, 8.0, 0.0)),
-            mass: 1.0,
-            shape: ColliderShape::Cuboid {
-                half_extents: pyramid_collider_half_extents(),
-            },
-            ..Default::default()
-        };
+    fn new(scene: &[SceneEntity]) -> Self {
+        let bodies = scene
+            .iter()
+            .map(|entity| RigidBody {
+                frame: Motor3::translation(entity.position),
+                mass: entity.mass,
+                shape: entity.collider,
+                ..Default::default()
+            })
+            .collect();
 
         let physics = PhysicsSubsystem {
-            bodies: vec![floor, sphere, cube, pyramid],
+            bodies,
             solver: ConstraintSolver::new(SOLVER_RESTITUTION).with_friction(SOLVER_FRICTION),
             ..Default::default()
         };
@@ -197,10 +279,16 @@ impl PhysicsRig {
     }
 }
 
+struct GpuState {
+    base: GraphicsBase,
+    scene: Scene3D,
+}
+
 struct App {
     camera: FlyCamera,
     cursor_grabbed: bool,
     last_frame: std::time::Instant,
+    scene_entities: Vec<SceneEntity>,
     physics: PhysicsRig,
     tokio_runtime: tokio::runtime::Runtime,
     gpu: Option<GpuState>,
@@ -209,11 +297,14 @@ struct App {
 impl App {
     fn new() -> Self {
         let tokio_runtime = tokio::runtime::Runtime::new().expect("failed to start tokio runtime");
+        let scene_entities = load_scene();
+        let physics = PhysicsRig::new(&scene_entities);
         Self {
             camera: FlyCamera::new(Vec3::new(0.0, 3.0, 9.0)),
             cursor_grabbed: true,
             last_frame: std::time::Instant::now(),
-            physics: PhysicsRig::new(),
+            scene_entities,
+            physics,
             tokio_runtime,
             gpu: None,
         }
@@ -231,85 +322,30 @@ impl AppHandler for App {
             .expect("failed to create windowed GPU device");
         let mut base = GraphicsBase::new(device, surface, width, height);
 
-        let floor_texture = base.load_texture(&asset_path("assets/textures/floor.png"));
-        let floor_material = base.materials.register(Material {
-            albedo: Some(floor_texture),
-            base_color_factor: [1.0, 1.0, 1.0, 1.0],
-            ..Default::default()
-        });
-        let floor_mesh = base
-            .meshes
-            .register(ground_mesh_source(FLOOR_HALF_EXTENT, 10.0))
-            .expect("floor mesh must be valid");
-
-        let sphere_texture = base.load_texture(&asset_path("assets/textures/sphere.png"));
-        let sphere_material = base.materials.register(Material {
-            albedo: Some(sphere_texture),
-            base_color_factor: [1.0, 1.0, 1.0, 1.0],
-            ..Default::default()
-        });
-        let sphere_mesh = base
-            .meshes
-            .register(icosphere_mesh_source(2, SPHERE_RADIUS))
-            .expect("sphere mesh must be valid");
-
-        let cube_texture = base.load_texture(&asset_path("assets/textures/cube.bmp"));
-        let cube_material = base.materials.register(Material {
-            albedo: Some(cube_texture),
-            base_color_factor: [1.0, 1.0, 1.0, 1.0],
-            ..Default::default()
-        });
-        let cube_mesh = base
-            .meshes
-            .register(cube_mesh_source(CUBE_HALF_EXTENT))
-            .expect("cube mesh must be valid");
-
-        let pyramid_texture = base.load_texture(&asset_path("assets/textures/pyramid.bmp"));
-        let pyramid_material = base.materials.register(Material {
-            albedo: Some(pyramid_texture),
-            base_color_factor: [1.0, 1.0, 1.0, 1.0],
-            ..Default::default()
-        });
-        // The pyramid mesh is centered on its own base (see
-        // `pyramid_mesh_source`'s doc comment), but its physics collider
-        // (a `Cuboid`) is centered on the body — so the mesh is rendered
-        // shifted down by half the collider's height relative to the
-        // body's frame, keeping the base flush with the collider's
-        // bottom face.
-        let pyramid_mesh = base
-            .meshes
-            .register(pyramid_mesh_source(
-                PYRAMID_BASE_HALF_EXTENT,
-                PYRAMID_HEIGHT,
-            ))
-            .expect("pyramid mesh must be valid");
-
-        let renderables = vec![
-            Renderable3D {
-                mesh: floor_mesh,
-                material: floor_material,
-                frame: Motor3::identity(),
-                billboard: false,
-            },
-            Renderable3D {
-                mesh: sphere_mesh,
-                material: sphere_material,
-                frame: self.physics.bodies()[1].frame,
-                billboard: false,
-            },
-            Renderable3D {
-                mesh: cube_mesh,
-                material: cube_material,
-                frame: self.physics.bodies()[2].frame,
-                billboard: false,
-            },
-            Renderable3D {
-                mesh: pyramid_mesh,
-                material: pyramid_material,
-                frame: self.physics.bodies()[3].frame,
-                billboard: false,
-            },
-        ];
+        let bodies = self.physics.bodies();
+        let renderables: Vec<Renderable3D> = self
+            .scene_entities
+            .iter()
+            .zip(&bodies)
+            .map(|(entity, body)| {
+                let texture = base.load_texture(&asset_path(&entity.texture));
+                let material = base.materials.register(Material {
+                    albedo: Some(texture),
+                    base_color_factor: [1.0, 1.0, 1.0, 1.0],
+                    ..Default::default()
+                });
+                let mesh = base
+                    .meshes
+                    .register(mesh_source_for(entity))
+                    .unwrap_or_else(|e| panic!("{} mesh must be valid: {e}", entity.mesh_shape));
+                Renderable3D {
+                    mesh,
+                    material,
+                    frame: mesh_render_frame(entity, body.frame),
+                    billboard: false,
+                }
+            })
+            .collect();
 
         let scene = Scene3D {
             renderables,
@@ -325,11 +361,7 @@ impl AppHandler for App {
             ..Scene3D::default()
         };
 
-        self.gpu = Some(GpuState {
-            base,
-            scene,
-            body_renderable_indices: [1, 2, 3],
-        });
+        self.gpu = Some(GpuState { base, scene });
     }
 
     fn on_redraw(&mut self, window: &Window, input: &InputState) {
@@ -350,19 +382,15 @@ impl AppHandler for App {
         }
 
         self.physics.step(frame_dt);
-        for (renderable_index, body_index) in gpu.body_renderable_indices.iter().zip([1usize, 2, 3])
+        let bodies = self.physics.bodies();
+        for ((entity, body), renderable) in self
+            .scene_entities
+            .iter()
+            .zip(&bodies)
+            .zip(&mut gpu.scene.renderables)
         {
-            gpu.scene.renderables[*renderable_index].frame =
-                self.physics.bodies()[body_index].frame;
+            renderable.frame = mesh_render_frame(entity, body.frame);
         }
-        // The pyramid mesh's origin is its base center, but its
-        // `Cuboid` collider is centered on the body — shift the
-        // rendered frame down by the collider's half-height so the
-        // mesh's base stays flush with the collider's resting contact
-        // point instead of floating at the collider's vertical center.
-        let pyramid_renderable = &mut gpu.scene.renderables[gpu.body_renderable_indices[2]];
-        let drop = Motor3::translation(Vec3::new(0.0, -pyramid_collider_half_extents().y, 0.0));
-        pyramid_renderable.frame = pyramid_renderable.frame.compose(drop);
 
         let aspect = window.width() as f32 / window.height().max(1) as f32;
         gpu.scene.camera = self.camera.camera(aspect);
