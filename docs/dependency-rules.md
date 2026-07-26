@@ -113,7 +113,11 @@ reason, and also on `meridian-gac-core` (the `GaFlavor`/`Plane`/`Vec3`
 types its kernels' signatures are expressed in) and `meridian-gac-compute`
 (its `Fixed`-flavor kernel reuses `fixed_wgsl::FIXED_ARITHMETIC_LIB_WGSL`
 rather than re-deriving the same Q16.16 emulation — see
-`meridian-physics-compute`'s own module doc).
+`meridian-physics-compute`'s own module doc). It also takes rule 0's
+open `meridian-foundation` edge: `narrow_phase::GenerateContactsKernel`
+logs via `log_warn!` when a pair's manifold exceeds its fixed
+`MAX_CONTACTS_PER_PAIR` output slot, the same `MAX_LIGHTS`-style
+truncation policy `graphics-core::submission` uses.
 
 ## Rules
 
