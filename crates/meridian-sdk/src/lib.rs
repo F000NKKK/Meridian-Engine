@@ -26,23 +26,31 @@
 //!   couldn't be the place for this — it's the direct fix for
 //!   `AudioSubsystem::mix`'s "one opinionated path, not the pipeline
 //!   every consumer must fit" limitation).
-//! - [`scene`]/[`camera`] — windowed-app scaffolding (mesh builders,
-//!   `GraphicsBase`, `FlyCamera`) every windowed application needs
-//!   identically; not domain logic, just reusable application plumbing.
+//! - [`assets`] — resource loading: turning a file path into a real,
+//!   cached, GPU-registered handle (textures, OBJ meshes). Deliberately
+//!   separate from [`scene`]: this module never touches scene
+//!   composition, only decode+cache+register (see its own doc comment
+//!   for the full `asset-core`/here/`resource-core` layering).
+//! - [`scene`]/[`camera`] — windowed-app scaffolding (procedural mesh
+//!   builders, `GraphicsBase`, `FlyCamera`) every windowed application
+//!   needs identically; not domain logic, just reusable application
+//!   plumbing. `GraphicsBase` owns an [`assets::AssetCache`], but the
+//!   loading logic itself lives in [`assets`], not here.
 //! - Everything else below is a direct `pub use` from the crate that
 //!   actually owns it — this crate adds no new types for spatial math,
 //!   physics, graphics or audio; it only makes them reachable through
 //!   one door.
 
+pub mod assets;
 pub mod camera;
 pub mod pipeline;
 pub mod scene;
 
+pub use assets::{AssetCache, load_image_asset};
 pub use camera::{FlyCamera, look_at_rotor};
 pub use pipeline::{PhysicsStepStage, Pipeline, PipelineState, Stage, StageContext, StageId};
 pub use scene::{
-    GraphicsBase, cube_mesh_source, ground_mesh_source, icosphere_mesh_source, load_image_asset,
-    pyramid_mesh_source,
+    GraphicsBase, cube_mesh_source, ground_mesh_source, icosphere_mesh_source, pyramid_mesh_source,
 };
 
 // -- meridian-gac-core: spatial math --
