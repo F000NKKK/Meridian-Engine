@@ -127,28 +127,19 @@ struct ShapeSpec {
     spin_speed: f32,
 }
 
-/// Reads and parses `assets/scenes/magic_figures.dsl` against the SDK's
-/// built-in tags plus this example's own [`Glow`]/[`OrbitTag`]/
-/// [`AudioTag`] and flattens every `<Entity>` into a [`ShapeSpec`]. A
-/// malformed scene file logs via `log_error!` before panicking, so
-/// `crash_reporting`'s post-mortem captures exactly what went wrong —
-/// see `physic_figures::load_scene`'s identical convention.
+/// Parses `assets/scenes/magic_figures.mel` against the SDK's built-in
+/// tags plus this example's own [`Glow`]/[`OrbitTag`]/[`AudioTag`] and
+/// flattens every `<Entity>` into a [`ShapeSpec`]. The read/parse/
+/// error-logging sequence itself is
+/// `meridian_examples::scene_loader::load_dsl_scene` — see
+/// `physic_figures::load_scene`'s identical use of it.
 fn load_scene() -> Vec<ShapeSpec> {
-    let path = asset_path("assets/scenes/magic_figures.dsl");
-    let source = std::fs::read_to_string(&path).unwrap_or_else(|e| {
-        meridian_sdk::log_error!("failed to read scene {path}: {e}");
-        panic!("failed to read scene {path}: {e}");
-    });
-
     let mut registry = dsl::default_registry();
     registry.register::<Glow>();
     registry.register::<OrbitTag>();
     registry.register::<AudioTag>();
 
-    let root = dsl::build_scene(&source, &registry).unwrap_or_else(|e| {
-        meridian_sdk::log_error!("failed to parse scene {path}: {e}");
-        panic!("failed to parse scene {path}: {e}");
-    });
+    let root = load_dsl_scene("assets/scenes/magic_figures.mel", &registry);
 
     root.children
         .iter()
