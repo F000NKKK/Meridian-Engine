@@ -50,6 +50,14 @@ pub use meridian_dsl_macros::dsl_tag;
 
 use dsl_core::{DslRegistry, TagParseError};
 
+/// The document root — a plain container for [`Entity`] nodes, carrying
+/// no data of its own. Every DSL document this crate writes has one of
+/// these at the top; an application walking the built tree only cares
+/// about its `children`.
+#[dsl_tag(name = "Scene")]
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct Scene {}
+
 /// A named node in the scene tree — the root composition primitive;
 /// almost every DSL document's root and internal nodes are this tag,
 /// with type-specific tags (`Mesh`, `RigidBody`, ...) as children
@@ -64,16 +72,21 @@ pub struct Entity {
 /// names a file an application loads via
 /// [`crate::assets::AssetCache::load_mesh_obj`]; `shape`, when present,
 /// names one of this crate's own procedural builders
-/// (`"cube"`/`"sphere"`/`"pyramid"`/`"ground"`) with `size` as that
-/// builder's single scale parameter — an application walking the built
-/// tree decides which of the two (or both, for its own custom shapes)
-/// it honors, this tag only carries the data.
+/// (`"cube"`/`"sphere"`/`"pyramid"`/`"ground"`), with `size`/`size2` as
+/// that builder's scale parameters (one shape, one meaning each:
+/// `"cube"` uses `size` as its half-extent; `"sphere"` uses `size` as
+/// its radius; `"pyramid"` uses `size` as its base half-extent and
+/// `size2` as its height; `"ground"` uses `size` as its half-extent and
+/// `size2` as its UV tile count) — an application walking the built
+/// tree decides which of `path`/`shape` (or both, for its own custom
+/// shapes) it honors, this tag only carries the data.
 #[dsl_tag(name = "Mesh")]
 #[derive(Debug, Clone, PartialEq)]
 pub struct Mesh {
     pub path: Option<String>,
     pub shape: Option<String>,
     pub size: Option<f32>,
+    pub size2: Option<f32>,
 }
 
 /// A material reference by texture file path plus a uniform base-color
