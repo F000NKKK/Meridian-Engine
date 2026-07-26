@@ -589,6 +589,8 @@ impl FixedArithmeticKernels {
         let mul = gpu.create_compute_pipeline(&shader, FixedBinaryOp::Mul.entry_point());
         let div = gpu.create_compute_pipeline(&shader, FixedBinaryOp::Div.entry_point());
         let sqrt = gpu.create_compute_pipeline(&shader, "dispatch_sqrt");
+        let atan2 = gpu.create_compute_pipeline(&shader, FixedBinaryOp::Atan2.entry_point());
+        let sin_cos = gpu.create_compute_pipeline(&shader, "dispatch_sin_cos");
         Self {
             shader,
             add,
@@ -596,6 +598,8 @@ impl FixedArithmeticKernels {
             mul,
             div,
             sqrt,
+            atan2,
+            sin_cos,
         }
     }
 
@@ -605,6 +609,7 @@ impl FixedArithmeticKernels {
             FixedBinaryOp::Sub => &self.sub,
             FixedBinaryOp::Mul => &self.mul,
             FixedBinaryOp::Div => &self.div,
+            FixedBinaryOp::Atan2 => &self.atan2,
         }
     }
 
@@ -695,6 +700,52 @@ impl FixedArithmeticKernels {
         result_bytes
             .chunks_exact(4)
             .map(|c| Fixed::from_bits(i32::from_le_bytes(c.try_into().unwrap())))
+            .collect()
+    }
+
+    /// Runs `sin_cos` element-wise over `thetas` on the GPU, returning one
+    /// `(sin, cos)` pair per angle, in order. Unlike every other op here,
+    /// the `results` buffer holds two `i32`s per invocation
+    /// (`fixed_sin_cos`'s `vec2<i32>`), so this builds its own
+    /// double-width buffer rather than reusing [`dispatch`](Self::dispatch).
+    pub async fn dispatch_sin_cos(
+        &self,
+        context: &ComputeContext,
+        thetas: &[Fixed],
+    ) -> Vec<(Fixed, Fixed)> {
+        let gpu = context.gpu().expect(
+            "FixedArithmeticKernels::dispatch_sin_cos requires a ComputeContext with a GPU backend",
+        );
+
+        let mut operand_bytes = Vec::with_capacity(thetas.len() * 4);
+        for theta in thetas {
+            operand_bytes.extend_from_slice(&theta.to_bits().to_le_bytes());
+        }
+        let operands = gpu.allocate_buffer(operand_bytes.len(), BufferUsage::Storage);
+        gpu.write_buffer(&operands, &operand_bytes);
+
+        let results = gpu.allocate_buffer(thetas.len() * 8, BufferUsage::Storage);
+
+        let device = gpu.gpu_driver_device();
+        let bind_group =
+            device.create_bind_group(&self.sin_cos.bind_group_layout(), &[&operands, &results]);
+
+        let mut commands = device.create_command_buffer();
+        commands.dispatch_compute_with_bind_group(
+            &self.sin_cos,
+            &bind_group,
+            (thetas.len() as u32).div_ceil(64).max(1),
+        );
+        commands.submit();
+
+        let result_bytes = gpu.read_buffer(&results).await;
+        result_bytes
+            .chunks_exact(8)
+            .map(|pair| {
+                let sin = Fixed::from_bits(i32::from_le_bytes(pair[0..4].try_into().unwrap()));
+                let cos = Fixed::from_bits(i32::from_le_bytes(pair[4..8].try_into().unwrap()));
+                (sin, cos)
+            })
             .collect()
     }
 }
