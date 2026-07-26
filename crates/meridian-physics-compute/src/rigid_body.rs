@@ -34,14 +34,28 @@ use meridian_physics_core::generic::{Integrator, RigidBody};
 /// (`mass <= 0`) come back unchanged, matching `Integrator::step`'s own
 /// "untouched" behavior for them.
 #[derive(Debug)]
-pub struct RigidBodyIntegratorKernel<F: GaFlavor> {
+pub struct RigidBodyIntegratorKernel<F: GaFlavor>
+where
+    F::Scalar: Send + Sync,
+    F::Vector: Send + Sync,
+    F::Bivector: Send + Sync,
+    F::Rotor: Send + Sync,
+    F::Motor: Send + Sync,
+{
     pub integrator: Integrator<F>,
     pub bodies: Vec<RigidBody<F>>,
     pub dt: F::Scalar,
     results: Mutex<Vec<RigidBody<F>>>,
 }
 
-impl<F: GaFlavor> RigidBodyIntegratorKernel<F> {
+impl<F: GaFlavor> RigidBodyIntegratorKernel<F>
+where
+    F::Scalar: Send + Sync,
+    F::Vector: Send + Sync,
+    F::Bivector: Send + Sync,
+    F::Rotor: Send + Sync,
+    F::Motor: Send + Sync,
+{
     pub fn new(integrator: Integrator<F>, bodies: Vec<RigidBody<F>>, dt: F::Scalar) -> Self {
         let results = Mutex::new(bodies.clone());
         Self {
@@ -60,7 +74,14 @@ impl<F: GaFlavor> RigidBodyIntegratorKernel<F> {
     }
 }
 
-impl<F: GaFlavor> ComputeKernel for RigidBodyIntegratorKernel<F> {
+impl<F: GaFlavor> ComputeKernel for RigidBodyIntegratorKernel<F>
+where
+    F::Scalar: Send + Sync,
+    F::Vector: Send + Sync,
+    F::Bivector: Send + Sync,
+    F::Rotor: Send + Sync,
+    F::Motor: Send + Sync,
+{
     fn dispatch(&self, context: &ComputeContext, size: DispatchSize) {
         let count = size.total().min(self.bodies.len());
         context.parallel_for(count, |i| {
@@ -70,7 +91,8 @@ impl<F: GaFlavor> ComputeKernel for RigidBodyIntegratorKernel<F> {
             // `MotorTransformKernel` calls straight into `gac-core`'s
             // `compose` instead of reimplementing it.
             let mut body = self.bodies[i];
-            self.integrator.step(std::slice::from_mut(&mut body), self.dt);
+            self.integrator
+                .step(std::slice::from_mut(&mut body), self.dt);
             self.results.lock().unwrap()[i] = body;
         });
     }
@@ -108,7 +130,7 @@ mod tests {
 
         let context = ComputeContext::new();
         let kernel = RigidBodyIntegratorKernel::new(integrator, bodies, dt);
-        context.run(&kernel, DispatchSize::linear(kernel.bodies.len() as u32));
+        kernel.dispatch(&context, DispatchSize::linear(kernel.bodies.len() as u32));
 
         let got = kernel.results();
         assert_eq!(got.len(), expected.len());
@@ -131,7 +153,7 @@ mod tests {
 
         let context = ComputeContext::new();
         let kernel = RigidBodyIntegratorKernel::new(integrator, vec![static_body], 1.0 / 60.0);
-        context.run(&kernel, DispatchSize::linear(1));
+        kernel.dispatch(&context, DispatchSize::linear(1));
 
         let got = kernel.results();
         assert_eq!(got[0].frame, before.frame);
@@ -144,7 +166,9 @@ mod tests {
     #[test]
     fn large_batch_matches_direct_integrator_step() {
         let integrator = Integrator::<FloatFlavor>::default();
-        let bodies: Vec<_> = (0..2000).map(|i| falling_body(1.0 + (i % 5) as f32)).collect();
+        let bodies: Vec<_> = (0..2000)
+            .map(|i| falling_body(1.0 + (i % 5) as f32))
+            .collect();
         let dt = 1.0 / 60.0;
 
         let mut expected = bodies.clone();
@@ -152,7 +176,7 @@ mod tests {
 
         let context = ComputeContext::new();
         let kernel = RigidBodyIntegratorKernel::new(integrator, bodies, dt);
-        context.run(&kernel, DispatchSize::linear(kernel.bodies.len() as u32));
+        kernel.dispatch(&context, DispatchSize::linear(kernel.bodies.len() as u32));
 
         let got = kernel.results();
         for (g, e) in got.iter().zip(expected.iter()) {
