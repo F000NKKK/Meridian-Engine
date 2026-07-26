@@ -40,20 +40,22 @@
 
 //! [`rigid_body`], [`broad_phase`], [`narrow_phase`] and
 //! [`constraint_solver`] are a third, independent kind of work this
-//! crate hosts: batching `physics-core`'s entire rigid-body pipeline
+//! crate hosts: batching `physics-core`'s *entire* rigid-body pipeline
 //! (`Integrator`, `BroadPhase::find_candidate_pairs`,
-//! `NarrowPhase::test_pair`, `ConstraintSolver`) through
-//! `compute-runtime` instead of a plain `for` loop — closing out
-//! docs/roadmap.md's "batching is additive later" note. All four are
-//! generic over `GaFlavor` rather than float/fixed-split, since (like
-//! `physics-core`'s own engine) none of them has a GPU-dispatch
-//! constraint of its own — see each module's doc comment.
-//! `NarrowPhase::generate_contacts` (as opposed to `test_pair`) is the
-//! one piece still CPU-only: a box-box pair expands into a *variable*
-//! number of manifold points, which doesn't fit a kernel whose per-item
-//! output is a fixed-size slot — see [`narrow_phase`]'s own doc comment
-//! for the prefix-sum technique that would batch it, not attempted here.
-//! [`constraint_solver`] is the hardest of the four (each contact
+//! `NarrowPhase::test_pair`/`generate_contacts`, `ConstraintSolver`)
+//! through `compute-runtime` instead of a plain `for` loop — every step
+//! docs/roadmap.md's "batching is additive later" note named is done.
+//! All five are generic over `GaFlavor` rather than float/fixed-split,
+//! since (like `physics-core`'s own engine) none of them has a
+//! GPU-dispatch constraint of its own — see each module's doc comment.
+//! `NarrowPhase::generate_contacts` (unlike `test_pair`'s fixed 1:1
+//! shape) produces a *variable* number of manifold points per pair;
+//! [`narrow_phase::GenerateContactsKernel`] handles that with a
+//! fixed-size-per-pair output slot capped at
+//! [`narrow_phase::MAX_CONTACTS_PER_PAIR`] (matching
+//! `physics-core::generic::face_manifold`'s own point cap) rather than
+//! a true dynamic prefix-sum — see that module's own doc comment.
+//! [`constraint_solver`] is the hardest of the five (each contact
 //! mutates two bodies, so naive parallelism races) — see that module's
 //! own doc comment for the graph-coloring fix and why it reproduces the
 //! sequential Gauss-Seidel solver's result exactly, not just

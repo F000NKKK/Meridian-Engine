@@ -183,12 +183,22 @@ Gauss-Seidel dependency chain. Proven bit-for-bit identical to the
 sequential `resolve_velocity`/`apply_positional_correction` loop across
 a real multi-point box-on-floor manifold, plus a 600-tick settling
 regression test (no bounce, no sinking) matching `engine-core`'s own
-sequential-solver test. `NarrowPhase::generate_contacts` is the one
-piece still CPU-only: a box-box pair expands to a *variable* number of
-manifold points, which doesn't fit a fixed-size-per-item kernel slot —
-real follow-up (a per-pair count prefix-sum into a flattened output
-buffer, the standard GPU technique for variable-output-per-thread
-work), not done here.
+sequential-solver test. `NarrowPhase::generate_contacts` — the
+variable-per-pair-manifold case — is batched too, and was in fact the
+first of the five pipeline steps done:
+`meridian-physics-compute::narrow_phase::GenerateContactsKernel` gives
+each pair a fixed-size `[Option<Contact<F>>; MAX_CONTACTS_PER_PAIR]`
+output slot (`MAX_CONTACTS_PER_PAIR = 4`, matching
+`face_manifold`'s own `.take(4)` cap — the same fixed-capacity-array
+technique `graphics-core::submission`'s `MAX_LIGHTS` uses), flattened
+back to pair order for the result, truncating with a logged warning
+only if a manifold ever exceeds the cap (which `face_manifold`
+currently guarantees it never does). A true dynamic prefix-sum into a
+flattened buffer (the standard GPU technique for genuinely unbounded
+variable-output-per-thread work) would only be needed if that cap ever
+had to grow — a hypothetical future refinement, not a present gap. All
+five rigid-body pipeline steps (`Integrator`, `BroadPhase`, `NarrowPhase`'s
+two query shapes, `ConstraintSolver`) are batched now.
 
 `physics-driver`'s `PhysicsBackend` reports real CPU thread count (via
 `platform-core::DeviceCapabilities`, the same shared shape
