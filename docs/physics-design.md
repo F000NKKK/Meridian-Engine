@@ -134,12 +134,23 @@ dispatch (the same shape `gac-compute::MotorTransformKernel` batches
 `Motor3` composition with), generic over `GaFlavor` and CPU-dispatched
 via `ComputeContext::parallel_for` — `Integrator::step` has no
 GPU-dispatch constraint of its own, so there's no WGSL kernel to write,
-unlike this crate's soft-body kernels. `BroadPhase`/`NarrowPhase`/
-`ConstraintSolver` aren't batched yet: each carries more per-pair state
-(contact manifolds, accumulated impulses) than `Integrator`'s
-one-body-in-one-body-out shape, so batching them is a bigger lift than a
-direct `MotorTransformKernel`-style port — real follow-up, not done
-here.
+unlike this crate's soft-body kernels. `NarrowPhase::test_pair` is
+batched too, the same way:
+`meridian-physics-compute::narrow_phase::NarrowPhaseTestPairKernel`
+tests many candidate pairs for exact overlap through one dispatch,
+mirroring `gac-compute::MotorComposeKernel`'s independent-pairs shape
+(`test_pair` is one pair in, one `Option<Contact<F>>` out — a fixed 1:1
+shape, unlike `generate_contacts`' variable-size manifold output, see
+below). `BroadPhase::find_candidate_pairs` and
+`NarrowPhase::generate_contacts`/`ConstraintSolver` aren't batched yet:
+`find_candidate_pairs`' AABB sweep isn't an independent per-item
+computation the way `Integrator::step`/`test_pair` are, and
+`generate_contacts`/the solver carry more per-pair/per-contact state
+(box-box pairs expand to a *variable* number of manifold points,
+accumulated impulses) than a fixed-size-per-item kernel shape covers —
+real follow-up (a per-pair count prefix-sum into a flattened output
+buffer, the standard GPU technique for variable-output-per-thread work,
+for `generate_contacts`), not done here.
 
 `physics-driver`'s `PhysicsBackend` reports real CPU thread count (via
 `platform-core::DeviceCapabilities`, the same shared shape

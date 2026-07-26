@@ -38,16 +38,22 @@
 //! `meridian_compute_runtime`'s `HybridKernel` module doc for the same
 //! tradeoff acknowledged there), not an oversight.
 
-//! [`rigid_body`] is a second, independent kind of work this crate hosts:
-//! batching `physics-core`'s rigid-body
-//! [`meridian_physics_core::generic::Integrator`] through
-//! `compute-runtime` instead of a plain `for` loop — docs/roadmap.md's
-//! "batching is additive later" note for `BroadPhase`/`NarrowPhase`/
-//! `ConstraintSolver`/`Integrator`, `Integrator`'s half of it. Unlike
-//! the soft-body kernels above, it's generic over `GaFlavor` rather than
-//! float/fixed-split, since (like `physics-core`'s own engine)
-//! `Integrator::step` has no GPU-dispatch constraint of its own — see
-//! that module's doc comment.
+//! [`rigid_body`] and [`narrow_phase`] are a third, independent kind of
+//! work this crate hosts: batching `physics-core`'s rigid-body pipeline
+//! (`Integrator`, `NarrowPhase::test_pair`) through `compute-runtime`
+//! instead of a plain `for` loop — docs/roadmap.md's "batching is
+//! additive later" note for `BroadPhase`/`NarrowPhase`/
+//! `ConstraintSolver`/`Integrator`. Unlike the soft-body kernels above,
+//! both are generic over `GaFlavor` rather than float/fixed-split, since
+//! (like `physics-core`'s own engine) neither has a GPU-dispatch
+//! constraint of its own — see each module's doc comment.
+//! `BroadPhase::find_candidate_pairs` and
+//! `NarrowPhase::generate_contacts`/`ConstraintSolver` aren't batched
+//! yet: broad phase's own state (the AABB sweep) isn't an independent
+//! per-item computation the way `Integrator::step`/`test_pair` are, and
+//! `generate_contacts`/the solver carry more per-pair/per-contact state
+//! (variable-size manifolds, accumulated impulses) — real further
+//! follow-up, not the same direct lift.
 
 pub mod fixed;
 pub mod float;
