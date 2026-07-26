@@ -5,10 +5,11 @@
 //! `PhysicsSubsystem::step`) run through `Pipeline::tick`.
 //!
 //! **Scene composition itself lives in
-//! `assets/scenes/physic_figures.dsl`**, parsed through
-//! `meridian_sdk::dsl` — every entity's position, mesh shape, texture
-//! and collider is data, not Rust code; this file only reads it once
-//! ([`load_scene`]) and turns it into real physics bodies
+//! `assets/scenes/physic_figures.mel`**, parsed through
+//! `meridian_sdk::dsl` (via this workspace's shared
+//! `meridian_examples::scene_loader`) — every entity's position, mesh
+//! shape, texture and collider is data, not Rust code; this file only
+//! reads it once ([`load_scene`]) and turns it into real physics bodies
 //! ([`PhysicsRig::new`]) and renderables ([`AppHandler::on_ready`]).
 //! What stays genuine Rust logic (per this workspace's rule that the
 //! DSL describes composition, not behavior): the fixed-timestep
