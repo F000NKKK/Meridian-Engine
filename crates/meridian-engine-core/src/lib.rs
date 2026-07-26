@@ -7,26 +7,26 @@
 //! pipeline, and `audio-core`'s listener/mixer. `graphics-core` itself
 //! has a real scene/material vocabulary and GPU-submission bridge now
 //! (`Scene3D`/`Material`/`Light`, `SceneRenderer` — see
-//! `graphics-core::scene`/`submission`), used directly by the
-//! `magic_figures`/`physic_figures` examples; `graphics-core` isn't
-//! wired into [`Runtime::tick`] anyway, for a different reason:
-//! presenting a frame needs a real windowed `Device`/`Surface`
-//! (driver state), and this crate deliberately never depends on
-//! `graphics-driver` (see docs/dependency-rules.md: `engine-core`
-//! depends on `graphics-core`, not drivers) — a windowed app instead
-//! composes [`platform_core::run_windowed_app`](meridian_platform_core::run_windowed_app)
+//! `graphics-core::scene`/`submission`); it isn't wired into
+//! [`Runtime::tick`] anyway, for a different reason: presenting a frame
+//! needs a real windowed `Device`/`Surface` (driver state), and this
+//! crate deliberately never depends on `graphics-driver` (see
+//! docs/dependency-rules.md: `engine-core` depends on `graphics-core`,
+//! not drivers) — a windowed app would compose
+//! [`platform_core::run_windowed_app`](meridian_platform_core::run_windowed_app)
 //! with its own `graphics-driver::Device`/`Surface` and
-//! `graphics-core::SceneRenderer`, reusing [`Runtime::tick`]'s [`Time`]
-//! for animation/physics timing (see the `spinning_cube`/
-//! `magic_figures`/`physic_figures` examples), rather than `Runtime`
-//! gaining a `graphics-driver` edge or `tick` growing a per-call
-//! `Surface` parameter just to centralize what these examples already
-//! compose correctly at the application layer. Real audio *output*
-//! follows the same composition pattern: the app owns an
-//! `audio-core::AudioOutput` (the core→own-driver bridge over
-//! `audio-driver`) and feeds it `Mixer::render_interleaved` blocks each
-//! tick — see the `audible_scene` example; `Runtime` itself stays
-//! driver-free on the audio side too.
+//! `graphics-core::SceneRenderer` around [`Runtime::tick`]'s [`Time`]
+//! for animation/physics timing, gaining `graphics-driver`/`Surface`
+//! access without `Runtime` itself ever depending on either.
+//!
+//! **That composition pattern is designed, not yet proven — no example
+//! in this workspace actually uses `Runtime`/`SubsystemManager` today.**
+//! `magic_figures` and `physic_figures` each hand-roll their own
+//! physics stepping and audio wiring directly against
+//! `physics-core`/`audio-core` (see each example's own code), not
+//! through this crate — a real, open gap between "tested in isolation"
+//! and "proven end-to-end," not a documentation nit. See
+//! docs/roadmap.md's `Runtime`-adoption entry for the follow-up.
 //!
 //! [`Runtime::tick`] advances physics, then recomputes audio gains from
 //! the physics-updated emitter frames, in that order — not through
@@ -129,6 +129,13 @@ impl FrameScheduler {
     }
 }
 
+/// Velocity-relaxation pass count for [`SubsystemManager::step_physics`] —
+/// matches `examples/physic_figures`' own tuned value, chosen because a
+/// box/pyramid face-face manifold (up to 4 points) needs several passes
+/// before each point's impulse is computed against the others' relaxed
+/// (not stale pre-solve) velocity.
+const RELAXATION_ITERATIONS: u32 = 4;
+
 /// Registry of active subsystems for the current [`Runtime`] — real owned
 /// instances, not stubs: an `ecs-core` [`World`] (available for
 /// application-level entity/`Transform` use; not synced with `bodies`
@@ -180,16 +187,40 @@ impl SubsystemManager {
         }
     }
 
-    /// Advances every body by `dt`: integrate, find broad-phase candidate
-    /// pairs, generate exact contacts, resolve them. The same pipeline
-    /// `physics-core`'s own tests exercise by hand
-    /// (`full_step_ball_settles_on_static_floor_without_sinking_through`),
-    /// centralized here as the one real per-frame physics step.
+    /// Advances every body by `dt`: integrate, then relax contacts over
+    /// [`RELAXATION_ITERATIONS`] velocity-only passes before a single
+    /// final positional correction pass. **Not** one `resolve()` call per
+    /// contact — that was this method's original shape, and it carries
+    /// the exact "cube/pyramid bounces up/down and clips through the
+    /// floor" bug `ConstraintSolver::resolve`'s own doc comment
+    /// describes: a box/pyramid manifold is up to 4 contact points
+    /// sharing one normal, and a single combined velocity+positional
+    /// pass over all of them pushes the body's position by the same
+    /// correction several times per tick. A single sphere-sphere contact
+    /// (this method's own regression test) never exhibited it, so the
+    /// bug went unnoticed here even after `examples/physic_figures`
+    /// independently discovered and fixed it in its own hand-rolled
+    /// physics stepping — see docs/roadmap.md's `Runtime`-adoption entry
+    /// for that history. This method now mirrors
+    /// `physic_figures::PhysicsRig::step`'s proven-correct shape exactly,
+    /// centralized here so every caller gets multi-point-manifold
+    /// stability for free instead of rediscovering it.
     pub fn step_physics(&mut self, dt: f32) {
         self.integrator.step(&mut self.bodies, dt);
+
+        for _ in 0..RELAXATION_ITERATIONS {
+            let pairs = self.broad_phase.find_candidate_pairs(&self.bodies).to_vec();
+            for contact in self.narrow_phase.generate_contacts(&self.bodies, &pairs) {
+                self.solver.resolve_velocity(&mut self.bodies, &contact);
+            }
+        }
+        // Positional correction exactly once per tick, against the final
+        // (velocity-relaxed) contact set — see `ConstraintSolver::resolve`'s
+        // doc comment for why calling it more than once per tick over-corrects.
         let pairs = self.broad_phase.find_candidate_pairs(&self.bodies).to_vec();
         for contact in self.narrow_phase.generate_contacts(&self.bodies, &pairs) {
-            self.solver.resolve(&mut self.bodies, &contact);
+            self.solver
+                .apply_positional_correction(&mut self.bodies, &contact);
         }
     }
 
@@ -397,6 +428,64 @@ mod tests {
         assert!(
             (resting_height - 0.5).abs() < 0.5,
             "ball should settle near the floor surface, got y={resting_height}"
+        );
+    }
+
+    /// A box-on-box manifold (up to 4 contact points, unlike the
+    /// single-point sphere case above) — regression coverage for the bug
+    /// `step_physics`'s doc comment describes: the original
+    /// one-`resolve()`-call-per-contact shape over-applied positional
+    /// correction on every relaxation-worthy contact set, bouncing a
+    /// settled box up/down and eventually clipping it through the floor.
+    /// A sphere never exercised this (always exactly one contact point),
+    /// which is exactly why the bug went unnoticed in this method even
+    /// after `examples/physic_figures` independently found and fixed it
+    /// in its own hand-rolled stepping — see
+    /// `meridian-physics-core::float`'s own
+    /// `cuboid_settles_without_runaway_spin` test for the equivalent,
+    /// non-centralized version of this same assertion.
+    #[test]
+    fn subsystem_manager_step_physics_settles_a_box_without_bouncing_or_sinking() {
+        use meridian_physics_core::ConstraintSolver;
+
+        let mut subsystems = SubsystemManager::new(Mixer::new(SpeakerLayout::mono()));
+        subsystems.solver = ConstraintSolver::new(0.0).with_friction(0.6);
+        subsystems.bodies.push(RigidBody {
+            frame: Motor3::translation(Vec3::new(0.0, -0.5, 0.0)),
+            mass: 0.0, // static floor
+            shape: ColliderShape::Cuboid {
+                half_extents: Vec3::new(14.0, 0.5, 14.0),
+            },
+            ..Default::default()
+        });
+        subsystems.bodies.push(RigidBody {
+            frame: Motor3::translation(Vec3::new(0.0, 3.0, 0.0)),
+            mass: 1.0,
+            shape: ColliderShape::Cuboid {
+                half_extents: Vec3::new(0.6, 0.6, 0.6),
+            },
+            ..Default::default()
+        });
+
+        let mut min_height_after_landing = f32::MAX;
+        let mut max_height_after_landing = f32::MIN;
+        for step in 0..600 {
+            subsystems.step_physics(1.0 / 60.0);
+            if step > 200 {
+                let height = subsystems.bodies[1].position().y;
+                min_height_after_landing = min_height_after_landing.min(height);
+                max_height_after_landing = max_height_after_landing.max(height);
+            }
+        }
+
+        assert!(
+            max_height_after_landing - min_height_after_landing < 0.01,
+            "a settled box (restitution 0) must not bounce up/down at all \
+             (min {min_height_after_landing}, max {max_height_after_landing})"
+        );
+        assert!(
+            min_height_after_landing > 0.0,
+            "a settled box must not clip through the floor (min height {min_height_after_landing})"
         );
     }
 }

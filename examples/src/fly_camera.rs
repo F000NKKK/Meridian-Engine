@@ -1,7 +1,7 @@
 //! A free-fly camera and its `look_at_rotor` helper — extracted from
 //! `lib.rs` so the camera logic and tests are their own file, keeping
-//! `lib.rs` focused on the soft-body rendering scaffolding that several
-//! examples share.
+//! `lib.rs` focused on the rendering scaffolding both windowed examples
+//! share.
 //!
 //! The camera uses `gac-core`'s local-forward `+X` convention (see
 //! `look_at_rotor` and [`FlyCamera::yaw`]'s own doc) and composes its
@@ -13,9 +13,7 @@ use meridian_graphics_core::Camera;
 use meridian_platform_core::{InputState, KeyCode};
 
 /// A camera rotor turning `gac-core`'s local-forward `+X` toward
-/// `target - eye` — see `spinning_cube`'s identical helper, duplicated
-/// here (not worth a shared engine-level utility for three examples)
-/// rather than depended on across two ``[[example]]`` binaries.
+/// `target - eye`.
 pub fn look_at_rotor(eye: Vec3, target: Vec3) -> meridian_gac_core::Rotor {
     use meridian_gac_core::Rotor;
     let forward = (target - eye).normalize();
@@ -37,11 +35,9 @@ pub fn look_at_rotor(eye: Vec3, target: Vec3) -> meridian_gac_core::Rotor {
 /// (`Window::set_cursor_grabbed(true)` once in `on_ready`) so the mouse
 /// steers the view directly instead of a visible cursor wandering off
 /// the window. Exists because a fixed `look_at_rotor(eye, target)`
-/// camera (`spinning_cube`'s approach) gives no way to inspect a scene
-/// from angles the author didn't hardcode — the soft-body examples need
-/// that inspection more than a spinning cube does, since "is this ball
-/// actually deforming/jiggling or just sitting there" is exactly the
-/// kind of thing you want to walk around and look at.
+/// camera gives no way to inspect a scene from angles the author didn't
+/// hardcode — both `magic_figures` and `physic_figures` want to walk
+/// around and look at their scenes from any angle.
 pub struct FlyCamera {
     pub position: Vec3,
     /// Radians, measured from `+X` toward `+Z` (matches `Vec3::X` being

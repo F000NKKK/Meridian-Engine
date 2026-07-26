@@ -409,17 +409,26 @@ real windowed `Device`/`Surface`, which is driver state, and
 does list `graphics-core` as an allowed dependency, per rule 7, it's
 just not used yet). `Runtime::tick` is also a plain synchronous method
 call today, with no per-frame hook for "here's this frame's `Surface`
-to submit into" — `magic_figures`/`physic_figures` instead compose
-`Runtime` themselves inside their own `winit` event loop (via
-`platform_core::run_windowed_app`), calling `Runtime::tick` for
-physics/audio timing and driving `graphics-core::SceneRenderer`
-directly against their own `Device`/`Surface`, the same composition
-pattern audio output already uses (see below). Moving that composition
-into `Runtime::tick` itself would mean either giving `engine-core` a
-`graphics-driver` edge (forbidden) or threading a `Surface` handle
-through `tick`'s signature every call — a real design decision, not
-wiring together what already exists, so it stays at the application
-layer until there's a concrete reason to centralize it.
+to submit into."
+
+**`Runtime`/`SubsystemManager` are real and tested in isolation
+(`cargo test -p meridian-engine-core`) but not proven end-to-end —
+no example in the workspace actually uses them.** This document used to
+claim `magic_figures`/`physic_figures` "compose `Runtime`" for
+physics/audio timing; that was aspirational, not true of the code:
+both examples hand-roll their own physics stepping (a `PhysicsRig`-style
+wrapper calling `physics-core` directly, timed off `std::time::Instant`,
+not `platform-core::Clock`/`Time`) and their own audio wiring
+(`audio-core::AudioOutput` opened and fed by hand), never importing
+`meridian_engine_core` at all. This is real, open follow-up — not a
+documentation nit — since it means the one crate whose whole job is
+cross-subsystem orchestration (rule 7) has never actually orchestrated a
+real application. Migrating at least one example (`physic_figures` is
+the simpler candidate — no audio) onto `Runtime`/`SubsystemManager` for
+real, replacing its hand-rolled physics wrapper, is the concrete next
+step before any further `Runtime` API (a render hook, an SDK facade
+crate, ...) gets designed against a pattern that's never actually been
+exercised.
 
 The remaining incomplete areas in `graphics-core`'s own lighting/
 post-processing model are specifically: image-based/environment
@@ -431,18 +440,24 @@ feeding bloom's bright-pass beyond what it already does (see
 scaffold." Audio is wired end-to-end:
 `audio-core::AudioOutput` + `Mixer::render_interleaved` bridge mixed
 samples into `audio-driver`'s real stream (the declared
-core→own-driver edge, used for the first time), composed with `Runtime`
-composed with `Runtime` the same way `spinning_cube` composes
-`graphics-driver` — `Runtime` itself stays driver-free.
-`magic_figures` is the full loop: a windowed scene with three orbiting
-shapes (sphere, cube, pyramid), each emitting its own decoded music
-track (a different container/codec format per shape) while the
-`FlyCamera` pose doubles as the shared `audio-core` listener (same
-local-forward-`+X` `Motor3` convention), so panning and distance
-attenuation track the camera live; `physic_figures` runs the same shapes
-as real `physics-core` rigid bodies settling onto a textured floor,
-sharing `examples::scene_base`'s `GraphicsBase` with `magic_figures`.
-Every crate not named above
+core→own-driver edge, used for the first time). **Not** composed with
+`engine-core::Runtime`, though, despite the composition pattern this
+document used to describe here: `magic_figures` and `physic_figures`
+each hand-roll their own physics/audio state directly against
+`physics-core`/`audio-core` (a `PhysicsRig`-style wrapper, `AudioOutput`
+wired by hand) rather than going through `SubsystemManager`/
+`Runtime::tick`. `Runtime` itself is real and tested in isolation
+(`cargo test -p meridian-engine-core`) but genuinely unproven end-to-end
+— no example in the workspace uses it today; see the `Runtime`-adoption
+entry below for the follow-up. `magic_figures` is the full loop: a
+windowed scene with three orbiting shapes (sphere, cube, pyramid), each
+emitting its own decoded music track (a different container/codec
+format per shape) while the `FlyCamera` pose doubles as the shared
+`audio-core` listener (same local-forward-`+X` `Motor3` convention), so
+panning and distance attenuation track the camera live; `physic_figures`
+runs the same shapes as real `physics-core` rigid bodies settling onto a
+textured floor, sharing `examples::scene_base`'s `GraphicsBase` with
+`magic_figures`. Every crate not named above
 has a real, tested implementation; see each crate's own section above
 for specifics. This staged order is intentional — see "Why implementation
 is deliberately last" below.
@@ -571,8 +586,8 @@ priority before writing implementations is keeping that document and the
   supports both headless (`Device::new`) and windowed
   (`Device::new_windowed`, a real swapchain `Surface`) construction, with
   a real render pipeline (`RenderPipeline`, `DepthTexture`,
-  `VertexLayout`) — proven end-to-end by the `spinning_cube` example (a
-  rotating, lit cube rendered to a real window). `compute-driver` gained
+  `VertexLayout`) — proven end-to-end by the `magic_figures`/
+  `physic_figures` examples (real windowed scenes, not headless). `compute-driver` gained
   `GpuComputeDevice`, a second backend alongside its existing CPU
   `ComputeDevice`, and `compute-runtime::ComputeContext::with_gpu` is the
   real dispatch path domain crates reach it through (per rule 5) — proven

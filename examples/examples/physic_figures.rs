@@ -1,9 +1,13 @@
 //! Real rigid-body physics: a sphere, a cube and a pyramid dropped above
-//! a textured floor and stepped through `physics-core`'s
-//! `Integrator`/`BroadPhase`/`NarrowPhase`/`ConstraintSolver` every
-//! frame, each body's resulting `Motor3` frame fed straight to its
-//! `Renderable3D` — no separate "visual" transform, physics *is* the
-//! transform.
+//! a textured floor and stepped every frame through
+//! `meridian_engine_core::SubsystemManager::step_physics` — this
+//! example's own [`PhysicsRig`] only adds a fixed-timestep accumulator
+//! around it, not a hand-rolled `Integrator`/`BroadPhase`/`NarrowPhase`/
+//! `ConstraintSolver` pipeline (see [`PhysicsRig`]'s own doc comment for
+//! why that split, and the first real proof that `SubsystemManager`'s
+//! physics pipeline works end-to-end in an actual application). Each
+//! body's resulting `Motor3` frame feeds straight to its `Renderable3D`
+//! — no separate "visual" transform, physics *is* the transform.
 //!
 //! `physics-core` only has two collider shapes today, `Sphere` and
 //! `Cuboid` (see `ColliderShape`) — there is no dedicated pyramid
@@ -22,6 +26,8 @@
 //! Run with:
 //!   ./build.sh run physic_figures
 
+use meridian_audio_core::Mixer;
+use meridian_engine_core::SubsystemManager;
 use meridian_examples::{
     FlyCamera, GraphicsBase, cube_mesh_source, ground_mesh_source, icosphere_mesh_source,
     look_at_rotor, pyramid_mesh_source,
@@ -29,9 +35,7 @@ use meridian_examples::{
 use meridian_gac_core::{Motor3, Vec3};
 use meridian_graphics_core::{DrawBuffers, Light, Material, Renderable3D, Scene3D, submit_scene3d};
 use meridian_graphics_driver::Device;
-use meridian_physics_core::{
-    BroadPhase, ColliderShape, ConstraintSolver, Integrator, NarrowPhase, RigidBody,
-};
+use meridian_physics_core::{ColliderShape, ConstraintSolver, RigidBody};
 use meridian_platform_core::{AppHandler, InputState, KeyCode, Window, run_windowed_app};
 
 const FLOOR_HALF_EXTENT: f32 = 14.0;
@@ -59,11 +63,6 @@ const SOLVER_RESTITUTION: f32 = 0.0;
 /// jitter (see `NarrowPhase`'s box-box manifold) could slide the box
 /// across the floor indefinitely instead of settling.
 const SOLVER_FRICTION: f32 = 0.6;
-/// How many times per physics tick the broad/narrow/solve sequence
-/// re-runs against the same integrated positions — see
-/// `PhysicsRig::step`'s doc comment for why one pass isn't enough for a
-/// multi-point box manifold.
-const SOLVER_RELAXATION_ITERATIONS: u32 = 4;
 
 /// A `Cuboid` collider that roughly bounds the pyramid mesh (base
 /// `2*PYRAMID_BASE_HALF_EXTENT` square, `PYRAMID_HEIGHT` tall) — see the
@@ -89,14 +88,27 @@ struct GpuState {
     body_renderable_indices: [usize; 3],
 }
 
+/// Fixed-timestep driver around `engine-core`'s real
+/// [`SubsystemManager::step_physics`] — the physics pipeline itself
+/// (integrate, relax contacts, resolve) is no longer hand-rolled here;
+/// see that method's own doc comment for the multi-point-manifold
+/// relaxation it does internally. What's left at this layer is
+/// deliberately application policy, not engine plumbing: the render
+/// loop's `frame_dt` varies with frame rate, but the solver is only
+/// validated at a constant [`PHYSICS_DT`], so this accumulates
+/// wall-clock time and steps in whole [`PHYSICS_DT`] increments,
+/// capped so a stall (e.g. window drag) can't spiral into running
+/// hundreds of catch-up steps at once. `SubsystemManager::step_physics`
+/// takes an arbitrary `dt` per call — it has no opinion on fixed vs.
+/// variable timestep — so this accumulator stays here rather than
+/// forcing that policy onto `engine-core` itself (see
+/// docs/roadmap.md's `Runtime`-adoption entry: `Runtime::tick` measures
+/// its own real, variable-length `dt` via `Clock`, a different, equally
+/// legitimate policy that doesn't fit this example's fixed-step need,
+/// which is why this composes `SubsystemManager` directly rather than
+/// `Runtime` as a whole).
 struct PhysicsRig {
-    bodies: Vec<RigidBody>,
-    integrator: Integrator,
-    solver: ConstraintSolver,
-    broad: BroadPhase,
-    narrow: NarrowPhase,
-    /// Bodies `1..=3` are the sphere/cube/pyramid (body `0` is the
-    /// static floor) — see [`PhysicsRig::new`].
+    subsystems: SubsystemManager,
     accumulator: f32,
 }
 
@@ -135,57 +147,30 @@ impl PhysicsRig {
             ..Default::default()
         };
 
+        // No audio in this example — `SubsystemManager::new` still
+        // requires a `Mixer` (it owns the audio pipeline too, per
+        // dependency-rules.md rule 7), left unused here.
+        let mut subsystems = SubsystemManager::new(Mixer::new(
+            meridian_audio_core::SpeakerLayout::mono(),
+        ));
+        subsystems.bodies = vec![floor, sphere, cube, pyramid];
+        subsystems.solver = ConstraintSolver::new(SOLVER_RESTITUTION).with_friction(SOLVER_FRICTION);
+
         Self {
-            bodies: vec![floor, sphere, cube, pyramid],
-            integrator: Integrator::default(),
-            solver: ConstraintSolver::new(SOLVER_RESTITUTION).with_friction(SOLVER_FRICTION),
-            broad: BroadPhase::new(),
-            narrow: NarrowPhase::new(),
+            subsystems,
             accumulator: 0.0,
         }
     }
 
-    /// Fixed-timestep stepping (accumulator pattern): the render loop's
-    /// `dt` varies with frame rate, but the solver is only validated at
-    /// a constant `PHYSICS_DT` — accumulating and stepping in whole
-    /// increments keeps the simulation deterministic regardless of how
-    /// fast frames arrive, capped so a stall (e.g. window drag) can't
-    /// spiral into running hundreds of catch-up steps at once.
+    fn bodies(&self) -> &[RigidBody] {
+        &self.subsystems.bodies
+    }
+
     fn step(&mut self, frame_dt: f32) {
         self.accumulator += frame_dt;
         let mut steps = 0;
         while self.accumulator >= PHYSICS_DT && steps < 8 {
-            self.integrator.step(&mut self.bodies, PHYSICS_DT);
-
-            // Several *velocity-only* relaxation passes per tick, not
-            // one: a box/pyramid manifold is up to 4 contact points
-            // sharing one normal (see `NarrowPhase::generate_contacts`'s
-            // box-box expansion), and one pass over all of them leaves
-            // each point's impulse computed against the *other* points'
-            // pre-solve velocity, which is why box/pyramid contacts kept
-            // jittering on touchdown while the sphere (always exactly
-            // one contact point) never did. Deliberately
-            // `resolve_velocity`, not `resolve`: calling the *full*
-            // `resolve` (which also applies positional correction) once
-            // per relaxation pass pushed the body upward by the same
-            // correction several times per tick, which is exactly the
-            // "cube/pyramid bounce up/down and clip through the floor"
-            // bug this split fixes — see `ConstraintSolver::resolve`'s
-            // doc comment.
-            for _ in 0..SOLVER_RELAXATION_ITERATIONS {
-                let pairs = self.broad.find_candidate_pairs(&self.bodies).to_vec();
-                for contact in self.narrow.generate_contacts(&self.bodies, &pairs) {
-                    self.solver.resolve_velocity(&mut self.bodies, &contact);
-                }
-            }
-            // Positional correction exactly once per tick, against the
-            // final (velocity-relaxed) contact set.
-            let pairs = self.broad.find_candidate_pairs(&self.bodies).to_vec();
-            for contact in self.narrow.generate_contacts(&self.bodies, &pairs) {
-                self.solver
-                    .apply_positional_correction(&mut self.bodies, &contact);
-            }
-
+            self.subsystems.step_physics(PHYSICS_DT);
             self.accumulator -= PHYSICS_DT;
             steps += 1;
         }
@@ -289,19 +274,19 @@ impl AppHandler for App {
             Renderable3D {
                 mesh: sphere_mesh,
                 material: sphere_material,
-                frame: self.physics.bodies[1].frame,
+                frame: self.physics.bodies()[1].frame,
                 billboard: false,
             },
             Renderable3D {
                 mesh: cube_mesh,
                 material: cube_material,
-                frame: self.physics.bodies[2].frame,
+                frame: self.physics.bodies()[2].frame,
                 billboard: false,
             },
             Renderable3D {
                 mesh: pyramid_mesh,
                 material: pyramid_material,
-                frame: self.physics.bodies[3].frame,
+                frame: self.physics.bodies()[3].frame,
                 billboard: false,
             },
         ];
@@ -347,7 +332,7 @@ impl AppHandler for App {
         self.physics.step(frame_dt);
         for (renderable_index, body_index) in gpu.body_renderable_indices.iter().zip([1usize, 2, 3])
         {
-            gpu.scene.renderables[*renderable_index].frame = self.physics.bodies[body_index].frame;
+            gpu.scene.renderables[*renderable_index].frame = self.physics.bodies()[body_index].frame;
         }
         // The pyramid mesh's origin is its base center, but its
         // `Cuboid` collider is centered on the body — shift the
