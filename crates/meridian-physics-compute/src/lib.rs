@@ -41,3 +41,4 @@
 pub mod fixed;
 pub mod float;
 pub mod generic;
+pub mod rigid_body;
