@@ -23,8 +23,17 @@ Archetype(Transform, Velocity):
 ```
 
 rather than an array of `(Transform, Velocity)` structs. This is what makes
-a `Query<(&Transform, &mut Velocity)>` a tight, SIMD-friendly, cache-friendly
-loop instead of a pointer-chasing walk.
+a `Query<Transform>`/`QueryMut<Velocity>` a tight, SIMD-friendly,
+cache-friendly loop instead of a pointer-chasing walk.
+
+**`Query`/`QueryMut` iterate a single component type today, not a
+tuple.** A hypothetical `Query<(&Transform, &mut Velocity)>` needs to
+prove to the borrow checker that two different columns don't alias — a
+genuinely harder, `unsafe`-adjacent problem, deferred until a real
+system needs it rather than built speculatively (see the crate's own
+module doc). Existing consumers (e.g. `graphics-core::extract_scene3d`)
+join multiple single-component queries themselves — one `Query`/lookup
+per component type — rather than this crate offering a combined one.
 
 ## What this crate is not
 
