@@ -92,12 +92,16 @@ ALLOWED = {
         "meridian-compute-runtime",
     },
     "meridian-sdk": {
-        "meridian-engine-core",
+        "meridian-foundation",
+        "meridian-gac-core",
         "meridian-task-core",
         "meridian-platform-core",
+        "meridian-asset-core",
         "meridian-graphics-driver",
         "meridian-graphics-core",
-        "meridian-foundation",
+        "meridian-physics-core",
+        "meridian-audio-core",
+        "meridian-engine-core",
     },
 }
 

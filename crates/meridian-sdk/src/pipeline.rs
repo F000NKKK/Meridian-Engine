@@ -243,10 +243,7 @@ impl Stage for PhysicsStepStage {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use meridian_audio_core::{Mixer, SpeakerLayout};
-    use meridian_engine_core::{AudioSubsystem, PhysicsSubsystem};
-    use meridian_gac_core::{Motor3, Vec3};
-    use meridian_physics_core::{ColliderShape, RigidBody};
+    use crate::{ColliderShape, Emitter, Mixer, Motor3, RigidBody, SpeakerLayout, Vec3};
     use std::sync::atomic::{AtomicUsize, Ordering};
 
     fn falling_body() -> RigidBody {
@@ -383,7 +380,7 @@ mod tests {
         physics.bodies.push(falling_body());
         let mut audio = AudioSubsystem::new(Mixer::new(SpeakerLayout::mono()));
         audio.emitters.push((
-            meridian_audio_core::Emitter {
+            Emitter {
                 frame: Motor3::identity(),
             },
             1.0,

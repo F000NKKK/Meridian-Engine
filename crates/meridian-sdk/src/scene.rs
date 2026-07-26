@@ -26,8 +26,7 @@ use meridian_graphics_driver::{DepthTexture, Device, Surface};
 /// its own crate joins `env!("CARGO_MANIFEST_DIR")` itself before
 /// calling this.
 pub fn load_image_asset(path: &str) -> ImageData {
-    let bytes =
-        std::fs::read(path).unwrap_or_else(|e| panic!("failed to read asset {path}: {e}"));
+    let bytes = std::fs::read(path).unwrap_or_else(|e| panic!("failed to read asset {path}: {e}"));
     AnyImageDecoder
         .decode(&bytes)
         .unwrap_or_else(|e| panic!("failed to decode asset {path}: {e}"))
