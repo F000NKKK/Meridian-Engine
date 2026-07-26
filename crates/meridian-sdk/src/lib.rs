@@ -28,4 +28,4 @@
 
 pub mod pipeline;
 
-pub use pipeline::{Pipeline, PipelineState, PhysicsStepStage, Stage, StageContext, StageId};
+pub use pipeline::{PhysicsStepStage, Pipeline, PipelineState, Stage, StageContext, StageId};

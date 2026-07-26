@@ -5,12 +5,16 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Application-facing composition layer: a job-graph-based, composable frame pipeline over engine-core's Runtime/SubsystemManager plus the *-driver crates engine-core itself is forbidden from touching. Not a hub crate for domain logic (that stays in engine-core, per dependency-rules.md rule 7) — this is where driver access legitimately lives for a windowed application."
+description = "Single application-facing entry point: re-exports everything an app needs (gac-core/physics-core/audio-core/graphics-core/graphics-driver/platform-core/asset-core/engine-core types) plus its own composable job-graph pipeline and windowed-app scaffolding (scene/camera helpers). Applications depend on this crate alone, never on the individual crates it composes."
 
 [dependencies]
-meridian-engine-core = { workspace = true }
+meridian-foundation = { workspace = true }
+meridian-gac-core = { workspace = true }
 meridian-task-core = { workspace = true }
 meridian-platform-core = { workspace = true }
+meridian-asset-core = { workspace = true }
 meridian-graphics-driver = { workspace = true }
 meridian-graphics-core = { workspace = true }
-meridian-foundation = { workspace = true }
+meridian-physics-core = { workspace = true }
+meridian-audio-core = { workspace = true }
+meridian-engine-core = { workspace = true }
