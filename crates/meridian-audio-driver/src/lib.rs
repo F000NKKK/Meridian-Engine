@@ -153,6 +153,11 @@ impl AudioDevice {
         let device = host
             .default_output_device()
             .ok_or(AudioDeviceError::NoDevice)?;
+        let name = device
+            .description()
+            .map(|d| d.name().to_string())
+            .unwrap_or_else(|_| "<unknown>".to_string());
+        meridian_foundation::log_info!("audio output device opened: {name}");
         Ok(Self { device })
     }
 

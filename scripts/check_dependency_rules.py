@@ -79,6 +79,7 @@ ALLOWED = {
         "meridian-resource-core",
     },
     "meridian-engine-core": {
+        "meridian-foundation",
         "meridian-gac-core",
         "meridian-memory-core",
         "meridian-task-core",

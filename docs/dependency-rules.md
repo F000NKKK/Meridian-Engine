@@ -169,7 +169,7 @@ bottom-up.
 - `meridian-audio-core` -> `meridian-audio-driver`, `meridian-gac-core`, `meridian-resource-core`
 - `meridian-physics-core` -> `meridian-compute-runtime`, `meridian-ecs-core`, `meridian-gac-compute`, `meridian-gac-core`, `meridian-numeric-core`, `meridian-physics-driver`, `meridian-resource-core`
 - `meridian-physics-compute` -> `meridian-compute-runtime`, `meridian-foundation`, `meridian-gac-compute`, `meridian-gac-core`, `meridian-gpu-driver`, `meridian-numeric-core`, `meridian-physics-core`
-- `meridian-engine-core` -> `meridian-asset-core`, `meridian-audio-core`, `meridian-compute-runtime`, `meridian-ecs-core`, `meridian-gac-core`, `meridian-graphics-core`, `meridian-memory-core`, `meridian-physics-core`, `meridian-platform-core`, `meridian-task-core`
+- `meridian-engine-core` -> `meridian-asset-core`, `meridian-audio-core`, `meridian-compute-runtime`, `meridian-ecs-core`, `meridian-foundation`, `meridian-gac-core`, `meridian-graphics-core`, `meridian-memory-core`, `meridian-physics-core`, `meridian-platform-core`, `meridian-task-core`
 
 `meridian-engine-core` lists `meridian-graphics-core` as an allowed edge
 (rule 7) but doesn't use it yet — `Runtime::tick` doesn't render a

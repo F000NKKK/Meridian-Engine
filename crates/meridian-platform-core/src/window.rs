@@ -261,6 +261,12 @@ pub fn run_windowed_app<A: AppHandler>(
             let window = Window {
                 inner: Arc::new(raw_window),
             };
+            meridian_foundation::log_info!(
+                "window created: \"{}\" ({}x{})",
+                self.title,
+                self.width,
+                self.height
+            );
             self.app.on_ready(&window);
             self.window = Some(window);
         }

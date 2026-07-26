@@ -146,6 +146,12 @@ impl Device {
             })
             .await
             .map_err(DeviceError::RequestDevice)?;
+        meridian_foundation::log_info!(
+            "GPU device acquired: {} ({:?}, {:?} backend)",
+            adapter_info.name,
+            adapter_info.device_type,
+            adapter_info.backend
+        );
         Ok((device, queue, adapter_info, adapter))
     }
 

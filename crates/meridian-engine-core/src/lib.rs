@@ -255,6 +255,7 @@ pub struct Runtime {
 
 impl Runtime {
     pub fn new(subsystems: SubsystemManager) -> Self {
+        meridian_foundation::log_info!("engine-core Runtime initialized");
         Self {
             subsystems,
             events: EventSystem::new(),
