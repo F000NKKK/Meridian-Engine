@@ -66,6 +66,8 @@ impl fmt::Display for ParseError {
 
 impl std::error::Error for ParseError {}
 
+impl meridian_foundation::EngineError for ParseError {}
+
 /// Parses a complete DSL document into its single root [`Element`].
 /// Leading/trailing whitespace around the root is ignored; anything
 /// else outside the root tag (a second root element, stray text) is a
