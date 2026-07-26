@@ -1,8 +1,8 @@
 //! Real rigid-body physics: a sphere, a cube and a pyramid dropped above
 //! a textured floor and stepped every frame through
-//! `meridian_engine_core::SubsystemManager::step_physics` — this
-//! example's own [`PhysicsRig`] only adds a fixed-timestep accumulator
-//! around it, not a hand-rolled `Integrator`/`BroadPhase`/`NarrowPhase`/
+//! `meridian_sdk::SubsystemManager::step_physics` — this example's own
+//! [`PhysicsRig`] only adds a fixed-timestep accumulator around it, not
+//! a hand-rolled `Integrator`/`BroadPhase`/`NarrowPhase`/
 //! `ConstraintSolver` pipeline (see [`PhysicsRig`]'s own doc comment for
 //! why that split, and the first real proof that `SubsystemManager`'s
 //! physics pipeline works end-to-end in an actual application). Each
@@ -16,27 +16,38 @@
 //! box, while the mesh drawn at its frame is the real pyramid shape) —
 //! see [`pyramid_collider_half_extents`].
 //!
-//! Shares its base with `magic_figures` (`examples::scene_base` /
+//! Shares its base with `magic_figures` (`meridian_sdk::scene`'s
 //! `GraphicsBase`): same mesh builders, same textures (reused here for
 //! the physics bodies too — same cube/sphere/pyramid files as
 //! `magic_figures`, plus the same floor texture), same lighting. No
 //! bloom emissive glow here — these are ordinary lit, textured physics
 //! props, not the "magic" glowing shapes.
 //!
+//! This example depends on `meridian-sdk` alone (plus `tokio`, for its
+//! own async GPU-device handshake) — every type below is reached
+//! through `meridian_sdk`'s re-exports, never through
+//! `meridian-gac-core`/`meridian-physics-core`/`meridian-graphics-core`/
+//! etc. directly.
+//!
 //! Run with:
 //!   ./build.sh run physic_figures
 
-use meridian_audio_core::Mixer;
-use meridian_engine_core::SubsystemManager;
-use meridian_examples::{
-    FlyCamera, GraphicsBase, cube_mesh_source, ground_mesh_source, icosphere_mesh_source,
-    look_at_rotor, pyramid_mesh_source,
+use meridian_sdk::{
+    AppHandler, ColliderShape, ConstraintSolver, Device, DrawBuffers, FlyCamera, GraphicsBase,
+    InputState, KeyCode, Light, Material, Mixer, Motor3, Renderable3D, RigidBody, Scene3D,
+    SpeakerLayout, SubsystemManager, Vec3, Window, cube_mesh_source, ground_mesh_source,
+    icosphere_mesh_source, look_at_rotor, pyramid_mesh_source, run_windowed_app, submit_scene3d,
 };
-use meridian_gac_core::{Motor3, Vec3};
-use meridian_graphics_core::{DrawBuffers, Light, Material, Renderable3D, Scene3D, submit_scene3d};
-use meridian_graphics_driver::Device;
-use meridian_physics_core::{ColliderShape, ConstraintSolver, RigidBody};
-use meridian_platform_core::{AppHandler, InputState, KeyCode, Window, run_windowed_app};
+
+/// Joins `relative` onto this crate's own `CARGO_MANIFEST_DIR` — asset
+/// paths are relative to `examples/`, and `meridian_sdk::load_image_asset`
+/// deliberately doesn't assume any particular crate's manifest
+/// directory (it's a shared dependency of every application), so each
+/// caller resolves its own path before handing it a plain, directly
+/// openable path.
+fn asset_path(relative: &str) -> String {
+    format!("{}/{}", env!("CARGO_MANIFEST_DIR"), relative)
+}
 
 const FLOOR_HALF_EXTENT: f32 = 14.0;
 /// Floor collider is a thin static `Cuboid` slab, top surface at `y =
@@ -150,8 +161,7 @@ impl PhysicsRig {
         // No audio in this example — `SubsystemManager::new` still
         // requires a `Mixer` (it owns the audio pipeline too, per
         // dependency-rules.md rule 7), left unused here.
-        let mut subsystems =
-            SubsystemManager::new(Mixer::new(meridian_audio_core::SpeakerLayout::mono()));
+        let mut subsystems = SubsystemManager::new(Mixer::new(SpeakerLayout::mono()));
         subsystems.physics.bodies = vec![floor, sphere, cube, pyramid];
         subsystems.physics.solver =
             ConstraintSolver::new(SOLVER_RESTITUTION).with_friction(SOLVER_FRICTION);
@@ -211,7 +221,7 @@ impl AppHandler for App {
             .expect("failed to create windowed GPU device");
         let mut base = GraphicsBase::new(device, surface, width, height);
 
-        let floor_texture = base.load_texture("assets/textures/floor.png");
+        let floor_texture = base.load_texture(&asset_path("assets/textures/floor.png"));
         let floor_material = base.materials.register(Material {
             albedo: Some(floor_texture),
             base_color_factor: [1.0, 1.0, 1.0, 1.0],
@@ -222,7 +232,7 @@ impl AppHandler for App {
             .register(ground_mesh_source(FLOOR_HALF_EXTENT, 10.0))
             .expect("floor mesh must be valid");
 
-        let sphere_texture = base.load_texture("assets/textures/sphere.png");
+        let sphere_texture = base.load_texture(&asset_path("assets/textures/sphere.png"));
         let sphere_material = base.materials.register(Material {
             albedo: Some(sphere_texture),
             base_color_factor: [1.0, 1.0, 1.0, 1.0],
@@ -233,7 +243,7 @@ impl AppHandler for App {
             .register(icosphere_mesh_source(2, SPHERE_RADIUS))
             .expect("sphere mesh must be valid");
 
-        let cube_texture = base.load_texture("assets/textures/cube.bmp");
+        let cube_texture = base.load_texture(&asset_path("assets/textures/cube.bmp"));
         let cube_material = base.materials.register(Material {
             albedo: Some(cube_texture),
             base_color_factor: [1.0, 1.0, 1.0, 1.0],
@@ -244,7 +254,7 @@ impl AppHandler for App {
             .register(cube_mesh_source(CUBE_HALF_EXTENT))
             .expect("cube mesh must be valid");
 
-        let pyramid_texture = base.load_texture("assets/textures/pyramid.bmp");
+        let pyramid_texture = base.load_texture(&asset_path("assets/textures/pyramid.bmp"));
         let pyramid_material = base.materials.register(Material {
             albedo: Some(pyramid_texture),
             base_color_factor: [1.0, 1.0, 1.0, 1.0],
@@ -350,7 +360,7 @@ impl AppHandler for App {
         let frame = match gpu.base.surface.acquire_frame() {
             Ok(frame) => frame,
             Err(err) => {
-                meridian_foundation::log_warn!(
+                meridian_sdk::log_warn!(
                     "swapchain frame unavailable ({err}); reconfiguring surface"
                 );
                 gpu.base.resize(window.width(), window.height());
@@ -397,12 +407,10 @@ impl AppHandler for App {
 }
 
 fn main() {
-    meridian_foundation::crash_reporting::install(meridian_foundation::CrashReportConfig::new(
+    meridian_sdk::crash_reporting::install(meridian_sdk::CrashReportConfig::new("physic_figures"));
+    meridian_sdk::logging::file::init(meridian_sdk::logging::file::FileLogConfig::new(
         "physic_figures",
     ));
-    meridian_foundation::logging::file::init(
-        meridian_foundation::logging::file::FileLogConfig::new("physic_figures"),
-    );
     run_windowed_app("Meridian Engine — Physic Figures", 1024, 768, App::new())
         .expect("windowed app exited with an error");
 }

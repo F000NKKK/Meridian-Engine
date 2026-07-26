@@ -8,7 +8,7 @@ repository.workspace = true
 description = "Single application-facing entry point: re-exports everything an app needs (gac-core/physics-core/audio-core/graphics-core/graphics-driver/platform-core/asset-core/engine-core types) plus its own composable job-graph pipeline and windowed-app scaffolding (scene/camera helpers). Applications depend on this crate alone, never on the individual crates it composes."
 
 [dependencies]
-meridian-foundation = { workspace = true, features = ["file-logging"] }
+meridian-foundation = { workspace = true }
 meridian-gac-core = { workspace = true }
 meridian-task-core = { workspace = true }
 meridian-platform-core = { workspace = true }
@@ -18,3 +18,13 @@ meridian-graphics-core = { workspace = true }
 meridian-physics-core = { workspace = true }
 meridian-audio-core = { workspace = true }
 meridian-engine-core = { workspace = true }
+
+# Forwards straight to `meridian-foundation`'s own feature (the buffered
+# async file-log sink, `logging::file`) — this crate re-exports
+# `meridian_foundation::logging` unconditionally, but the `file`
+# submodule only exists when the underlying feature is actually on, the
+# same optionality `foundation` itself has. An application enables it
+# via `meridian-sdk = { features = ["file-logging"] }`, never by naming
+# `meridian-foundation` directly.
+[features]
+file-logging = ["meridian-foundation/file-logging"]

@@ -8,7 +8,7 @@ repository.workspace = true
 publish = false
 
 [dependencies]
-meridian-sdk = { workspace = true }
+meridian-sdk = { workspace = true, features = ["file-logging"] }
 tokio = { workspace = true }
 
 [[example]]
