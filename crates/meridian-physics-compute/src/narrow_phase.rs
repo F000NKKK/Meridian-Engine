@@ -97,6 +97,123 @@ where
     }
 }
 
+/// Per-pair cap on [`GenerateContactsKernel`]'s fixed-size output slot —
+/// the "per-pair count prefix-sum into a flattened output buffer"
+/// technique [`crate`]'s and docs/roadmap.md's own notes about batching
+/// `generate_contacts` describe, specialized to a fixed cap instead of a
+/// true dynamic prefix-sum, since `physics-core::generic::face_manifold`
+/// itself already hard-caps a box-box manifold at 4 points (`.take(4)`)
+/// — the same fixed-capacity-array approach `graphics-core::submission`'s
+/// `MAX_LIGHTS` uses for its own per-frame uniform array. A pair
+/// producing more than this many contacts (impossible with today's
+/// `face_manifold`, but not guaranteed forever) is truncated with a
+/// `meridian_foundation::log_warn!`, not silently dropped — matching
+/// `MAX_LIGHTS`'s own policy.
+pub const MAX_CONTACTS_PER_PAIR: usize = 4;
+
+/// Batch-expands `pairs` into full contact manifolds via
+/// [`NarrowPhase::generate_contacts`] — the manifold-aware counterpart to
+/// [`NarrowPhaseTestPairKernel`], for callers that need
+/// [`ConstraintSolver::resolve`](meridian_physics_core::generic::ConstraintSolver::resolve)'s
+/// real multi-point input (see this module's own doc comment for why
+/// `generate_contacts`'s variable per-pair output needed a different
+/// kernel shape than `test_pair`'s fixed 1:1 one).
+///
+/// **Reuses `NarrowPhase::generate_contacts` itself, called with a
+/// one-pair slice per dispatched item — it does not reimplement SAT or
+/// face-clipping.** Per CLAUDE.md's "don't drag another crate's logic
+/// into your own" rule, contact-manifold geometry belongs to
+/// `physics-core`; this kernel's only job is *how many threads run it
+/// and in what shape the output lands*, not the geometry itself. A
+/// single-pair `generate_contacts` call produces the exact same
+/// `Contact`s (same order, same values) that pair would contribute
+/// inside a whole-batch call, since the algorithm has no cross-pair
+/// state — so [`GenerateContactsKernel::results`], flattened in pair
+/// order, is provably identical to calling `generate_contacts(bodies,
+/// pairs)` once directly (see this module's tests).
+#[derive(Debug)]
+pub struct GenerateContactsKernel<F: GaFlavor>
+where
+    F: Sync,
+    F::Scalar: Send + Sync,
+    F::Vector: Send + Sync,
+    F::Bivector: Send + Sync,
+    F::Rotor: Send + Sync,
+    F::Motor: Send + Sync,
+{
+    narrow_phase: NarrowPhase<F>,
+    pub bodies: Vec<RigidBody<F>>,
+    pub pairs: Vec<(usize, usize)>,
+    results: Mutex<Vec<[Option<Contact<F>>; MAX_CONTACTS_PER_PAIR]>>,
+}
+
+impl<F: GaFlavor> GenerateContactsKernel<F>
+where
+    F: Sync,
+    F::Scalar: Send + Sync,
+    F::Vector: Send + Sync,
+    F::Bivector: Send + Sync,
+    F::Rotor: Send + Sync,
+    F::Motor: Send + Sync,
+{
+    pub fn new(bodies: Vec<RigidBody<F>>, pairs: Vec<(usize, usize)>) -> Self {
+        let results = Mutex::new(vec![[None; MAX_CONTACTS_PER_PAIR]; pairs.len()]);
+        Self {
+            narrow_phase: NarrowPhase::new(),
+            bodies,
+            pairs,
+            results,
+        }
+    }
+
+    /// This kernel's contacts from the most recent [`ComputeKernel::dispatch`]
+    /// call, flattened back into pair order — the same shape and order
+    /// `NarrowPhase::generate_contacts(bodies, pairs)` itself returns
+    /// (see this type's own doc comment for why that equivalence holds).
+    /// Empty if `dispatch` hasn't run yet.
+    pub fn results(&self) -> Vec<Contact<F>> {
+        self.results
+            .lock()
+            .unwrap()
+            .iter()
+            .flat_map(|slots| slots.iter().filter_map(|slot| *slot))
+            .collect()
+    }
+}
+
+impl<F: GaFlavor> ComputeKernel for GenerateContactsKernel<F>
+where
+    F: Sync,
+    F::Scalar: Send + Sync,
+    F::Vector: Send + Sync,
+    F::Bivector: Send + Sync,
+    F::Rotor: Send + Sync,
+    F::Motor: Send + Sync,
+{
+    fn dispatch(&self, context: &ComputeContext, size: DispatchSize) {
+        let count = size.total().min(self.pairs.len());
+        context.parallel_for(count, |i| {
+            let contacts = self
+                .narrow_phase
+                .generate_contacts(&self.bodies, core::slice::from_ref(&self.pairs[i]));
+            let mut slots = [None; MAX_CONTACTS_PER_PAIR];
+            if contacts.len() > MAX_CONTACTS_PER_PAIR {
+                meridian_foundation::log_warn!(
+                    "GenerateContactsKernel: pair {:?} produced {} contacts, \
+                     exceeding MAX_CONTACTS_PER_PAIR ({}) — truncating",
+                    self.pairs[i],
+                    contacts.len(),
+                    MAX_CONTACTS_PER_PAIR
+                );
+            }
+            for (slot, contact) in slots.iter_mut().zip(contacts.into_iter()) {
+                *slot = Some(contact);
+            }
+            self.results.lock().unwrap()[i] = slots;
+        });
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
