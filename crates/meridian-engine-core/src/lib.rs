@@ -4,21 +4,25 @@
 //! about every `*-core` at once (see docs/dependency-rules.md rule 7) — it
 //! owns real instances of the driver-independent subsystems that exist
 //! today: an `ecs-core` [`World`], `physics-core`'s body list and
-//! pipeline, and `audio-core`'s listener/mixer. `graphics-core` isn't
-//! wired into [`Runtime::tick`] yet: `graphics-driver` has a real
-//! windowed `wgpu` device now (see docs/roadmap.md's `winit`/windowing
-//! entry), but `graphics-core` itself has no scene/material vocabulary or
-//! GPU-submission bridge yet to turn its `RenderGraph` into actual draw
-//! calls, so there's no frame in the render sense for `Runtime::tick` to
-//! schedule. This crate deliberately doesn't depend on `graphics-driver`
-//! directly (see docs/dependency-rules.md: `engine-core` depends on
-//! `graphics-core`, not drivers) — a windowed app composes
-//! [`platform_core::run_windowed_app`](meridian_platform_core::run_windowed_app)
-//! with its own `graphics-driver::Device`/`Surface` and reuses
-//! [`Runtime::tick`]'s [`Time`] for animation/physics timing (see the
-//! `spinning_cube` example), rather than `Runtime` gaining rendering
-//! awareness before `graphics-core` has anything to submit. Real audio
-//! *output* follows the same composition pattern: the app owns an
+//! pipeline, and `audio-core`'s listener/mixer. `graphics-core` itself
+//! has a real scene/material vocabulary and GPU-submission bridge now
+//! (`Scene3D`/`Material`/`Light`, `SceneRenderer` — see
+//! `graphics-core::scene`/`submission`), used directly by the
+//! `magic_figures`/`physic_figures` examples; `graphics-core` isn't
+//! wired into [`Runtime::tick`] anyway, for a different reason:
+//! presenting a frame needs a real windowed `Device`/`Surface`
+//! (driver state), and this crate deliberately never depends on
+//! `graphics-driver` (see docs/dependency-rules.md: `engine-core`
+//! depends on `graphics-core`, not drivers) — a windowed app instead
+//! composes [`platform_core::run_windowed_app`](meridian_platform_core::run_windowed_app)
+//! with its own `graphics-driver::Device`/`Surface` and
+//! `graphics-core::SceneRenderer`, reusing [`Runtime::tick`]'s [`Time`]
+//! for animation/physics timing (see the `spinning_cube`/
+//! `magic_figures`/`physic_figures` examples), rather than `Runtime`
+//! gaining a `graphics-driver` edge or `tick` growing a per-call
+//! `Surface` parameter just to centralize what these examples already
+//! compose correctly at the application layer. Real audio *output*
+//! follows the same composition pattern: the app owns an
 //! `audio-core::AudioOutput` (the core→own-driver bridge over
 //! `audio-driver`) and feeds it `Mixer::render_interleaved` blocks each
 //! tick — see the `audible_scene` example; `Runtime` itself stays
