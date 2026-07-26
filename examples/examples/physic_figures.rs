@@ -40,25 +40,16 @@
 //! Run with:
 //!   ./build.sh run physic_figures
 
+use meridian_examples::paths::asset_path;
+use meridian_examples::scene_loader::load_dsl_scene;
 use meridian_sdk::dsl;
 use meridian_sdk::pipeline::{PhysicsStepStage, Pipeline, PipelineState};
 use meridian_sdk::{
-    AppHandler, AudioSubsystem, ColliderShape, ConstraintSolver, Device, DrawBuffers, FlyCamera,
-    GraphicsBase, InputState, KeyCode, Light, Material, Mixer, Motor3, PhysicsSubsystem,
-    Renderable3D, RigidBody, Scene3D, SpeakerLayout, Vec3, Window, cube_mesh_source,
-    ground_mesh_source, icosphere_mesh_source, look_at_rotor, pyramid_mesh_source,
-    run_windowed_app, submit_scene3d,
+    AppHandler, AudioSubsystem, ColliderShape, ConstraintSolver, Device, FlyCamera, GraphicsBase,
+    InputState, KeyCode, Light, Material, Mixer, Motor3, PhysicsSubsystem, Renderable3D, RigidBody,
+    Scene3D, SpeakerLayout, Vec3, Window, cube_mesh_source, ground_mesh_source,
+    icosphere_mesh_source, look_at_rotor, pyramid_mesh_source, run_windowed_app,
 };
-
-/// Joins `relative` onto this crate's own `CARGO_MANIFEST_DIR` — asset
-/// paths are relative to `examples/`, and `meridian_sdk`'s asset/scene
-/// loaders deliberately don't assume any particular crate's manifest
-/// directory (they're a shared dependency of every application), so
-/// each caller resolves its own path before handing them a plain,
-/// directly openable path.
-fn asset_path(relative: &str) -> String {
-    format!("{}/{}", env!("CARGO_MANIFEST_DIR"), relative)
-}
 
 const PHYSICS_DT: f32 = 1.0 / 60.0;
 /// `0`: a settled body must not bounce at all. Combined with
