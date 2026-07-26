@@ -146,10 +146,28 @@ WGSL-port yet, and CPU batching is the real, useful step this phase
 needed. Proven to match calling `Integrator::step` directly, including
 its static-body (`mass <= 0`) skip and a batch above the CPU
 parallel-dispatch threshold (`cargo test -p meridian-physics-compute
-rigid_body`). `BroadPhase`/`NarrowPhase`/`ConstraintSolver` batching is
-still open follow-up — each has more per-pair state (contact
-manifolds, accumulated impulses) than `Integrator`'s "one body in, one
-body out," so batching them isn't the same direct lift.
+rigid_body`). `NarrowPhase::test_pair` is batched too, the same way:
+`meridian-physics-compute::narrow_phase::NarrowPhaseTestPairKernel`
+tests many candidate pairs (typically
+`BroadPhase::find_candidate_pairs`'s output) for exact overlap through
+one dispatch, mirroring `gac-compute::MotorComposeKernel`'s
+independent-pairs shape — `test_pair` is one pair in, one
+`Option<Contact<F>>` out, a fixed 1:1 shape, deliberately not
+`NarrowPhase::generate_contacts` (a box-box pair expands to a *variable*
+number of manifold points, which doesn't fit a fixed-size-per-item
+kernel slot). Same proof shape as `RigidBodyIntegratorKernel`: matches
+calling `test_pair` directly pair-for-pair, including which pairs come
+back `None`, across a batch above the parallel-dispatch threshold
+(`cargo test -p meridian-physics-compute narrow_phase`).
+`BroadPhase::find_candidate_pairs` and `NarrowPhase::generate_contacts`/
+`ConstraintSolver` batching is still open follow-up:
+`find_candidate_pairs`' AABB sweep isn't an independent per-item
+computation the way `Integrator::step`/`test_pair` are, and
+`generate_contacts`/the solver carry more per-pair/per-contact state
+(variable-size manifolds, accumulated impulses) than a fixed-output-slot
+kernel covers — batching `generate_contacts` needs a per-pair count
+prefix-sum into a flattened output buffer (the standard GPU technique
+for variable-output-per-thread work), not the same direct lift.
 
 Step 7 (`asset-core`) is real: BMP (uncompressed 24/32-bit), WAV (PCM
 16-bit), and a minimal OBJ (positions + triangles) decoder — formats
