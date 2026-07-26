@@ -170,11 +170,35 @@ bottom-up.
 - `meridian-physics-core` -> `meridian-compute-runtime`, `meridian-ecs-core`, `meridian-gac-compute`, `meridian-gac-core`, `meridian-numeric-core`, `meridian-physics-driver`, `meridian-resource-core`
 - `meridian-physics-compute` -> `meridian-compute-runtime`, `meridian-foundation`, `meridian-gac-compute`, `meridian-gac-core`, `meridian-gpu-driver`, `meridian-numeric-core`, `meridian-physics-core`
 - `meridian-engine-core` -> `meridian-asset-core`, `meridian-audio-core`, `meridian-compute-runtime`, `meridian-ecs-core`, `meridian-foundation`, `meridian-gac-core`, `meridian-graphics-core`, `meridian-memory-core`, `meridian-physics-core`, `meridian-platform-core`, `meridian-task-core`
+- `meridian-sdk` -> `meridian-asset-core`, `meridian-audio-core`, `meridian-engine-core`, `meridian-foundation`, `meridian-gac-core`, `meridian-graphics-core`, `meridian-graphics-driver`, `meridian-physics-core`, `meridian-platform-core`, `meridian-task-core`
 
 `meridian-engine-core` lists `meridian-graphics-core` as an allowed edge
 (rule 7) but doesn't use it yet — `Runtime::tick` doesn't render a
 frame; see that crate's own module doc for why, and docs/roadmap.md's
 `graphics-core`/`Runtime::tick` entry for the current state.
+
+**`meridian-sdk` is a second crate that depends on (nearly) every
+`*-core`, alongside `engine-core` — this is not a violation of rule 7,
+it's a deliberately different kind of edge.** Rule 7 is about *where
+cross-`*-core` coordination logic lives* (one place, so it doesn't
+accrete as ad hoc cross-dependencies between domain crates); `sdk` adds
+no coordination logic of its own — its `pipeline::PhysicsStepStage`,
+for instance, is a thin wrapper calling straight into
+`engine_core::PhysicsSubsystem::step`, not a reimplementation (CLAUDE.md's
+"don't drag another crate's logic into your own" rule). `sdk`'s reason
+for touching every `*-core` is different and additive: it's the single
+application-facing re-export surface (applications depend on `sdk`
+alone, never on the individual crates it composes — see that crate's
+own module doc) *and* the one place allowed to combine `engine-core`'s
+driver-independent orchestration with the `*-driver` crates
+`engine-core` itself can never depend on (`graphics-driver`, here, for
+windowed rendering). Both roles need the same broad reach `engine-core`
+has, for reasons rule 7 doesn't cover — this is a second, narrower
+"is allowed to know about a lot" exception, not a second unrestricted
+hub. `meridian-ecs-core`/`meridian-compute-runtime`/`meridian-memory-core`
+are conspicuously absent from `sdk`'s edge list — it doesn't reach for
+those because nothing it re-exports needs them (yet); this is not a
+blanket "sdk may depend on anything."
 
 ## Rules
 
