@@ -27,9 +27,16 @@ meridian-audio-driver    low-level audio device abstraction
 meridian-physics-driver  low-level physics execution backend (memory, SIMD/GPU dispatch, sync)
 meridian-graphics-core   render graph, culling, lighting, materials, camera
 meridian-physics-core    broad/narrow phase collision, constraint solver — generic over GaFlavor (float or deterministic Fixed)
+meridian-physics-compute GPU/job-graph-batched rigid-body kernels — adapter between physics-core and compute-runtime/task-core
 meridian-audio-core      spatial mixer, DSP graph, listener/emitter
 meridian-engine-core     runtime: frame scheduler, events, subsystem manager
+meridian-sdk             application entry point: re-exports every type above, plus a composable job-graph frame pipeline and windowed-app scaffolding
 ```
+
+Applications depend on `meridian-sdk` alone — see
+[`examples/`](examples/) (`magic_figures`, `physic_figures`), both of
+which import everything through `meridian_sdk::*`, never the individual
+crates above directly.
 
 Dependencies flow bottom-up: `foundation` / `memory-core` / `task-core` /
 `platform-core` have none, `engine-core` sits on top of everything.
