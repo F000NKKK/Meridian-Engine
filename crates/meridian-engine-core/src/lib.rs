@@ -143,28 +143,27 @@ const RELAXATION_ITERATIONS: u32 = 4;
 /// inventing one here would be new, undocumented design, not wiring
 /// together what already exists), `physics-core`'s body list plus its
 /// broad/narrow-phase and solver/integrator, and `audio-core`'s listener,
-/// emitters, mixer and (optional) binaural renderer. The only place in
-/// the workspace allowed to know about every `*-core` at once — see
-/// docs/dependency-rules.md rule 7.
+/// emitters and mixer. The only place in the workspace allowed to know
+/// about every `*-core` at once — see docs/dependency-rules.md rule 7.
 ///
-/// **Two independent, non-overlapping audio paths**, not one API with
-/// two modes: [`mixer`](Self::mixer)/[`mix_audio`](Self::mix_audio) is
-/// the simple per-channel *gain* model (`Mixer::mix` — VBAP-lite panning
-/// + distance attenuation, no sample synthesis of its own; the caller
-/// applies the returned gains to whatever samples it already has).
-/// [`binaural`](Self::binaural)/[`render_binaural`](Self::render_binaural)
-/// is the richer, headphone-specific model: real per-sample stereo
-/// synthesis (ITD via fractional-delay lines, azimuth-dependent
-/// head-shadow low-pass, declicked parameter ramps — see
-/// `audio_core::effects::BinauralRenderer`'s own module doc), which
-/// `mix_audio`'s gain-only output can't express. `binaural` is `None`
-/// by default (most apps that only need simple channel routing shouldn't
-/// pay for a renderer they never call); an app that wants real
-/// spatialized playback opts in via
-/// [`SubsystemManager::with_binaural`]. This split exists because a
-/// real consumer (`examples/magic_figures`) needed the binaural path and
-/// `mix_audio` genuinely can't provide it — not because "gains" and
-/// "samples" were ever meant to be the same API.
+/// **`mixer`/[`mix_audio`](Self::mix_audio) is one specific, opinionated
+/// audio path (`Mixer::mix`'s per-channel gain model), not "the" audio
+/// pipeline every consumer must fit.** A richer consumer
+/// (`examples/magic_figures`, which needs `BinauralRenderer`'s real
+/// per-sample stereo synthesis — ITD, head-shadow filtering, its own
+/// declick stage — none of which `Mixer::mix`'s gains can express) is
+/// deliberately **not** forced through this field: bolting a second
+/// fixed pipeline (a `binaural: Option<BinauralRenderer>` field plus a
+/// matching hardcoded declick stage) onto `SubsystemManager` alongside
+/// this one would repeat the same mistake — engine-core dictating a
+/// specific effect chain — rather than fixing it. A real, composable
+/// rendering-pipeline abstraction (stages an app assembles itself,
+/// `mixer` becoming one possible stage among others) is real design
+/// work, tracked as follow-up rather than improvised mid-migration — see
+/// docs/roadmap.md's `Runtime`-adoption entry. Until that exists,
+/// `examples/magic_figures` keeps owning its `BinauralRenderer`/
+/// `Declicker` pipeline directly, reading only
+/// [`listener`](Self::listener) from here.
 pub struct SubsystemManager {
     pub world: World,
 
@@ -177,13 +176,6 @@ pub struct SubsystemManager {
     pub listener: Listener,
     pub emitters: Vec<(Emitter, f32)>,
     pub mixer: Mixer,
-    pub binaural: Option<BinauralRenderer>,
-    /// Anti-zipper declicker for [`render_binaural`](Self::render_binaural)'s
-    /// output — always stereo (`BinauralRenderer::render` always produces
-    /// 2 channels), so this is sized once and kept in lockstep with
-    /// `binaural` rather than being a second `Option` callers must set up
-    /// themselves.
-    binaural_declicker: Declicker,
 }
 
 impl std::fmt::Debug for SubsystemManager {
