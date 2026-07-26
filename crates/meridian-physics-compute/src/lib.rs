@@ -39,8 +39,8 @@
 //! tradeoff acknowledged there), not an oversight.
 
 //! [`rigid_body`] is a second, independent kind of work this crate hosts:
-//! batching `physics-core`'s rigid-body [`generic::Integrator`] (er,
-//! [`meridian_physics_core::generic::Integrator`]) through
+//! batching `physics-core`'s rigid-body
+//! [`meridian_physics_core::generic::Integrator`] through
 //! `compute-runtime` instead of a plain `for` loop — docs/roadmap.md's
 //! "batching is additive later" note for `BroadPhase`/`NarrowPhase`/
 //! `ConstraintSolver`/`Integrator`, `Integrator`'s half of it. Unlike

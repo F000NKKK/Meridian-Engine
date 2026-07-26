@@ -128,6 +128,29 @@ Steps 4-6 are real and tested:
   cheap/simple operations — deliberately deferred rather than built
   speculatively ahead of a concrete caller that needs it.
 
+`physics-core`'s rigid-body engine (`BroadPhase`/`NarrowPhase`/
+`ConstraintSolver`/`Integrator`) was, until now, only ever driven by a
+plain CPU `for` loop — the "batching them through `compute-runtime` is
+additive later" note earlier in this document. `Integrator`'s half of
+that is real now: `meridian-physics-compute::rigid_body::RigidBodyIntegratorKernel`
+batches `Integrator::step` across many independent bodies through one
+`ComputeKernel::dispatch` call instead of a loop, the same shape as
+`gac-compute::MotorTransformKernel`. Unlike this crate's soft-body
+kernels (`float`/`fixed`, WGSL, float/fixed-split because the GPU
+dispatch itself forces it), `RigidBodyIntegratorKernel` is generic over
+`GaFlavor` and dispatches through `ComputeContext::parallel_for`'s CPU
+backend only — `Integrator::step` has no GPU-dispatch constraint of its
+own (same reasoning as `physics-core`'s own engine being written once
+and generic, not float/fixed-duplicated), so there's nothing to
+WGSL-port yet, and CPU batching is the real, useful step this phase
+needed. Proven to match calling `Integrator::step` directly, including
+its static-body (`mass <= 0`) skip and a batch above the CPU
+parallel-dispatch threshold (`cargo test -p meridian-physics-compute
+rigid_body`). `BroadPhase`/`NarrowPhase`/`ConstraintSolver` batching is
+still open follow-up — each has more per-pair state (contact
+manifolds, accumulated impulses) than `Integrator`'s "one body in, one
+body out," so batching them isn't the same direct lift.
+
 Step 7 (`asset-core`) is real: BMP (uncompressed 24/32-bit), WAV (PCM
 16-bit), and a minimal OBJ (positions + triangles) decoder — formats
 simple enough to hand-roll without an external crate. Compressed audio
