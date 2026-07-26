@@ -67,9 +67,16 @@ Steps 4-6 are real and tested:
   bit-for-bit identical to the CPU `Fixed` implementation across ~1000
   operand pairs per operation, not just numerically close (`cargo test -p
   meridian-gac-compute fixed_wgsl`) — `sqrt` now included (Newton's
-  method ported from `isqrt_u64`, same bit-exactness proof). The CORDIC
-  `sin_cos`/`atan2` still aren't ported (tracked follow-up,
-  `fixed_wgsl`'s own module doc has the scope note).
+  method ported from `isqrt_u64`, same bit-exactness proof), and so is
+  CORDIC `sin_cos`/`atan2`: unlike the arithmetic ops, CORDIC needs no
+  64-bit emulation (only shifts/adds on a single `i32`, and WGSL's `>>`
+  on `i32` is already the same arithmetic sign-extending shift Rust
+  uses), so it's a near-literal translation of
+  `numeric-core::fixed`'s `cordic_rotate`/`cordic_vector_angle`, with the
+  `atan` table and gain/pi constants precomputed on the Rust side and
+  embedded as WGSL literals. Same bit-exactness bar, proven against the
+  CPU `Fixed::sin_cos`/`atan2` across a full-circle angle sweep and every
+  `atan2` quadrant (`cargo test -p meridian-gac-compute fixed_wgsl`).
 
   A real domain kernel now dispatches through it: `meridian-physics-compute`
   (a new `meridian-<domain>-compute` adapter crate per rule 11, mirroring
