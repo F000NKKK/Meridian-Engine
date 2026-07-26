@@ -26,6 +26,8 @@ impl fmt::Display for TagParseError {
 
 impl std::error::Error for TagParseError {}
 
+impl meridian_foundation::EngineError for TagParseError {}
+
 /// A type that can be built from one DSL element's attributes.
 /// `#[dsl_tag(name = "...")]` generates this impl; nothing prevents
 /// writing it by hand for a tag whose parsing doesn't fit the macro's

@@ -1,0 +1,16 @@
+[package]
+name = "meridian-dsl-macros"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "#[dsl_tag] attribute macro implementing meridian_dsl_core::DslTag for a struct — the code-generation half of the SDK's extensible scene DSL; see meridian-dsl-core for the trait and meridian-sdk::dsl for the registry it feeds."
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = { version = "2", features = ["full"] }
+quote = "1"
+proc-macro2 = "1"
