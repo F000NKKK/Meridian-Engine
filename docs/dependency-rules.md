@@ -6,31 +6,49 @@ reference when a PR (human or agent-authored) is unsure which direction a
 
 ## The graph
 
+This section is a *reading aid*, not the authoritative rule — the exact,
+enforced graph is `ALLOWED` in `scripts/check_dependency_rules.py`
+(`./build.sh check-deps` fails the build the moment a `Cargo.toml` edge
+and that dict disagree, in either direction). The diagram below is kept
+in sync with it, but if the two ever conflict, `ALLOWED` wins; fix the
+diagram, not the other way around. The full, exact per-crate edge list
+is in ["All edges, exactly"](#all-edges-exactly) below — read the
+diagram for the shape of the graph, that section for the ground truth
+of any one crate's dependencies.
+
+`meridian-foundation`, `meridian-memory-core`, and `meridian-task-core`
+are the graph's independent leaves — each depends on nothing (rule 0
+covers `foundation` specifically: *any* other crate may take an edge to
+it, so it isn't drawn as a dependency of anything below).
+
+The real graph has too many crisscrossing edges (many crates each
+depend directly on `foundation`, `gac-core`, `resource-core`, ... —
+see ["All edges, exactly"](#all-edges-exactly)) to draw as a single
+arrow-accurate ASCII diagram without either lying by omission or
+becoming unreadable clutter — the previous version of this section
+tried the "one diagram, arrows glossed over with a disclaimer"
+approach and it drifted from the real graph more than once. Instead,
+here's every crate grouped by dependency depth (0 = a leaf; N = one
+more than the deepest thing it depends on) — a crate in tier N can only
+depend on crates in tiers `0..N`, never a same-tier or higher-tier one
+(that's what makes the graph a DAG):
+
 ```text
-meridian-foundation
-        |
-        v
-meridian-numeric-core
-        |
-        v
-meridian-gac-core   meridian-memory-core   meridian-task-core   meridian-platform-core
-        |                  |     |                 |                     |
-        |                  |     v                 |                     +---------------+
-        |                  |  meridian-resource-core|                     |               |
-        v                  v     |                  v                     v               v
-meridian-ecs-core <--------+     |        meridian-compute-driver   meridian-graphics-driver
-        |                        |                  |               meridian-audio-driver
-        |                        |                  v               meridian-physics-driver
-        |                        |        meridian-compute-runtime          |
-        |                        |                                          |
-        +----------+-------------+------------------------------------------+
-                    |
-   meridian-asset-core   meridian-graphics-core   meridian-physics-core   meridian-audio-core
-                    |                |                    |                     |
-                    +----------------+--------------------+---------------------+
-                                               |
-                                    meridian-engine-core
+tier 0  foundation, memory-core, task-core
+tier 1  numeric-core, platform-core, resource-core
+tier 2  asset-core, audio-driver, gac-core, gpu-driver, physics-driver
+tier 3  audio-core, compute-driver, ecs-core, graphics-driver
+tier 4  compute-runtime
+tier 5  gac-compute
+tier 6  graphics-core, physics-core
+tier 7  engine-core, physics-compute
 ```
+
+This shows *depth*, not *which crate depends on which* — two crates in
+the same tier aren't necessarily related at all (`audio-core` and
+`ecs-core` share tier 3 but neither depends on the other). For the
+actual edges, use ["All edges, exactly"](#all-edges-exactly); don't
+infer them from tier adjacency.
 
 `meridian-graphics-driver` and `meridian-compute-driver` both also depend
 on `meridian-gpu-driver` (omitted from the diagram above for
@@ -74,9 +92,13 @@ meridian-gac-core   meridian-compute-runtime
 `MotorComposeKernel`, ...). `graphics-core` and `physics-core` depend on
 `gac-compute` for batched transform work and on `compute-runtime` directly
 for non-GAC compute (e.g. GPU culling) — both edges omitted from the main
-diagram above for readability, along with `meridian-audio-core`'s dependency
-on `meridian-gac-core` and `meridian-audio-driver`; see each crate's own
-`Cargo.toml` for the exact edge list.
+diagram above for readability, along with `meridian-audio-core`'s
+dependency on `meridian-gac-core`/`meridian-audio-driver`/
+`meridian-resource-core` and `meridian-graphics-core`'s/
+`meridian-physics-core`'s own direct dependency on `meridian-resource-core`
+(handle types their `MeshRegistry`/`ColliderMeshHandle` etc. use) — see
+["All edges, exactly"](#all-edges-exactly) for the complete, non-abridged
+list.
 
 `meridian-gac-compute` also depends directly on `meridian-gpu-driver` —
 not `meridian-compute-driver` (still forbidden by rule 5: a kernel
@@ -118,6 +140,41 @@ open `meridian-foundation` edge: `narrow_phase::GenerateContactsKernel`
 logs via `log_warn!` when a pair's manifold exceeds its fixed
 `MAX_CONTACTS_PER_PAIR` output slot, the same `MAX_LIGHTS`-style
 truncation policy `graphics-core::submission` uses.
+
+## All edges, exactly
+
+The ground truth: every crate's real `[dependencies]`, mirroring
+`ALLOWED` in `scripts/check_dependency_rules.py` (`./build.sh
+check-deps` fails if a real edge and this list disagree — regenerate
+both together when either changes, in the same PR). Ordered roughly
+bottom-up.
+
+- `meridian-foundation` -> (nothing)
+- `meridian-memory-core` -> (nothing)
+- `meridian-task-core` -> (nothing)
+- `meridian-numeric-core` -> `meridian-foundation`
+- `meridian-platform-core` -> `meridian-foundation`
+- `meridian-gac-core` -> `meridian-numeric-core`
+- `meridian-resource-core` -> `meridian-memory-core`
+- `meridian-ecs-core` -> `meridian-gac-core`, `meridian-memory-core`
+- `meridian-gpu-driver` -> `meridian-foundation`, `meridian-platform-core`
+- `meridian-graphics-driver` -> `meridian-foundation`, `meridian-gpu-driver`, `meridian-platform-core`
+- `meridian-compute-driver` -> `meridian-gpu-driver`, `meridian-platform-core`
+- `meridian-audio-driver` -> `meridian-foundation`, `meridian-platform-core`
+- `meridian-physics-driver` -> `meridian-platform-core`
+- `meridian-compute-runtime` -> `meridian-compute-driver`, `meridian-memory-core`, `meridian-task-core`
+- `meridian-gac-compute` -> `meridian-compute-runtime`, `meridian-gac-core`, `meridian-gpu-driver`, `meridian-numeric-core`
+- `meridian-asset-core` -> `meridian-foundation`, `meridian-platform-core`
+- `meridian-graphics-core` -> `meridian-asset-core`, `meridian-compute-runtime`, `meridian-ecs-core`, `meridian-foundation`, `meridian-gac-compute`, `meridian-gac-core`, `meridian-graphics-driver`, `meridian-memory-core`, `meridian-resource-core`
+- `meridian-audio-core` -> `meridian-audio-driver`, `meridian-gac-core`, `meridian-resource-core`
+- `meridian-physics-core` -> `meridian-compute-runtime`, `meridian-ecs-core`, `meridian-gac-compute`, `meridian-gac-core`, `meridian-numeric-core`, `meridian-physics-driver`, `meridian-resource-core`
+- `meridian-physics-compute` -> `meridian-compute-runtime`, `meridian-foundation`, `meridian-gac-compute`, `meridian-gac-core`, `meridian-gpu-driver`, `meridian-numeric-core`, `meridian-physics-core`
+- `meridian-engine-core` -> `meridian-asset-core`, `meridian-audio-core`, `meridian-compute-runtime`, `meridian-ecs-core`, `meridian-gac-core`, `meridian-graphics-core`, `meridian-memory-core`, `meridian-physics-core`, `meridian-platform-core`, `meridian-task-core`
+
+`meridian-engine-core` lists `meridian-graphics-core` as an allowed edge
+(rule 7) but doesn't use it yet — `Runtime::tick` doesn't render a
+frame; see that crate's own module doc for why, and docs/roadmap.md's
+`graphics-core`/`Runtime::tick` entry for the current state.
 
 ## Rules
 
@@ -205,9 +262,10 @@ truncation policy `graphics-core::submission` uses.
     [threading-model.md](threading-model.md)) and must never grow a kernel
     that encodes what a `Motor3`, a particle, or a rigid body is. Every
     domain that needs batched compute gets its own
-    `meridian-<domain>-compute` adapter crate — `gac-compute` today,
-    `particle-compute`/`physics-compute`/`ai-compute` as they're needed —
-    depending on that domain's `*-core` plus `compute-runtime`, per rule 10.
+    `meridian-<domain>-compute` adapter crate — `gac-compute` and
+    `physics-compute` today, a future `particle-compute`/`ai-compute` as
+    they're needed — depending on that domain's `*-core` plus
+    `compute-runtime`, per rule 10.
     This is what keeps `compute-runtime` small and stable as new domains
     adopt it instead of each one adding its own edge into its internals.
     The same boundary applies to memory, not just algorithms:
@@ -229,11 +287,20 @@ truncation policy `graphics-core::submission` uses.
 ## How to check locally
 
 ```sh
+./build.sh check-deps
+# or directly:
+python3 scripts/check_dependency_rules.py
+# to eyeball the raw graph:
 cargo tree --workspace --edges normal
 ```
 
-If an edge in that output doesn't appear in the diagram above, it's either a
-missing rule in this document or a violation — resolve which one before
-merging.
+`check-deps` is authoritative and exact — it fails on any edge missing
+from `ALLOWED`/["All edges, exactly"](#all-edges-exactly) *and* on any
+edge listed there that a `Cargo.toml` no longer actually has, so the two
+can never silently drift apart. If `cargo tree` shows an edge that
+`check-deps` doesn't complain about, it's already documented; if
+`check-deps` fails, either the edge is a real violation (fix the
+`Cargo.toml`) or a legitimate new edge (add it to `ALLOWED` and to this
+document, in the same change).
 
 See also: [architecture.md](architecture.md), [ADR 005](adr/005-driver-core-separation.md).
