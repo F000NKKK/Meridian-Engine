@@ -57,13 +57,11 @@
 pub mod assets;
 pub mod camera;
 pub mod dsl;
-pub mod pipeline;
 pub mod scene;
 
 pub use assets::{AssetCache, AudioTrack, load_audio_track, load_image_asset};
 pub use camera::{FlyCamera, look_at_rotor};
 pub use dsl::dsl_core;
-pub use pipeline::{PhysicsStepStage, Pipeline, PipelineState, Stage, StageContext, StageId};
 pub use scene::{
     GraphicsBase, cube_mesh_source, ground_mesh_source, icosphere_mesh_source, pyramid_mesh_source,
 };
@@ -105,12 +103,12 @@ pub use meridian_asset_core::{
     StreamingAudioDecoder, open_audio,
 };
 
-// -- meridian-engine-core: Runtime/SubsystemManager, for apps that want
-// the simpler non-pipeline composition (see that crate's own module doc
-// for when `Runtime::tick` fits vs. when `pipeline::Pipeline` does) --
+// -- meridian-engine-core: Runtime — the single frame-work entry point
+// (see this crate's own module doc's "Runtime is the single frame-work
+// entry point" section) --
 pub use meridian_engine_core::{
-    AudioSubsystem, EventSystem, FrameCompleted, FrameScheduler, PhysicsSubsystem, Runtime,
-    SubsystemManager,
+    AudioSubsystem, ComputeStage, EventSystem, FrameScheduler, PhysicsStepStage, PhysicsSubsystem,
+    Runtime, RuntimeState, Stage, StageContext, StageId,
 };
 
 // -- meridian-foundation: logging, crash reporting --
