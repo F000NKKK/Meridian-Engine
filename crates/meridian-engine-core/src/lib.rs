@@ -413,6 +413,17 @@ impl StageContext {
 /// `ComputeScheduler`, which must persist call-to-call).
 pub trait Stage: Send {
     fn run(&mut self, ctx: &StageContext);
+
+    /// Called by [`Runtime::resize_all`] when the application's window
+    /// changes size. Default no-op — most stages (physics, compute) have
+    /// no notion of size; a rendering stage (owning a swapchain-backed
+    /// target) overrides this to rebuild its size-dependent resources.
+    /// Generalizing resize to *every* stage, rather than a
+    /// rendering-specific side channel, is what lets a render-presenting
+    /// `Stage` (see `meridian-sdk`'s own module doc) live in the same
+    /// registry as every other stage instead of needing special-cased
+    /// access from application code.
+    fn resize(&mut self, _width: u32, _height: u32) {}
 }
 
 /// Opaque handle to a stage registered with a [`Runtime`] — used to
@@ -513,6 +524,18 @@ impl Runtime {
         }
 
         self.scheduler.run(graph);
+    }
+
+    /// Calls [`Stage::resize`] on every registered stage, in
+    /// registration order (no dependency graph needed here — resize
+    /// isn't a per-frame data-flow operation, and stages don't depend on
+    /// each other's resize side effects the way [`tick`](Self::tick)'s
+    /// stages depend on each other's *data*). Call this from an
+    /// application's window-resize handler.
+    pub fn resize_all(&self, width: u32, height: u32) {
+        for entry in &self.stages {
+            entry.stage.lock().unwrap().resize(width, height);
+        }
     }
 }
 
