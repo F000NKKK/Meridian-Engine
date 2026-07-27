@@ -668,25 +668,40 @@ rest are not started.
    real spatial structure (uniform grid keyed to chunk size, or a BVH)
    so broad-phase cost scales with *nearby* bodies, not total bodies.
 4. **Done: `physics-compute`'s batched rigid-body kernels are wired
-   into `engine-core::Runtime`.** `PhysicsComputeStepStage` (in
-   `engine-core`, re-exported from `meridian-sdk`) dispatches
-   `RigidBodyIntegratorKernel`/`BroadPhasePairsKernel`/
-   `GenerateContactsKernel`/`ConstraintSolverBatchKernel` instead of
-   `PhysicsSubsystem::step`'s plain sequential loop — proven identical
-   to `PhysicsStepStage` bit-for-bit on a single tick and across a
-   600-tick settling regression (`cargo test -p meridian-engine-core`),
-   and proven live in `examples/physic_figures` (swapped in as a
-   drop-in replacement, no other example code changed). `engine-core`
-   moved from tier 7 to tier 8 for the new edge (`physics-compute` is
-   tier 7 — see dependency-rules.md's own note on this edge). **Still a
-   real, disclosed gap**: every kernel dispatches through
-   `ComputeContext::parallel_for`'s CPU backend (real multi-core
-   parallelism) — none of the five has a WGSL shader behind it yet, so
-   this is "batched, ready for a GPU backend to slot in," not literally
-   GPU-executing rigid-body physics today. A real GPU dispatch path for
-   these five kernels (the `float`/`fixed` soft-body kernels elsewhere
-   in `physics-compute` already show the WGSL-kernel shape this would
-   follow) is the next step if body counts ever need it, not started.
+   into `engine-core::Runtime`.** `PhysicsStepStage` (in `engine-core`,
+   re-exported from `meridian-sdk`, alongside its `PhysicsDispatchMode`
+   flag) dispatches `RigidBodyIntegratorKernel`/`BroadPhasePairsKernel`/
+   `GenerateContactsKernel`/`ConstraintSolverBatchKernel` when in
+   `PhysicsDispatchMode::Batched`, instead of `PhysicsSubsystem::step`'s
+   plain sequential loop in `PhysicsDispatchMode::Sequential` — proven
+   identical bit-for-bit on a single tick and across a 600-tick settling
+   regression (`cargo test -p meridian-engine-core`), and proven live in
+   `examples/physic_figures` (swapped in as a drop-in mode change, no
+   other example code changed). One type with a dispatch-mode flag, not
+   two separate `Stage` types, so an application (or a future third
+   mode) switches dispatch shape without touching anything else about
+   how it composes its `Runtime`. `engine-core` moved from tier 7 to
+   tier 8 for the new edge (`physics-compute` is tier 7 — see
+   dependency-rules.md's own note on this edge).
+
+   **Partial progress on the "not literally GPU-executing" gap**: the
+   broad-phase overlap test now has a real WGSL kernel
+   (`physics-compute::float::BroadPhaseGpuKernel`), proven against a
+   real GPU device (an actual adapter, not a mock) to produce the exact
+   same candidate pairs as `BroadPhase::find_candidate_pairs`. It's
+   scoped to just the pairwise AABB comparison — pure arithmetic, no
+   geometric-algebra content — because each body's AABB is still
+   computed on the CPU via the existing, already-verified
+   `RigidBody::aabb()` before upload. The other three pipeline stages
+   (the integrator's rotor-exponential/motor-composition math, narrow
+   phase's SAT/manifold clipping, the solver's graph-colored Gauss-Seidel
+   passes) are genuine GA/geometry code with real porting risk — faithfully
+   reproducing them in WGSL (not just "compiles and looks plausible")
+   is real, separate follow-up work, not rushed alongside the safe,
+   arithmetic-only broad-phase kernel. `PhysicsDispatchMode` currently
+   has no `Gpu` variant yet for exactly this reason: adding one before
+   all four stages have a real GPU path would silently mix GPU and CPU
+   work under one name.
 5. **No persistence at all.** Nothing in the workspace derives
    `serde::Serialize`/`Deserialize` or has any save/load story — every
    `*-core` type is designed for one running process's lifetime. Both
