@@ -209,6 +209,34 @@ fn mesh_render_frame(entity: &SceneEntity, body_frame: Motor3) -> Motor3 {
     }
 }
 
+/// A small, always-unlit-and-glowing sphere placed opposite
+/// [`SUN_DIRECTION`] at [`SUN_DISTANCE`] — makes the scene's one
+/// directional light have an obvious, visible source instead of coming
+/// from nowhere. Purely decorative (its own mesh/material, no physics
+/// body, not part of [`SceneEntity`]) — it happens to fall inside the
+/// shadow camera's fixed volume like everything else, but at that
+/// distance and size it never occludes anything the play area's shadow
+/// would need.
+fn sun_renderable(base: &mut GraphicsBase) -> Renderable3D {
+    let mesh = base
+        .meshes
+        .register(icosphere_mesh_source(1, SUN_VISUAL_RADIUS))
+        .expect("sun mesh must be valid");
+    let material = base.materials.register(Material {
+        base_color_factor: [1.0, 0.95, 0.8, 1.0],
+        unlit: true,
+        emissive: [1.0, 0.95, 0.8],
+        ..Default::default()
+    });
+    let position = SUN_DIRECTION.normalize() * -SUN_DISTANCE;
+    Renderable3D {
+        mesh,
+        material,
+        frame: Motor3::translation(position),
+        billboard: false,
+    }
+}
+
 /// Fixed-timestep driver around a real `meridian_sdk::Runtime` running
 /// one registered [`PhysicsStepStage`] — the physics stepping itself
 /// (integrate/relax-contacts/resolve) is no longer hand-rolled here; see
