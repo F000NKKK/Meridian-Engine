@@ -283,10 +283,12 @@ struct RenderEntity {
 }
 
 /// Fixed-timestep driver around a real `meridian_sdk::Runtime` running
-/// one registered [`PhysicsStepStage`] — the physics stepping itself
-/// (integrate/relax-contacts/resolve) is no longer hand-rolled here; see
-/// `PhysicsSubsystem::step`'s own doc comment for the multi-point-
-/// manifold relaxation it does internally. What's left at this layer is
+/// one registered [`PhysicsComputeStepStage`] — the physics stepping
+/// itself (integrate/relax-contacts/resolve, batched through
+/// `physics-compute`'s kernels rather than a plain sequential loop) is
+/// no longer hand-rolled here; see that stage's own doc comment for
+/// the multi-point-manifold relaxation semantics it preserves exactly.
+/// What's left at this layer is
 /// deliberately application policy, not engine plumbing: the render
 /// loop's `frame_dt` varies with frame rate, but the solver is only
 /// validated at a constant [`PHYSICS_DT`], so this accumulates
