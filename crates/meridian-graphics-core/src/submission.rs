@@ -1025,6 +1025,7 @@ fn bake_draw_buffers(
                 index_buffer,
                 index_count,
                 lit,
+                casts_shadow,
                 kind: DrawKind::Textured { bind_group },
             }
         }
@@ -1053,6 +1054,7 @@ fn bake_draw_buffers(
                 index_buffer,
                 index_count,
                 lit,
+                casts_shadow,
                 kind: DrawKind::Colored,
             }
         }
@@ -1296,6 +1298,7 @@ impl SceneRenderer {
                     material,
                     &renderable.frame,
                     albedo,
+                    renderable.casts_shadow,
                 ))
             })
             .collect()
