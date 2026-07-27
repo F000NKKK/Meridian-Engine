@@ -92,6 +92,11 @@ struct Uniforms {
     camera_pos: vec4<f32>,
     ambient_ground: vec4<f32>,
     ambient_sky: vec4<f32>,
+    // xyz: the shadow-casting light's own travel direction (surface ->
+    // light is `-light_direction.xyz`) — kept as a plain vector rather
+    // than indexing `lights[shadow_caster]` again, so the shadow lookup
+    // never needs a dynamic array index.
+    light_direction: vec4<f32>,
     light_count: vec4<u32>,
     // x: which `lights` index casts the shadow map (see `light_view_proj`);
     // `0xffffffff` means "no shadow-casting light in this scene".
