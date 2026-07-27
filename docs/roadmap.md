@@ -625,6 +625,103 @@ priority before writing implementations is keeping that document and the
     [ADR 015](adr/015-extensible-scene-dsl.md)'s
     own "not yet" note.
 
+## Scaling beyond a tech demo (Minecraft/Satisfactory-class scope)
+
+Everything above proves the engine works end-to-end for a small scene
+(a few dozen renderables, a handful of rigid bodies). A voxel-world game
+(Minecraft-like) or a large-factory simulation (Satisfactory-like) needs
+real capacity in several places that a small demo never exercises. None
+of this is started; ordered roughly by "blocks everything else" first.
+
+1. **Per-instance vertex rebaking, every frame, is the sharpest wall.**
+   `graphics-core::submission::bake_draw_buffers` reuploads a fresh
+   vertex buffer for *every* `Renderable3D` on *every*
+   `SceneRenderer::prepare` call, whether or not that instance moved
+   since the last frame (see that function's own doc comment — "correct
+   now, batch later" was an explicit, disclosed trade-off, not an
+   oversight). A voxel world's static chunk meshes or a factory's
+   thousands of static machine models make this the first thing that
+   falls over — not a tuning problem, an architecture gap. Needed:
+   - A "this instance's baked bytes are unchanged, skip the reupload"
+     cache keyed by (mesh, material, frame), invalidated only when one
+     of those actually changes.
+   - Real instancing for repeated meshes (a Minecraft block face, a
+     Satisfactory conveyor segment) — one vertex/index buffer per mesh
+     shape, a per-instance transform/tint buffer, one draw call instead
+     of thousands. `graphics-driver`'s pipeline/bind-group primitives
+     don't have an instance-buffer path today; this is real driver-layer
+     work, not just a `graphics-core` change.
+2. **`ecs-core` has no multi-component query.** `World::query::<T>`
+   is single-component only (see that crate's own module doc: multi-
+   component queries were deferred as "a harder, `unsafe`-adjacent
+   problem, not built speculatively"). Both target games need it
+   immediately — "every entity with `Conveyor` *and* `ItemSlot` *and*
+   `Position`" (Satisfactory), "every entity with `Inventory` *and*
+   `Position` *and* `BlockType`" (Minecraft) — game logic without it
+   means bypassing the ECS entirely for anything non-trivial, which
+   defeats the point of having one.
+3. **`physics-core::BroadPhase` is pairwise candidate generation**
+   (`find_candidate_pairs`), fine for the dozens of dynamic bodies the
+   examples exercise, not for thousands of mostly-static colliders (a
+   voxel world's solid blocks, a factory's machine footprints). Needs a
+   real spatial structure (uniform grid keyed to chunk size, or a BVH)
+   so broad-phase cost scales with *nearby* bodies, not total bodies.
+4. **`physics-compute`'s GPU/`JobGraph`-batched rigid-body kernels
+   exist but aren't wired into `engine-core::Runtime`.** `Runtime`'s
+   built-in `PhysicsStepStage` still forwards to
+   `PhysicsSubsystem::step`'s plain sequential CPU loop (see that
+   method's own doc comment) — `RigidBodyIntegratorKernel`/
+   `ConstraintSolverBatchKernel`/etc. (in `meridian-physics-compute`,
+   proven correct in that crate's own tests) are a real, available,
+   *unused* path to GPU/parallel dispatch. Wiring them in is bounded
+   work (add `meridian-physics-compute` as an `engine-core` dependency —
+   both are tier 7 today, so this needs a tier bump, not a new forbidden
+   edge; see dependency-rules.md) rather than a research problem, and is
+   the concrete answer to "physics needs to run on the GPU" for either
+   target game's body count.
+5. **No persistence at all.** Nothing in the workspace derives
+   `serde::Serialize`/`Deserialize` or has any save/load story — every
+   `*-core` type is designed for one running process's lifetime. Both
+   target games need world state (voxel/chunk data, entity state,
+   inventories, factory layouts) to survive a process restart. This
+   likely wants its own crate (`meridian-persistence-core`?) rather than
+   scattering `#[derive(Serialize)]` across every existing type —
+   consistent with this workspace's "narrow, single-responsibility
+   crates" philosophy (see architecture.md).
+6. **No networking.** Multiplayer (both games have it) is a subsystem
+   that doesn't exist in any form — no netcode, no client/server
+   split, no replication. The deterministic `Fixed` numeric mode (see
+   [ADR 008](adr/008-fixed-point-determinism.md)) is real groundwork for
+   lockstep-style sync, but the actual transport/replication layer is
+   unstarted. This is its own multi-month subsystem, not an add-on to
+   an existing crate.
+7. **No UI framework.** Inventory, crafting, HUD, building-placement
+   previews — `graphics-core::Scene2D`/`Sprite` exist (a layer-sorted
+   2D plane) but there's no widget/layout/input-routing system built on
+   top. Every UI element today would be hand-assembled sprites with
+   hand-rolled input handling.
+8. **Asset pipeline stops at static meshes.** `asset-core::ObjDecoder`
+   has no skeletal/skinning support and there's no animation system at
+   all — a blocker for any animated creature (Minecraft mobs) or
+   animated machine (Satisfactory conveyors, at least beyond a
+   procedural spin). glTF (which carries skinning data OBJ can't) is
+   the natural next format, not a bigger OBJ.
+
+**Rough sequencing, if picking one order**: (1) and (2) first — they're
+the two things that make *any* further content-heavy work
+(chunks/factories, gameplay systems) viable at all, not nice-to-haves.
+(3)/(4) (spatial broad-phase, GPU physics dispatch) next, once there's
+actually a large scene to profile against. (5) (persistence) before (6)
+(networking) — replication design usually wants a serialization format
+to already exist. (7)/(8) (UI, animation) can start in parallel with
+the above once a concrete game loop exists to build them against — see
+"Why implementation is deliberately last" below for why this workspace
+prefers building against a real, exercised need over speculative
+scaffolding.
+
+This is a realistic multi-month-per-item undertaking each, not a single
+sprint — treat this section as "what's missing," not "next release."
+
 ## Explicitly out of scope for now
 
 - `animation-core`, `particles-core`, `ai-core` — referenced in
