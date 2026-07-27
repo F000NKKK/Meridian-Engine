@@ -264,7 +264,7 @@ fn vs_main(in: VertexInput) -> VertexOutput {{
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {{
-    let shadow_factor = compute_shadow_factor(in.world_position);
+    let shadow_factor = compute_shadow_factor(in.world_position, in.world_normal);
     let shaded = shade(in.world_position, in.world_normal, in.color.rgb, shadow_factor) + in.emissive;
     return vec4<f32>(shaded, in.color.a);
 }}
@@ -336,12 +336,15 @@ var shadow_map: texture_depth_2d;
 @group(0) @binding(4)
 var shadow_sampler: sampler_comparison;
 
-fn compute_shadow_factor(world_pos: vec3<f32>) -> f32 {{
+// See the colored-lit shader's identical `compute_shadow_factor` for
+// why the bias is slope-scaled, not a flat constant.
+fn compute_shadow_factor(world_pos: vec3<f32>, world_normal: vec3<f32>) -> f32 {{
     let lsuv = light_space_uv_and_depth(world_pos);
     if (lsuv.x < 0.0 || lsuv.x > 1.0 || lsuv.y < 0.0 || lsuv.y > 1.0) {{
         return 1.0;
     }}
-    let bias = 0.0015;
+    let n_dot_l = max(dot(normalize(world_normal), normalize(-u.light_direction.xyz)), 0.0);
+    let bias = max(0.0008, 0.006 * (1.0 - n_dot_l));
     return textureSampleCompare(shadow_map, shadow_sampler, lsuv.xy, lsuv.z - bias);
 }}
 
@@ -378,7 +381,7 @@ fn vs_main(in: VertexInput) -> VertexOutput {{
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {{
     let sampled = textureSample(albedo_tex, albedo_sampler, in.uv);
     let base_color = sampled.rgb * in.tint.rgb;
-    let shadow_factor = compute_shadow_factor(in.world_position);
+    let shadow_factor = compute_shadow_factor(in.world_position, in.world_normal);
     let shaded = shade(in.world_position, in.world_normal, base_color, shadow_factor) + in.emissive;
     return vec4<f32>(shaded, sampled.a * in.tint.a);
 }}
