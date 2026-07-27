@@ -1619,28 +1619,29 @@ mod tests {
             identity,
             [0.1, 0.1, 0.1],
             [0.2, 0.2, 0.2],
+            Vec3::new(0.0, -1.0, 0.0),
             0,
             &lights,
         );
         assert_eq!(
             bytes.len(),
-            64 + 64 + 16 + 16 + 16 + 16 + 16 + MAX_LIGHTS * 48
+            64 + 64 + 16 + 16 + 16 + 16 + 16 + 16 + MAX_LIGHTS * 48
         );
 
-        // light_count.x at offset 176 (view_proj[64] + light_view_proj[64]
-        // + camera_pos[16] + ambient_ground[16] + ambient_sky[16]) must
-        // read back as 2.
-        let count = u32::from_le_bytes(bytes[176..180].try_into().unwrap());
+        // light_count.x at offset 192 (view_proj[64] + light_view_proj[64]
+        // + camera_pos[16] + ambient_ground[16] + ambient_sky[16] +
+        // light_direction[16]) must read back as 2.
+        let count = u32::from_le_bytes(bytes[192..196].try_into().unwrap());
         assert_eq!(count, 2);
 
-        // shadow_caster.x at offset 192 (light_count's own 16 bytes
+        // shadow_caster.x at offset 208 (light_count's own 16 bytes
         // later) must read back as the `0` this test passed in.
-        let shadow_caster = u32::from_le_bytes(bytes[192..196].try_into().unwrap());
+        let shadow_caster = u32::from_le_bytes(bytes[208..212].try_into().unwrap());
         assert_eq!(shadow_caster, 0);
 
-        // First light's kind field (lights array starts at 208, kind is
+        // First light's kind field (lights array starts at 224, kind is
         // each 48-byte LightData's 4th f32).
-        let lights_start = 64 + 64 + 16 + 16 + 16 + 16 + 16;
+        let lights_start = 64 + 64 + 16 + 16 + 16 + 16 + 16 + 16;
         let first_kind = f32::from_le_bytes(
             bytes[lights_start + 12..lights_start + 16]
                 .try_into()
@@ -1674,16 +1675,17 @@ mod tests {
             identity,
             [0.0, 0.0, 0.0],
             [0.0, 0.0, 0.0],
+            Vec3::new(0.0, -1.0, 0.0),
             u32::MAX,
             &lights,
         );
         assert_eq!(
             bytes.len(),
-            64 + 64 + 16 + 16 + 16 + 16 + 16 + MAX_LIGHTS * 48
+            64 + 64 + 16 + 16 + 16 + 16 + 16 + 16 + MAX_LIGHTS * 48
         );
-        let count = u32::from_le_bytes(bytes[176..180].try_into().unwrap());
+        let count = u32::from_le_bytes(bytes[192..196].try_into().unwrap());
         assert_eq!(count as usize, MAX_LIGHTS);
-        let shadow_caster = u32::from_le_bytes(bytes[192..196].try_into().unwrap());
+        let shadow_caster = u32::from_le_bytes(bytes[208..212].try_into().unwrap());
         assert_eq!(shadow_caster, u32::MAX);
     }
 
