@@ -57,11 +57,17 @@
 //! "render pipeline" mechanism. See `meridian-sdk`'s own module docs for
 //! that implementation once it exists.
 //!
-//! **`examples/physic_figures` proves this end-to-end**: a real
-//! windowed app registering [`PhysicsStepStage`] and driving
-//! [`Runtime::tick`] every fixed-timestep increment, not a hand-rolled
-//! loop or a lower-level type. `examples/magic_figures` still doesn't
-//! use `Runtime` at all: it has no physics bodies (pure kinematic orbit
+//! **`examples/physic_figures` proves this end-to-end** — physics *and*
+//! rendering both go through one `Runtime`: a registered
+//! [`PhysicsStepStage`] and a `meridian-sdk`-implemented render-
+//! presenting `Stage`, the concrete case the previous paragraph
+//! describes. They run at different multiplicities per real display
+//! frame (a fixed-timestep accumulator calls the physics stage 0-8
+//! times to catch up; rendering must run exactly once) — see
+//! [`Runtime::tick_only`]'s own doc for the selective-tick mechanism
+//! that makes both still go through this one `Runtime` rather than
+//! either bypassing it. `examples/magic_figures` still doesn't use
+//! `Runtime` at all: it has no physics bodies (pure kinematic orbit
 //! motion) and needs `audio-core::BinauralRenderer`'s real per-sample
 //! stereo synthesis, which doesn't reduce to a `StageContext`-shaped
 //! `Stage` cleanly (its inputs — orbiting shapes' positions, the
