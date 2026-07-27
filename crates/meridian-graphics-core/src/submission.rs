@@ -216,19 +216,23 @@ var shadow_map: texture_depth_2d;
 @group(0) @binding(2)
 var shadow_sampler: sampler_comparison;
 
-// `bias` below pushes the compared depth slightly toward the light to
-// avoid "shadow acne" (a surface self-shadowing every texel due to
-// depth-map quantization) — kept small: the shadow pass itself uses
-// ordinary back-face culling (see graphics-driver's
-// create_shadow_pipeline), not a front-face-culling offset stacked on
-// top of this, since that combination previously over-biased contact
-// shadows into a visible gap right next to a resting object.
-fn compute_shadow_factor(world_pos: vec3<f32>) -> f32 {{
+// Slope-scaled bias: a surface nearly edge-on to the light (small
+// `n_dot_l`) needs a much bigger depth push than one facing the light
+// head-on, or it reads as "acne" — regularly-spaced false self-shadow
+// stripes from the shadow map's own texel quantization (a pyramid's
+// steep triangular faces were the concrete case that went essentially
+// solid-black from this before the slope term existed: at a grazing
+// angle, a constant bias big enough to fix the steepest face was still
+// far too small there, and the acne covered the whole face). The base
+// term alone still matters for a face that's *exactly* perpendicular to
+// the light (n_dot_l = 1), where the slope term contributes nothing.
+fn compute_shadow_factor(world_pos: vec3<f32>, world_normal: vec3<f32>) -> f32 {{
     let lsuv = light_space_uv_and_depth(world_pos);
     if (lsuv.x < 0.0 || lsuv.x > 1.0 || lsuv.y < 0.0 || lsuv.y > 1.0) {{
         return 1.0;
     }}
-    let bias = 0.0015;
+    let n_dot_l = max(dot(normalize(world_normal), normalize(-u.light_direction.xyz)), 0.0);
+    let bias = max(0.0008, 0.006 * (1.0 - n_dot_l));
     return textureSampleCompare(shadow_map, shadow_sampler, lsuv.xy, lsuv.z - bias);
 }}
 
