@@ -53,6 +53,17 @@ use meridian_sdk::{
     run_windowed_app,
 };
 
+/// The one directional light's travel direction — shared by the light
+/// itself and the visible "sun" sphere ([`sun_renderable`]) placed
+/// opposite it in the sky, so it's never ambiguous where the shadows'
+/// light is coming from.
+const SUN_DIRECTION: Vec3 = Vec3::new(-0.4, -1.0, -0.3);
+/// How far above/behind the scene the visible sun sphere sits — far
+/// enough that its own shadow (it's a real renderable, drawn like
+/// anything else) never reaches the play area.
+const SUN_DISTANCE: f32 = 60.0;
+const SUN_VISUAL_RADIUS: f32 = 3.0;
+
 const PHYSICS_DT: f32 = 1.0 / 60.0;
 /// `0`: a settled body must not bounce at all. Combined with
 /// `ConstraintSolver`'s `restitution_velocity_threshold` (which already
