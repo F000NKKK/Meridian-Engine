@@ -36,14 +36,15 @@ pub fn render_frame(
     window: &Window,
 ) {
     let mut commands = base.device.create_command_buffer();
-    let (draw_buffers, light_view_proj, shadow_caster) = base.renderer.render_shadow_pass(
-        &base.device,
-        &mut commands,
-        scene,
-        &base.meshes,
-        &base.materials,
-        &base.textures,
-    );
+    let (draw_buffers, light_view_proj, light_direction, shadow_caster) =
+        base.renderer.render_shadow_pass(
+            &base.device,
+            &mut commands,
+            scene,
+            &base.meshes,
+            &base.materials,
+            &base.textures,
+        );
 
     let frame = match base.surface.acquire_frame() {
         Ok(frame) => frame,
@@ -64,6 +65,7 @@ pub fn render_frame(
             &mut pass,
             scene,
             light_view_proj,
+            light_direction,
             shadow_caster,
             &draw_buffers,
         );

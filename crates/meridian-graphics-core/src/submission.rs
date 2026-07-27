@@ -1413,12 +1413,14 @@ impl SceneRenderer {
 /// function) — see [`SceneRenderer::render_shadow_pass`]'s own doc
 /// comment for why baking has to happen once, before either pass opens,
 /// not per-pass.
+#[allow(clippy::too_many_arguments)]
 pub fn submit_scene3d(
     device: &Device,
     renderer: &SceneRenderer,
     pass: &mut DriverRenderPass<'_>,
     scene: &Scene3D,
     light_view_proj: [[f32; 4]; 4],
+    light_direction: Vec3,
     shadow_caster: u32,
     buffers: &[DrawBuffers],
 ) {
@@ -1426,6 +1428,7 @@ pub fn submit_scene3d(
         device,
         &scene.camera,
         light_view_proj,
+        light_direction,
         shadow_caster,
         scene.ambient_ground,
         scene.ambient_sky,
