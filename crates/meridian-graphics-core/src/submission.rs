@@ -1170,10 +1170,10 @@ impl SceneRenderer {
         let shadow_textured_bind_group =
             device.create_uniform_bind_group(&shadow_textured_pipeline, &shadow_uniform_buffer);
 
-        // 400 bytes: see `lit_uniform_bytes`'s doc comment for the
+        // 416 bytes: see `lit_uniform_bytes`'s doc comment for the
         // layout. The unlit pipelines only read the first 64 (view_proj)
         // but share this same buffer — one write serves every pipeline.
-        let uniform_buffer = device.create_buffer(400, BufferUsage::Uniform);
+        let uniform_buffer = device.create_buffer(416, BufferUsage::Uniform);
         let colored_unlit_bind_group =
             device.create_uniform_bind_group(&colored_unlit_pipeline, &uniform_buffer);
         let colored_lit_bind_group = device.create_shadow_bind_group(
