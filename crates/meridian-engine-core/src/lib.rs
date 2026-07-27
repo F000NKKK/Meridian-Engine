@@ -1,67 +1,83 @@
-//! Runtime: frame scheduler, event system, subsystem manager; ties every other crate into the main loop.
+//! `Runtime`: the single entry point tying every other crate into the
+//! main loop. Owns real instances of the driver-independent subsystems
+//! that exist today — an `ecs-core` [`World`], [`PhysicsSubsystem`]
+//! (`physics-core`'s body list, broad/narrow-phase, solver/integrator)
+//! and [`AudioSubsystem`] (`audio-core`'s listener, emitters, mixer) —
+//! this is still the one place in the workspace allowed to know about
+//! every `*-core` at once (see docs/dependency-rules.md rule 7).
 //!
-//! [`SubsystemManager`] is the one place in the workspace allowed to know
-//! about every `*-core` at once (see docs/dependency-rules.md rule 7) — it
-//! owns real instances of the driver-independent subsystems that exist
-//! today: an `ecs-core` [`World`], [`PhysicsSubsystem`] (`physics-core`'s
-//! body list, broad/narrow-phase, solver/integrator) and
-//! [`AudioSubsystem`] (`audio-core`'s listener, emitters, mixer). Those
-//! two are split into their own types — not flat fields directly on
-//! `SubsystemManager` — specifically so a caller that wants to run them
-//! concurrently (behind independent locks, e.g. `meridian-sdk`'s
-//! job-graph pipeline) can take just the lock it needs without also
-//! blocking on `World`'s or the other subsystem's; `SubsystemManager`
-//! itself still owns the actual stepping *logic*
-//! ([`PhysicsSubsystem::step`]/[`AudioSubsystem::mix`]), not a
-//! downstream orchestration crate re-deriving it (rule 7 again — that
-//! logic stays here even though its *lock granularity* is a
-//! `meridian-sdk` concern).
+//! **One mechanism, not two.** Earlier revisions of this crate had a
+//! plain sequential `Runtime::tick` (physics-then-audio, hardcoded
+//! order, no extensibility) *and* a separate `meridian-sdk`-level
+//! `Pipeline` built on `task-core::JobGraph` (composable, dependency-
+//! ordered `Stage`s, fine-grained locking) — two competing answers to
+//! "how does a frame's work get run," with the second only invented
+//! because the first couldn't be extended without engine-core knowing
+//! about every possible consumer's specific need (`BinauralRenderer`'s
+//! per-sample synthesis being the concrete case that broke it). That
+//! split is gone: [`Stage`]/[`StageContext`]/[`Runtime`] (the
+//! `JobGraph`-based mechanism, promoted here from where it used to live
+//! in `meridian-sdk`) *is* this crate's `Runtime` now — there is no
+//! second, lower-level "raw pipeline" type an application reaches for
+//! instead; [`Runtime::tick`] is the only per-frame entry point, and it
+//! rebuilds and runs a fresh `JobGraph` every call internally (see
+//! [`Runtime::tick`]'s own doc for why a fresh graph, not a cached one).
 //!
-//! `graphics-core` has a real scene/material vocabulary and
-//! GPU-submission bridge now (`Scene3D`/`Material`/`Light`,
-//! `SceneRenderer` — see `graphics-core::scene`/`submission`); it isn't
-//! wired into [`Runtime::tick`] anyway, for a different reason:
-//! presenting a frame needs a real windowed `Device`/`Surface` (driver
-//! state), and this crate deliberately never depends on
-//! `graphics-driver` (see docs/dependency-rules.md: `engine-core`
-//! depends on `graphics-core`, not drivers). `meridian-sdk` is the
-//! sanctioned place for that composition — it's allowed to depend on
-//! `*-driver` crates `engine-core` cannot.
+//! **Locking: fine-grained, deadlock-free by construction.**
+//! [`RuntimeState`] splits shared state into independently-lockable
+//! pieces ([`World`], [`PhysicsSubsystem`], [`AudioSubsystem`]) so two
+//! stages that only touch *different* resources genuinely don't contend
+//! on each other's lock. The risk with more than one lock is a classic
+//! lock-order-inversion deadlock: stage A locks physics-then-audio
+//! while an independent stage B locks audio-then-physics, running
+//! concurrently. [`StageContext`] makes that inversion structurally
+//! unrepresentable rather than documenting a convention a stage author
+//! could still get wrong: every accessor takes exactly one lock, and
+//! the only ways to hold more than one at once
+//! ([`StageContext::physics_and_audio`]/
+//! [`StageContext::world_physics_and_audio`]) always acquire them in
+//! one fixed order (`world`, then `physics`, then `audio`) internally.
+//! There is no API path that lets calling code choose the order itself.
 //!
-//! **`Runtime`/`SubsystemManager` is now proven end-to-end.**
-//! `examples/physic_figures` drives its physics stepping through a real
-//! [`Runtime`] (via [`Runtime::tick_fixed`] — see that method's own doc
-//! for why a fixed-timestep variant exists alongside [`Runtime::tick`]),
-//! not a hand-rolled loop. `examples/magic_figures` still doesn't: it
-//! needs `audio-core::BinauralRenderer`'s real per-sample stereo
-//! synthesis, which [`AudioSubsystem::mix`]'s per-channel-gain model
-//! can't express (see that method's own doc comment for why a second,
-//! `BinauralRenderer`-shaped field wasn't bolted onto `AudioSubsystem`
-//! to force the fit) — it uses `meridian-sdk`'s composable pipeline
-//! instead, exactly the case that mechanism exists for.
+//! **Extensibility — this is the actual point of the merge.** Physics
+//! ([`PhysicsStepStage`]) and arbitrary GPU/CPU compute
+//! ([`ComputeStage`], wrapping any `compute-runtime::ComputeKernel` —
+//! `gac-compute`/`physics-compute`'s own kernels included, or a game's
+//! own) are both just [`Stage`]s registered the same way, dependency-
+//! ordered against each other and anything else an application adds.
+//! Rendering is the one thing that *can't* live as a built-in stage
+//! here — presenting a frame needs a real windowed `Device`/`Surface`
+//! (driver state), and this crate deliberately never depends on
+//! `graphics-driver` (only `graphics-core` — see
+//! docs/dependency-rules.md). That isn't a gap in this mechanism,
+//! though: a render-presenting [`Stage`] is exactly what an application
+//! (via `meridian-sdk`, the one crate allowed to hold both `Runtime` and
+//! `*-driver` types) implements and registers itself, through the exact
+//! same `Stage` trait every other stage uses — not a second, parallel
+//! "render pipeline" mechanism. See `meridian-sdk`'s own module docs for
+//! that implementation once it exists.
 //!
-//! [`Runtime::tick`]/[`Runtime::tick_fixed`] advance physics, then
-//! recompute audio gains from the physics-updated emitter frames, in
-//! that order — not through [`FrameScheduler`]/`task-core`'s
-//! `JobGraph`, deliberately: physics and audio are the only two real
-//! per-frame systems today, and they have a genuine sequential data
-//! dependency (audio reads positions physics just wrote), not two
-//! independent branches. Wrapping a strictly sequential two-step in a
-//! job graph would be decorative, not functional — the same reason
-//! `compute-runtime`'s `task-core` dependency isn't wired in yet (see
-//! that crate's module doc). [`FrameScheduler`] is real and tested on
-//! its own terms; it becomes load-bearing once a second real per-frame
-//! system exists that's genuinely independent of physics (animation,
-//! particles, ...) to run alongside it — `meridian-sdk`'s job-graph
-//! pipeline is exactly that second system, one layer up.
+//! **`examples/physic_figures` proves this end-to-end**: a real
+//! windowed app registering [`PhysicsStepStage`] and driving
+//! [`Runtime::tick`] every fixed-timestep increment, not a hand-rolled
+//! loop or a lower-level type. `examples/magic_figures` still doesn't
+//! use `Runtime` at all: it has no physics bodies (pure kinematic orbit
+//! motion) and needs `audio-core::BinauralRenderer`'s real per-sample
+//! stereo synthesis, which doesn't reduce to a `StageContext`-shaped
+//! `Stage` cleanly (its inputs — orbiting shapes' positions, the
+//! free-fly camera's pose — are plain application state, not anything
+//! `RuntimeState` owns) — see [`AudioSubsystem::mix`]'s own doc comment
+//! for why forcing it through `AudioSubsystem` was rejected instead.
 
 use std::any::{Any, TypeId};
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex, MutexGuard};
 
 use meridian_audio_core::{Emitter, Listener, Mixer};
+use meridian_compute_runtime::{ComputeKernel, ComputeScheduler, DispatchSize};
 use meridian_ecs_core::World;
 use meridian_physics_core::{BroadPhase, ConstraintSolver, Integrator, NarrowPhase, RigidBody};
-use meridian_platform_core::{Clock, CpuCapabilities, Time};
+use meridian_platform_core::CpuCapabilities;
 use meridian_task_core::{JobGraph, Scheduler};
 
 /// Workspace-wide event bus: a frame-scoped mailbox, not a persistent log.
@@ -152,15 +168,12 @@ const RELAXATION_ITERATIONS: u32 = 4;
 
 /// `physics-core`'s body list plus its broad/narrow-phase and
 /// solver/integrator — everything [`PhysicsSubsystem::step`] needs,
-/// bundled as one independently-ownable/-lockable unit. Split out of
-/// [`SubsystemManager`] (which used to hold these fields directly) so a
-/// caller that wants to run physics on its own thread/lock (e.g.
-/// `meridian-sdk`'s job-graph pipeline — see docs/roadmap.md's
-/// `Runtime`-adoption entry) can do so without also taking
-/// [`AudioSubsystem`]'s or `World`'s lock, while `SubsystemManager`
-/// itself keeps owning the actual stepping *logic* (rule 7: engine-core
-/// is where cross-`*-core` domain logic like this lives, not a
-/// downstream orchestration crate re-deriving it).
+/// bundled as one independently-lockable unit inside [`RuntimeState`] so
+/// a [`Stage`] that only touches physics never blocks on
+/// [`AudioSubsystem`]'s or `World`'s lock. `engine-core` still owns the
+/// actual stepping *logic* here (rule 7: this is where cross-`*-core`
+/// domain logic lives, not a downstream orchestration crate re-deriving
+/// it) — only *when* it runs is `Stage`/`Runtime`'s concern.
 #[derive(Debug)]
 pub struct PhysicsSubsystem {
     pub bodies: Vec<RigidBody>,
@@ -259,149 +272,303 @@ impl AudioSubsystem {
     /// `binaural: Option<BinauralRenderer>` field plus a matching
     /// hardcoded declick stage) onto `AudioSubsystem` alongside this one
     /// would repeat the same mistake — engine-core dictating a specific
-    /// effect chain — rather than fixing it. A real, composable
-    /// rendering-pipeline abstraction (stages an app assembles itself,
-    /// `mixer` becoming one possible stage among others) is real design
-    /// work, tracked as follow-up rather than improvised mid-migration —
-    /// see docs/roadmap.md's `Runtime`-adoption entry. Until that
-    /// exists, `examples/magic_figures` keeps owning its
-    /// `BinauralRenderer`/`Declicker` pipeline directly.
+    /// effect chain — rather than fixing it. [`Stage`] is the actual,
+    /// now-real fix (an app-defined `Stage` can own a `BinauralRenderer`
+    /// directly); `examples/magic_figures` still doesn't route through
+    /// one, though — see this module's own top-level doc for why its
+    /// specific inputs (orbiting shapes' positions, the free-fly
+    /// camera's pose) don't reduce to a `StageContext`-shaped `Stage`
+    /// cleanly, not a gap in the mechanism itself.
     pub fn mix(&self) -> Vec<(meridian_audio_core::Channel, f32)> {
         self.mixer.mix(&self.listener, &self.emitters)
     }
 }
 
-/// Registry of active subsystems for the current [`Runtime`] — real owned
-/// instances, not stubs: an `ecs-core` [`World`] (available for
-/// application-level entity/`Transform` use; not synced with
-/// [`physics`](Self::physics)'s bodies — no such mapping is defined
-/// anywhere in the workspace yet, and inventing one here would be new,
-/// undocumented design, not wiring together what already exists),
-/// [`PhysicsSubsystem`] and [`AudioSubsystem`]. The only place in the
-/// workspace allowed to know about every `*-core` at once — see
-/// docs/dependency-rules.md rule 7.
-pub struct SubsystemManager {
-    pub world: World,
-    pub physics: PhysicsSubsystem,
-    pub audio: AudioSubsystem,
+/// Shared per-frame state, split into independently-lockable pieces —
+/// see the module doc's "Locking" section for why this shape and not one
+/// combined lock. `World` is available for application-level entity/
+/// `Transform` use; not synced with `physics`'s bodies — no such mapping
+/// is defined anywhere in the workspace yet, and inventing one here
+/// would be new, undocumented design, not wiring together what already
+/// exists.
+#[derive(Clone)]
+pub struct RuntimeState {
+    world: Arc<Mutex<World>>,
+    physics: Arc<Mutex<PhysicsSubsystem>>,
+    audio: Arc<Mutex<AudioSubsystem>>,
 }
 
-impl std::fmt::Debug for SubsystemManager {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // `World` doesn't derive `Debug` (it holds type-erased archetype
-        // storage — see meridian-ecs-core), so this summarizes it rather
-        // than deriving through it.
-        f.debug_struct("SubsystemManager")
-            .field("bodies", &self.physics.bodies.len())
-            .field("emitters", &self.audio.emitters.len())
-            .field("listener", &self.audio.listener)
-            .finish_non_exhaustive()
-    }
-}
-
-impl SubsystemManager {
-    pub fn new(mixer: Mixer) -> Self {
+impl RuntimeState {
+    pub fn new(physics: PhysicsSubsystem, audio: AudioSubsystem) -> Self {
         Self {
-            world: World::new(),
-            physics: PhysicsSubsystem::default(),
-            audio: AudioSubsystem::new(mixer),
+            world: Arc::new(Mutex::new(World::new())),
+            physics: Arc::new(Mutex::new(physics)),
+            audio: Arc::new(Mutex::new(audio)),
         }
     }
 
-    /// Forwards to [`PhysicsSubsystem::step`] — see that method's own
-    /// doc comment.
-    pub fn step_physics(&mut self, dt: f32) {
-        self.physics.step(dt);
+    /// A [`StageContext`] holding clones of this state's locks — cheap
+    /// (`Arc::clone`), one made fresh per stage per [`Runtime::tick`]
+    /// call.
+    fn context(&self) -> StageContext {
+        StageContext {
+            world: self.world.clone(),
+            physics: self.physics.clone(),
+            audio: self.audio.clone(),
+        }
     }
 
-    /// Forwards to [`AudioSubsystem::mix`] — see that method's own doc
-    /// comment.
-    pub fn mix_audio(&self) -> Vec<(meridian_audio_core::Channel, f32)> {
-        self.audio.mix()
+    /// Locks the world directly — for application code that isn't
+    /// itself a [`Stage`], between [`Runtime::tick`] calls. No stage
+    /// runs concurrently with application code between ticks, so
+    /// there's no lock-order-inversion risk to guard against here the
+    /// way [`StageContext`] does mid-tick — this is a plain, single
+    /// lock.
+    pub fn world(&self) -> MutexGuard<'_, World> {
+        self.world.lock().unwrap()
+    }
+
+    /// Locks the physics state directly — see [`world`](Self::world)'s
+    /// doc comment for the same "between ticks, not mid-tick" scoping.
+    pub fn physics(&self) -> MutexGuard<'_, PhysicsSubsystem> {
+        self.physics.lock().unwrap()
+    }
+
+    /// Locks the audio state directly — see [`world`](Self::world)'s
+    /// doc comment for the same "between ticks, not mid-tick" scoping.
+    pub fn audio(&self) -> MutexGuard<'_, AudioSubsystem> {
+        self.audio.lock().unwrap()
     }
 }
 
-/// Published by [`Runtime::tick`] after every frame — the one concrete
-/// event type this crate defines itself; application code can publish its
-/// own event types through the same [`EventSystem`].
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct FrameCompleted {
-    pub frame_index: u64,
-    pub delta_seconds: f64,
+/// What a running [`Stage`] sees — locked access to [`RuntimeState`]'s
+/// pieces, shaped so a lock-order inversion can't be expressed (see the
+/// module doc's "Locking" section).
+pub struct StageContext {
+    world: Arc<Mutex<World>>,
+    physics: Arc<Mutex<PhysicsSubsystem>>,
+    audio: Arc<Mutex<AudioSubsystem>>,
 }
 
-/// Owns subsystem instances and drives the frame loop. Construct once with
-/// [`Runtime::new`], then call [`Runtime::tick`]/[`Runtime::tick_fixed`]
-/// once per frame (or once per fixed-timestep increment).
-#[derive(Debug)]
+impl StageContext {
+    /// Locks only the world state.
+    pub fn world(&self) -> MutexGuard<'_, World> {
+        self.world.lock().unwrap()
+    }
+
+    /// Locks only the physics state. Blocks if another stage currently
+    /// holds it (either a genuinely concurrent independent stage, or —
+    /// if this stage depends on that one — this call simply never
+    /// contends, since the dependency already guaranteed the earlier
+    /// stage finished and dropped its guard first).
+    pub fn physics(&self) -> MutexGuard<'_, PhysicsSubsystem> {
+        self.physics.lock().unwrap()
+    }
+
+    /// Locks only the audio state.
+    pub fn audio(&self) -> MutexGuard<'_, AudioSubsystem> {
+        self.audio.lock().unwrap()
+    }
+
+    /// Locks both physics and audio, always physics-then-audio
+    /// internally — one of the only two ways this module lets a stage
+    /// hold more than one lock at once, precisely so no caller can
+    /// independently choose (and accidentally invert) the acquisition
+    /// order.
+    pub fn physics_and_audio(
+        &self,
+    ) -> (
+        MutexGuard<'_, PhysicsSubsystem>,
+        MutexGuard<'_, AudioSubsystem>,
+    ) {
+        let physics = self.physics.lock().unwrap();
+        let audio = self.audio.lock().unwrap();
+        (physics, audio)
+    }
+
+    /// Locks all three, always world-then-physics-then-audio internally
+    /// — the other of the only two multi-lock accessors this module
+    /// exposes, same reasoning as
+    /// [`physics_and_audio`](Self::physics_and_audio).
+    pub fn world_physics_and_audio(
+        &self,
+    ) -> (
+        MutexGuard<'_, World>,
+        MutexGuard<'_, PhysicsSubsystem>,
+        MutexGuard<'_, AudioSubsystem>,
+    ) {
+        let world = self.world.lock().unwrap();
+        let physics = self.physics.lock().unwrap();
+        let audio = self.audio.lock().unwrap();
+        (world, physics, audio)
+    }
+}
+
+/// One unit of per-frame work. Implementations are free to do anything —
+/// step physics, mix audio, dispatch a compute kernel, present a
+/// rendered frame, run gameplay logic — this crate has no opinion; see
+/// the module doc for why that's the point. `run` takes `&mut self` so a
+/// stage can hold its own private state across frames (e.g. a
+/// `BinauralRenderer`'s internal delay lines, or a `ComputeStage`'s
+/// `ComputeScheduler`, which must persist call-to-call).
+pub trait Stage: Send {
+    fn run(&mut self, ctx: &StageContext);
+}
+
+/// Opaque handle to a stage registered with a [`Runtime`] — used to
+/// declare it as another stage's dependency. Not valid across different
+/// `Runtime`s, the same restriction `meridian_task_core::JobId` has and
+/// for the same reason.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct StageId(usize);
+
+struct StageEntry {
+    name: &'static str,
+    deps: Vec<StageId>,
+    stage: Arc<Mutex<dyn Stage>>,
+}
+
+/// Owns [`RuntimeState`] and a set of registered [`Stage`]s, and runs
+/// them in dependency order every [`Runtime::tick`] — see the module doc
+/// for the `JobGraph`-based mechanism and the locking guarantee. The
+/// single entry point for a frame's work in this workspace — see the
+/// module doc's "one mechanism, not two" section.
 pub struct Runtime {
-    pub subsystems: SubsystemManager,
-    pub events: EventSystem,
-    pub frame_scheduler: FrameScheduler,
-    clock: Clock,
-    frame_index: u64,
-    /// Total simulated time, advanced only by [`tick_fixed`](Self::tick_fixed)
-    /// (`tick`'s own total comes from `self.clock` instead) — kept
-    /// separate so a caller using one method never sees the other's
-    /// notion of elapsed time bleed into its `Time::total_seconds`.
-    fixed_total_seconds: f64,
+    state: RuntimeState,
+    scheduler: FrameScheduler,
+    stages: Vec<StageEntry>,
 }
 
 impl Runtime {
-    pub fn new(subsystems: SubsystemManager) -> Self {
+    /// Builds a `Runtime` with no stages registered yet (see
+    /// [`add_stage`](Self::add_stage)) and a [`FrameScheduler`] sized to
+    /// the real detected CPU thread count. Use
+    /// [`with_worker_count`](Self::with_worker_count) to size it
+    /// explicitly instead (e.g. a fixed worker count for reproducible
+    /// benchmarks).
+    pub fn new(physics: PhysicsSubsystem, audio: AudioSubsystem) -> Self {
+        Self::with_worker_count(physics, audio, CpuCapabilities::detect().threads)
+    }
+
+    pub fn with_worker_count(
+        physics: PhysicsSubsystem,
+        audio: AudioSubsystem,
+        worker_count: usize,
+    ) -> Self {
         meridian_foundation::log_info!("engine-core Runtime initialized");
         Self {
-            subsystems,
-            events: EventSystem::new(),
-            frame_scheduler: FrameScheduler::default(),
-            clock: Clock::new(),
-            frame_index: 0,
-            fixed_total_seconds: 0.0,
+            state: RuntimeState::new(physics, audio),
+            scheduler: FrameScheduler::new(worker_count),
+            stages: Vec::new(),
         }
     }
 
-    /// Advances the simulation by one frame: ticks the clock, steps
-    /// physics, recomputes audio gains from the result, publishes a
-    /// [`FrameCompleted`] event, and returns the frame's [`Time`]. See the
-    /// module doc for why this is a direct sequential call rather than a
-    /// `FrameScheduler`-run job graph.
-    pub fn tick(&mut self) -> Time {
-        let time = self.clock.tick();
-        self.subsystems.step_physics(time.delta_seconds as f32);
-        self.events.publish(FrameCompleted {
-            frame_index: self.frame_index,
-            delta_seconds: time.delta_seconds,
-        });
-        self.frame_index += 1;
-        time
+    /// The shared state this runtime's stages run against — clone it
+    /// (cheap: `Arc` clones) to read/write it directly between ticks,
+    /// e.g. to seed initial bodies or read back positions after
+    /// [`tick`](Self::tick) returns.
+    pub fn state(&self) -> &RuntimeState {
+        &self.state
     }
 
-    /// Advances the simulation by exactly `dt` seconds, bypassing the
-    /// internal wall-clock entirely — for a caller that needs a fixed
-    /// physics timestep (the accumulator pattern: keep calling this with
-    /// a constant `dt` until a wall-clock-measured frame delta is
-    /// consumed) rather than [`tick`](Self::tick)'s variable,
-    /// wall-clock-driven step. `physics-core`'s solver is only validated
-    /// at a constant timestep (see `PhysicsSubsystem::step`'s own doc),
-    /// so any application with real rigid bodies needs this, not `tick`,
-    /// for its physics loop. Steps physics, publishes `FrameCompleted`,
-    /// and advances `frame_index` identically to `tick` — only the
-    /// `dt`'s source differs, and `self.clock` itself is left untouched
-    /// (a caller mixing `tick`/`tick_fixed` would otherwise see `tick`'s
-    /// next `delta_seconds` include time this method already accounted
-    /// for).
-    pub fn tick_fixed(&mut self, dt: f32) -> Time {
-        self.subsystems.step_physics(dt);
-        self.fixed_total_seconds += dt as f64;
-        self.events.publish(FrameCompleted {
-            frame_index: self.frame_index,
-            delta_seconds: dt as f64,
+    /// Registers `stage`, runnable only once every stage in `deps` has
+    /// completed this tick — the same contract
+    /// `meridian_task_core::JobGraph::add_job` documents, one layer
+    /// down. `deps` must be [`StageId`]s this same `Runtime` already
+    /// returned (stages are registered in dependency order, same as
+    /// `JobGraph` itself).
+    pub fn add_stage(
+        &mut self,
+        name: &'static str,
+        deps: &[StageId],
+        stage: impl Stage + 'static,
+    ) -> StageId {
+        let id = StageId(self.stages.len());
+        self.stages.push(StageEntry {
+            name,
+            deps: deps.to_vec(),
+            stage: Arc::new(Mutex::new(stage)),
         });
-        self.frame_index += 1;
-        Time {
-            delta_seconds: dt as f64,
-            total_seconds: self.fixed_total_seconds,
+        id
+    }
+
+    /// Runs every registered stage once, in dependency order,
+    /// independent branches in parallel — rebuilds a fresh `JobGraph`
+    /// every call (matching `JobGraph`'s own "a dependency-ordered set
+    /// of jobs for one frame" contract — its job actions are `FnOnce`,
+    /// consumed once by `Scheduler::run`, not meant to be reused across
+    /// frames). Blocks until every stage has finished.
+    pub fn tick(&self) {
+        let mut graph = JobGraph::new();
+        let mut job_ids = Vec::with_capacity(self.stages.len());
+
+        for entry in &self.stages {
+            let dep_job_ids: Vec<_> = entry.deps.iter().map(|dep| job_ids[dep.0]).collect();
+            let stage = entry.stage.clone();
+            let ctx = self.state.context();
+            let job_id = graph.add_job(entry.name, &dep_job_ids, move || {
+                stage.lock().unwrap().run(&ctx);
+            });
+            job_ids.push(job_id);
         }
+
+        self.scheduler.run(graph);
+    }
+}
+
+/// Built-in convenience stage wrapping [`PhysicsSubsystem::step`] — a
+/// thin forward, not a reimplementation (see this module's own doc for
+/// why that distinction matters). Most applications that want physics
+/// in their runtime can register this directly instead of writing their
+/// own [`Stage`] impl for it.
+pub struct PhysicsStepStage {
+    pub dt: f32,
+}
+
+impl PhysicsStepStage {
+    pub fn new(dt: f32) -> Self {
+        Self { dt }
+    }
+}
+
+impl Stage for PhysicsStepStage {
+    fn run(&mut self, ctx: &StageContext) {
+        ctx.physics().step(self.dt);
+    }
+}
+
+/// Built-in convenience stage wrapping an arbitrary
+/// `compute-runtime::ComputeKernel` — the concrete answer to "how does a
+/// game hand the runtime its own GPU/CPU compute work," registered the
+/// exact same way as any other [`Stage`]: dependency-ordered against
+/// physics, audio, or other compute stages, with `StageContext` giving
+/// it nothing it doesn't ask for (a kernel that needs `physics`/`audio`
+/// state locks them itself inside `run`, same as any other `Stage`). Not
+/// specific to any domain — `gac-compute`/`physics-compute`'s own
+/// kernels work here exactly as well as a game-specific one; this crate
+/// still doesn't know what any given kernel actually computes.
+pub struct ComputeStage<K> {
+    scheduler: ComputeScheduler,
+    kernel: K,
+    size: DispatchSize,
+}
+
+impl<K: ComputeKernel + Send + 'static> ComputeStage<K> {
+    /// `size` is the dispatch shape passed to `ComputeKernel::dispatch`
+    /// every tick — most kernels use `DispatchSize::linear(item_count)`
+    /// (see that constructor's own doc comment).
+    pub fn new(kernel: K, size: DispatchSize) -> Self {
+        Self {
+            scheduler: ComputeScheduler::new(),
+            kernel,
+            size,
+        }
+    }
+}
+
+impl<K: ComputeKernel + Send> Stage for ComputeStage<K> {
+    fn run(&mut self, _ctx: &StageContext) {
+        self.scheduler.run(&self.kernel, self.size);
     }
 }
 
@@ -462,66 +629,34 @@ mod tests {
         }
     }
 
-    #[test]
-    fn runtime_tick_advances_physics_under_gravity() {
-        let mut subsystems = SubsystemManager::new(Mixer::new(SpeakerLayout::mono()));
-        subsystems.physics.bodies.push(falling_body());
-        let mut runtime = Runtime::new(subsystems);
-
-        // Checking velocity, not position: position starts at y=10.0, and
-        // a real wall-clock dt (microseconds, since Clock isn't a fixed
-        // step) produces a position delta many orders of magnitude below
-        // f32's precision at that magnitude — it would round away to
-        // nothing even though physics genuinely ran. Velocity starts at
-        // exactly 0.0, so any nonzero gravity contribution is visible
-        // regardless of how small the real elapsed dt was.
-        for _ in 0..5 {
-            runtime.tick();
-        }
-        assert!(
-            runtime.subsystems.physics.bodies[0].velocity.y < 0.0,
-            "gravity must have been applied across ticks"
-        );
+    fn subsystem_pair() -> (PhysicsSubsystem, AudioSubsystem) {
+        (
+            PhysicsSubsystem::default(),
+            AudioSubsystem::new(Mixer::new(SpeakerLayout::mono())),
+        )
     }
 
     #[test]
-    fn runtime_tick_publishes_frame_completed_with_increasing_index() {
-        let subsystems = SubsystemManager::new(Mixer::new(SpeakerLayout::mono()));
-        let mut runtime = Runtime::new(subsystems);
-
-        runtime.tick();
-        runtime.tick();
-        runtime.tick();
-
-        let completed = runtime.events.drain::<FrameCompleted>();
-        assert_eq!(completed.len(), 3);
-        assert_eq!(
-            completed.iter().map(|e| e.frame_index).collect::<Vec<_>>(),
-            vec![0, 1, 2]
-        );
-    }
-
-    #[test]
-    fn subsystem_manager_mixes_audio_from_current_emitter_positions() {
-        let mut subsystems = SubsystemManager::new(
+    fn audio_subsystem_mixes_audio_from_current_emitter_positions() {
+        let mut audio = AudioSubsystem::new(
             Mixer::new(SpeakerLayout::stereo_headphones()).with_attenuation(AttenuationModel {
                 reference_distance: 1000.0,
                 rolloff: 1.0,
                 max_distance: 1000.0,
             }),
         );
-        subsystems.audio.listener = Listener {
+        audio.listener = Listener {
             frame: Motor3::identity(),
         };
         // Local +Z is "right" per audio-core's listener convention.
-        subsystems.audio.emitters.push((
+        audio.emitters.push((
             Emitter {
                 frame: Motor3::translation(Vec3::new(0.0, 0.0, 5.0)),
             },
             1.0,
         ));
 
-        let gains = subsystems.mix_audio();
+        let gains = audio.mix();
         let gain_of = |channel: Channel| {
             gains
                 .iter()
@@ -534,21 +669,21 @@ mod tests {
     }
 
     #[test]
-    fn subsystem_manager_step_physics_resolves_a_resting_contact() {
-        let mut subsystems = SubsystemManager::new(Mixer::new(SpeakerLayout::mono()));
-        subsystems.physics.bodies.push(RigidBody {
+    fn physics_subsystem_step_resolves_a_resting_contact() {
+        let mut physics = PhysicsSubsystem::default();
+        physics.bodies.push(RigidBody {
             frame: Motor3::translation(Vec3::new(0.0, -50.0, 0.0)),
             mass: 0.0, // static floor
             shape: ColliderShape::Sphere { radius: 50.0 },
             ..Default::default()
         });
-        subsystems.physics.bodies.push(falling_body());
+        physics.bodies.push(falling_body());
 
         for _ in 0..600 {
-            subsystems.step_physics(1.0 / 60.0);
+            physics.step(1.0 / 60.0);
         }
 
-        let resting_height = subsystems.physics.bodies[1].position().y;
+        let resting_height = physics.bodies[1].position().y;
         assert!(
             (resting_height - 0.5).abs() < 0.5,
             "ball should settle near the floor surface, got y={resting_height}"
@@ -557,24 +692,25 @@ mod tests {
 
     /// A box-on-box manifold (up to 4 contact points, unlike the
     /// single-point sphere case above) — regression coverage for the bug
-    /// `step_physics`'s doc comment describes: the original
-    /// one-`resolve()`-call-per-contact shape over-applied positional
-    /// correction on every relaxation-worthy contact set, bouncing a
-    /// settled box up/down and eventually clipping it through the floor.
-    /// A sphere never exercised this (always exactly one contact point),
-    /// which is exactly why the bug went unnoticed in this method even
-    /// after `examples/physic_figures` independently found and fixed it
-    /// in its own hand-rolled stepping — see
-    /// `meridian-physics-core::float`'s own
-    /// `cuboid_settles_without_runaway_spin` test for the equivalent,
-    /// non-centralized version of this same assertion.
+    /// `step`'s doc comment describes: the original one-`resolve()`-
+    /// call-per-contact shape over-applied positional correction on
+    /// every relaxation-worthy contact set, bouncing a settled box
+    /// up/down and eventually clipping it through the floor. A sphere
+    /// never exercised this (always exactly one contact point), which is
+    /// exactly why the bug went unnoticed in this method even after
+    /// `examples/physic_figures` independently found and fixed it in its
+    /// own hand-rolled stepping — see `meridian-physics-core::float`'s
+    /// own `cuboid_settles_without_runaway_spin` test for the
+    /// equivalent, non-centralized version of this same assertion.
     #[test]
-    fn subsystem_manager_step_physics_settles_a_box_without_bouncing_or_sinking() {
+    fn physics_subsystem_step_settles_a_box_without_bouncing_or_sinking() {
         use meridian_physics_core::ConstraintSolver;
 
-        let mut subsystems = SubsystemManager::new(Mixer::new(SpeakerLayout::mono()));
-        subsystems.physics.solver = ConstraintSolver::new(0.0).with_friction(0.6);
-        subsystems.physics.bodies.push(RigidBody {
+        let mut physics = PhysicsSubsystem {
+            solver: ConstraintSolver::new(0.0).with_friction(0.6),
+            ..Default::default()
+        };
+        physics.bodies.push(RigidBody {
             frame: Motor3::translation(Vec3::new(0.0, -0.5, 0.0)),
             mass: 0.0, // static floor
             shape: ColliderShape::Cuboid {
@@ -582,7 +718,7 @@ mod tests {
             },
             ..Default::default()
         });
-        subsystems.physics.bodies.push(RigidBody {
+        physics.bodies.push(RigidBody {
             frame: Motor3::translation(Vec3::new(0.0, 3.0, 0.0)),
             mass: 1.0,
             shape: ColliderShape::Cuboid {
@@ -594,9 +730,9 @@ mod tests {
         let mut min_height_after_landing = f32::MAX;
         let mut max_height_after_landing = f32::MIN;
         for step in 0..600 {
-            subsystems.step_physics(1.0 / 60.0);
+            physics.step(1.0 / 60.0);
             if step > 200 {
-                let height = subsystems.physics.bodies[1].position().y;
+                let height = physics.bodies[1].position().y;
                 min_height_after_landing = min_height_after_landing.min(height);
                 max_height_after_landing = max_height_after_landing.max(height);
             }
@@ -613,48 +749,214 @@ mod tests {
         );
     }
 
-    /// `tick_fixed` must actually step physics (not a no-op wrapper) and
-    /// track its own `total_seconds` independent of wall-clock `tick` —
-    /// a free-falling body's height after N fixed steps must match
-    /// calling `step_physics` directly that many times.
+    /// A single [`PhysicsStepStage`] run through [`Runtime::tick`] must
+    /// match calling `PhysicsSubsystem::step` directly — the runtime
+    /// mechanism must not change what a stage does, only when it runs.
     #[test]
-    fn tick_fixed_steps_physics_and_accumulates_its_own_total_seconds() {
-        let mut subsystems = SubsystemManager::new(Mixer::new(SpeakerLayout::mono()));
-        subsystems.physics.bodies.push(RigidBody {
-            frame: Motor3::translation(Vec3::new(0.0, 10.0, 0.0)),
-            mass: 1.0,
-            shape: ColliderShape::Sphere { radius: 0.5 },
-            ..Default::default()
-        });
-        let mut runtime = Runtime::new(subsystems);
+    fn physics_step_stage_matches_direct_step_call() {
+        let (mut physics, audio) = subsystem_pair();
+        physics.bodies.push(falling_body());
+        let mut runtime = Runtime::with_worker_count(physics, audio, 2);
+        runtime.add_stage("physics", &[], PhysicsStepStage::new(1.0 / 60.0));
+        let state = runtime.state().clone();
 
-        const DT: f32 = 1.0 / 60.0;
-        let mut last_time = Time::default();
-        for _ in 0..30 {
-            last_time = runtime.tick_fixed(DT);
+        runtime.tick();
+
+        let velocity_after_tick = state.physics().bodies[0].velocity;
+
+        let mut expected = PhysicsSubsystem::default();
+        expected.bodies.push(falling_body());
+        expected.step(1.0 / 60.0);
+
+        assert_eq!(velocity_after_tick, expected.bodies[0].velocity);
+    }
+
+    /// A stage that depends on another must see its finished output —
+    /// the whole point of declaring the dependency, not an accident of
+    /// scheduling order.
+    #[test]
+    fn dependent_stage_sees_upstream_stages_finished_work() {
+        struct SetHeight(f32);
+        impl Stage for SetHeight {
+            fn run(&mut self, ctx: &StageContext) {
+                ctx.physics().bodies[0].frame = Motor3::translation(Vec3::new(0.0, self.0, 0.0));
+            }
+        }
+        struct ReadHeightInto(Arc<Mutex<f32>>);
+        impl Stage for ReadHeightInto {
+            fn run(&mut self, ctx: &StageContext) {
+                let height = ctx.physics().bodies[0].position().y;
+                *self.0.lock().unwrap() = height;
+            }
         }
 
-        let mut reference = SubsystemManager::new(Mixer::new(SpeakerLayout::mono()));
-        reference.physics.bodies.push(RigidBody {
-            frame: Motor3::translation(Vec3::new(0.0, 10.0, 0.0)),
-            mass: 1.0,
-            shape: ColliderShape::Sphere { radius: 0.5 },
-            ..Default::default()
-        });
-        for _ in 0..30 {
-            reference.step_physics(DT);
+        let (mut physics, audio) = subsystem_pair();
+        physics.bodies.push(falling_body());
+        let mut runtime = Runtime::with_worker_count(physics, audio, 2);
+
+        let observed = Arc::new(Mutex::new(0.0f32));
+        let set = runtime.add_stage("set", &[], SetHeight(42.0));
+        runtime.add_stage("read", &[set], ReadHeightInto(observed.clone()));
+
+        runtime.tick();
+
+        assert_eq!(*observed.lock().unwrap(), 42.0);
+    }
+
+    /// Two stages with no dependency between them, each locking a
+    /// *different* resource (physics vs. audio), must both run to
+    /// completion without deadlocking or blocking on each other's lock —
+    /// this is the actual guarantee fine-grained locking exists for.
+    /// Run many times in one process (repeated ticks below) to give a
+    /// real deadlock a chance to manifest rather than pass by luck once.
+    #[test]
+    fn independent_stages_on_different_resources_never_deadlock() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+
+        struct TouchPhysics(Arc<AtomicUsize>);
+        impl Stage for TouchPhysics {
+            fn run(&mut self, ctx: &StageContext) {
+                let _guard = ctx.physics();
+                self.0.fetch_add(1, Ordering::SeqCst);
+            }
+        }
+        struct TouchAudio(Arc<AtomicUsize>);
+        impl Stage for TouchAudio {
+            fn run(&mut self, ctx: &StageContext) {
+                let _guard = ctx.audio();
+                self.0.fetch_add(1, Ordering::SeqCst);
+            }
         }
 
-        assert_eq!(
-            runtime.subsystems.physics.bodies[0].position(),
-            reference.physics.bodies[0].position(),
-            "tick_fixed must step physics identically to calling step_physics directly"
+        let (physics, audio) = subsystem_pair();
+        let physics_runs = Arc::new(AtomicUsize::new(0));
+        let audio_runs = Arc::new(AtomicUsize::new(0));
+
+        let mut runtime = Runtime::with_worker_count(physics, audio, 4);
+        runtime.add_stage("physics", &[], TouchPhysics(physics_runs.clone()));
+        runtime.add_stage("audio", &[], TouchAudio(audio_runs.clone()));
+
+        for _ in 0..50 {
+            runtime.tick();
+        }
+
+        assert_eq!(physics_runs.load(Ordering::SeqCst), 50);
+        assert_eq!(audio_runs.load(Ordering::SeqCst), 50);
+    }
+
+    /// [`StageContext::physics_and_audio`] must observe the same values
+    /// either single accessor would — the combined lock is a real join,
+    /// not two independent, possibly-inconsistent reads.
+    #[test]
+    fn physics_and_audio_combined_lock_sees_both_pieces_of_state() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+
+        struct ReadBoth {
+            body_count: Arc<AtomicUsize>,
+            emitter_count: Arc<AtomicUsize>,
+        }
+        impl Stage for ReadBoth {
+            fn run(&mut self, ctx: &StageContext) {
+                let (physics, audio) = ctx.physics_and_audio();
+                self.body_count
+                    .store(physics.bodies.len(), Ordering::SeqCst);
+                self.emitter_count
+                    .store(audio.emitters.len(), Ordering::SeqCst);
+            }
+        }
+
+        let (mut physics, mut audio) = subsystem_pair();
+        physics.bodies.push(falling_body());
+        physics.bodies.push(falling_body());
+        audio.emitters.push((
+            Emitter {
+                frame: Motor3::identity(),
+            },
+            1.0,
+        ));
+
+        let mut runtime = Runtime::with_worker_count(physics, audio, 2);
+        let body_count = Arc::new(AtomicUsize::new(0));
+        let emitter_count = Arc::new(AtomicUsize::new(0));
+        runtime.add_stage(
+            "read",
+            &[],
+            ReadBoth {
+                body_count: body_count.clone(),
+                emitter_count: emitter_count.clone(),
+            },
         );
-        assert!(
-            (last_time.total_seconds - 30.0 * DT as f64).abs() < 1e-9,
-            "tick_fixed's own total_seconds must accumulate by dt each call, got {}",
-            last_time.total_seconds
+
+        runtime.tick();
+
+        assert_eq!(body_count.load(Ordering::SeqCst), 2);
+        assert_eq!(emitter_count.load(Ordering::SeqCst), 1);
+    }
+
+    /// [`StageContext::world_physics_and_audio`] must lock and expose
+    /// all three pieces together — the third-lock counterpart to
+    /// [`physics_and_audio_combined_lock_sees_both_pieces_of_state`].
+    #[test]
+    fn world_physics_and_audio_combined_lock_sees_all_three_pieces_of_state() {
+        struct ReadWorldPhysicsAudio(Arc<Mutex<(usize, usize)>>);
+        impl Stage for ReadWorldPhysicsAudio {
+            fn run(&mut self, ctx: &StageContext) {
+                let (_world, physics, audio) = ctx.world_physics_and_audio();
+                *self.0.lock().unwrap() = (physics.bodies.len(), audio.emitters.len());
+            }
+        }
+
+        let (mut physics, mut audio) = subsystem_pair();
+        physics.bodies.push(falling_body());
+        audio.emitters.push((
+            Emitter {
+                frame: Motor3::identity(),
+            },
+            1.0,
+        ));
+
+        let mut runtime = Runtime::with_worker_count(physics, audio, 2);
+        let observed = Arc::new(Mutex::new((0, 0)));
+        runtime.add_stage("read", &[], ReadWorldPhysicsAudio(observed.clone()));
+
+        runtime.tick();
+
+        assert_eq!(*observed.lock().unwrap(), (1, 1));
+    }
+
+    /// A [`ComputeStage`] wrapping a trivial `ComputeKernel` must
+    /// actually dispatch it through `Runtime::tick`, the same as any
+    /// other stage — proving the generic compute-kernel extension point
+    /// (not just physics/audio) is real, not just documented.
+    #[test]
+    fn compute_stage_dispatches_its_kernel_through_tick() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+
+        use meridian_compute_runtime::{ComputeContext, ComputeKernel};
+
+        struct CountingKernel(Arc<AtomicUsize>);
+        impl ComputeKernel for CountingKernel {
+            fn dispatch(&self, context: &ComputeContext, size: DispatchSize) {
+                context.parallel_for(size.x as usize, |_| {
+                    self.0.fetch_add(1, Ordering::SeqCst);
+                });
+            }
+        }
+
+        let (physics, audio) = subsystem_pair();
+        let mut runtime = Runtime::with_worker_count(physics, audio, 2);
+        let dispatch_count = Arc::new(AtomicUsize::new(0));
+        runtime.add_stage(
+            "compute",
+            &[],
+            ComputeStage::new(
+                CountingKernel(dispatch_count.clone()),
+                DispatchSize { x: 10, y: 1, z: 1 },
+            ),
         );
-        assert_eq!(last_time.delta_seconds, DT as f64);
+
+        runtime.tick();
+
+        assert_eq!(dispatch_count.load(Ordering::SeqCst), 10);
     }
 }

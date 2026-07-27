@@ -47,14 +47,21 @@ impl From<Entity> for Handle {
 }
 
 /// Marker trait for plain-data component types. No behavior — see
-/// docs/ecs-design.md.
-pub trait Component: 'static {}
+/// docs/ecs-design.md. `Send` (not just `'static`) so `World` itself is
+/// `Send` — required for `engine-core::Runtime` to hold a `World` behind
+/// a lock shared across its `JobGraph`-dispatched stages (see that
+/// crate's own module doc); every real component in this workspace
+/// (`Transform`, `MeshRenderer`, ...) is plain data and already `Send`
+/// automatically, so this costs nothing in practice.
+pub trait Component: 'static + Send {}
 
 /// A type-erased SoA column, downcast back to `Column<T>` by every
 /// operation that needs the concrete type. Object-safe by hand (`Any`
 /// isn't dyn-compatible for downcasting on its own) — every method here
 /// is what a caller holding only `&dyn AnyColumn` can still do safely.
-trait AnyColumn {
+/// `Send` follows from `Component: Send` — see that trait's own doc
+/// comment for why.
+trait AnyColumn: Send {
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
     /// A fresh, empty column of the same concrete type — how a new

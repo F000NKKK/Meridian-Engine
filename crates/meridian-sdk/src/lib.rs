@@ -2,8 +2,8 @@
 //!
 //! **Applications depend on this crate alone.** Everything an app needs
 //! — spatial math, physics bodies, graphics scene/material types, the
-//! windowed-app loop, audio types, asset decoding, and this crate's own
-//! [`pipeline`] — is re-exported from here; nothing in `examples/`
+//! windowed-app loop, audio types, asset decoding, and `engine-core`'s
+//! own [`Runtime`] — is re-exported from here; nothing in `examples/`
 //! reaches into `meridian-gac-core`/`meridian-physics-core`/
 //! `meridian-graphics-core`/etc. directly. This is deliberately
 //! different from `engine-core`'s own boundary (rule 7:
@@ -11,21 +11,27 @@
 //! `*-core`, because it's where cross-`*-core` *coordination logic*
 //! lives): this crate depends on the same set of crates for a different
 //! reason — application ergonomics and driver access `engine-core`
-//! itself is forbidden from having — and adds no new coordination logic
-//! of its own beyond what [`pipeline`] provides (thin `Stage` wrappers
-//! around methods `engine-core` already exposes, e.g.
-//! [`PhysicsStepStage`] around `engine_core::PhysicsSubsystem::step` —
-//! not a reimplementation; see CLAUDE.md's "don't drag another crate's
-//! logic into your own" rule). See docs/dependency-rules.md's own note
-//! on this edge for the full reasoning.
+//! itself is forbidden from having.
+//!
+//! **`Runtime` (in `engine-core`) is the single frame-work entry point —
+//! this crate no longer has its own separate `pipeline` module.** That
+//! used to exist here specifically because the old `engine-core::Runtime`
+//! was a fixed sequential physics-then-audio call with no way to extend
+//! it (see `engine-core`'s own module doc, "One mechanism, not two," for
+//! the full history) — `Runtime` now *is* the `JobGraph`-based, `Stage`-
+//! composable mechanism that module used to be, promoted down into
+//! `engine-core` where rule 7 already says cross-`*-core` orchestration
+//! belongs. What this crate *does* still add on top: rendering. A
+//! `Stage` that presents a frame needs a real windowed `Device`/
+//! `Surface` (driver state) `engine-core` is forbidden from touching —
+//! this crate is where such a `Stage` gets implemented and registered,
+//! through the exact same `Stage` trait every other stage uses, not a
+//! second parallel mechanism (see CLAUDE.md's "don't drag another
+//! crate's logic into your own" rule — `PhysicsStepStage` itself is
+//! `engine-core`'s, just re-exported here, not reimplemented).
 //!
 //! ## What lives here vs. what's re-exported
 //!
-//! - [`pipeline`] — this crate's own composable, `JobGraph`-based frame
-//!   pipeline (see that module's doc for why `engine-core` itself
-//!   couldn't be the place for this — it's the direct fix for
-//!   `AudioSubsystem::mix`'s "one opinionated path, not the pipeline
-//!   every consumer must fit" limitation).
 //! - [`dsl`] — the extensible scene-composition DSL: parse a small
 //!   tag-markup document into typed nodes, where a game registers its
 //!   own tags via `#[dsl_tag(name = "...")]` rather than picking from a
