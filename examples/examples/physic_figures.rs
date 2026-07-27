@@ -1,10 +1,16 @@
 //! Real rigid-body physics: a sphere, a cube and a pyramid dropped above
 //! a textured floor and stepped every frame through a real
 //! `meridian_sdk::Runtime` (`engine-core`'s single `JobGraph`-based
-//! frame-work entry point — see that crate's own module doc) via a
-//! registered [`PhysicsStepStage`] and [`Runtime::tick`] — the first
-//! proof in this workspace that `Runtime` composes end-to-end in a real
-//! windowed application, not just in `engine-core`'s own unit tests.
+//! frame-work entry point — see that crate's own module doc). Physics
+//! *and* rendering both go through this one `Runtime`: a registered
+//! [`PhysicsStepStage`] (driven by the fixed-timestep accumulator, see
+//! [`PhysicsRig::step`]) and a registered `meridian_sdk::RenderStage`
+//! (driven once per redraw, depending on the physics stage) — no raw,
+//! runtime-bypassing pipeline call for either. See
+//! `Runtime::tick_only`'s own doc comment for why physics and render
+//! need *selective* ticks (different multiplicities per real display
+//! frame) rather than one `Runtime::tick()` running both together every
+//! time.
 //!
 //! **Scene composition itself lives in
 //! `assets/scenes/physic_figures.mel`**, parsed through
@@ -12,10 +18,11 @@
 //! `meridian_examples::scene_loader`) — every entity's position, mesh
 //! shape, texture and collider is data, not Rust code; this file only
 //! reads it once ([`load_scene`]) and turns it into real physics bodies
-//! ([`PhysicsRig::new`]) and renderables ([`AppHandler::on_ready`]).
-//! What stays genuine Rust logic (per this workspace's rule that the
-//! DSL describes composition, not behavior): the fixed-timestep
-//! accumulator ([`PhysicsRig::step`]), the free-fly camera, and each
+//! ([`PhysicsRig::new`]) and renderables (the `RenderStage`'s
+//! `build_scene` closure, registered in
+//! [`AppHandler::on_ready`]). What stays genuine Rust logic (per this
+//! workspace's rule that the DSL describes composition, not behavior):
+//! the fixed-timestep accumulator, the free-fly camera, and each
 //! shape's own render-frame quirk (the floor mesh is a thin visual quad
 //! rendered at identity while its *collider* is a thicker slab; the
 //! pyramid mesh's origin is its base center while its *collider* is
@@ -30,8 +37,9 @@
 //!
 //! Shares its base with `magic_figures` (`meridian_sdk::scene`'s
 //! `GraphicsBase`): same mesh builders, same lighting model. No bloom
-//! emissive glow here — these are ordinary lit, textured physics props,
-//! not the "magic" glowing shapes.
+//! emissive glow here beyond the visible "sun" sphere — these are
+//! ordinary lit, textured physics props, not the "magic" glowing
+//! shapes.
 //!
 //! This example depends on `meridian-sdk` alone (plus `tokio`, for its
 //! own async GPU-device handshake) — every type below is reached
@@ -42,15 +50,17 @@
 //! Run with:
 //!   ./build.sh run physic_figures
 
+use std::sync::{Arc, Mutex};
+
 use meridian_examples::paths::asset_path;
 use meridian_examples::scene_loader::load_dsl_scene;
 use meridian_sdk::dsl;
 use meridian_sdk::{
-    AppHandler, AudioSubsystem, ColliderShape, ConstraintSolver, Device, FlyCamera, GraphicsBase,
-    InputState, KeyCode, Light, Material, Mixer, Motor3, PhysicsStepStage, PhysicsSubsystem,
-    Renderable3D, RigidBody, Runtime, Scene3D, SpeakerLayout, Vec3, Window, cube_mesh_source,
-    ground_mesh_source, icosphere_mesh_source, look_at_rotor, pyramid_mesh_source,
-    run_windowed_app,
+    AppHandler, AudioSubsystem, Camera, ColliderShape, ConstraintSolver, Device, FlyCamera,
+    GraphicsBase, InputState, KeyCode, Light, Material, MaterialHandle, MeshHandle, Mixer, Motor3,
+    PhysicsStepStage, PhysicsSubsystem, RenderStage, Renderable3D, RigidBody, Runtime, Scene3D,
+    SpeakerLayout, StageContext, StageId, Vec3, Window, cube_mesh_source, ground_mesh_source,
+    icosphere_mesh_source, look_at_rotor, pyramid_mesh_source, run_windowed_app,
 };
 
 /// The one directional light's travel direction — shared by the light
@@ -60,9 +70,11 @@ use meridian_sdk::{
 const SUN_DIRECTION: Vec3 = Vec3::new(-0.4, -1.0, -0.3);
 /// How far above/behind the scene the visible sun sphere sits — far
 /// enough that its own shadow (it's a real renderable, drawn like
-/// anything else) never reaches the play area.
-const SUN_DISTANCE: f32 = 60.0;
-const SUN_VISUAL_RADIUS: f32 = 3.0;
+/// anything else) never reaches the play area, close enough (with
+/// [`SUN_VISUAL_RADIUS`]) to read as an unmistakable bright disc rather
+/// than a barely-visible dot once the camera pans toward it.
+const SUN_DISTANCE: f32 = 35.0;
+const SUN_VISUAL_RADIUS: f32 = 6.0;
 
 const PHYSICS_DT: f32 = 1.0 / 60.0;
 /// `0`: a settled body must not bounce at all. Combined with
@@ -188,19 +200,21 @@ fn mesh_source_for(entity: &SceneEntity) -> meridian_sdk::MeshSource {
 }
 
 /// This shape's rendered frame, given its current physics `body_frame`
-/// — identical for most shapes, except two disclosed per-shape offsets
-/// (both already present in the DSL-free version of this example, just
-/// no longer duplicated as four hardcoded call sites): the floor mesh
-/// is a thin visual quad at `y = 0`, rendered at identity regardless of
-/// its (thicker, lower) collider's frame; the pyramid mesh's origin is
-/// its own base center, but its `Cuboid` collider is centered on the
-/// body, so the mesh renders shifted down by the collider's
-/// half-height to keep the base flush with the resting contact point.
-fn mesh_render_frame(entity: &SceneEntity, body_frame: Motor3) -> Motor3 {
-    match entity.mesh_shape.as_str() {
+/// — identical for most shapes, except two disclosed per-shape offsets:
+/// the floor mesh is a thin visual quad at `y = 0`, rendered at
+/// identity regardless of its (thicker, lower) collider's frame; the
+/// pyramid mesh's origin is its own base center, but its `Cuboid`
+/// collider is centered on the body, so the mesh renders shifted down
+/// by the collider's half-height to keep the base flush with the
+/// resting contact point. Takes `mesh_shape`/`collider` directly
+/// (rather than a whole `&SceneEntity`) so it works equally for the
+/// load-time [`SceneEntity`] list and the [`RenderEntity`] list the
+/// render stage's closure actually reads from.
+fn mesh_render_frame(mesh_shape: &str, collider: ColliderShape, body_frame: Motor3) -> Motor3 {
+    match mesh_shape {
         "ground" => Motor3::identity(),
         "pyramid" => {
-            let ColliderShape::Cuboid { half_extents } = entity.collider else {
+            let ColliderShape::Cuboid { half_extents } = collider else {
                 panic!("pyramid entity must have a cuboid collider");
             };
             body_frame.compose(Motor3::translation(Vec3::new(0.0, -half_extents.y, 0.0)))
@@ -228,13 +242,35 @@ fn sun_renderable(base: &mut GraphicsBase) -> Renderable3D {
         emissive: [1.0, 0.95, 0.8],
         ..Default::default()
     });
-    let position = SUN_DIRECTION.normalize() * -SUN_DISTANCE;
+    // The real light's direction is mostly straight down (`SUN_DIRECTION.y
+    // = -1.0` dominates), which would put a physically-exact sun almost
+    // directly overhead — technically correct, but the free-fly camera
+    // starts at pitch `0` (looking at the horizon), so a new viewer
+    // would have to already know to pitch steeply upward to ever find
+    // it. This flattens the *visual* placement's elevation (still in
+    // the light's general horizontal direction, just not as steep) so
+    // it's findable by panning around near the horizon instead — a
+    // deliberate, disclosed fudge between "physically exact" and
+    // "a first-time viewer can actually find it."
+    let visual_direction = Vec3::new(SUN_DIRECTION.x, -0.5, SUN_DIRECTION.z).normalize();
+    let position = visual_direction * -SUN_DISTANCE;
     Renderable3D {
         mesh,
         material,
         frame: Motor3::translation(position),
         billboard: false,
     }
+}
+
+/// One [`SceneEntity`]'s registered GPU handles plus the bits
+/// [`mesh_render_frame`] needs — built once in [`AppHandler::on_ready`],
+/// moved into the render stage's `build_scene` closure so it never
+/// re-registers a mesh/material or re-reads `scene_entities` per frame.
+struct RenderEntity {
+    mesh_shape: String,
+    collider: ColliderShape,
+    mesh: MeshHandle,
+    material: MaterialHandle,
 }
 
 /// Fixed-timestep driver around a real `meridian_sdk::Runtime` running
@@ -245,13 +281,16 @@ fn sun_renderable(base: &mut GraphicsBase) -> Renderable3D {
 /// deliberately application policy, not engine plumbing: the render
 /// loop's `frame_dt` varies with frame rate, but the solver is only
 /// validated at a constant [`PHYSICS_DT`], so this accumulates
-/// wall-clock time and calls [`Runtime::tick`] once per whole
-/// [`PHYSICS_DT`] increment (each tick running `PhysicsStepStage` with
-/// that fixed `dt`, regardless of how much real time actually elapsed),
-/// capped so a stall (e.g. window drag) can't spiral into running
-/// hundreds of catch-up ticks at once.
+/// wall-clock time and calls `Runtime::tick_only` (just the physics
+/// stage — see that method's own doc for why not plain `tick`) once per
+/// whole [`PHYSICS_DT`] increment, capped so a stall (e.g. window drag)
+/// can't spiral into running hundreds of catch-up ticks at once. Also
+/// owns the `Runtime` the render stage gets registered onto in
+/// [`AppHandler::on_ready`] — physics and render share one `Runtime`,
+/// per this module's own top-level doc.
 struct PhysicsRig {
     runtime: Runtime,
+    physics_stage: StageId,
     accumulator: f32,
 }
 
@@ -279,32 +318,24 @@ impl PhysicsRig {
         let audio = AudioSubsystem::new(Mixer::new(SpeakerLayout::mono()));
 
         let mut runtime = Runtime::new(physics, audio);
-        runtime.add_stage("physics", &[], PhysicsStepStage::new(PHYSICS_DT));
+        let physics_stage = runtime.add_stage("physics", &[], PhysicsStepStage::new(PHYSICS_DT));
 
         Self {
             runtime,
+            physics_stage,
             accumulator: 0.0,
         }
-    }
-
-    fn bodies(&self) -> Vec<RigidBody> {
-        self.runtime.state().physics().bodies.clone()
     }
 
     fn step(&mut self, frame_dt: f32) {
         self.accumulator += frame_dt;
         let mut steps = 0;
         while self.accumulator >= PHYSICS_DT && steps < 8 {
-            self.runtime.tick();
+            self.runtime.tick_only(&[self.physics_stage]);
             self.accumulator -= PHYSICS_DT;
             steps += 1;
         }
     }
-}
-
-struct GpuState {
-    base: GraphicsBase,
-    scene: Scene3D,
 }
 
 struct App {
@@ -314,7 +345,16 @@ struct App {
     scene_entities: Vec<SceneEntity>,
     physics: PhysicsRig,
     tokio_runtime: tokio::runtime::Runtime,
-    gpu: Option<GpuState>,
+    /// The render stage's closure reads the current camera from here —
+    /// `on_redraw` writes it just before ticking the render stage. This
+    /// is the same category of "app state a `Stage` needs but
+    /// `RuntimeState` doesn't own" as `magic_figures`' orbit positions
+    /// (see `meridian_engine_core`'s own module doc): a camera pose
+    /// driven by per-frame input isn't physics/audio/world state.
+    render_camera: Arc<Mutex<Camera>>,
+    /// `None` until [`AppHandler::on_ready`] registers the render stage
+    /// (it needs a real `Device`/`Surface`, built there).
+    render_stage: Option<StageId>,
 }
 
 impl App {
@@ -329,7 +369,8 @@ impl App {
             scene_entities,
             physics,
             tokio_runtime,
-            gpu: None,
+            render_camera: Arc::new(Mutex::new(Camera::default())),
+            render_stage: None,
         }
     }
 }
@@ -345,12 +386,10 @@ impl AppHandler for App {
             .expect("failed to create windowed GPU device");
         let mut base = GraphicsBase::new(device, surface, width, height);
 
-        let bodies = self.physics.bodies();
-        let mut renderables: Vec<Renderable3D> = self
+        let render_entities: Vec<RenderEntity> = self
             .scene_entities
             .iter()
-            .zip(&bodies)
-            .map(|(entity, body)| {
+            .map(|entity| {
                 let texture = base.load_texture(&asset_path(&entity.texture));
                 let material = base.materials.register(Material {
                     albedo: Some(texture),
@@ -361,36 +400,61 @@ impl AppHandler for App {
                     .meshes
                     .register(mesh_source_for(entity))
                     .unwrap_or_else(|e| panic!("{} mesh must be valid: {e}", entity.mesh_shape));
-                Renderable3D {
+                RenderEntity {
+                    mesh_shape: entity.mesh_shape.clone(),
+                    collider: entity.collider,
                     mesh,
                     material,
-                    frame: mesh_render_frame(entity, body.frame),
-                    billboard: false,
                 }
             })
             .collect();
-        renderables.push(sun_renderable(&mut base));
+        let sun = sun_renderable(&mut base);
 
-        let scene = Scene3D {
-            renderables,
-            lights: vec![Light::Directional {
-                direction: Motor3::from_rotation_translation(
-                    look_at_rotor(Vec3::ZERO, SUN_DIRECTION),
-                    Vec3::ZERO,
-                ),
-                color: [1.0, 0.96, 0.9],
-                intensity: 1.1,
-            }],
-            ambient_ground: [0.08, 0.08, 0.09],
-            ambient_sky: [0.12, 0.12, 0.15],
-            ..Scene3D::default()
-        };
+        let lights = vec![Light::Directional {
+            direction: Motor3::from_rotation_translation(
+                look_at_rotor(Vec3::ZERO, SUN_DIRECTION),
+                Vec3::ZERO,
+            ),
+            color: [1.0, 0.96, 0.9],
+            intensity: 1.1,
+        }];
 
-        self.gpu = Some(GpuState { base, scene });
+        let render_camera = self.render_camera.clone();
+        let render_stage = RenderStage::new(
+            base,
+            window.clone(),
+            [0.05, 0.05, 0.08, 1.0],
+            move |ctx: &StageContext| {
+                let bodies = &ctx.physics().bodies;
+                let mut renderables: Vec<Renderable3D> = render_entities
+                    .iter()
+                    .zip(bodies.iter())
+                    .map(|(re, body)| Renderable3D {
+                        mesh: re.mesh,
+                        material: re.material,
+                        frame: mesh_render_frame(&re.mesh_shape, re.collider, body.frame),
+                        billboard: false,
+                    })
+                    .collect();
+                renderables.push(sun.clone());
+                Scene3D {
+                    renderables,
+                    lights: lights.clone(),
+                    camera: *render_camera.lock().unwrap(),
+                    ambient_ground: [0.08, 0.08, 0.09],
+                    ambient_sky: [0.12, 0.12, 0.15],
+                }
+            },
+        );
+        self.render_stage = Some(self.physics.runtime.add_stage(
+            "render",
+            &[self.physics.physics_stage],
+            render_stage,
+        ));
     }
 
     fn on_redraw(&mut self, window: &Window, input: &InputState) {
-        let Some(gpu) = &mut self.gpu else {
+        let Some(render_stage) = self.render_stage else {
             return;
         };
 
@@ -407,26 +471,15 @@ impl AppHandler for App {
         }
 
         self.physics.step(frame_dt);
-        let bodies = self.physics.bodies();
-        for ((entity, body), renderable) in self
-            .scene_entities
-            .iter()
-            .zip(&bodies)
-            .zip(&mut gpu.scene.renderables)
-        {
-            renderable.frame = mesh_render_frame(entity, body.frame);
-        }
 
         let aspect = window.width() as f32 / window.height().max(1) as f32;
-        gpu.scene.camera = self.camera.camera(aspect);
+        *self.render_camera.lock().unwrap() = self.camera.camera(aspect);
 
-        meridian_sdk::render_frame(&mut gpu.base, &gpu.scene, [0.05, 0.05, 0.08, 1.0], window);
+        self.physics.runtime.tick_only(&[render_stage]);
     }
 
     fn on_resized(&mut self, width: u32, height: u32) {
-        if let Some(gpu) = &mut self.gpu {
-            gpu.base.resize(width, height);
-        }
+        self.physics.runtime.resize_all(width, height);
     }
 }
 

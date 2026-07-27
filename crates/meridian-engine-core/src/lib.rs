@@ -510,17 +510,49 @@ impl Runtime {
     /// consumed once by `Scheduler::run`, not meant to be reused across
     /// frames). Blocks until every stage has finished.
     pub fn tick(&self) {
-        let mut graph = JobGraph::new();
-        let mut job_ids = Vec::with_capacity(self.stages.len());
+        let all_ids: Vec<StageId> = (0..self.stages.len()).map(StageId).collect();
+        self.tick_only(&all_ids);
+    }
 
-        for entry in &self.stages {
-            let dep_job_ids: Vec<_> = entry.deps.iter().map(|dep| job_ids[dep.0]).collect();
+    /// Like [`tick`](Self::tick), but runs only the stages named in
+    /// `ids` (each still gated on any of *its own* dependencies that are
+    /// also in `ids` — a dependency left out of `ids` is treated as
+    /// already satisfied, not an error, since the whole point of this
+    /// method is running a subset on its own schedule). The concrete
+    /// reason this exists rather than every application always calling
+    /// plain [`tick`](Self::tick): physics and rendering genuinely run
+    /// at different multiplicities per real display frame — a
+    /// fixed-timestep physics accumulator calls its stage 0-8 times to
+    /// catch up on one real frame's elapsed time, while a rendering
+    /// stage must run exactly once per display frame (a
+    /// `Runtime::tick`-per-catch-up-step render would present several
+    /// swapchain frames per real frame, wrong and wasteful). Both still
+    /// go through this same `Runtime` and the same dependency-graph
+    /// mechanism — `tick_only(&[physics_id])` in the accumulator loop,
+    /// `tick_only(&[render_id])` once after it, rather than either stage
+    /// being invoked outside `Runtime` entirely.
+    pub fn tick_only(&self, ids: &[StageId]) {
+        let selected: std::collections::HashSet<usize> = ids.iter().map(|id| id.0).collect();
+        let mut graph = JobGraph::new();
+        let mut job_ids: Vec<Option<meridian_task_core::JobId>> = vec![None; self.stages.len()];
+
+        for &id in ids {
+            let entry = &self.stages[id.0];
+            let dep_job_ids: Vec<_> = entry
+                .deps
+                .iter()
+                .filter(|dep| selected.contains(&dep.0))
+                .map(|dep| {
+                    job_ids[dep.0]
+                        .expect("tick_only: a dependency must appear before its dependent in `ids`")
+                })
+                .collect();
             let stage = entry.stage.clone();
             let ctx = self.state.context();
             let job_id = graph.add_job(entry.name, &dep_job_ids, move || {
                 stage.lock().unwrap().run(&ctx);
             });
-            job_ids.push(job_id);
+            job_ids[id.0] = Some(job_id);
         }
 
         self.scheduler.run(graph);
@@ -981,5 +1013,38 @@ mod tests {
         runtime.tick();
 
         assert_eq!(dispatch_count.load(Ordering::SeqCst), 10);
+    }
+
+    /// `tick_only` must run *only* the named stages — the physics-many-
+    /// times/render-once split its own doc comment describes. Two
+    /// stages registered, only one selected repeatedly: the unselected
+    /// one must never run.
+    #[test]
+    fn tick_only_runs_exactly_the_selected_stages() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+
+        struct Counter(Arc<AtomicUsize>);
+        impl Stage for Counter {
+            fn run(&mut self, _ctx: &StageContext) {
+                self.0.fetch_add(1, Ordering::SeqCst);
+            }
+        }
+
+        let (physics, audio) = subsystem_pair();
+        let mut runtime = Runtime::with_worker_count(physics, audio, 2);
+        let physics_runs = Arc::new(AtomicUsize::new(0));
+        let render_runs = Arc::new(AtomicUsize::new(0));
+        let physics_id = runtime.add_stage("physics", &[], Counter(physics_runs.clone()));
+        let render_id = runtime.add_stage("render", &[physics_id], Counter(render_runs.clone()));
+
+        // Simulate an accumulator catching up 3 physics steps, then one
+        // render.
+        runtime.tick_only(&[physics_id]);
+        runtime.tick_only(&[physics_id]);
+        runtime.tick_only(&[physics_id]);
+        runtime.tick_only(&[render_id]);
+
+        assert_eq!(physics_runs.load(Ordering::SeqCst), 3);
+        assert_eq!(render_runs.load(Ordering::SeqCst), 1);
     }
 }

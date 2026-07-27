@@ -68,6 +68,15 @@ use meridian_sdk::{
     pyramid_mesh_source, run_windowed_app,
 };
 
+/// The one directional light's travel direction and the visible "sun"
+/// sphere placed opposite it — see `physic_figures`' identical constants
+/// for why the *visual* placement's elevation is deliberately flattened
+/// relative to the physically-exact direction (findable by panning near
+/// the horizon, not only by pitching steeply upward).
+const SUN_DIRECTION: Vec3 = Vec3::new(-0.4, -1.0, -0.3);
+const SUN_DISTANCE: f32 = 35.0;
+const SUN_VISUAL_RADIUS: f32 = 6.0;
+
 const ORBIT_RADIUS: f32 = 3.2;
 const ORBIT_HEIGHT: f32 = 2.0;
 /// Full orbit period, seconds — slow enough to watch each shape's own
@@ -315,6 +324,31 @@ fn orbit_position(shape: &ShapeSpec, elapsed: f32) -> Vec3 {
     )
 }
 
+/// A small, always-unlit-and-glowing sphere placed opposite
+/// `SUN_DIRECTION` — see `physic_figures::sun_renderable`'s identical
+/// doc comment for why the visual elevation is flattened relative to
+/// the physically-exact light direction.
+fn sun_renderable(base: &mut GraphicsBase) -> Renderable3D {
+    let mesh = base
+        .meshes
+        .register(icosphere_mesh_source(1, SUN_VISUAL_RADIUS))
+        .expect("sun mesh must be valid");
+    let material = base.materials.register(Material {
+        base_color_factor: [1.0, 0.95, 0.8, 1.0],
+        unlit: true,
+        emissive: [1.0, 0.95, 0.8],
+        ..Default::default()
+    });
+    let visual_direction = Vec3::new(SUN_DIRECTION.x, -0.5, SUN_DIRECTION.z).normalize();
+    let position = visual_direction * -SUN_DISTANCE;
+    Renderable3D {
+        mesh,
+        material,
+        frame: Motor3::translation(position),
+        billboard: false,
+    }
+}
+
 struct App {
     tokio_runtime: tokio::runtime::Runtime,
     camera: FlyCamera,
@@ -421,6 +455,7 @@ impl AppHandler for App {
                 billboard: false,
             });
         }
+        renderables.push(sun_renderable(&mut base));
 
         // One `Light::Point` per shape, in its own glow color, colocated
         // with the shape — this is what actually casts colored light
@@ -431,7 +466,7 @@ impl AppHandler for App {
         // + 3 shapes, no headroom to spare.
         let mut lights = vec![Light::Directional {
             direction: Motor3::from_rotation_translation(
-                look_at_rotor(Vec3::ZERO, Vec3::new(-0.4, -1.0, -0.3)),
+                look_at_rotor(Vec3::ZERO, SUN_DIRECTION),
                 Vec3::ZERO,
             ),
             color: [1.0, 0.96, 0.9],
