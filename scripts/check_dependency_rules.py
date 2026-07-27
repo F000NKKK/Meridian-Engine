@@ -90,6 +90,7 @@ ALLOWED = {
         "meridian-audio-core",
         "meridian-asset-core",
         "meridian-compute-runtime",
+        "meridian-physics-compute",
     },
     "meridian-dsl-core": {"meridian-foundation"},
     "meridian-dsl-macros": set(),

@@ -41,8 +41,9 @@ tier 3  audio-core, compute-driver, ecs-core, graphics-driver
 tier 4  compute-runtime
 tier 5  gac-compute
 tier 6  graphics-core, physics-core
-tier 7  engine-core, physics-compute
-tier 8  sdk
+tier 7  physics-compute
+tier 8  engine-core
+tier 9  sdk
 ```
 
 `meridian-dsl-core`/`meridian-dsl-macros` are the two crates behind the
