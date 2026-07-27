@@ -438,6 +438,7 @@ impl AppHandler for App {
                         material: re.material,
                         frame: mesh_render_frame(&re.mesh_shape, re.collider, body.frame),
                         billboard: false,
+                        casts_shadow: true,
                     })
                     .collect();
                 renderables.push(sun.clone());
