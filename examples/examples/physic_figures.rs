@@ -283,7 +283,8 @@ struct RenderEntity {
 }
 
 /// Fixed-timestep driver around a real `meridian_sdk::Runtime` running
-/// one registered [`PhysicsComputeStepStage`] — the physics stepping
+/// one registered [`PhysicsStepStage`] in `PhysicsDispatchMode::Batched`
+/// — the physics stepping
 /// itself (integrate/relax-contacts/resolve, batched through
 /// `physics-compute`'s kernels rather than a plain sequential loop) is
 /// no longer hand-rolled here; see that stage's own doc comment for
@@ -329,12 +330,15 @@ impl PhysicsRig {
         let audio = AudioSubsystem::new(Mixer::new(SpeakerLayout::mono()));
 
         let mut runtime = Runtime::new(physics, audio);
-        // `PhysicsComputeStepStage`, not `PhysicsStepStage` — this
+        // `PhysicsDispatchMode::Batched`, not `Sequential` — this
         // example is the live proof that the batched-dispatch physics
         // path (docs/roadmap.md's "Scaling beyond a tech demo" item 4)
         // is a real drop-in swap, not just unit-tested in isolation.
-        let physics_stage =
-            runtime.add_stage("physics", &[], PhysicsComputeStepStage::new(PHYSICS_DT));
+        let physics_stage = runtime.add_stage(
+            "physics",
+            &[],
+            PhysicsStepStage::new(PHYSICS_DT, PhysicsDispatchMode::Batched),
+        );
 
         Self {
             runtime,
