@@ -49,6 +49,12 @@
 //!   needs identically; not domain logic, just reusable application
 //!   plumbing. `GraphicsBase` owns an [`assets::AssetCache`], but the
 //!   loading logic itself lives in [`assets`], not here.
+//! - [`render`] — [`render_frame`], the shadow-pass/submit/present
+//!   sequence every windowed app repeats each redraw, and [`RenderStage`],
+//!   the `engine_core::Stage` impl that lets an application register
+//!   frame presentation on the *same* `Runtime`/`JobGraph` as physics —
+//!   see that module's own doc for why `engine-core` itself can never
+//!   provide this (it has no `graphics-driver` access).
 //! - Everything else below is a direct `pub use` from the crate that
 //!   actually owns it — this crate adds no new types for spatial math,
 //!   physics, graphics or audio; it only makes them reachable through
@@ -57,11 +63,13 @@
 pub mod assets;
 pub mod camera;
 pub mod dsl;
+pub mod render;
 pub mod scene;
 
 pub use assets::{AssetCache, AudioTrack, load_audio_track, load_image_asset};
 pub use camera::{FlyCamera, look_at_rotor};
 pub use dsl::dsl_core;
+pub use render::{RenderStage, render_frame};
 pub use scene::{
     GraphicsBase, cube_mesh_source, ground_mesh_source, icosphere_mesh_source, pyramid_mesh_source,
 };
