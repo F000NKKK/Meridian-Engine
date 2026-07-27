@@ -1102,15 +1102,27 @@ pub struct SceneRenderer {
     shadow_textured_pipeline: RenderPipeline,
 }
 
-/// A fixed size for the shadow map — generous enough that both example
-/// scenes' shadows don't read as visibly blocky, without the per-frame
-/// cost a much larger map would add. Not exposed as a `SceneRenderer::new`
-/// parameter yet (no caller has needed to tune it) — additive future
-/// work if one does.
-const SHADOW_MAP_SIZE: u32 = 2048;
+/// [`SceneRenderer::new`]'s default shadow map resolution — generous
+/// enough that both example scenes' shadows don't read as visibly
+/// blocky, without the per-frame cost a much larger map would add. A
+/// caller that wants sharper (or cheaper, blockier) shadows picks their
+/// own value via [`SceneRenderer::with_shadow_map_size`] instead.
+pub const DEFAULT_SHADOW_MAP_SIZE: u32 = 2048;
 
 impl SceneRenderer {
+    /// Builds a renderer with [`DEFAULT_SHADOW_MAP_SIZE`] — see
+    /// [`with_shadow_map_size`](Self::with_shadow_map_size) to pick a
+    /// specific resolution (a larger map reduces blocky/aliased shadow
+    /// edges at a real per-frame GPU cost; a smaller one is cheaper and
+    /// blockier — there's no single right answer across every scene's
+    /// scale and hardware budget, so this is an explicit, disclosed
+    /// application choice, not a hardcoded constant with no escape
+    /// hatch).
     pub fn new(device: &Device, surface: &Surface) -> Self {
+        Self::with_shadow_map_size(device, surface, DEFAULT_SHADOW_MAP_SIZE)
+    }
+
+    pub fn with_shadow_map_size(device: &Device, surface: &Surface, shadow_map_size: u32) -> Self {
         let colored_unlit_shader =
             device.create_shader("meridian-unlit-colored", UNLIT_SHADER_WGSL);
         let colored_unlit_pipeline = device.create_render_pipeline(
@@ -1151,7 +1163,7 @@ impl SceneRenderer {
             true,
         );
 
-        let shadow_map = device.create_shadow_map_texture(SHADOW_MAP_SIZE);
+        let shadow_map = device.create_shadow_map_texture(shadow_map_size);
         let shadow_sampler = device.create_comparison_sampler();
         let shadow_shader = device.create_shader("meridian-shadow-depth", SHADOW_DEPTH_SHADER_WGSL);
         let shadow_colored_pipeline =

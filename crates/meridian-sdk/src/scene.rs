@@ -263,9 +263,31 @@ pub struct GraphicsBase {
 }
 
 impl GraphicsBase {
+    /// Builds with `graphics-core`'s default shadow map resolution
+    /// (`SceneRenderer::DEFAULT_SHADOW_MAP_SIZE`) — see
+    /// [`with_shadow_map_size`](Self::with_shadow_map_size) to pick a
+    /// specific one (sharper-but-costlier vs. cheaper-but-blockier
+    /// shadows; there's no single right answer across every scene's
+    /// scale and hardware budget).
     pub fn new(device: Device, surface: Surface, width: u32, height: u32) -> Self {
+        Self::with_shadow_map_size(
+            device,
+            surface,
+            width,
+            height,
+            meridian_graphics_core::SceneRenderer::DEFAULT_SHADOW_MAP_SIZE,
+        )
+    }
+
+    pub fn with_shadow_map_size(
+        device: Device,
+        surface: Surface,
+        width: u32,
+        height: u32,
+        shadow_map_size: u32,
+    ) -> Self {
         let depth = device.create_depth_texture(width, height);
-        let renderer = SceneRenderer::new(&device, &surface);
+        let renderer = SceneRenderer::with_shadow_map_size(&device, &surface, shadow_map_size);
         let bloom = BloomPass::new(&device, width, height, &surface);
         Self {
             device,
