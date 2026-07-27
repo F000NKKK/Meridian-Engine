@@ -630,8 +630,9 @@ priority before writing implementations is keeping that document and the
 Everything above proves the engine works end-to-end for a small scene
 (a few dozen renderables, a handful of rigid bodies). A voxel-world game
 (Minecraft-like) or a large-factory simulation (Satisfactory-like) needs
-real capacity in several places that a small demo never exercises. None
-of this is started; ordered roughly by "blocks everything else" first.
+real capacity in several places that a small demo never exercises.
+Ordered roughly by "blocks everything else" first; item 4 is done, the
+rest are not started.
 
 1. **Per-instance vertex rebaking, every frame, is the sharpest wall.**
    `graphics-core::submission::bake_draw_buffers` reuploads a fresh
@@ -666,19 +667,26 @@ of this is started; ordered roughly by "blocks everything else" first.
    voxel world's solid blocks, a factory's machine footprints). Needs a
    real spatial structure (uniform grid keyed to chunk size, or a BVH)
    so broad-phase cost scales with *nearby* bodies, not total bodies.
-4. **`physics-compute`'s GPU/`JobGraph`-batched rigid-body kernels
-   exist but aren't wired into `engine-core::Runtime`.** `Runtime`'s
-   built-in `PhysicsStepStage` still forwards to
-   `PhysicsSubsystem::step`'s plain sequential CPU loop (see that
-   method's own doc comment) — `RigidBodyIntegratorKernel`/
-   `ConstraintSolverBatchKernel`/etc. (in `meridian-physics-compute`,
-   proven correct in that crate's own tests) are a real, available,
-   *unused* path to GPU/parallel dispatch. Wiring them in is bounded
-   work (add `meridian-physics-compute` as an `engine-core` dependency —
-   both are tier 7 today, so this needs a tier bump, not a new forbidden
-   edge; see dependency-rules.md) rather than a research problem, and is
-   the concrete answer to "physics needs to run on the GPU" for either
-   target game's body count.
+4. **Done: `physics-compute`'s batched rigid-body kernels are wired
+   into `engine-core::Runtime`.** `PhysicsComputeStepStage` (in
+   `engine-core`, re-exported from `meridian-sdk`) dispatches
+   `RigidBodyIntegratorKernel`/`BroadPhasePairsKernel`/
+   `GenerateContactsKernel`/`ConstraintSolverBatchKernel` instead of
+   `PhysicsSubsystem::step`'s plain sequential loop — proven identical
+   to `PhysicsStepStage` bit-for-bit on a single tick and across a
+   600-tick settling regression (`cargo test -p meridian-engine-core`),
+   and proven live in `examples/physic_figures` (swapped in as a
+   drop-in replacement, no other example code changed). `engine-core`
+   moved from tier 7 to tier 8 for the new edge (`physics-compute` is
+   tier 7 — see dependency-rules.md's own note on this edge). **Still a
+   real, disclosed gap**: every kernel dispatches through
+   `ComputeContext::parallel_for`'s CPU backend (real multi-core
+   parallelism) — none of the five has a WGSL shader behind it yet, so
+   this is "batched, ready for a GPU backend to slot in," not literally
+   GPU-executing rigid-body physics today. A real GPU dispatch path for
+   these five kernels (the `float`/`fixed` soft-body kernels elsewhere
+   in `physics-compute` already show the WGSL-kernel shape this would
+   follow) is the next step if body counts ever need it, not started.
 5. **No persistence at all.** Nothing in the workspace derives
    `serde::Serialize`/`Deserialize` or has any save/load story — every
    `*-core` type is designed for one running process's lifetime. Both
@@ -707,17 +715,17 @@ of this is started; ordered roughly by "blocks everything else" first.
    procedural spin). glTF (which carries skinning data OBJ can't) is
    the natural next format, not a bigger OBJ.
 
-**Rough sequencing, if picking one order**: (1) and (2) first — they're
-the two things that make *any* further content-heavy work
-(chunks/factories, gameplay systems) viable at all, not nice-to-haves.
-(3)/(4) (spatial broad-phase, GPU physics dispatch) next, once there's
-actually a large scene to profile against. (5) (persistence) before (6)
-(networking) — replication design usually wants a serialization format
-to already exist. (7)/(8) (UI, animation) can start in parallel with
-the above once a concrete game loop exists to build them against — see
-"Why implementation is deliberately last" below for why this workspace
-prefers building against a real, exercised need over speculative
-scaffolding.
+**Rough sequencing, if picking one order**: (4) (batched physics
+dispatch) is done. (1) and (2) next — they're the two things that make
+*any* further content-heavy work (chunks/factories, gameplay systems)
+viable at all, not nice-to-haves. (3) (spatial broad-phase) after that,
+once there's actually a large scene to profile against. (5)
+(persistence) before (6) (networking) — replication design usually
+wants a serialization format to already exist. (7)/(8) (UI, animation)
+can start in parallel with the above once a concrete game loop exists
+to build them against — see "Why implementation is deliberately last"
+below for why this workspace prefers building against a real,
+exercised need over speculative scaffolding.
 
 This is a realistic multi-month-per-item undertaking each, not a single
 sprint — treat this section as "what's missing," not "next release."
