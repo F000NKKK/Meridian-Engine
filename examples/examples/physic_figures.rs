@@ -58,9 +58,10 @@ use meridian_sdk::dsl;
 use meridian_sdk::{
     AppHandler, AudioSubsystem, Camera, ColliderShape, ConstraintSolver, Device, FlyCamera,
     GraphicsBase, InputState, KeyCode, Light, Material, MaterialHandle, MeshHandle, Mixer, Motor3,
-    PhysicsStepStage, PhysicsSubsystem, RenderStage, Renderable3D, RigidBody, Runtime, Scene3D,
-    SpeakerLayout, StageContext, StageId, Vec3, Window, cube_mesh_source, ground_mesh_source,
-    icosphere_mesh_source, look_at_rotor, pyramid_mesh_source, run_windowed_app,
+    PhysicsComputeStepStage, PhysicsSubsystem, RenderStage, Renderable3D, RigidBody, Runtime,
+    Scene3D, SpeakerLayout, StageContext, StageId, Vec3, Window, cube_mesh_source,
+    ground_mesh_source, icosphere_mesh_source, look_at_rotor, pyramid_mesh_source,
+    run_windowed_app,
 };
 
 /// The one directional light's travel direction — shared by the light
