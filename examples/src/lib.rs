@@ -4,10 +4,11 @@
 //! engine functionality), just the code that was identical across
 //! `physic_figures.rs`/`magic_figures.rs` and had no reason to be
 //! copy-pasted twice: asset-path resolution ([`paths`]), reading a
-//! `.mel` scene file into a built DSL tree ([`scene_loader`]), the
-//! standard acquire/submit/present render-frame sequence
-//! ([`render`]), and crash-reporting/logging bootstrap
-//! ([`app_main`]).
+//! `.mel` scene file into a built DSL tree ([`scene_loader`]), and
+//! crash-reporting/logging bootstrap ([`app_main`]). The acquire/submit/
+//! present render-frame sequence used to live here too; it's
+//! `meridian_sdk::render_frame`/`meridian_sdk::RenderStage` now — real
+//! SDK-level plumbing any application needs, not example-specific.
 //!
 //! Each example still owns its own `App`/`AppHandler`, its own
 //! `on_ready`/`on_redraw` composition, and — for `magic_figures` — its
@@ -26,5 +27,4 @@
 
 pub mod app_main;
 pub mod paths;
-pub mod render;
 pub mod scene_loader;

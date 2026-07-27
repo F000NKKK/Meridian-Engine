@@ -510,7 +510,7 @@ impl AppHandler for App {
         }
         gpu.scene.camera = camera;
 
-        meridian_examples::render::render_frame(
+        meridian_sdk::render_frame(
             &mut gpu.base,
             &gpu.scene,
             [0.03, 0.03, 0.05, 1.0],
