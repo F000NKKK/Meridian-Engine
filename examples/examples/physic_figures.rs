@@ -446,8 +446,8 @@ impl AppHandler for App {
                     renderables,
                     lights: lights.clone(),
                     camera: *render_camera.lock().unwrap(),
-                    ambient_ground: [0.08, 0.08, 0.09],
-                    ambient_sky: [0.12, 0.12, 0.15],
+                    ambient_ground: [0.02, 0.02, 0.025],
+                    ambient_sky: [0.04, 0.04, 0.055],
                 }
             },
         );
