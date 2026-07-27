@@ -46,10 +46,11 @@ use meridian_examples::paths::asset_path;
 use meridian_examples::scene_loader::load_dsl_scene;
 use meridian_sdk::dsl;
 use meridian_sdk::{
-    AppHandler, ColliderShape, ConstraintSolver, Device, FlyCamera, GraphicsBase, InputState,
-    KeyCode, Light, Material, Mixer, Motor3, PhysicsSubsystem, Renderable3D, RigidBody, Runtime,
-    Scene3D, SpeakerLayout, SubsystemManager, Vec3, Window, cube_mesh_source, ground_mesh_source,
-    icosphere_mesh_source, look_at_rotor, pyramid_mesh_source, run_windowed_app,
+    AppHandler, AudioSubsystem, ColliderShape, ConstraintSolver, Device, FlyCamera, GraphicsBase,
+    InputState, KeyCode, Light, Material, Mixer, Motor3, PhysicsStepStage, PhysicsSubsystem,
+    Renderable3D, RigidBody, Runtime, Scene3D, SpeakerLayout, Vec3, Window, cube_mesh_source,
+    ground_mesh_source, icosphere_mesh_source, look_at_rotor, pyramid_mesh_source,
+    run_windowed_app,
 };
 
 const PHYSICS_DT: f32 = 1.0 / 60.0;
