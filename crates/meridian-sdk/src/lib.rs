@@ -115,7 +115,7 @@ pub use meridian_asset_core::{
 // (see this crate's own module doc's "Runtime is the single frame-work
 // entry point" section) --
 pub use meridian_engine_core::{
-    AudioSubsystem, ComputeStage, EventSystem, FrameScheduler, PhysicsComputeStepStage,
+    AudioSubsystem, ComputeStage, EventSystem, FrameScheduler, PhysicsDispatchMode,
     PhysicsStepStage, PhysicsSubsystem, Runtime, RuntimeState, Stage, StageContext, StageId,
 };
 

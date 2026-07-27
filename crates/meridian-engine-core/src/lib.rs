@@ -1216,10 +1216,11 @@ mod tests {
         );
     }
 
-    /// One tick of `PhysicsComputeStepStage` must match one tick of
-    /// `PhysicsStepStage` bit-for-bit on a simple falling body — the
-    /// direct "same algorithm, different dispatch" proof, independent
-    /// of the longer settling regression above.
+    /// One tick of `PhysicsStepStage` in `PhysicsDispatchMode::Batched`
+    /// must match one tick in `PhysicsDispatchMode::Sequential`
+    /// bit-for-bit on a simple falling body — the direct "same
+    /// algorithm, different dispatch" proof, independent of the longer
+    /// settling regression above.
     #[test]
     fn physics_compute_step_stage_matches_physics_step_stage_for_one_tick() {
         let (physics_a, audio_a) = subsystem_pair();
