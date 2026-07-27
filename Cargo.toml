@@ -33,8 +33,8 @@ meridian-physics-driver = { path = "crates/meridian-physics-driver", version = "
 meridian-physics-core = { path = "crates/meridian-physics-core", version = "0.25" }
 meridian-physics-compute = { path = "crates/meridian-physics-compute", version = "0.5" }
 meridian-audio-core = { path = "crates/meridian-audio-core", version = "0.19" }
-meridian-engine-core = { path = "crates/meridian-engine-core", version = "0.30" }
-meridian-sdk = { path = "crates/meridian-sdk", version = "0.4" }
+meridian-engine-core = { path = "crates/meridian-engine-core", version = "0.31" }
+meridian-sdk = { path = "crates/meridian-sdk", version = "0.5" }
 meridian-dsl-core = { path = "crates/meridian-dsl-core", version = "0.1" }
 meridian-dsl-macros = { path = "crates/meridian-dsl-macros", version = "0.1" }
 
