@@ -81,8 +81,12 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use meridian_audio_core::{Emitter, Listener, Mixer};
-use meridian_compute_runtime::{ComputeKernel, ComputeScheduler, DispatchSize};
+use meridian_compute_runtime::{ComputeContext, ComputeKernel, ComputeScheduler, DispatchSize};
 use meridian_ecs_core::World;
+use meridian_physics_compute::broad_phase::BroadPhasePairsKernel;
+use meridian_physics_compute::constraint_solver::ConstraintSolverBatchKernel;
+use meridian_physics_compute::narrow_phase::GenerateContactsKernel;
+use meridian_physics_compute::rigid_body::RigidBodyIntegratorKernel;
 use meridian_physics_core::{BroadPhase, ConstraintSolver, Integrator, NarrowPhase, RigidBody};
 use meridian_platform_core::CpuCapabilities;
 use meridian_task_core::{JobGraph, Scheduler};
@@ -631,6 +635,85 @@ impl<K: ComputeKernel + Send + 'static> ComputeStage<K> {
 impl<K: ComputeKernel + Send> Stage for ComputeStage<K> {
     fn run(&mut self, _ctx: &StageContext) {
         self.scheduler.run(&self.kernel, self.size);
+    }
+}
+
+/// [`PhysicsStepStage`]'s batched-dispatch counterpart: steps physics by
+/// running `meridian-physics-compute`'s
+/// [`RigidBodyIntegratorKernel`]/[`BroadPhasePairsKernel`]/
+/// [`GenerateContactsKernel`]/[`ConstraintSolverBatchKernel`] instead of
+/// [`PhysicsSubsystem::step`]'s plain sequential `for` loop — the
+/// concrete answer to docs/roadmap.md's "physics needs to scale past a
+/// handful of bodies" entry. Registered exactly like
+/// [`PhysicsStepStage`] (same `dt`-per-tick shape, same
+/// `ctx.physics()` lock); swap one for the other without touching
+/// anything else about how an application composes its `Runtime`.
+///
+/// **Same algorithm, different dispatch shape — not a semantic
+/// rewrite.** This mirrors `PhysicsSubsystem::step`'s exact structure
+/// (integrate, `RELAXATION_ITERATIONS` velocity-only passes, one final
+/// positional-correction pass) with one deliberate difference already
+/// proven equivalent by `physics-compute`'s own tests: broad/narrow
+/// phase run *once* per tick here, not once per relaxation pass (see
+/// `ConstraintSolverBatchKernel`'s own module doc for why that's
+/// harmless — `resolve_velocity` never changes a body's `frame`, only
+/// its velocity, so the contact set genuinely can't change between
+/// velocity-only passes; `PhysicsSubsystem::step`'s repeated
+/// recomputation there is wasteful, not more correct).
+///
+/// **"Batched," not (yet) literally GPU-executing.** Every kernel here
+/// dispatches through `ComputeContext::parallel_for`'s CPU backend
+/// today (real multi-core parallelism, not single-threaded) — none of
+/// the five has a WGSL shader behind it the way
+/// `meridian-physics-compute`'s own `float`/`fixed` soft-body kernels
+/// do. The architecture (one `ComputeKernel` per pipeline stage,
+/// dispatched through `compute-runtime`) is the same shape a real GPU
+/// path would slot into; that GPU path itself is still a real, disclosed
+/// gap, not silently implied by this type's name.
+pub struct PhysicsComputeStepStage {
+    pub dt: f32,
+    context: ComputeContext,
+}
+
+impl PhysicsComputeStepStage {
+    pub fn new(dt: f32) -> Self {
+        Self {
+            dt,
+            context: ComputeContext::new(),
+        }
+    }
+}
+
+impl Stage for PhysicsComputeStepStage {
+    fn run(&mut self, ctx: &StageContext) {
+        let mut physics = ctx.physics();
+        let body_count = physics.bodies.len();
+
+        let integrator_kernel =
+            RigidBodyIntegratorKernel::new(physics.integrator, physics.bodies.clone(), self.dt);
+        integrator_kernel.dispatch(&self.context, DispatchSize::linear(body_count as u32));
+        let integrated = integrator_kernel.results();
+
+        // Upper bounds, not exact counts — every kernel here clamps its
+        // own dispatch count to its real candidate/pair list length
+        // internally (see each kernel's own `dispatch` — `size.total()
+        // .min(self.\u{2026}.len())`), so an over-generous `DispatchSize` is
+        // always safe, just occasionally over-allocates a `parallel_for`
+        // call that immediately no-ops past the real count.
+        let pair_upper_bound = (body_count.saturating_mul(body_count.max(1))) as u32;
+        let broad_kernel = BroadPhasePairsKernel::new(integrated.clone());
+        broad_kernel.dispatch(&self.context, DispatchSize::linear(pair_upper_bound));
+        let pairs = broad_kernel.pairs();
+
+        let contacts_kernel = GenerateContactsKernel::new(integrated, pairs);
+        contacts_kernel.dispatch(&self.context, DispatchSize::linear(pair_upper_bound));
+        let contacts = contacts_kernel.results();
+
+        let solver_kernel =
+            ConstraintSolverBatchKernel::new(physics.solver, contacts_kernel.bodies.clone(), contacts);
+        solver_kernel.step(&self.context, RELAXATION_ITERATIONS);
+
+        physics.bodies = solver_kernel.bodies();
     }
 }
 
