@@ -29,7 +29,12 @@ use crate::scene::GraphicsBase;
 /// `Stage`, for a caller driving everything through `Runtime::tick`;
 /// call this directly instead if an application isn't using `Runtime`
 /// at all (e.g. `examples/magic_figures`, which has no physics bodies).
-pub fn render_frame(base: &mut GraphicsBase, scene: &Scene3D, clear_color: [f64; 4], window: &Window) {
+pub fn render_frame(
+    base: &mut GraphicsBase,
+    scene: &Scene3D,
+    clear_color: [f64; 4],
+    window: &Window,
+) {
     let mut commands = base.device.create_command_buffer();
     let (draw_buffers, light_view_proj, shadow_caster) = base.renderer.render_shadow_pass(
         &base.device,

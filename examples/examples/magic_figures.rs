@@ -510,12 +510,7 @@ impl AppHandler for App {
         }
         gpu.scene.camera = camera;
 
-        meridian_sdk::render_frame(
-            &mut gpu.base,
-            &gpu.scene,
-            [0.03, 0.03, 0.05, 1.0],
-            window,
-        );
+        meridian_sdk::render_frame(&mut gpu.base, &gpu.scene, [0.03, 0.03, 0.05, 1.0], window);
     }
 
     fn on_resized(&mut self, width: u32, height: u32) {

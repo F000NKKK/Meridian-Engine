@@ -641,27 +641,33 @@ fn vec3_to_padded_bytes(v: [f32; 3]) -> [u8; 16] {
 }
 
 /// Serializes `camera`/`light_view_proj`/`ambient_ground`/`ambient_sky`/
-/// `shadow_caster`/`lights` into the lit shaders' shared `Uniforms`
-/// layout (see [`LIT_UNIFORMS_AND_SHADING_WGSL`]): `view_proj` (64
-/// bytes), `light_view_proj` (64), `camera_pos` (16), `ambient_ground`
-/// (16), `ambient_sky` (16), `light_count` (16), `shadow_caster` (16),
-/// then [`MAX_LIGHTS`] `LightData` entries (48 bytes each) — 400 bytes
-/// total. Lights beyond the cap are dropped (logged once by the caller,
-/// not here — see [`SceneRenderer::prepare`]). `shadow_caster` is the
-/// index into `lights` of the shadow-casting light (see
+/// `light_direction`/`shadow_caster`/`lights` into the lit shaders'
+/// shared `Uniforms` layout (see [`LIT_UNIFORMS_AND_SHADING_WGSL`]):
+/// `view_proj` (64 bytes), `light_view_proj` (64), `camera_pos` (16),
+/// `ambient_ground` (16), `ambient_sky` (16), `light_direction` (16),
+/// `light_count` (16), `shadow_caster` (16), then [`MAX_LIGHTS`]
+/// `LightData` entries (48 bytes each) — 416 bytes total. Lights beyond
+/// the cap are dropped (logged once by the caller, not here — see
+/// [`SceneRenderer::prepare`]). `shadow_caster` is the index into
+/// `lights` of the shadow-casting light (see
 /// [`SceneRenderer::render_shadow_pass`]), or `u32::MAX` if none —
 /// `shade`'s shadow lookup only ever matches a real light index, never
 /// `u32::MAX`, so "no shadow-casting light" safely degrades to "no
 /// light gets a shadow factor applied," not an out-of-bounds index.
+/// `light_direction` is that same light's travel direction (unit
+/// vector), independent of `shadow_caster` — the shadow lookup uses it
+/// directly for its slope-scaled bias rather than re-indexing `lights`.
+#[allow(clippy::too_many_arguments)]
 fn lit_uniform_bytes(
     camera: &Camera,
     light_view_proj: [[f32; 4]; 4],
     ambient_ground: [f32; 3],
     ambient_sky: [f32; 3],
+    light_direction: Vec3,
     shadow_caster: u32,
     lights: &[Light],
 ) -> Vec<u8> {
-    let mut bytes = Vec::with_capacity(400);
+    let mut bytes = Vec::with_capacity(416);
     bytes.extend_from_slice(&mat4_to_bytes(camera.view_projection_matrix()));
     bytes.extend_from_slice(&mat4_to_bytes(light_view_proj));
     let camera_pos = camera.frame.transform_point(Vec3::ZERO);
@@ -672,6 +678,11 @@ fn lit_uniform_bytes(
     ]));
     bytes.extend_from_slice(&vec3_to_padded_bytes(ambient_ground));
     bytes.extend_from_slice(&vec3_to_padded_bytes(ambient_sky));
+    bytes.extend_from_slice(&vec3_to_padded_bytes([
+        light_direction.x,
+        light_direction.y,
+        light_direction.z,
+    ]));
     let count = lights.len().min(MAX_LIGHTS) as u32;
     bytes.extend_from_slice(&count.to_le_bytes());
     bytes.extend_from_slice(&[0u8; 12]); // pad light_count to a vec4<u32>
@@ -1228,6 +1239,7 @@ impl SceneRenderer {
         device: &Device,
         camera: &Camera,
         light_view_proj: [[f32; 4]; 4],
+        light_direction: Vec3,
         shadow_caster: u32,
         ambient_ground: [f32; 3],
         ambient_sky: [f32; 3],
@@ -1247,6 +1259,7 @@ impl SceneRenderer {
                 light_view_proj,
                 ambient_ground,
                 ambient_sky,
+                light_direction,
                 shadow_caster,
                 lights,
             ),
@@ -1312,7 +1325,7 @@ impl SceneRenderer {
         meshes: &MeshRegistry,
         materials: &MaterialRegistry,
         textures: &TextureRegistry,
-    ) -> (Vec<DrawBuffers>, [[f32; 4]; 4], u32) {
+    ) -> (Vec<DrawBuffers>, [[f32; 4]; 4], Vec3, u32) {
         let shadow_caster = scene
             .lights
             .iter()
@@ -1349,7 +1362,7 @@ impl SceneRenderer {
             }
         }
 
-        (buffers, light_view_proj, shadow_caster)
+        (buffers, light_view_proj, shadow_direction, shadow_caster)
     }
 
     /// Records one draw call per `buffers` entry against `pass`,

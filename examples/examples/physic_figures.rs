@@ -380,12 +380,7 @@ impl AppHandler for App {
         let aspect = window.width() as f32 / window.height().max(1) as f32;
         gpu.scene.camera = self.camera.camera(aspect);
 
-        meridian_sdk::render_frame(
-            &mut gpu.base,
-            &gpu.scene,
-            [0.05, 0.05, 0.08, 1.0],
-            window,
-        );
+        meridian_sdk::render_frame(&mut gpu.base, &gpu.scene, [0.05, 0.05, 0.08, 1.0], window);
     }
 
     fn on_resized(&mut self, width: u32, height: u32) {
