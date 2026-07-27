@@ -346,6 +346,10 @@ fn sun_renderable(base: &mut GraphicsBase) -> Renderable3D {
         material,
         frame: Motor3::translation(position),
         billboard: false,
+        // Sitting along the light's own incoming direction, this would
+        // otherwise occlude the light for the whole scene below it —
+        // see `Renderable3D::casts_shadow`'s own doc comment.
+        casts_shadow: false,
     }
 }
 
@@ -423,6 +427,7 @@ impl AppHandler for App {
             material: floor_material,
             frame: Motor3::identity(),
             billboard: false,
+            casts_shadow: true,
         }];
 
         let mut shape_renderable_indices = Vec::with_capacity(self.shapes.len());
@@ -453,6 +458,7 @@ impl AppHandler for App {
                 material,
                 frame: Motor3::translation(orbit_position(shape, 0.0)),
                 billboard: false,
+                casts_shadow: true,
             });
         }
         renderables.push(sun_renderable(&mut base));
