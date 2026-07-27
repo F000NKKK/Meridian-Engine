@@ -1156,10 +1156,11 @@ mod tests {
         assert_eq!(render_runs.load(Ordering::SeqCst), 1);
     }
 
-    /// `PhysicsComputeStepStage` must settle a box exactly the way
-    /// `PhysicsStepStage`/`PhysicsSubsystem::step` do — same test shape
-    /// as `physics_subsystem_step_settles_a_box_without_bouncing_or_sinking`,
-    /// run through the batched-dispatch stage instead of the plain
+    /// `PhysicsStepStage` in `PhysicsDispatchMode::Batched` must settle a
+    /// box exactly the way `PhysicsDispatchMode::Sequential`/
+    /// `PhysicsSubsystem::step` do — same test shape as
+    /// `physics_subsystem_step_settles_a_box_without_bouncing_or_sinking`,
+    /// run through the batched-dispatch mode instead of the plain
     /// sequential loop, proving the swap is behavior-preserving, not
     /// just "compiles and looks physically plausible."
     #[test]
@@ -1187,8 +1188,11 @@ mod tests {
 
         let audio = AudioSubsystem::new(Mixer::new(SpeakerLayout::mono()));
         let mut runtime = Runtime::with_worker_count(physics, audio, 2);
-        let physics_id =
-            runtime.add_stage("physics", &[], PhysicsComputeStepStage::new(1.0 / 60.0));
+        let physics_id = runtime.add_stage(
+            "physics",
+            &[],
+            PhysicsStepStage::new(1.0 / 60.0, PhysicsDispatchMode::Batched),
+        );
 
         let mut min_height_after_landing = f32::MAX;
         let mut max_height_after_landing = f32::MIN;
@@ -1222,14 +1226,22 @@ mod tests {
         let mut physics_a = physics_a;
         physics_a.bodies.push(falling_body());
         let mut runtime_a = Runtime::with_worker_count(physics_a, audio_a, 2);
-        let stage_a = runtime_a.add_stage("physics", &[], PhysicsStepStage::new(1.0 / 60.0));
+        let stage_a = runtime_a.add_stage(
+            "physics",
+            &[],
+            PhysicsStepStage::new(1.0 / 60.0, PhysicsDispatchMode::Sequential),
+        );
         runtime_a.tick_only(&[stage_a]);
 
         let (physics_b, audio_b) = subsystem_pair();
         let mut physics_b = physics_b;
         physics_b.bodies.push(falling_body());
         let mut runtime_b = Runtime::with_worker_count(physics_b, audio_b, 2);
-        let stage_b = runtime_b.add_stage("physics", &[], PhysicsComputeStepStage::new(1.0 / 60.0));
+        let stage_b = runtime_b.add_stage(
+            "physics",
+            &[],
+            PhysicsStepStage::new(1.0 / 60.0, PhysicsDispatchMode::Batched),
+        );
         runtime_b.tick_only(&[stage_b]);
 
         assert_eq!(
