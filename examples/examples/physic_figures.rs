@@ -3,11 +3,11 @@
 //! `meridian_sdk::Runtime` (`engine-core`'s single `JobGraph`-based
 //! frame-work entry point — see that crate's own module doc). Physics
 //! *and* rendering both go through this one `Runtime`: a registered
-//! `meridian_sdk::PhysicsComputeStepStage` (batched-dispatch physics,
-//! not the plain sequential `PhysicsStepStage` — see that type's own
-//! doc comment for why this is a proven drop-in swap, and
-//! docs/roadmap.md's "Scaling beyond a tech demo" item 4 for the
-//! motivation) driven by the fixed-timestep accumulator (see
+//! `meridian_sdk::PhysicsStepStage` in `PhysicsDispatchMode::Batched`
+//! (not `Sequential` — see that type's own doc comment for why this is
+//! a proven drop-in swap, and docs/roadmap.md's "Scaling beyond a tech
+//! demo" item 4 for the motivation) driven by the fixed-timestep
+//! accumulator (see
 //! [`PhysicsRig::step`]) and a registered `meridian_sdk::RenderStage`
 //! (driven once per redraw, depending on the physics stage) — no raw,
 //! runtime-bypassing pipeline call for either. See
@@ -62,8 +62,8 @@ use meridian_sdk::dsl;
 use meridian_sdk::{
     AppHandler, AudioSubsystem, Camera, ColliderShape, ConstraintSolver, Device, FlyCamera,
     GraphicsBase, InputState, KeyCode, Light, Material, MaterialHandle, MeshHandle, Mixer, Motor3,
-    PhysicsComputeStepStage, PhysicsSubsystem, RenderStage, Renderable3D, RigidBody, Runtime,
-    Scene3D, SpeakerLayout, StageContext, StageId, Vec3, Window, cube_mesh_source,
+    PhysicsDispatchMode, PhysicsStepStage, PhysicsSubsystem, RenderStage, Renderable3D, RigidBody,
+    Runtime, Scene3D, SpeakerLayout, StageContext, StageId, Vec3, Window, cube_mesh_source,
     ground_mesh_source, icosphere_mesh_source, look_at_rotor, pyramid_mesh_source,
     run_windowed_app,
 };
