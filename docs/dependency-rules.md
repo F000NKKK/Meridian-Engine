@@ -157,6 +157,21 @@ logs via `log_warn!` when a pair's manifold exceeds its fixed
 `MAX_CONTACTS_PER_PAIR` output slot, the same `MAX_LIGHTS`-style
 truncation policy `graphics-core::submission` uses.
 
+`meridian-engine-core` depends on `meridian-physics-compute` too (moving
+`engine-core` from tier 7 to tier 8, since it now sits above
+`physics-compute` rather than beside it) — `Runtime`'s
+`PhysicsComputeStepStage` (see that crate's own module doc) dispatches
+`physics-compute`'s batched `RigidBodyIntegratorKernel`/
+`BroadPhasePairsKernel`/`GenerateContactsKernel`/
+`ConstraintSolverBatchKernel` instead of `PhysicsSubsystem::step`'s
+plain sequential loop — the concrete answer to "physics needs to scale
+past a handful of bodies" docs/roadmap.md's "Scaling beyond a tech
+demo" section names. Not a new coordination-logic violation of rule 7:
+`engine-core` is still the *only* crate reaching into `physics-compute`
+for this, and `PhysicsComputeStepStage` is a thin `Stage` wrapper
+dispatching real batched kernels, not a reimplementation (CLAUDE.md's
+"don't drag another crate's logic into your own" rule).
+
 ## All edges, exactly
 
 The ground truth: every crate's real `[dependencies]`, mirroring
