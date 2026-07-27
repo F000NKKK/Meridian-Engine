@@ -261,6 +261,7 @@ pub fn extract_scene3d(world: &World, camera: crate::Camera) -> Scene3D {
                 material: renderer.material,
                 frame: transform.motor,
                 billboard: renderer.billboard,
+                casts_shadow: true,
             })
         })
         .collect();

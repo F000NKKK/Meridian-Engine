@@ -1349,7 +1349,7 @@ impl SceneRenderer {
         let buffers = self.prepare(device, &scene.renderables, meshes, materials, textures);
         {
             let mut pass = commands.begin_shadow_pass(&self.shadow_map);
-            for entry in &buffers {
+            for entry in buffers.iter().filter(|entry| entry.casts_shadow) {
                 let (pipeline, bind_group) = match &entry.kind {
                     DrawKind::Colored => (
                         &self.shadow_colored_pipeline,
