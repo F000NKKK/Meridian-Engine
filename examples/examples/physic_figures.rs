@@ -1,14 +1,10 @@
 //! Real rigid-body physics: a sphere, a cube and a pyramid dropped above
 //! a textured floor and stepped every frame through a real
-//! `meridian_sdk::Runtime` (`engine-core`'s subsystem manager +
-//! frame-scheduler, via [`Runtime::tick_fixed`]) — the first proof in
-//! this workspace that `Runtime`/`SubsystemManager` composes end-to-end
-//! in a real windowed application, not just in `engine-core`'s own unit
-//! tests (see that crate's own module doc). `meridian_sdk::pipeline::Pipeline`
-//! remains available and tested for applications that need a custom
-//! multi-stage composition (`magic_figures`' hand-assembled audio rig is
-//! exactly that case) — this example just no longer needs it, since a
-//! single fixed-timestep physics step *is* `Runtime`'s job.
+//! `meridian_sdk::Runtime` (`engine-core`'s single `JobGraph`-based
+//! frame-work entry point — see that crate's own module doc) via a
+//! registered [`PhysicsStepStage`] and [`Runtime::tick`] — the first
+//! proof in this workspace that `Runtime` composes end-to-end in a real
+//! windowed application, not just in `engine-core`'s own unit tests.
 //!
 //! **Scene composition itself lives in
 //! `assets/scenes/physic_figures.mel`**, parsed through
