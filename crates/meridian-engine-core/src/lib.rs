@@ -19,8 +19,9 @@
 //! `JobGraph`-based mechanism, promoted here from where it used to live
 //! in `meridian-sdk`) *is* this crate's `Runtime` now — there is no
 //! second, lower-level "raw pipeline" type an application reaches for
-//! instead; [`Runtime::tick`] is the only per-frame entry point, and it
-//! rebuilds and runs a fresh `JobGraph` every call internally (see
+//! instead; [`Runtime::tick`]/[`Runtime::tick_only`] are the only
+//! per-frame entry points, and each rebuilds and runs a fresh `JobGraph`
+//! every call internally (see
 //! [`Runtime::tick`]'s own doc for why a fresh graph, not a cached one).
 //!
 //! **Locking: fine-grained, deadlock-free by construction.**
