@@ -60,6 +60,19 @@
 //! own doc comment for the graph-coloring fix and why it reproduces the
 //! sequential Gauss-Seidel solver's result exactly, not just
 //! approximately.
+//!
+//! **[`float::BroadPhaseGpuKernel`] is the first of these five with a
+//! real WGSL shader behind it** — the concrete start of turning "batched
+//! through `compute-runtime`'s CPU backend" into "literally
+//! GPU-executing." It only takes on the broad-phase overlap test itself
+//! (six floats per body compared pairwise, pure arithmetic); each
+//! body's [`meridian_physics_core::generic::RigidBody::aabb`] is still
+//! computed on the CPU before upload, since a `Cuboid` body's AABB needs
+//! its rotor-transformed local axes — genuine GA work, same as the
+//! integrator's rotor exponential/motor composition and narrow-phase's
+//! SAT/manifold clipping, neither of which has a WGSL counterpart yet.
+//! Porting those three faithfully (not just "compiles and looks
+//! plausible") is real, disclosed follow-up work, not bundled in here.
 
 pub mod broad_phase;
 pub mod constraint_solver;
