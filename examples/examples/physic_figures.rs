@@ -318,7 +318,7 @@ impl AppHandler for App {
         let mut base = GraphicsBase::new(device, surface, width, height);
 
         let bodies = self.physics.bodies();
-        let renderables: Vec<Renderable3D> = self
+        let mut renderables: Vec<Renderable3D> = self
             .scene_entities
             .iter()
             .zip(&bodies)
@@ -341,12 +341,13 @@ impl AppHandler for App {
                 }
             })
             .collect();
+        renderables.push(sun_renderable(&mut base));
 
         let scene = Scene3D {
             renderables,
             lights: vec![Light::Directional {
                 direction: Motor3::from_rotation_translation(
-                    look_at_rotor(Vec3::ZERO, Vec3::new(-0.4, -1.0, -0.3)),
+                    look_at_rotor(Vec3::ZERO, SUN_DIRECTION),
                     Vec3::ZERO,
                 ),
                 color: [1.0, 0.96, 0.9],
