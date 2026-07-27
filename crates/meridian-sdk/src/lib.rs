@@ -84,9 +84,9 @@ pub use meridian_physics_core::{
 
 // -- meridian-graphics-core: scene/material/lighting/submission --
 pub use meridian_graphics_core::{
-    BloomPass, Camera, DrawBuffers, Frustum, Light, Material, MaterialHandle, MaterialRegistry,
-    MeshHandle, MeshRegistry, MeshSource, Renderable3D, Scene2D, Scene3D, SceneRenderer,
-    TextureHandle, TextureRegistry, submit_scene3d,
+    BloomPass, Camera, DEFAULT_SHADOW_MAP_SIZE, DrawBuffers, Frustum, Light, Material,
+    MaterialHandle, MaterialRegistry, MeshHandle, MeshRegistry, MeshSource, Renderable3D, Scene2D,
+    Scene3D, SceneRenderer, TextureHandle, TextureRegistry, submit_scene3d,
 };
 
 // -- meridian-graphics-driver: the GPU device a windowed app opens once --
