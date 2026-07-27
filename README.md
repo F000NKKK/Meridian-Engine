@@ -59,13 +59,35 @@ GPU rendering and compute are real (`wgpu`), and the workspace is
 async-native on genuine I/O only — a `tokio` runtime drives OS/driver
 handshakes and GPU readbacks, everything else (recording, allocation, ECS
 queries, GA math) stays synchronous (see
-[ADR 009](docs/adr/009-async-io-via-tokio.md)). `./build.sh run
-magic_figures` renders three orbiting, textured,
-glowing shapes (sphere/cube/pyramid) each playing their own spatialized
-music track in a different audio format, with bloom, to a real window end
-to end; `./build.sh run
-physic_figures` drops the same three shapes as real `physics-core`
-rigid bodies onto a textured floor.
+[ADR 009](docs/adr/009-async-io-via-tokio.md)).
+
+Both examples build their scene from a `.mel` file (Meridian Engine
+Language — today the tag/attribute DSL; a Razor-style scripting
+extension is planned, see [ADR 015](docs/adr/015-extensible-scene-dsl.md))
+under `examples/assets/scenes/`, parsed via `meridian_sdk::dsl` —
+`magic_figures` registers its own `<Glow>`/`<Orbit>`/`<Audio>` tags
+alongside the SDK's built-ins, the concrete demonstration that a game
+extends the DSL without touching `meridian-sdk` itself. Lighting is a
+real shadow-mapped directional light (with a visible "sun" sphere
+marking its direction) plus a two-color hemisphere ambient fill, not a
+flat constant — see [`docs/graphics-design.md`](docs/graphics-design.md).
+
+`./build.sh run magic_figures` renders three orbiting, textured, glowing
+shapes (sphere/cube/pyramid) each playing their own spatialized music
+track in a different audio format, with bloom, to a real window end to
+end — its own hand-assembled `BinauralRenderer` pipeline runs alongside
+(not through) `engine-core::Runtime`, since per-sample binaural
+synthesis doesn't reduce to a `Runtime::Stage` cleanly (see
+`meridian-engine-core`'s own module doc). `./build.sh run physic_figures`
+drops the same three shapes as real `physics-core` rigid bodies onto a
+textured floor, driven end-to-end through `engine-core::Runtime`: a
+registered `PhysicsStepStage` (ticked 0-8×/frame by a fixed-timestep
+accumulator) and a registered render-presenting `Stage`
+(`meridian_sdk::RenderStage`, ticked exactly once/frame) both run
+through the same `JobGraph`-based `Runtime`, not a hand-rolled loop or a
+runtime-bypassing render call — see `Runtime::tick_only`'s own doc for
+why physics and rendering need selective ticks rather than one
+`Runtime::tick()` running both together every time.
 
 ## Documentation
 
