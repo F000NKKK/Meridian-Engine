@@ -275,7 +275,7 @@ impl GraphicsBase {
             surface,
             width,
             height,
-            meridian_graphics_core::SceneRenderer::DEFAULT_SHADOW_MAP_SIZE,
+            meridian_graphics_core::DEFAULT_SHADOW_MAP_SIZE,
         )
     }
 

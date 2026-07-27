@@ -18,9 +18,9 @@ pub use scene::{
     world_space_bounds,
 };
 pub use submission::{
-    DrawBuffers, MAX_LIGHTS, MaterialRegistry, MeshRegistry, MeshRegistryError, MeshSource,
-    SHADOW_VOLUME_HALF_EXTENT, SceneRenderer, TEXTURED_SHADER_WGSL, TextureRegistry,
-    UNLIT_SHADER_WGSL, directional_shadow_camera, submit_scene3d,
+    DEFAULT_SHADOW_MAP_SIZE, DrawBuffers, MAX_LIGHTS, MaterialRegistry, MeshRegistry,
+    MeshRegistryError, MeshSource, SHADOW_VOLUME_HALF_EXTENT, SceneRenderer, TEXTURED_SHADER_WGSL,
+    TextureRegistry, UNLIT_SHADER_WGSL, directional_shadow_camera, submit_scene3d,
 };
 
 /// Marker types distinguishing `ResourceId`s of different graphics resource
