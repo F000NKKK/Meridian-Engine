@@ -3,7 +3,11 @@
 //! `meridian_sdk::Runtime` (`engine-core`'s single `JobGraph`-based
 //! frame-work entry point — see that crate's own module doc). Physics
 //! *and* rendering both go through this one `Runtime`: a registered
-//! [`PhysicsStepStage`] (driven by the fixed-timestep accumulator, see
+//! `meridian_sdk::PhysicsComputeStepStage` (batched-dispatch physics,
+//! not the plain sequential `PhysicsStepStage` — see that type's own
+//! doc comment for why this is a proven drop-in swap, and
+//! docs/roadmap.md's "Scaling beyond a tech demo" item 4 for the
+//! motivation) driven by the fixed-timestep accumulator (see
 //! [`PhysicsRig::step`]) and a registered `meridian_sdk::RenderStage`
 //! (driven once per redraw, depending on the physics stage) — no raw,
 //! runtime-bypassing pipeline call for either. See
@@ -323,7 +327,12 @@ impl PhysicsRig {
         let audio = AudioSubsystem::new(Mixer::new(SpeakerLayout::mono()));
 
         let mut runtime = Runtime::new(physics, audio);
-        let physics_stage = runtime.add_stage("physics", &[], PhysicsStepStage::new(PHYSICS_DT));
+        // `PhysicsComputeStepStage`, not `PhysicsStepStage` — this
+        // example is the live proof that the batched-dispatch physics
+        // path (docs/roadmap.md's "Scaling beyond a tech demo" item 4)
+        // is a real drop-in swap, not just unit-tested in isolation.
+        let physics_stage =
+            runtime.add_stage("physics", &[], PhysicsComputeStepStage::new(PHYSICS_DT));
 
         Self {
             runtime,
