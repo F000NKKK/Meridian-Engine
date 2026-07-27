@@ -37,15 +37,16 @@
 //! output stream in a single `render` call per frame (all three source
 //! files happen to share a sample rate, so one `BinauralRenderer`/
 //! `AudioOutput` pair suffices — see [`load_music_tracks`]). This
-//! example's own [`MusicRig`] is exactly the kind of custom
-//! `meridian_sdk::pipeline::Stage` the SDK's composable pipeline exists
-//! for — `BinauralRenderer`'s real per-sample synthesis doesn't fit
-//! `AudioSubsystem::mix`'s per-channel-gain model, so it stays
-//! hand-assembled here rather than forced through it (see
-//! `meridian_sdk::pipeline`'s own module doc). Orbit/spin motion itself
-//! stays genuine per-frame Rust logic (the DSL describes composition,
-//! not behavior) — only each shape's *fixed* identity comes from the
-//! scene file.
+//! example doesn't use `meridian_sdk::Runtime` at all — no rigid bodies
+//! (pure kinematic orbit motion), and [`MusicRig`]'s real per-sample
+//! `BinauralRenderer` synthesis doesn't reduce to a `Runtime::Stage`
+//! cleanly either: its actual inputs (each orbiting shape's position,
+//! the free-fly camera's pose) are plain application state here, not
+//! anything `Runtime`'s `PhysicsSubsystem`/`AudioSubsystem` own — see
+//! `meridian_engine_core`'s own module doc for the same reasoning.
+//! Orbit/spin motion itself stays genuine per-frame Rust logic (the DSL
+//! describes composition, not behavior) — only each shape's *fixed*
+//! identity comes from the scene file.
 //!
 //! This example depends on `meridian-sdk` alone (plus `tokio`, for its
 //! own async GPU/audio-device handshakes) — every type below is reached

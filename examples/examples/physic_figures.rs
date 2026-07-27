@@ -198,18 +198,19 @@ fn mesh_render_frame(entity: &SceneEntity, body_frame: Motor3) -> Motor3 {
     }
 }
 
-/// Fixed-timestep driver around a real `meridian_sdk::Runtime` — the
-/// physics stepping itself (integrate/relax-contacts/resolve) is no
-/// longer hand-rolled here; see `PhysicsSubsystem::step`'s own doc
-/// comment for the multi-point-manifold relaxation it does internally.
-/// What's left at this layer is deliberately application policy, not
-/// engine plumbing: the render loop's `frame_dt` varies with frame
-/// rate, but the solver is only validated at a constant [`PHYSICS_DT`]
-/// (see `Runtime::tick_fixed`'s own doc for why that method exists
-/// instead of `Runtime::tick`'s wall-clock-driven step), so this
-/// accumulates wall-clock time and calls [`Runtime::tick_fixed`] once
-/// per whole [`PHYSICS_DT`] increment, capped so a stall (e.g. window
-/// drag) can't spiral into running hundreds of catch-up ticks at once.
+/// Fixed-timestep driver around a real `meridian_sdk::Runtime` running
+/// one registered [`PhysicsStepStage`] — the physics stepping itself
+/// (integrate/relax-contacts/resolve) is no longer hand-rolled here; see
+/// `PhysicsSubsystem::step`'s own doc comment for the multi-point-
+/// manifold relaxation it does internally. What's left at this layer is
+/// deliberately application policy, not engine plumbing: the render
+/// loop's `frame_dt` varies with frame rate, but the solver is only
+/// validated at a constant [`PHYSICS_DT`], so this accumulates
+/// wall-clock time and calls [`Runtime::tick`] once per whole
+/// [`PHYSICS_DT`] increment (each tick running `PhysicsStepStage` with
+/// that fixed `dt`, regardless of how much real time actually elapsed),
+/// capped so a stall (e.g. window drag) can't spiral into running
+/// hundreds of catch-up ticks at once.
 struct PhysicsRig {
     runtime: Runtime,
     accumulator: f32,
@@ -227,34 +228,35 @@ impl PhysicsRig {
             })
             .collect();
 
-        // No audio in this example — `SubsystemManager::new` still
-        // requires a `Mixer` (physics and audio are the two subsystems
+        let physics = PhysicsSubsystem {
+            bodies,
+            solver: ConstraintSolver::new(SOLVER_RESTITUTION).with_friction(SOLVER_FRICTION),
+            ..Default::default()
+        };
+        // No audio in this example — `Runtime::new` still requires an
+        // `AudioSubsystem` (physics and audio are the two subsystems
         // every `Runtime` owns, per `engine-core`'s own module doc),
         // left unused here.
-        let subsystems = SubsystemManager {
-            physics: PhysicsSubsystem {
-                bodies,
-                solver: ConstraintSolver::new(SOLVER_RESTITUTION).with_friction(SOLVER_FRICTION),
-                ..Default::default()
-            },
-            ..SubsystemManager::new(Mixer::new(SpeakerLayout::mono()))
-        };
+        let audio = AudioSubsystem::new(Mixer::new(SpeakerLayout::mono()));
+
+        let mut runtime = Runtime::new(physics, audio);
+        runtime.add_stage("physics", &[], PhysicsStepStage::new(PHYSICS_DT));
 
         Self {
-            runtime: Runtime::new(subsystems),
+            runtime,
             accumulator: 0.0,
         }
     }
 
     fn bodies(&self) -> Vec<RigidBody> {
-        self.runtime.subsystems.physics.bodies.clone()
+        self.runtime.state().physics().bodies.clone()
     }
 
     fn step(&mut self, frame_dt: f32) {
         self.accumulator += frame_dt;
         let mut steps = 0;
         while self.accumulator >= PHYSICS_DT && steps < 8 {
-            self.runtime.tick_fixed(PHYSICS_DT);
+            self.runtime.tick();
             self.accumulator -= PHYSICS_DT;
             steps += 1;
         }
