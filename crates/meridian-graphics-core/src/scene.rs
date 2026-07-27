@@ -97,6 +97,18 @@ pub struct Renderable3D {
     /// Re-oriented to face the camera at extraction time — the common
     /// case for a world-space UI billboard or an impostor sprite.
     pub billboard: bool,
+    /// Whether this renderable is baked into the shadow-casting depth
+    /// pass (`SceneRenderer::render_shadow_pass`) — `true` for ordinary
+    /// scene geometry. Set `false` for a renderable that's positioned
+    /// *along the light's incoming direction* (a decorative "sun" disc
+    /// standing in for a directional light's source, say): with shadow
+    /// casting on, such an object sits directly upstream of the light
+    /// for everything below it and blocks the light for the whole
+    /// scene, reading as a large, wrong, moving shadow blob rather than
+    /// the "just a light source" it's meant to be. Doesn't affect the
+    /// *main* pass at all — a `casts_shadow: false` renderable still
+    /// draws and still receives shadows from everything else normally.
+    pub casts_shadow: bool,
 }
 
 /// Attaches a [`Renderable3D`] (minus its frame, which comes from the

@@ -934,6 +934,7 @@ pub struct DrawBuffers {
     pub(crate) index_buffer: Buffer,
     pub(crate) index_count: u32,
     lit: bool,
+    casts_shadow: bool,
     pub(crate) kind: DrawKind,
 }
 
@@ -945,6 +946,7 @@ pub struct DrawBuffers {
 /// selects; the baked bytes are identical either way (see the module
 /// doc: both lit and unlit pipelines within a family share one vertex
 /// layout).
+#[allow(clippy::too_many_arguments)]
 fn bake_draw_buffers(
     device: &Device,
     renderer: &SceneRenderer,
@@ -952,6 +954,7 @@ fn bake_draw_buffers(
     material: &Material,
     frame: &Motor3,
     albedo: Option<&Texture>,
+    casts_shadow: bool,
 ) -> DrawBuffers {
     let index_bytes: Vec<u8> = source
         .indices
