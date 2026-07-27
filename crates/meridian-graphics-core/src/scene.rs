@@ -407,12 +407,14 @@ mod tests {
             material: MaterialHandle::new(meridian_memory_core::Handle::default()),
             frame: Motor3::translation(Vec3::new(10.0, 0.0, 0.0)),
             billboard: false,
+            casts_shadow: true,
         };
         let behind = Renderable3D {
             mesh: MeshHandle::new(meridian_memory_core::Handle::default()),
             material: MaterialHandle::new(meridian_memory_core::Handle::default()),
             frame: Motor3::translation(Vec3::new(-10.0, 0.0, 0.0)),
             billboard: false,
+            casts_shadow: true,
         };
         let scene = Scene3D {
             renderables: vec![ahead.clone(), behind],
@@ -436,6 +438,7 @@ mod tests {
             material: MaterialHandle::new(meridian_memory_core::Handle::default()),
             frame: Motor3::translation(Vec3::new(-10.0, 0.0, 0.0)),
             billboard: false,
+            casts_shadow: true,
         };
         let scene = Scene3D {
             renderables: vec![renderable],

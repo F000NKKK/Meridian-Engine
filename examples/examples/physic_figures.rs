@@ -259,6 +259,10 @@ fn sun_renderable(base: &mut GraphicsBase) -> Renderable3D {
         material,
         frame: Motor3::translation(position),
         billboard: false,
+        // Sitting along the light's own incoming direction, this would
+        // otherwise occlude the light for the whole scene below it —
+        // see `Renderable3D::casts_shadow`'s own doc comment.
+        casts_shadow: false,
     }
 }
 
