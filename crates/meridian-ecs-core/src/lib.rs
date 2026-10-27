@@ -1,4 +1,4 @@
-//! Archetype-based, data-oriented Entity Component System with SoA storage, built for cache- and SIMD-friendly iteration.
+//! Archetype-based, data-oriented Entity Component System with `SoA` storage, built for cache- and SIMD-friendly iteration.
 //!
 //! Layer: shared kernel; bounded context: entity (`craftbook.toml`,
 //! docs/context-map.md). A performance kernel (Craftbook §7.8): its
@@ -7,7 +7,7 @@
 //!
 //! `World` owns everything: entity allocation, archetypes, and per-
 //! archetype Structure-of-Arrays component storage. Entities move between
-//! archetypes on [`World::insert`]/[`World::remove`] — the SoA columns are
+//! archetypes on [`World::insert`]/[`World::remove`] — the `SoA` columns are
 //! type-erased (via `std::any::Any` + downcasting) so `World` never needs
 //! to know every `Component` type that will ever exist, but every move is
 //! still a safe, checked downcast, no `unsafe`.

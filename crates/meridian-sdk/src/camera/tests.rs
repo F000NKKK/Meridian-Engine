@@ -3,7 +3,7 @@
 use super::*;
 use meridian_platform_core::{InputState, KeyCode};
 
-/// Returns (forward_horiz, right, up) expected from the camera's yaw.
+/// Returns (`forward_horiz`, right, up) expected from the camera's yaw.
 fn expected_basis(yaw: f32) -> (Vec3, Vec3, Vec3) {
     let cy = yaw.cos();
     let sy = yaw.sin();
@@ -109,10 +109,7 @@ fn w_moves_forward_along_yaw_basis() {
         let expected = fwd.normalize() * 3.0;
         assert!(
             (pos - expected).length() < 1e-5,
-            "W yaw={} got {:?} expected {:?}",
-            yaw,
-            pos,
-            expected
+            "W yaw={yaw} got {pos:?} expected {expected:?}"
         );
     }
 }
@@ -130,8 +127,7 @@ fn s_moves_backward_opposite_to_w() {
         let bwd = simulate_at(yaw, 1.0, 3.0, &[KeyCode::S]);
         assert!(
             (fwd + bwd).length() < 1e-5,
-            "S should oppose W at yaw={}",
-            yaw
+            "S should oppose W at yaw={yaw}"
         );
     }
 }
@@ -151,10 +147,7 @@ fn d_moves_right_along_yaw_basis() {
         let expected = right.normalize() * 3.0;
         assert!(
             (pos - expected).length() < 1e-5,
-            "D yaw={} got {:?} expected {:?}",
-            yaw,
-            pos,
-            expected
+            "D yaw={yaw} got {pos:?} expected {expected:?}"
         );
     }
 }
@@ -170,7 +163,7 @@ fn a_moves_left_opposite_to_d() {
     for &yaw in &yaws {
         let d = simulate_at(yaw, 1.0, 3.0, &[KeyCode::D]);
         let a = simulate_at(yaw, 1.0, 3.0, &[KeyCode::A]);
-        assert!((d + a).length() < 1e-5, "A should oppose D at yaw={}", yaw);
+        assert!((d + a).length() < 1e-5, "A should oppose D at yaw={yaw}");
     }
 }
 
@@ -190,11 +183,7 @@ fn space_moves_up_and_ctrl_moves_down() {
 fn diagonal_movement_preserves_length() {
     let pos = simulate_at(0.0, 1.0, 3.0, &[KeyCode::W, KeyCode::D]);
     let expected = (Vec3::X + Vec3::Z).normalize() * 3.0;
-    assert!(
-        (pos - expected).length() < 1e-5,
-        "W+D diagonal got {:?}",
-        pos
-    );
+    assert!((pos - expected).length() < 1e-5, "W+D diagonal got {pos:?}");
 }
 
 #[test]
@@ -211,10 +200,7 @@ fn full_3d_movement_wsad_space_ctrl() {
         let expected = (fwd.normalize() + right.normalize() + Vec3::Y).normalize() * 3.0;
         assert!(
             (pos - expected).length() < 1e-5,
-            "W+D+Space yaw={} got {:?} expected {:?}",
-            yaw,
-            pos,
-            expected
+            "W+D+Space yaw={yaw} got {pos:?} expected {expected:?}"
         );
     }
 }
@@ -227,9 +213,7 @@ fn pitch_does_not_affect_movement_direction() {
         let expected = Vec3::new(3.0, 0.0, 0.0);
         assert!(
             (pos - expected).length() < 1e-5,
-            "W at pitch={} got {:?}",
-            pitch,
-            pos
+            "W at pitch={pitch} got {pos:?}"
         );
     }
 }
@@ -316,10 +300,7 @@ fn w_s_d_a_with_nonzero_pitch_stays_horizontal() {
             // All four buttons cancel out → no movement regardless of pitch
             assert!(
                 pos.length() < 1e-5,
-                "W+S+D+A yaw={} pitch={} should stay at origin, got {:?}",
-                yaw,
-                pitch,
-                pos
+                "W+S+D+A yaw={yaw} pitch={pitch} should stay at origin, got {pos:?}"
             );
         }
     }

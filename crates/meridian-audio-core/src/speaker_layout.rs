@@ -114,79 +114,37 @@ impl SpeakerLayout {
     pub fn pan(&self, azimuth_degrees: f32) -> Vec<(Channel, f32)> {
         let mut gains: Vec<(Channel, f32)> =
             self.speakers.iter().map(|s| (s.channel, 0.0)).collect();
-
-        let mut directional: Vec<(usize, f32)> = self
-            .speakers
-            .iter()
-            .enumerate()
-            .filter_map(|(i, s)| s.azimuth_degrees.map(|a| (i, normalize_angle(a))))
-            .collect();
-        directional.sort_by(|a, b| a.1.total_cmp(&b.1));
-
-        let n = directional.len();
-        if n == 0 {
-            return gains;
-        }
-        if n == 1 {
-            gains[directional[0].0].1 = 1.0;
-            return gains;
+        let directional = self.directional_speakers();
+        match directional.len() {
+            0 => return gains,
+            1 => {
+                gains[directional[0].0].1 = 1.0;
+                return gains;
+            }
+            _ => {}
         }
 
         let mut az = normalize_angle(azimuth_degrees);
         if !self.wraps_around {
             az = fold_to_front_hemisphere(az);
-        }
-
-        if !self.wraps_around {
-            let (first_idx, first_angle) = directional[0];
-            let (last_idx, last_angle) = directional[n - 1];
-            if az <= first_angle {
-                gains[first_idx].1 = 1.0;
-                return gains;
-            }
-            if az >= last_angle {
-                gains[last_idx].1 = 1.0;
+            if let Some(end) = clamped_end(&directional, az) {
+                gains[end].1 = 1.0;
                 return gains;
             }
         }
 
-        let pair_count = if self.wraps_around { n } else { n - 1 };
-        for i in 0..pair_count {
-            let (idx_a, angle_a) = directional[i];
-            let (idx_b, angle_b_raw) = directional[(i + 1) % n];
-            let wrapping_pair = i + 1 == n;
-            let angle_b = if wrapping_pair {
-                angle_b_raw + 360.0
-            } else {
-                angle_b_raw
-            };
-
-            let mut az_adj = az;
-            if wrapping_pair && az_adj < angle_a {
-                az_adj += 360.0;
+        if let Some(pair) = self.bracketing_gains(&directional, az) {
+            for (index, gain) in pair {
+                gains[index].1 = gain;
             }
-
-            const EPS: f32 = 1e-4;
-            if az_adj >= angle_a - EPS && az_adj <= angle_b + EPS {
-                let span = angle_b - angle_a;
-                let t = if span.abs() < 1e-6 {
-                    0.0
-                } else {
-                    ((az_adj - angle_a) / span).clamp(0.0, 1.0)
-                };
-                let gain_a = (t * core::f32::consts::FRAC_PI_2).cos();
-                let gain_b = (t * core::f32::consts::FRAC_PI_2).sin();
-                gains[idx_a].1 = gain_a;
-                gains[idx_b].1 = gain_b;
-                return gains;
-            }
+            return gains;
         }
 
         // Every angle is covered by some pair when wraps_around is true
         // and the non-wrapping clamp already handled the out-of-range
         // cases above, so this is unreachable in practice — kept as a
         // safe fallback (nearest speaker, full gain) rather than a panic.
-        // `directional` is non-empty: the `n == 0` guard returned above.
+        // `directional` is non-empty: the `0` arm above returned.
         if let Some(nearest) = directional
             .iter()
             .min_by(|a, b| angular_distance(az, a.1).total_cmp(&angular_distance(az, b.1)))
@@ -195,6 +153,71 @@ impl SpeakerLayout {
         }
         gains
     }
+
+    /// `(speaker index, normalized azimuth)` of every non-LFE speaker,
+    /// ordered by azimuth.
+    fn directional_speakers(&self) -> Vec<(usize, f32)> {
+        let mut directional: Vec<(usize, f32)> = self
+            .speakers
+            .iter()
+            .enumerate()
+            .filter_map(|(i, s)| s.azimuth_degrees.map(|a| (i, normalize_angle(a))))
+            .collect();
+        directional.sort_by(|a, b| a.1.total_cmp(&b.1));
+        directional
+    }
+
+    /// The gains of the adjacent speaker pair that brackets `az`.
+    fn bracketing_gains(&self, directional: &[(usize, f32)], az: f32) -> Option<[(usize, f32); 2]> {
+        let n = directional.len();
+        let pair_count = if self.wraps_around { n } else { n - 1 };
+        (0..pair_count)
+            .find_map(|i| pair_gains(directional[i], directional[(i + 1) % n], i + 1 == n, az))
+    }
+}
+
+/// The speaker an azimuth lies beyond, in a layout that does not wrap
+/// around (the nearest end takes full gain).
+fn clamped_end(directional: &[(usize, f32)], az: f32) -> Option<usize> {
+    let (first_idx, first_angle) = directional[0];
+    let (last_idx, last_angle) = directional[directional.len() - 1];
+    if az <= first_angle {
+        Some(first_idx)
+    } else if az >= last_angle {
+        Some(last_idx)
+    } else {
+        None
+    }
+}
+
+/// Constant-power gains of `a` and `b` when `az` lies between them.
+fn pair_gains(
+    (idx_a, angle_a): (usize, f32),
+    (idx_b, angle_b_raw): (usize, f32),
+    wrapping_pair: bool,
+    az: f32,
+) -> Option<[(usize, f32); 2]> {
+    const EPS: f32 = 1e-4;
+    let angle_b = if wrapping_pair {
+        angle_b_raw + 360.0
+    } else {
+        angle_b_raw
+    };
+    let mut az_adj = az;
+    if wrapping_pair && az_adj < angle_a {
+        az_adj += 360.0;
+    }
+    if az_adj < angle_a - EPS || az_adj > angle_b + EPS {
+        return None;
+    }
+    let span = angle_b - angle_a;
+    let t = if span.abs() < 1e-6 {
+        0.0
+    } else {
+        ((az_adj - angle_a) / span).clamp(0.0, 1.0)
+    };
+    let quarter_turn = t * core::f32::consts::FRAC_PI_2;
+    Some([(idx_a, quarter_turn.cos()), (idx_b, quarter_turn.sin())])
 }
 
 /// Normalizes into `(-180, 180]`.

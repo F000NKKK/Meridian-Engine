@@ -17,10 +17,18 @@ fn i32_le(bytes: &[u8], offset: usize) -> i32 {
 #[derive(Debug, Default)]
 pub struct BmpDecoder;
 
-impl Decoder<ImageAsset> for BmpDecoder {
-    type Error = DecodeError;
+/// Where a BMP's pixel rows sit in the file.
+struct PixelLayout {
+    offset: usize,
+    width: usize,
+    height: usize,
+    top_down: bool,
+    bytes_per_pixel: usize,
+}
 
-    fn decode(&self, bytes: &[u8]) -> Result<ImageAsset, DecodeError> {
+impl PixelLayout {
+    /// Validates the headers and locates the pixel rows.
+    fn parse(bytes: &[u8]) -> Result<Self, DecodeError> {
         need(bytes, 54)?; // 14-byte file header + 40-byte BITMAPINFOHEADER
         if &bytes[0..2] != b"BM" {
             return Err(DecodeError::BadMagic { expected: "BM" });
@@ -60,32 +68,62 @@ impl Decoder<ImageAsset> for BmpDecoder {
             _ => return Err(DecodeError::Unsupported("BMP bit depth other than 24/32")),
         };
 
-        let row_stride = (width as usize * src_bytes_per_pixel).div_ceil(4) * 4; // rows padded to 4 bytes
-        need(bytes, pixel_offset + row_stride * height as usize)?;
+        Ok(Self {
+            offset: pixel_offset,
+            width: width as usize,
+            height: height as usize,
+            top_down,
+            bytes_per_pixel: src_bytes_per_pixel,
+        })
+    }
 
-        let mut pixels = vec![0u8; width as usize * height as usize * 4];
-        for y in 0..height as usize {
+    /// Rows are padded to 4 bytes.
+    fn row_stride(&self) -> usize {
+        (self.width * self.bytes_per_pixel).div_ceil(4) * 4
+    }
+
+    /// Converts the file's B,G,R(,A) rows into top-to-bottom R,G,B,A.
+    fn to_rgba(&self, bytes: &[u8]) -> Vec<u8> {
+        let stride = self.row_stride();
+        let mut pixels = vec![0u8; self.width * self.height * 4];
+        for y in 0..self.height {
             // BMP rows are bottom-to-top unless the height field was negative.
-            let src_row = if top_down { y } else { height as usize - 1 - y };
-            let row_start = pixel_offset + src_row * row_stride;
-            for x in 0..width as usize {
-                let src = row_start + x * src_bytes_per_pixel;
-                let dst = (y * width as usize + x) * 4;
-                // BMP stores B,G,R(,A); we produce R,G,B,A.
+            let src_row = if self.top_down {
+                y
+            } else {
+                self.height - 1 - y
+            };
+            let row_start = self.offset + src_row * stride;
+            for x in 0..self.width {
+                let src = row_start + x * self.bytes_per_pixel;
+                let dst = (y * self.width + x) * 4;
                 pixels[dst] = bytes[src + 2];
                 pixels[dst + 1] = bytes[src + 1];
                 pixels[dst + 2] = bytes[src];
-                pixels[dst + 3] = if src_bytes_per_pixel == 4 {
+                pixels[dst + 3] = if self.bytes_per_pixel == 4 {
                     bytes[src + 3]
                 } else {
                     255
                 };
             }
         }
+        pixels
+    }
+}
+
+impl Decoder<ImageAsset> for BmpDecoder {
+    type Error = DecodeError;
+
+    fn decode(&self, bytes: &[u8]) -> Result<ImageAsset, DecodeError> {
+        let layout = PixelLayout::parse(bytes)?;
+        need(bytes, layout.offset + layout.row_stride() * layout.height)?;
+        let pixels = layout.to_rgba(bytes);
 
         Ok(ImageAsset {
-            width,
-            height,
+            width: u32::try_from(layout.width)
+                .map_err(|_| DecodeError::Malformed("width too large"))?,
+            height: u32::try_from(layout.height)
+                .map_err(|_| DecodeError::Malformed("height too large"))?,
             pixels,
         })
     }

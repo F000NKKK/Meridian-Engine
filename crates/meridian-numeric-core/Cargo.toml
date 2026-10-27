@@ -12,3 +12,6 @@ meridian-foundation = { workspace = true }
 
 [lints]
 workspace = true
+
+[dev-dependencies]
+proptest = "1"

@@ -176,7 +176,7 @@ impl AudioDevice {
     /// empty, the device doesn't support anything close to `config`.
     pub fn supported_output_configs(
         &self,
-        config: &AudioStreamConfig,
+        config: AudioStreamConfig,
     ) -> Result<Vec<cpal::SupportedStreamConfig>, AudioDeviceError> {
         let supported = self
             .device
@@ -200,15 +200,12 @@ impl AudioDevice {
         Ok(candidates)
     }
 
-    /// Opens an audio output stream with the given configuration. The
-    /// returned [`AudioStream`] can receive samples via
-    /// [`AudioStream::push_samples`] from any thread.
-    ///
-    /// This is synchronous (bounded, local work — configuring a stream
-    /// doesn't wait on I/O once the device is known).
-    pub fn open_stream(&self, config: AudioStreamConfig) -> Result<AudioStream, AudioDeviceError> {
-        let supported = self.supported_output_configs(&config)?;
-        let resolved = supported
+    /// The supported hardware config whose channel count matches `config`.
+    fn resolve_output_config(
+        &self,
+        config: AudioStreamConfig,
+    ) -> Result<cpal::SupportedStreamConfig, AudioDeviceError> {
+        self.supported_output_configs(config)?
             .into_iter()
             .find(|c| c.channels() == config.channels)
             .ok_or_else(|| {
@@ -216,21 +213,20 @@ impl AudioDevice {
                     "no supported config for {} Hz, {} channels",
                     config.sample_rate, config.channels
                 ))
-            })?;
+            })
+    }
+
+    /// Opens an audio output stream with the given configuration. The
+    /// returned [`AudioStream`] can receive samples via
+    /// [`AudioStream::push_samples`] from any thread.
+    ///
+    /// This is synchronous (bounded, local work — configuring a stream
+    /// doesn't wait on I/O once the device is known).
+    pub fn open_stream(&self, config: AudioStreamConfig) -> Result<AudioStream, AudioDeviceError> {
+        let resolved = self.resolve_output_config(config)?;
 
         let channels = config.channels as usize;
-
-        let hw_buffer_frames = match *resolved.buffer_size() {
-            cpal::SupportedBufferSize::Range { min, max } => 1024u32.clamp(min.max(1), max.max(1)),
-            cpal::SupportedBufferSize::Unknown => 1024,
-        }
-        .max(256);
-
-        let ring_frames = config
-            .buffer_frames
-            .unwrap_or(hw_buffer_frames * 4)
-            .max(hw_buffer_frames * 2);
-        let ring_capacity = ring_frames as usize * channels;
+        let ring_capacity = ring_capacity(config, &resolved);
 
         let (sample_tx, sample_rx) = crossbeam_channel::bounded::<f32>(ring_capacity);
         let error_flag = Arc::new(AtomicBool::new(false));
@@ -242,31 +238,29 @@ impl AudioDevice {
             buffer_size: cpal::BufferSize::Default,
         };
 
+        if resolved.sample_format() != cpal::SampleFormat::F32 {
+            return Err(AudioDeviceError::UnsupportedConfig(
+                "only f32 sample format is supported".to_string(),
+            ));
+        }
         let mut anti_click = AntiClick::new(channels);
-        let stream = match resolved.sample_format() {
-            cpal::SampleFormat::F32 => self
-                .device
-                .build_output_stream(
-                    stream_config,
-                    move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
-                        for (index, output_sample) in data.iter_mut().enumerate() {
-                            *output_sample =
-                                anti_click.process(sample_rx.try_recv().ok(), index % channels);
-                        }
-                    },
-                    move |err| {
-                        meridian_foundation::log_error!("audio stream error: {err}");
-                        err_flag.store(true, Ordering::SeqCst);
-                    },
-                    None,
-                )
-                .map_err(|e| AudioDeviceError::StreamError(e.to_string()))?,
-            _ => {
-                return Err(AudioDeviceError::UnsupportedConfig(
-                    "only f32 sample format is supported".to_string(),
-                ));
-            }
-        };
+        let stream = self
+            .device
+            .build_output_stream(
+                stream_config,
+                move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
+                    for (index, output_sample) in data.iter_mut().enumerate() {
+                        *output_sample =
+                            anti_click.process(sample_rx.try_recv().ok(), index % channels);
+                    }
+                },
+                move |err| {
+                    meridian_foundation::log_error!("audio stream error: {err}");
+                    err_flag.store(true, Ordering::SeqCst);
+                },
+                None,
+            )
+            .map_err(|e| AudioDeviceError::StreamError(e.to_string()))?;
 
         stream
             .play()
@@ -280,6 +274,21 @@ impl AudioDevice {
             _error_flag: error_flag,
         })
     }
+}
+
+/// Samples the ring buffer holds: at least two hardware buffers, four by
+/// default, unless the caller asked for a size.
+fn ring_capacity(config: AudioStreamConfig, resolved: &cpal::SupportedStreamConfig) -> usize {
+    let hw_buffer_frames = match *resolved.buffer_size() {
+        cpal::SupportedBufferSize::Range { min, max } => 1024u32.clamp(min.max(1), max.max(1)),
+        cpal::SupportedBufferSize::Unknown => 1024,
+    }
+    .max(256);
+    let ring_frames = config
+        .buffer_frames
+        .unwrap_or(hw_buffer_frames * 4)
+        .max(hw_buffer_frames * 2);
+    ring_frames as usize * config.channels as usize
 }
 
 /// Keeps the output waveform continuous when the ring buffer starves.
@@ -430,7 +439,7 @@ mod tests {
             return;
         };
         let config = AudioStreamConfig::default();
-        let configs = device.supported_output_configs(&config).unwrap();
+        let configs = device.supported_output_configs(config).unwrap();
         assert!(
             !configs.is_empty(),
             "device should support at least one config near 48kHz stereo"

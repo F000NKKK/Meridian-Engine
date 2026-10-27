@@ -8,6 +8,27 @@ use crate::{AudioClip, DecodeError, Decoder, need, u16_le, u32_le};
 #[derive(Debug, Default)]
 pub struct WavDecoder;
 
+/// The fields of a PCM `fmt ` chunk that decoding needs.
+struct WavFormat {
+    channels: u16,
+    sample_rate: u32,
+    bits_per_sample: u16,
+}
+
+impl WavFormat {
+    fn parse(body: &[u8]) -> Result<Self, DecodeError> {
+        need(body, 16)?;
+        if u16_le(body, 0) != 1 {
+            return Err(DecodeError::Unsupported("WAV audioFormat other than PCM"));
+        }
+        Ok(Self {
+            channels: u16_le(body, 2),
+            sample_rate: u32_le(body, 4),
+            bits_per_sample: u16_le(body, 14),
+        })
+    }
+}
+
 impl Decoder<AudioClip> for WavDecoder {
     type Error = DecodeError;
 
@@ -20,9 +41,7 @@ impl Decoder<AudioClip> for WavDecoder {
             return Err(DecodeError::BadMagic { expected: "WAVE" });
         }
 
-        let mut sample_rate = None;
-        let mut channels = None;
-        let mut bits_per_sample = None;
+        let mut format = None;
         let mut data: Option<&[u8]> = None;
 
         let mut offset = 12usize;
@@ -34,14 +53,7 @@ impl Decoder<AudioClip> for WavDecoder {
             let body = &bytes[body_start..body_start + chunk_size];
 
             if chunk_id == b"fmt " {
-                need(body, 16)?;
-                let audio_format = u16_le(body, 0);
-                if audio_format != 1 {
-                    return Err(DecodeError::Unsupported("WAV audioFormat other than PCM"));
-                }
-                channels = Some(u16_le(body, 2));
-                sample_rate = Some(u32_le(body, 4));
-                bits_per_sample = Some(u16_le(body, 14));
+                format = Some(WavFormat::parse(body)?);
             } else if chunk_id == b"data" {
                 data = Some(body);
             }
@@ -50,9 +62,11 @@ impl Decoder<AudioClip> for WavDecoder {
             offset = body_start + chunk_size + (chunk_size % 2);
         }
 
-        let sample_rate = sample_rate.ok_or(DecodeError::Malformed("missing fmt chunk"))?;
-        let channels = channels.ok_or(DecodeError::Malformed("missing fmt chunk"))?;
-        let bits_per_sample = bits_per_sample.ok_or(DecodeError::Malformed("missing fmt chunk"))?;
+        let WavFormat {
+            channels,
+            sample_rate,
+            bits_per_sample,
+        } = format.ok_or(DecodeError::Malformed("missing fmt chunk"))?;
         let data = data.ok_or(DecodeError::Malformed("missing data chunk"))?;
 
         if bits_per_sample != 16 {

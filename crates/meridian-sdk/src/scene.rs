@@ -23,6 +23,7 @@ use crate::assets::AssetCache;
 /// radius has to be baked into the mesh itself, not applied per
 /// instance). Normals are the unit-length vertex directions, UVs an
 /// equirectangular projection.
+#[must_use]
 pub fn icosphere_mesh_source(subdivisions: u32, radius: f32) -> MeshSource {
     let mesh = icosphere(subdivisions);
     let positions: Vec<[f32; 3]> = mesh
@@ -59,6 +60,57 @@ pub fn icosphere_mesh_source(subdivisions: u32, radius: f32) -> MeshSource {
 
 type CubeFace = ([f32; 3], [f32; 3], [f32; 3], [f32; 3], [f32; 3]);
 
+const CUBE_FACES: [CubeFace; 6] = [
+    // (normal, corner00, corner10, corner11, corner01) — CCW as seen
+    // from outside the cube along `normal`.
+    (
+        [1.0, 0.0, 0.0],
+        [1.0, -1.0, -1.0],
+        [1.0, -1.0, 1.0],
+        [1.0, 1.0, 1.0],
+        [1.0, 1.0, -1.0],
+    ),
+    (
+        [-1.0, 0.0, 0.0],
+        [-1.0, -1.0, 1.0],
+        [-1.0, -1.0, -1.0],
+        [-1.0, 1.0, -1.0],
+        [-1.0, 1.0, 1.0],
+    ),
+    (
+        [0.0, 1.0, 0.0],
+        [-1.0, 1.0, -1.0],
+        [1.0, 1.0, -1.0],
+        [1.0, 1.0, 1.0],
+        [-1.0, 1.0, 1.0],
+    ),
+    (
+        [0.0, -1.0, 0.0],
+        [-1.0, -1.0, 1.0],
+        [1.0, -1.0, 1.0],
+        [1.0, -1.0, -1.0],
+        [-1.0, -1.0, -1.0],
+    ),
+    // +Z and -Z: reversed corner order relative to the naive pattern
+    // above — these two were the ones caught inside-out (verified by
+    // computing cross(edge1, edge2)·normal by hand for all six faces;
+    // only +Z/-Z came out negative with the naive order).
+    (
+        [0.0, 0.0, 1.0],
+        [-1.0, -1.0, 1.0],
+        [-1.0, 1.0, 1.0],
+        [1.0, 1.0, 1.0],
+        [1.0, -1.0, 1.0],
+    ),
+    (
+        [0.0, 0.0, -1.0],
+        [1.0, -1.0, -1.0],
+        [1.0, 1.0, -1.0],
+        [-1.0, 1.0, -1.0],
+        [-1.0, -1.0, -1.0],
+    ),
+];
+
 /// A cube with half-extent `half_extent`, one set of 4 vertices per face
 /// so each face gets its own flat normal and a full `[0,1]` UV. Winding
 /// verified per-face (not just assumed from a formula) — every face's
@@ -66,63 +118,13 @@ type CubeFace = ([f32; 3], [f32; 3], [f32; 3], [f32; 3], [f32; 3]);
 /// `graphics-driver`'s `FrontFace::Ccw` + back-face culling to actually
 /// draw it, and a mirrored-looking cube (some faces visible only from
 /// inside) is exactly what one flipped face produces.
+#[must_use]
 pub fn cube_mesh_source(half_extent: f32) -> MeshSource {
-    const FACES: [CubeFace; 6] = [
-        // (normal, corner00, corner10, corner11, corner01) — CCW as seen
-        // from outside the cube along `normal`.
-        (
-            [1.0, 0.0, 0.0],
-            [1.0, -1.0, -1.0],
-            [1.0, -1.0, 1.0],
-            [1.0, 1.0, 1.0],
-            [1.0, 1.0, -1.0],
-        ),
-        (
-            [-1.0, 0.0, 0.0],
-            [-1.0, -1.0, 1.0],
-            [-1.0, -1.0, -1.0],
-            [-1.0, 1.0, -1.0],
-            [-1.0, 1.0, 1.0],
-        ),
-        (
-            [0.0, 1.0, 0.0],
-            [-1.0, 1.0, -1.0],
-            [1.0, 1.0, -1.0],
-            [1.0, 1.0, 1.0],
-            [-1.0, 1.0, 1.0],
-        ),
-        (
-            [0.0, -1.0, 0.0],
-            [-1.0, -1.0, 1.0],
-            [1.0, -1.0, 1.0],
-            [1.0, -1.0, -1.0],
-            [-1.0, -1.0, -1.0],
-        ),
-        // +Z and -Z: reversed corner order relative to the naive pattern
-        // above — these two were the ones caught inside-out (verified by
-        // computing cross(edge1, edge2)·normal by hand for all six faces;
-        // only +Z/-Z came out negative with the naive order).
-        (
-            [0.0, 0.0, 1.0],
-            [-1.0, -1.0, 1.0],
-            [-1.0, 1.0, 1.0],
-            [1.0, 1.0, 1.0],
-            [1.0, -1.0, 1.0],
-        ),
-        (
-            [0.0, 0.0, -1.0],
-            [1.0, -1.0, -1.0],
-            [1.0, 1.0, -1.0],
-            [-1.0, 1.0, -1.0],
-            [-1.0, -1.0, -1.0],
-        ),
-    ];
-
     let mut positions = Vec::new();
     let mut normals = Vec::new();
     let mut uvs = Vec::new();
     let mut indices = Vec::new();
-    for (normal, c00, c10, c11, c01) in FACES {
+    for (normal, c00, c10, c11, c01) in CUBE_FACES {
         let base = positions.len() as u32;
         for corner in [c00, c10, c11, c01] {
             positions.push(corner.map(|c| c * half_extent));
@@ -145,6 +147,7 @@ pub fn cube_mesh_source(half_extent: f32) -> MeshSource {
 /// centroid). Flat per-face normals (5 faces: 1 base quad + 4 triangular
 /// sides), windings verified the same way as [`cube_mesh_source`]'s —
 /// see that function's doc comment for why this matters.
+#[must_use]
 pub fn pyramid_mesh_source(base_half_extent: f32, height: f32) -> MeshSource {
     let base = [
         [-base_half_extent, 0.0, -base_half_extent],
@@ -183,13 +186,7 @@ pub fn pyramid_mesh_source(base_half_extent: f32, height: f32) -> MeshSource {
     for i in 0..4 {
         let b0 = base[i];
         let b1 = base[(i + 1) % 4];
-        let edge1 = [apex[0] - b0[0], apex[1] - b0[1], apex[2] - b0[2]];
-        let edge2 = [b1[0] - b0[0], b1[1] - b0[1], b1[2] - b0[2]];
-        let normal = normalize([
-            edge1[1] * edge2[2] - edge1[2] * edge2[1],
-            edge1[2] * edge2[0] - edge1[0] * edge2[2],
-            edge1[0] * edge2[1] - edge1[1] * edge2[0],
-        ]);
+        let normal = triangle_normal(b0, apex, b1);
         let base_idx = positions.len() as u32;
         for corner in [b0, apex, b1] {
             positions.push(corner);
@@ -207,6 +204,26 @@ pub fn pyramid_mesh_source(base_half_extent: f32, height: f32) -> MeshSource {
     }
 }
 
+/// The unit normal of triangle `(origin, towards, then)`: the cross
+/// product of the edges `origin -> towards` and `origin -> then`.
+fn triangle_normal(origin: [f32; 3], towards: [f32; 3], then: [f32; 3]) -> [f32; 3] {
+    let edge1 = [
+        towards[0] - origin[0],
+        towards[1] - origin[1],
+        towards[2] - origin[2],
+    ];
+    let edge2 = [
+        then[0] - origin[0],
+        then[1] - origin[1],
+        then[2] - origin[2],
+    ];
+    normalize([
+        edge1[1] * edge2[2] - edge1[2] * edge2[1],
+        edge1[2] * edge2[0] - edge1[0] * edge2[2],
+        edge1[0] * edge2[1] - edge1[1] * edge2[0],
+    ])
+}
+
 fn normalize(v: [f32; 3]) -> [f32; 3] {
     let len = (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt().max(1e-8);
     [v[0] / len, v[1] / len, v[2] / len]
@@ -215,6 +232,7 @@ fn normalize(v: [f32; 3]) -> [f32; 3] {
 /// A flat quad in the local `y = 0` plane, `half_size` from center to
 /// edge, its UVs tiled `uv_tiles` times across — the floor's mesh, with
 /// world placement left to `Renderable3d::frame`.
+#[must_use]
 pub fn ground_mesh_source(half_size: f32, uv_tiles: f32) -> MeshSource {
     MeshSource {
         positions: vec![

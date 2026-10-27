@@ -109,6 +109,7 @@ pub struct Transform {
 /// let mut registry = default_registry();
 /// // registry.register::<MyGameSpecificWidget>();
 /// ```
+#[must_use]
 pub fn default_registry() -> DslRegistry {
     let mut registry = DslRegistry::new();
     registry.register::<Scene>();

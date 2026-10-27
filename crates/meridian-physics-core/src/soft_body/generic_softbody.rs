@@ -62,6 +62,7 @@ pub struct SoftBody<F: GaFlavor> {
 }
 
 impl<F: GaFlavor> SoftBody<F> {
+    #[must_use]
     pub fn particle_count(&self) -> usize {
         self.positions.len()
     }

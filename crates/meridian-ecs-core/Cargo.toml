@@ -13,3 +13,10 @@ meridian-gac-core = { workspace = true }
 
 [lints]
 workspace = true
+
+[dev-dependencies]
+criterion = { version = "0.8", default-features = false }
+
+[[bench]]
+name = "ecs_core"
+harness = false

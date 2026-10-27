@@ -87,7 +87,7 @@ fn remove_missing_component_returns_none() {
 }
 
 #[test]
-fn get_on_dead_or_unknown_entity_returns_none_not_panic() {
+fn dead_or_unknown_entity_lookup_returns_none_not_panic() {
     let world = World::new();
     let fake = Entity {
         index: 999,

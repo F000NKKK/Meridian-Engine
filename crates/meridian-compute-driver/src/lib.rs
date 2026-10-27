@@ -131,18 +131,12 @@ impl ComputeDevice {
         let threads = self.capabilities.cpu.threads.max(1).min(count);
         let chunk = count.div_ceil(threads);
         let work = &work;
+        let ranges = (0..threads)
+            .map(|t| (t * chunk)..((t + 1) * chunk).min(count))
+            .filter(|range| range.start < range.end);
         std::thread::scope(|scope| {
-            for t in 0..threads {
-                let start = t * chunk;
-                let end = (start + chunk).min(count);
-                if start >= end {
-                    continue;
-                }
-                scope.spawn(move || {
-                    for i in start..end {
-                        work(i);
-                    }
-                });
+            for range in ranges {
+                scope.spawn(move || range.for_each(work));
             }
         });
     }

@@ -12,7 +12,7 @@ use meridian_memory_core::ResourcePool;
 use std::any::TypeId;
 use std::collections::HashMap;
 
-/// Owns entity allocation, every archetype, and their SoA storage. Not a
+/// Owns entity allocation, every archetype, and their `SoA` storage. Not a
 /// global singleton — the application creates and owns a `World` like any
 /// other value, consistent with [ADR 003](../../../docs/adr/003-no-global-managers.md).
 #[derive(Debug, Default)]
@@ -24,6 +24,7 @@ pub struct World {
 }
 
 impl World {
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -72,6 +73,7 @@ impl World {
         entity
     }
 
+    #[must_use]
     pub fn is_alive(&self, entity: Entity) -> bool {
         self.locations.contains_key(&entity)
     }
@@ -127,17 +129,20 @@ impl World {
     fn move_entity(
         &mut self,
         entity: Entity,
-        old_arch: usize,
-        old_row: usize,
+        from: EntityLocation,
         new_arch: usize,
         skip_type: Option<TypeId>,
     ) {
+        let EntityLocation {
+            archetype: old_arch,
+            row: old_row,
+        } = from;
         let (old, new) = self.archetypes_mut2(old_arch, new_arch);
         old.entities.swap_remove(old_row);
         new.entities.push(entity);
         let new_row = new.entities.len() - 1;
 
-        for (tid, old_col) in old.columns.iter_mut() {
+        for (tid, old_col) in &mut old.columns {
             if Some(*tid) == skip_type {
                 continue;
             }
@@ -189,7 +194,15 @@ impl World {
         let extra: Box<dyn AnyColumn> = Box::new(Column::<T>(Vec::new()));
         let new_arch = self.archetype_for(new_signature, Some(old_arch), Some((type_id, extra)));
 
-        self.move_entity(entity, old_arch, old_row, new_arch, None);
+        self.move_entity(
+            entity,
+            EntityLocation {
+                archetype: old_arch,
+                row: old_row,
+            },
+            new_arch,
+            None,
+        );
 
         self.archetypes[new_arch].column_mut::<T>().push(component);
         true
@@ -217,11 +230,20 @@ impl World {
             .column_mut::<T>()
             .swap_remove(old_row);
 
-        self.move_entity(entity, old_arch, old_row, new_arch, Some(type_id));
+        self.move_entity(
+            entity,
+            EntityLocation {
+                archetype: old_arch,
+                row: old_row,
+            },
+            new_arch,
+            Some(type_id),
+        );
 
         Some(removed)
     }
 
+    #[must_use]
     pub fn get<T: Component>(&self, entity: Entity) -> Option<&T> {
         let loc = self.locations.get(&entity)?;
         let col = self.archetypes[loc.archetype]
@@ -241,12 +263,14 @@ impl World {
             .get_mut(loc.row)
     }
 
+    #[must_use]
     pub fn contains<T: Component>(&self, entity: Entity) -> bool {
         self.get::<T>(entity).is_some()
     }
 
     /// Iterates `(Entity, &T)` for every entity that has a `T`, across
     /// every archetype that includes it.
+    #[must_use]
     pub fn query<T: Component>(&self) -> Query<'_, T> {
         let type_id = TypeId::of::<T>();
         let inner = self.archetypes.iter().flat_map(move |arch| {

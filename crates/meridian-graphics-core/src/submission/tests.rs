@@ -1,6 +1,9 @@
 //! Tests of this module.
 
 use super::*;
+use crate::Camera;
+use crate::scene::{Light, Material};
+use meridian_gac_core::{Motor3, Vec3};
 
 fn triangle() -> MeshSource {
     MeshSource {
@@ -175,15 +178,17 @@ fn lit_uniform_bytes_has_the_documented_layout_and_size() {
         },
     ];
     let identity = Camera::default().view_projection_matrix();
-    let bytes = lit_uniform_bytes(
-        &camera,
-        identity,
-        [0.1, 0.1, 0.1],
-        [0.2, 0.2, 0.2],
-        Vec3::new(0.0, -1.0, 0.0),
-        0,
-        &lights,
-    );
+    let bytes = lit_uniform_bytes(&ViewUniforms {
+        camera: &camera,
+        shadow: ShadowLight {
+            view_proj: identity,
+            direction: Vec3::new(0.0, -1.0, 0.0),
+            caster: 0,
+        },
+        ambient_ground: [0.1, 0.1, 0.1],
+        ambient_sky: [0.2, 0.2, 0.2],
+        lights: &lights,
+    });
     assert_eq!(
         bytes.len(),
         64 + 64 + 16 + 16 + 16 + 16 + 16 + 16 + MAX_LIGHTS * 48
@@ -231,15 +236,17 @@ fn lit_uniform_bytes_caps_extra_lights_silently_at_the_byte_level() {
         })
         .collect();
     let identity = Camera::default().view_projection_matrix();
-    let bytes = lit_uniform_bytes(
-        &camera,
-        identity,
-        [0.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0],
-        Vec3::new(0.0, -1.0, 0.0),
-        u32::MAX,
-        &lights,
-    );
+    let bytes = lit_uniform_bytes(&ViewUniforms {
+        camera: &camera,
+        shadow: ShadowLight {
+            view_proj: identity,
+            direction: Vec3::new(0.0, -1.0, 0.0),
+            caster: u32::MAX,
+        },
+        ambient_ground: [0.0, 0.0, 0.0],
+        ambient_sky: [0.0, 0.0, 0.0],
+        lights: &lights,
+    });
     assert_eq!(
         bytes.len(),
         64 + 64 + 16 + 16 + 16 + 16 + 16 + 16 + MAX_LIGHTS * 48
@@ -260,7 +267,7 @@ fn lit_uniform_bytes_caps_extra_lights_silently_at_the_byte_level() {
 #[cfg(feature = "hw-tests")]
 #[tokio::test]
 async fn texture_registry_round_trips_a_real_upload() {
-    let Ok(device) = Device::new().await else {
+    let Ok(device) = meridian_graphics_driver::Device::new().await else {
         eprintln!("skipping: no GPU device available");
         return;
     };

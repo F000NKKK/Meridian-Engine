@@ -11,7 +11,7 @@
 //! `Runtime::tick` guarantees it never runs before that state is ready.
 
 use meridian_engine_core::{Stage, StageContext};
-use meridian_graphics_core::{Scene3d, submit_scene3d};
+use meridian_graphics_core::{BloomInput, Scene3d, SceneAssets, submit_scene3d};
 use meridian_platform_core::Window;
 
 use crate::scene::GraphicsSession;
@@ -36,15 +36,16 @@ pub fn render_frame(
     window: &Window,
 ) {
     let mut commands = base.device.create_command_buffer();
-    let (draw_buffers, light_view_proj, light_direction, shadow_caster) =
-        base.renderer.render_shadow_pass(
-            &base.device,
-            &mut commands,
-            scene,
-            &base.meshes,
-            &base.materials,
-            &base.textures,
-        );
+    let prepared = base.renderer.render_shadow_pass(
+        &base.device,
+        &mut commands,
+        scene,
+        &SceneAssets {
+            meshes: &base.meshes,
+            materials: &base.materials,
+            textures: &base.textures,
+        },
+    );
 
     let frame = match base.surface.acquire_frame() {
         Ok(frame) => frame,
@@ -59,23 +60,16 @@ pub fn render_frame(
 
     {
         let mut pass = commands.begin_render_pass(frame.view(), clear_color, Some(&base.depth));
-        submit_scene3d(
-            &base.device,
-            &base.renderer,
-            &mut pass,
-            scene,
-            light_view_proj,
-            light_direction,
-            shadow_caster,
-            &draw_buffers,
-        );
+        submit_scene3d(&base.device, &base.renderer, &mut pass, scene, &prepared);
     }
     base.bloom.apply(
         &base.device,
         &mut commands,
-        &base.renderer,
-        &draw_buffers,
-        &frame,
+        &BloomInput {
+            renderer: &base.renderer,
+            draw_buffers: &prepared.buffers,
+            target_frame: &frame,
+        },
     );
     commands.submit();
     frame.present(&base.device);

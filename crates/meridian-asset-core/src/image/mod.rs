@@ -14,12 +14,12 @@
 
 mod any_image_decoder;
 pub mod bmp;
-mod image_format;
+mod format;
 pub mod png_decoder;
 #[cfg(test)]
 mod tests;
 
 pub use any_image_decoder::AnyImageDecoder;
 pub use bmp::BmpDecoder;
-pub use image_format::ImageFormat;
+pub use format::ImageFormat;
 pub use png_decoder::PngDecoder;

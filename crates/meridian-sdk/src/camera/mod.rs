@@ -35,6 +35,7 @@ pub struct FlyCamera {
 }
 
 impl FlyCamera {
+    #[must_use]
     pub fn new(position: Vec3) -> Self {
         // Facing roughly toward -Z (a scene's contents in these examples
         // sit near the origin along -Z from a positive-Z starting eye
@@ -125,6 +126,7 @@ impl FlyCamera {
         yaw_rotor.compose(pitch_rotor)
     }
 
+    #[must_use]
     pub fn camera(&self, aspect_ratio: f32) -> Camera {
         Camera {
             frame: Motor3::from_rotation_translation(self.rotor(), self.position),

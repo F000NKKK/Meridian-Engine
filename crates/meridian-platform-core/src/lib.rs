@@ -18,7 +18,9 @@
 
 pub mod capabilities;
 pub mod dynamic_library;
+mod event_runner;
 pub mod input;
+mod key_map;
 pub mod time;
 pub mod window;
 

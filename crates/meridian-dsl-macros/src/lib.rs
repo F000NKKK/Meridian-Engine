@@ -53,87 +53,26 @@ fn sdk_path() -> proc_macro2::TokenStream {
 #[proc_macro_attribute]
 pub fn dsl_tag(attr: TokenStream, item: TokenStream) -> TokenStream {
     let attr_args = syn::parse_macro_input!(attr as syn::MetaNameValue);
-    if !attr_args.path.is_ident("name") {
-        return syn::Error::new_spanned(attr_args.path, "expected `#[dsl_tag(name = \"...\")]`")
-            .to_compile_error()
-            .into();
-    }
-    let tag_name = match &attr_args.value {
-        syn::Expr::Lit(syn::ExprLit {
-            lit: syn::Lit::Str(s),
-            ..
-        }) => s.value(),
-        other => {
-            return syn::Error::new_spanned(other, "expected a string literal, e.g. \"RigidBody\"")
-                .to_compile_error()
-                .into();
-        }
-    };
-
     let input = parse_macro_input!(item as DeriveInput);
-    let struct_name = &input.ident;
+    expand(&attr_args, &input)
+        .unwrap_or_else(|error| error.to_compile_error())
+        .into()
+}
 
-    let fields = match &input.data {
-        Data::Struct(data) => match &data.fields {
-            Fields::Named(named) => &named.named,
-            _ => {
-                return syn::Error::new_spanned(
-                    &input.ident,
-                    "#[dsl_tag] requires a struct with named fields",
-                )
-                .to_compile_error()
-                .into();
-            }
-        },
-        _ => {
-            return syn::Error::new_spanned(&input.ident, "#[dsl_tag] only applies to structs")
-                .to_compile_error()
-                .into();
-        }
-    };
-
+/// Generates the original struct plus its `DslTag` impl.
+fn expand(
+    attr_args: &syn::MetaNameValue,
+    input: &DeriveInput,
+) -> Result<proc_macro2::TokenStream, syn::Error> {
+    let tag_name = tag_name(attr_args)?;
+    let fields = named_fields(input)?;
     let sdk = sdk_path();
-
-    let mut field_inits = Vec::new();
-    for field in fields {
-        let field_name = field.ident.as_ref().expect("named field has an ident");
-        let field_name_str = field_name.to_string();
-        let is_option = is_option_type(&field.ty);
-
-        let init = if let Some(inner_ty) = is_option {
-            quote! {
-                #field_name: match attrs.iter().find(|(k, _)| k == #field_name_str) {
-                    Some((_, v)) => Some(v.parse::<#inner_ty>().map_err(|e| {
-                        #sdk::dsl_core::TagParseError {
-                            message: format!(
-                                concat!(#tag_name, ".", #field_name_str, ": {}"),
-                                e
-                            ),
-                        }
-                    })?),
-                    None => None,
-                }
-            }
-        } else {
-            let field_ty = &field.ty;
-            quote! {
-                #field_name: attrs
-                    .iter()
-                    .find(|(k, _)| k == #field_name_str)
-                    .ok_or_else(|| #sdk::dsl_core::TagParseError {
-                        message: concat!(#tag_name, ": missing attribute '", #field_name_str, "'").to_string(),
-                    })?
-                    .1
-                    .parse::<#field_ty>()
-                    .map_err(|e| #sdk::dsl_core::TagParseError {
-                        message: format!(concat!(#tag_name, ".", #field_name_str, ": {}"), e),
-                    })?
-            }
-        };
-        field_inits.push(init);
-    }
-
-    let expanded = quote! {
+    let field_inits = fields
+        .iter()
+        .map(|field| field_init(&sdk, &tag_name, field))
+        .collect::<Vec<_>>();
+    let struct_name = &input.ident;
+    Ok(quote! {
         #input
 
         impl #sdk::dsl_core::DslTag for #struct_name {
@@ -147,8 +86,86 @@ pub fn dsl_tag(attr: TokenStream, item: TokenStream) -> TokenStream {
                 })
             }
         }
-    };
-    expanded.into()
+    })
+}
+
+/// The string literal in `#[dsl_tag(name = "...")]`.
+fn tag_name(attr_args: &syn::MetaNameValue) -> Result<String, syn::Error> {
+    if !attr_args.path.is_ident("name") {
+        return Err(syn::Error::new_spanned(
+            &attr_args.path,
+            "expected `#[dsl_tag(name = \"...\")]`",
+        ));
+    }
+    match &attr_args.value {
+        syn::Expr::Lit(syn::ExprLit {
+            lit: syn::Lit::Str(s),
+            ..
+        }) => Ok(s.value()),
+        other => Err(syn::Error::new_spanned(
+            other,
+            "expected a string literal, e.g. \"RigidBody\"",
+        )),
+    }
+}
+
+/// The named fields of the annotated struct.
+fn named_fields(
+    input: &DeriveInput,
+) -> Result<&syn::punctuated::Punctuated<syn::Field, syn::token::Comma>, syn::Error> {
+    match &input.data {
+        Data::Struct(data) => match &data.fields {
+            Fields::Named(named) => Ok(&named.named),
+            _ => Err(syn::Error::new_spanned(
+                &input.ident,
+                "#[dsl_tag] requires a struct with named fields",
+            )),
+        },
+        _ => Err(syn::Error::new_spanned(
+            &input.ident,
+            "#[dsl_tag] only applies to structs",
+        )),
+    }
+}
+
+/// The `field: <parsed attribute>` initializer for one field.
+fn field_init(
+    sdk: &proc_macro2::TokenStream,
+    tag_name: &str,
+    field: &syn::Field,
+) -> proc_macro2::TokenStream {
+    let field_name = field.ident.as_ref().expect("named field has an ident");
+    let field_name_str = field_name.to_string();
+    if let Some(inner_ty) = is_option_type(&field.ty) {
+        quote! {
+            #field_name: match attrs.iter().find(|(k, _)| k == #field_name_str) {
+                Some((_, v)) => Some(v.parse::<#inner_ty>().map_err(|e| {
+                    #sdk::dsl_core::TagParseError {
+                        message: format!(
+                            concat!(#tag_name, ".", #field_name_str, ": {}"),
+                            e
+                        ),
+                    }
+                })?),
+                None => None,
+            }
+        }
+    } else {
+        let field_ty = &field.ty;
+        quote! {
+            #field_name: attrs
+                .iter()
+                .find(|(k, _)| k == #field_name_str)
+                .ok_or_else(|| #sdk::dsl_core::TagParseError {
+                    message: concat!(#tag_name, ": missing attribute '", #field_name_str, "'").to_string(),
+                })?
+                .1
+                .parse::<#field_ty>()
+                .map_err(|e| #sdk::dsl_core::TagParseError {
+                    message: format!(concat!(#tag_name, ".", #field_name_str, ": {}"), e),
+                })?
+        }
+    }
 }
 
 /// Extracts `T` from a field type written as `Option<T>` — a purely

@@ -12,3 +12,11 @@ meridian-numeric-core = { workspace = true }
 
 [lints]
 workspace = true
+
+[dev-dependencies]
+criterion = { version = "0.8", default-features = false }
+proptest = "1"
+
+[[bench]]
+name = "gac_core"
+harness = false

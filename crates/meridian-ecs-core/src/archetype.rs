@@ -8,7 +8,7 @@ use std::any::TypeId;
 use std::collections::HashMap;
 
 /// The set of component types an entity has; entities sharing an archetype
-/// share Structure-of-Arrays storage (each `Column<T>` here is one SoA
+/// share Structure-of-Arrays storage (each `Column<T>` here is one `SoA`
 /// column, keyed by `TypeId`).
 pub(crate) struct Archetype {
     pub(crate) type_ids: Vec<TypeId>, // sorted; the archetype's identity

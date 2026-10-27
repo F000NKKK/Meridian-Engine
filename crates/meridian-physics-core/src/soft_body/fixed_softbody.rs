@@ -18,6 +18,7 @@ pub type FixedSoftBodyIntegrator = super::generic_softbody::SoftBodyIntegrator<F
     clippy::too_many_arguments,
     reason = "replaced by an options/value type in Craftbook migration wave 3"
 )]
+#[must_use]
 pub fn fixed_icosphere_soft_body(
     center: meridian_gac_core::fixed_ga::FixedVec3,
     radius: meridian_numeric_core::Fixed,

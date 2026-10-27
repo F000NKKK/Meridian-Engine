@@ -528,8 +528,12 @@ committed baselines, which only shrink: `.craftcheck-baseline`,
 
 - Wave 0 (gates): lint set, `craftbook.toml`, baselines, CI workflow,
   `hw-tests` feature, glossary and context map — done.
-- Waves 1–3 (hygiene, wiring-only `lib.rs`, splitting the largest files)
-  inside the existing crates; waves 4–7 (float/fixed layout, inverting the
+- Waves 1–3 (hygiene, wiring-only `lib.rs`, splitting the largest files,
+  long and wide functions, `proptest` for `numeric-core`/`gac-core`,
+  `criterion` benches for the four `perf` crates) — done, except the
+  files and functions that wave 4 rewrites anyway (`gac-core`
+  `generic.rs`/`float_ga`/`fixed_ga`, `physics-compute`, `soft_body`).
+  Waves 4–7 (float/fixed layout, inverting the
   driver edges, runtime/composition root, crate renames) follow.
 
 ## Why implementation is deliberately last
@@ -651,7 +655,7 @@ Ordered roughly by "blocks everything else" first; item 4 is done, the
 rest are not started.
 
 1. **Per-instance vertex rebaking, every frame, is the sharpest wall.**
-   `graphics-core::submission::bake_draw_buffers` reuploads a fresh
+   `graphics-core::submission::draw_buffers` reuploads a fresh
    vertex buffer for *every* `Renderable3d` on *every*
    `SceneRenderer::prepare` call, whether or not that instance moved
    since the last frame (see that function's own doc comment — "correct

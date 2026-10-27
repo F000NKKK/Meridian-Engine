@@ -232,14 +232,14 @@ driver.
 1. **Done.** Vocabulary + `FrameScene` + extraction + culling — CPU-only,
    fully tested without a GPU (`extract_scene3d`/`cull_scene3d` in
    `scene.rs`).
-2. **Done.** Submission bridge over `graphics-driver` (`submission.rs`):
+2. **Done.** Submission bridge over `graphics-driver` (`submission/`):
    `MeshRegistry`/`MaterialRegistry`/`TextureRegistry` (handle-addressed,
    ADR 002-compliant), `SceneRenderer::prepare`/`draw`/`submit_scene3d`
    turning a culled `Scene3d` into real draw calls. Texture upload from
    `asset-core::ImageAsset` is real: `gpu-driver` gained
    `Device::write_texture`/`create_sampler`/`create_texture_bind_group`,
    `graphics-driver` gained the matching `create_texture_2d`/
-   `create_textured_bind_group` passthroughs, and `submission.rs` picks
+   `create_textured_bind_group` passthroughs, and `submission/` picks
    between two unlit pipelines per renderable — `TEXTURED_SHADER_WGSL`
    (samples `Material::albedo` when it resolves in the `TextureRegistry`)
    or `UNLIT_SHADER_WGSL` (flat `base_color_factor` otherwise). Still
@@ -264,7 +264,7 @@ driver.
    pattern) and the GPU-compute audit under real load are still open,
    unblocked by the texture path landing but not yet done.
 3. **Done, core lighting; material handling partially open.**
-   `submission.rs` gained Blinn-Phong forward lighting: `Scene3d` now
+   `submission/` gained Blinn-Phong forward lighting: `Scene3d` now
    carries `ambient: [f32; 3]`, and every renderable's family (colored/
    textured) crosses with lit/unlit into four main pipelines —
    `lit_shader_wgsl()`/`lit_textured_shader_wgsl()` shade against

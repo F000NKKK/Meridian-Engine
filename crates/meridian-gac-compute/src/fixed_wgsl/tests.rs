@@ -1,6 +1,8 @@
 //! Tests of this module.
 
 use super::*;
+use meridian_compute_runtime::ComputeContext;
+use meridian_numeric_core::Fixed;
 
 /// A battery of `Fixed` values chosen to exercise the emulation's
 /// real edge cases: zero, unit values, small/large magnitudes near

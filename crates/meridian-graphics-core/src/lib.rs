@@ -20,7 +20,7 @@ pub mod submission;
 mod tests;
 mod texture_handle;
 
-pub use bloom::{BloomConfig, BloomPass};
+pub use bloom::{BloomConfig, BloomInput, BloomPass};
 pub use camera::{Camera, look_at_rotor};
 pub use frustum::Frustum;
 pub use graph_resource_id::GraphResourceId;
@@ -36,7 +36,8 @@ pub use scene::{
 pub use shader_handle::{ShaderHandle, ShaderMarker};
 pub use submission::{
     DEFAULT_SHADOW_MAP_SIZE, DrawBuffers, MAX_LIGHTS, MaterialRegistry, MeshRegistry,
-    MeshRegistryError, MeshSource, SHADOW_VOLUME_HALF_EXTENT, SceneRenderer, TEXTURED_SHADER_WGSL,
-    TextureRegistry, UNLIT_SHADER_WGSL, directional_shadow_camera, submit_scene3d,
+    MeshRegistryError, MeshSource, PreparedScene, SHADOW_VOLUME_HALF_EXTENT, SceneAssets,
+    SceneRenderer, ShadowLight, TEXTURED_SHADER_WGSL, TextureRegistry, UNLIT_SHADER_WGSL,
+    ViewUniforms, directional_shadow_camera, submit_scene3d,
 };
 pub use texture_handle::{TextureHandle, TextureMarker};

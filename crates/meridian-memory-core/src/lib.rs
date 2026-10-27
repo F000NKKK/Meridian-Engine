@@ -43,14 +43,17 @@ impl<T> Default for ResourcePool<T> {
 }
 
 impl<T> ResourcePool<T> {
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
+    #[must_use]
     pub fn len(&self) -> usize {
         self.len
     }
 
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.len == 0
     }
@@ -78,10 +81,12 @@ impl<T> ResourcePool<T> {
         self.generations.get(handle.index as usize) == Some(&handle.generation)
     }
 
+    #[must_use]
     pub fn contains(&self, handle: Handle) -> bool {
         self.generation_matches(handle) && self.slots[handle.index as usize].is_some()
     }
 
+    #[must_use]
     pub fn get(&self, handle: Handle) -> Option<&T> {
         if !self.generation_matches(handle) {
             return None;
@@ -132,6 +137,7 @@ impl<T> Default for FrameArena<T> {
 }
 
 impl<T> FrameArena<T> {
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -141,6 +147,7 @@ impl<T> FrameArena<T> {
         self.items.len() - 1
     }
 
+    #[must_use]
     pub fn get(&self, index: usize) -> Option<&T> {
         self.items.get(index)
     }
@@ -149,10 +156,12 @@ impl<T> FrameArena<T> {
         self.items.get_mut(index)
     }
 
+    #[must_use]
     pub fn len(&self) -> usize {
         self.items.len()
     }
 
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.items.is_empty()
     }
@@ -181,6 +190,7 @@ impl<T> Default for PersistentArena<T> {
 }
 
 impl<T> PersistentArena<T> {
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
@@ -190,6 +200,7 @@ impl<T> PersistentArena<T> {
         self.items.len() - 1
     }
 
+    #[must_use]
     pub fn get(&self, index: usize) -> Option<&T> {
         self.items.get(index)
     }
@@ -198,10 +209,12 @@ impl<T> PersistentArena<T> {
         self.items.get_mut(index)
     }
 
+    #[must_use]
     pub fn len(&self) -> usize {
         self.items.len()
     }
 
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.items.is_empty()
     }

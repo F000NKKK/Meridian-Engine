@@ -3,7 +3,7 @@
 use crate::Component;
 use std::any::Any;
 
-/// A type-erased SoA column, downcast back to `Column<T>` by every
+/// A type-erased `SoA` column, downcast back to `Column<T>` by every
 /// operation that needs the concrete type. Object-safe by hand (`Any`
 /// isn't dyn-compatible for downcasting on its own) — every method here
 /// is what a caller holding only `&dyn AnyColumn` can still do safely.
