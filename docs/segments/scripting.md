@@ -69,8 +69,10 @@ the prior art to copy from is Yog-Mod-Loader's `.yui` -> `.g.rs` pipeline
    `SOURCE`, a `Name` enum per `x:Name`, `Class`/`ViewModel` aliases,
    `build` and `find`, and rejects bad directives and names at build
    time; `magic_figures` uses it. Still open: **event dispatch**
-   (`on_*` attributes -> code-behind methods), waiting for an engine
-   event source to raise them, and porting `physic_figures` once markup
+   (contract drafted in [mel-events.md](../mel-events.md): `click=
+   "{x:Bind Save}"` -> view-model methods, routed bubbling/tunneling,
+   `Handled`; the event source exists since ui-core #35, the tag API is
+   requested from team/ui-ux), and porting `physic_figures` once markup
    hot reload (item 8) keeps run-time editing.
 6. **`{x:Bind}` expression compiler.** Done. The Yog `x:Bind` subset
    (members, calls, `Type::path`s, literals, `!`, `==`, `!=`, `?.`) is
