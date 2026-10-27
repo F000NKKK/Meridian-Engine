@@ -8,7 +8,7 @@ use crate::submission::MeshSource;
 /// `height` above the base, centered on the base's own middle (so a
 /// `Renderable3d::frame` translation places the base center, not the
 /// centroid). Flat per-face normals (5 faces: 1 base quad + 4 triangular
-/// sides), windings verified the same way as [`cube_mesh_source`]'s —
+/// sides), windings verified the same way as [`cube_mesh_source`](super::cube_mesh_source)'s —
 /// see that function's doc comment for why this matters.
 #[must_use]
 pub fn pyramid_mesh_source(base_half_extent: f32, height: f32) -> MeshSource {
