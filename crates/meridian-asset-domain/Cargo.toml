@@ -1,0 +1,15 @@
+[package]
+name = "meridian-asset-domain"
+version = "0.13.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Loading and decoding of images, meshes, audio, shaders and binary formats. Does not manage ownership or lifetime of loaded data."
+readme = "README.md"
+
+[dependencies]
+meridian-diagnostics = { workspace = true }
+
+[lints]
+workspace = true

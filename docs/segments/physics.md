@@ -9,19 +9,18 @@ owns what and what the segment plans to do next.
 
 | Crate | Tier | Role |
 |---|---|---|
-| `meridian-physics-driver` | 2 | Execution backend only: `PhysicsBackend` (CPU/GPU capabilities), `PhysicsSync` (step generation counter). No collision algorithms. |
-| `meridian-physics-core` | 6 | The simulation: `RigidBody`, `ColliderShape`, `Contact`, `BroadPhase`, `NarrowPhase`, `ConstraintSolver`, `Integrator`, written once in `collision/` and `dynamics/` over `GaFlavor`; each has thin `float.rs`/`fixed.rs` aliases. `soft_body/` is the separate mass-spring domain. |
-| `meridian-physics-compute` | 7 | Adapter to `compute-runtime`: batched kernels for all five rigid-body pipeline steps (CPU `parallel_for`), WGSL soft-body kernels, WGSL broad-phase overlap kernel. |
+| `meridian-physics-domain` | 6 | The simulation: `RigidBody`, `ColliderShape`, `Contact`, `BroadPhase`, `NarrowPhase`, `ConstraintSolver`, `Integrator`, written once in `collision/` and `dynamics/` over `GaFlavor`; each has thin `float.rs`/`fixed.rs` aliases. `soft_body/` is the separate mass-spring domain. |
+| `meridian-physics-wgpu` | 7 | Adapter to `compute-app`: batched kernels for all five rigid-body pipeline steps (CPU `parallel_for`), WGSL soft-body kernels, WGSL broad-phase overlap kernel. |
 
 Shared with other segments (physics reviews changes, the other segment owns
 the crate):
 
-- `meridian-engine-core` (`team/core`): `PhysicsSubsystem`,
-  `PhysicsStepStage`, `PhysicsDispatchMode`, fixed-timestep `tick_fixed`.
-- `meridian-gac-core` / `meridian-gac-compute` (`team/core`): `Motor3`,
+- `meridian-physics-app`: `PhysicsSubsystem`, the `PhysicsStepper` port and
+  `SequentialStepper`; `meridian-runtime-app` (`team/core`): `PhysicsStepStage`.
+- `meridian-gac` / `meridian-gac-wgpu` (`team/core`): `Motor3`,
   bivectors, `Aabb`/`Obb`/`Shape`. Geometry goes there, never into
-  `physics-core`.
-- `meridian-gpu-driver` (`team/rendering`): device used by the WGSL kernels.
+  `physics-domain`.
+- `meridian-gpu-wgpu` (`team/rendering`): device used by the WGSL kernels.
 - `examples/physic_figures`: physics showcase example.
 
 Skills that apply: `meridian-subsystem-core-keeper`,
@@ -30,8 +29,8 @@ Skills that apply: `meridian-subsystem-core-keeper`,
 
 ## Current state (2026-10-27)
 
-- `cargo test -p meridian-physics-core -p meridian-physics-driver
-  -p meridian-physics-compute`: 55 tests, all green.
+- `cargo test -p meridian-physics-domain
+  -p meridian-physics-wgpu`: 55 tests, all green.
 - Shapes: sphere and cuboid. Broad phase: x-axis sweep-and-prune. Narrow
   phase: sphere-sphere, sphere-cuboid, cuboid-cuboid SAT with up to 4-point
   face manifolds. Solver: sequential impulses with split velocity/position
@@ -39,8 +38,9 @@ Skills that apply: `meridian-subsystem-core-keeper`,
   the bivector exponential map.
 - Deterministic `fixed` (Q16.16) pipeline with a bit-exact reproducibility
   test.
-- Batched dispatch is wired into `engine-core` through
-  `PhysicsDispatchMode::Batched` and matches the sequential path bit for bit.
+- Batched dispatch is `physics-wgpu`'s `BatchedStepper`, a `PhysicsStepper`
+  that passes the same contract as `SequentialStepper`; the composition root
+  hands it to `PhysicsStepStage`.
 
 ## Gaps and backlog
 
@@ -49,21 +49,15 @@ a task.
 
 ### Hygiene (small, safe)
 
-1. **Unused dependencies in `physics-core/Cargo.toml`.** `meridian-gac-compute`,
-   `meridian-compute-runtime`, `meridian-physics-driver` and
-   `meridian-ecs-core` are declared but not referenced in `src/`. They
+1. **Unused dependencies in `physics-domain/Cargo.toml`.** `meridian-gac-wgpu`,
+   `meridian-compute-app` and
+   `meridian-ecs` are declared but not referenced in `src/`. They
    overstate the crate graph that `check-deps` validates. Remove them or
    use them deliberately.
-2. **Stale crate docs.** `physics-core/src/lib.rs` still says no
-   `compute-runtime` dispatch is wired in (it is, via `physics-compute`).
-   `physics-driver/src/lib.rs` says the GPU backend waits for
-   `graphics-driver`, but `meridian-gpu-driver` exists and the WGSL
-   kernels already use it.
-3. **`PhysicsSync` and `PhysicsBackend` are not used by the pipeline.**
-   Either wire them in (batch-size cutoffs, consumer change detection) or
-   document them as intentionally unused.
-4. **Panic audit.** `unwrap`/`expect` calls in non-test code paths of
-   `physics-compute` (for example mutex locks in the constraint-solver
+2. **Stale crate docs.** `physics-domain/src/lib.rs` still says no
+   `compute-app` dispatch is wired in (it is, via `physics-wgpu`).
+3. **Panic audit.** `unwrap`/`expect` calls in non-test code paths of
+   `physics-wgpu` (for example mutex locks in the constraint-solver
    kernel) should be reviewed against the standards `team/standards` is
    writing in Craftbook.
 
@@ -76,7 +70,7 @@ a task.
    factory scenes with thousands of static colliders. Add static/sleeping
    body support alongside it.
 6. **More shapes**: capsule, convex hull, then triangle mesh and heightfield
-   colliders referenced through `resource-core` handles.
+   colliders referenced through `resource` handles.
 7. **Full inertia tensor**: `moment_of_inertia` for cuboids is the average
    of the principal moments; the solver needs a per-axis inverse inertia.
 8. **Coupled manifold solve**: face-manifold points use
@@ -91,7 +85,7 @@ a task.
 
 13. Port integrator, narrow phase and solver to WGSL with the same
     bit-for-bit oracle tests the broad-phase kernel has, then add
-    `PhysicsDispatchMode::Gpu` only when all four stages have a GPU path
+    a GPU stepper only when all four stages have a GPU path
     (see roadmap gap 4).
 
 ### Standards alignment

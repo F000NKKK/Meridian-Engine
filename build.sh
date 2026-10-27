@@ -31,7 +31,7 @@ Options:
 
 Examples:
   ./build.sh build
-  ./build.sh build -p meridian-gac-core
+  ./build.sh build -p meridian-gac
   ./build.sh test
   ./build.sh run magic_figures -- --foo bar
   ./build.sh clean

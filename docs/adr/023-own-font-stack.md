@@ -1,4 +1,4 @@
-# ADR 023: Our own font stack (`meridian-font-core`)
+# ADR 023: Our own font stack (`meridian-text-domain`)
 
 ## Status
 
@@ -20,10 +20,10 @@ shaping separate from rasterization), but is tied to Yog's graphics types.
 
 ## Decision
 
-**1. One new domain crate, `meridian-font-core`.** Pure CPU, no I/O, no
+**1. One new domain crate, `meridian-text-domain`.** Pure CPU, no I/O, no
 `async`, no GPU. It depends on no workspace crate (`gac-core` is not needed: glyph
-geometry is 2D font units, not spatial algebra). It belongs to the `ui`
-context. It does not read
+geometry is 2D font units, not spatial algebra). It is the `text` context's domain crate (named
+`meridian-text-domain` by ADR 026; it started as `font-core`). It does not read
 files: callers pass bytes (`asset-core` or the game owns loading and
 lifetime, ADR 004/011).
 
@@ -60,7 +60,7 @@ need; `shape` is a plain function returning public types (`ShapedRun`,
 `PlacedGlyph`); it becomes a trait when a second shaper exists, and a game
 can already bypass it by building a `ShapedRun` itself.
 
-**7. Wiring.** `ui-render` depends on `font-core`, implements
+**7. Wiring.** `ui-render` depends on `text-domain`, implements
 `TextMeasurer` over a `FontFace` (so layout and drawing share the same
 metrics), and extracts a `TextBlock` into one sprite per glyph using
 `Foreground` as the tint. `ui-core` stays free of fonts.

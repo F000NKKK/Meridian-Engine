@@ -1,14 +1,14 @@
 # Editor protocol
 
 What a running Meridian game and its editor (Meridian IDLE) say to each
-other. The types live in `meridian-editor-protocol`
-([dependency-rules.md](dependency-rules.md): above `meridian-scene`, below
-`engine-core`); the formats under them are
+other. The types live in `meridian-editor-domain`
+([dependency-rules.md](dependency-rules.md): above `meridian-data-substrate`, below
+`runtime-app`); the formats under them are
 [Substrate Data](data-formats.md) ([ADR 016](adr/016-data-formats-on-substrate-data.md)).
 
 The crate is **pure protocol**: no `async`, no sockets, no I/O beyond a
 generic `Read`/`Write`. The game's side is [the host](#host): the code that
-answers requests (`meridian-editor-host`) and the socket it is served on
+answers requests (`meridian-editor-app`) and the socket it is served on
 (`meridian-editor-tcp`).
 
 ## Wire
@@ -83,9 +83,9 @@ Errors are data, not text: the editor decides how to show them.
 
 ### Typed ids
 
-- `EntityRef { index, generation }` — an `ecs-core::Entity`, valid for one
+- `EntityRef { index, generation }` — an `ecs::Entity`, valid for one
   run of the host; re-list after reconnecting.
-- `ComponentRef` — an alias of `meridian-scene::ComponentName`, the name
+- `ComponentRef` — an alias of `meridian-data-substrate::ComponentName`, the name
   `.mscene` documents and `Describe` use: one id per component everywhere.
 - `RequestId` — chosen by the editor, echoed in the response.
 - `ProtocolVersion` — see below.
@@ -161,7 +161,7 @@ A frame with no readable `id` is a broken peer: close the connection. The
 
 ## How Meridian IDLE consumes it
 
-IDLE depends on `meridian-editor-protocol` (a Rust crate: its own process
+IDLE depends on `meridian-editor-domain` (a Rust crate: its own process
 speaks the same types) and:
 
 1. connects and sends `Hello`;
@@ -181,11 +181,11 @@ synchronous, what listens does I/O.
 
 | Crate | Does | Depends on `tokio` |
 |---|---|---|
-| `meridian-editor-host` | `Session`: the state machine of one editor connection | no |
+| `meridian-editor-app` | `Session`: the state machine of one editor connection | no |
 | `meridian-editor-tcp` | `EditorListener`, `serve_stream`: frames over loopback TCP | yes |
 
 Both sit at the same tier as the protocol (above `scene`, below
-`engine-core`) with no edge beyond `ecs-core`, `scene` and the protocol
+`runtime-app`) with no edge beyond `ecs`, `scene` and the protocol
 ([dependency-rules.md](dependency-rules.md)); both are *infra* in
 `craftbook.toml`, because an app-layer crate may not depend on the protocol
 crate, which is infra (ADR 019).
@@ -233,7 +233,7 @@ message when its topic is subscribed.
 
 ### Play, pause, step
 
-Stepping stays with `engine-core`: the host implements the
+Stepping stays with `runtime-app`: the host implements the
 `SimulationControl` port (`state`, `play`, `pause`, `step`) and the session
 only maps the requests onto it. `Step` pauses, steps once, and stays
 paused. `ManualSimulation` is the port's double: it counts steps, for tests
@@ -246,7 +246,7 @@ Implemented: every `Request` of protocol version 1; subscriptions by
 
 Not yet:
 
-- **Wiring into `engine-core`.** `engine-core` neither depends on the host
+- **Wiring into `runtime-app`.** `runtime-app` neither depends on the host
   nor implements `SimulationControl`. A game today builds the pieces itself:
   a `RequestHandler` that owns (or reaches) its `World`, runs
   `Session::handle`, and an `EditorListener::serve_one` on a tokio task. The
@@ -257,7 +257,7 @@ Not yet:
   game, `ComponentChanged` for edits the game made itself): `announce`
   exists, but the adapter writes only what the handler returns for a
   request, so they are not pushed while the editor is idle. Detecting world
-  changes not caused by a request needs change tracking in `ecs-core`.
+  changes not caused by a request needs change tracking in `ecs`.
 - A Unix socket or named pipe (`serve_stream` takes any async stream, so it
   is a few lines), a second concurrent editor, authentication.
 - Gating by the negotiated version: all of version 1 is served as soon as
