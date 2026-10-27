@@ -53,15 +53,14 @@ depend on crates in tiers `0..N`, never a same-tier or higher-tier one
 
 ```text
 tier 0  foundation, memory-core, task-core, dsl-macros
-tier 1  numeric-core, platform-core, resource-core, dsl-core, ui-core
-tier 2  asset-core, audio-driver, gac-core, gpu-driver, mel-build, physics-driver
-tier 3  audio-core, compute-driver, ecs-core, graphics-driver
-tier 4  compute-runtime, scene
-tier 5  gac-compute, editor-protocol
-tier 6  graphics-core, physics-core, editor-host
-tier 7  physics-compute, editor-tcp
-tier 8  engine-core
-tier 9  sdk
+tier 1  asset-core, dsl-core, numeric-core, platform-core, resource-core, ui-core
+tier 2  audio-driver, gac-core, gpu-driver, mel-build, physics-driver
+tier 3  audio-core, compute-driver, ecs-core, graphics-driver, physics-core
+tier 4  compute-runtime, graphics-core, scene
+tier 5  editor-protocol, gac-compute
+tier 6  editor-host, physics-compute
+tier 7  editor-tcp, engine-core
+tier 8  sdk
 ```
 
 `meridian-dsl-core`/`meridian-dsl-macros` are the two crates behind the
@@ -263,14 +262,14 @@ bottom-up.
 - `meridian-compute-driver` -> `meridian-gpu-driver`, `meridian-platform-core`
 - `meridian-audio-driver` -> `meridian-foundation`, `meridian-platform-core`
 - `meridian-physics-driver` -> `meridian-platform-core`
-- `meridian-compute-runtime` -> `meridian-compute-driver` (pending, wave 5), `meridian-memory-core`, `meridian-task-core` (pending, wave 6)
+- `meridian-compute-runtime` -> `meridian-compute-driver` (pending, wave 5)
 - `meridian-gac-compute` -> `meridian-compute-runtime`, `meridian-gac-core`, `meridian-gpu-driver`, `meridian-numeric-core`
-- `meridian-asset-core` -> `meridian-foundation`, `meridian-platform-core` (pending, wave 5)
-- `meridian-graphics-core` -> `meridian-asset-core`, `meridian-compute-runtime` (pending, wave 5), `meridian-ecs-core`, `meridian-foundation`, `meridian-gac-compute` (pending, wave 5), `meridian-gac-core`, `meridian-graphics-driver` (pending, wave 5), `meridian-memory-core`, `meridian-resource-core`
-- `meridian-audio-core` -> `meridian-audio-driver` (pending, wave 5), `meridian-gac-core`, `meridian-resource-core`
+- `meridian-asset-core` -> `meridian-foundation`
+- `meridian-graphics-core` -> `meridian-asset-core`, `meridian-ecs-core`, `meridian-foundation`, `meridian-gac-core`, `meridian-graphics-driver` (pending, wave 5), `meridian-memory-core`, `meridian-resource-core`
+- `meridian-audio-core` -> `meridian-audio-driver` (pending, wave 5), `meridian-gac-core`
 - `meridian-physics-core` -> `meridian-gac-core`, `meridian-numeric-core`, `meridian-resource-core`
 - `meridian-physics-compute` -> `meridian-compute-runtime`, `meridian-foundation`, `meridian-gac-compute`, `meridian-gac-core`, `meridian-gpu-driver`, `meridian-numeric-core`, `meridian-physics-core`
-- `meridian-engine-core` -> `meridian-asset-core`, `meridian-audio-core`, `meridian-compute-runtime`, `meridian-ecs-core`, `meridian-foundation`, `meridian-gac-core`, `meridian-graphics-core`, `meridian-memory-core`, `meridian-physics-compute` (pending, wave 6), `meridian-physics-core`, `meridian-platform-core` (pending, wave 6), `meridian-task-core` (pending, wave 6)
+- `meridian-engine-core` -> `meridian-audio-core`, `meridian-compute-runtime`, `meridian-ecs-core`, `meridian-foundation`, `meridian-gac-core`, `meridian-physics-compute` (pending, wave 6), `meridian-physics-core`, `meridian-platform-core` (pending, wave 6), `meridian-task-core` (pending, wave 6)
 - `meridian-scene` -> `meridian-ecs-core`, `meridian-gac-core`
 - `meridian-editor-protocol` -> `meridian-ecs-core`, `meridian-scene`
 - `meridian-editor-host` -> `meridian-ecs-core`, `meridian-editor-protocol`, `meridian-scene`
@@ -280,12 +279,13 @@ bottom-up.
 - `meridian-mel-build` -> `meridian-dsl-core`, `meridian-ui-core`
 - `meridian-ui-core` -> `meridian-foundation`, `meridian-memory-core`
 - `meridian-ui-render` -> `meridian-gac-core`, `meridian-graphics-core`, `meridian-ui-core`
-- `meridian-sdk` -> `meridian-asset-core`, `meridian-audio-core`, `meridian-dsl-core`, `meridian-dsl-macros`, `meridian-engine-core`, `meridian-foundation`, `meridian-gac-core`, `meridian-graphics-core`, `meridian-graphics-driver`, `meridian-physics-core`, `meridian-platform-core`, `meridian-task-core`, `meridian-ui-core`
+- `meridian-sdk` -> `meridian-asset-core`, `meridian-audio-core`, `meridian-dsl-core`, `meridian-dsl-macros`, `meridian-engine-core`, `meridian-foundation`, `meridian-gac-core`, `meridian-graphics-core`, `meridian-graphics-driver`, `meridian-physics-core`, `meridian-platform-core`, `meridian-ui-core`
 
-`meridian-engine-core` lists `meridian-graphics-core` as an allowed edge
-(rule 7) but doesn't use it yet — `Runtime::tick` doesn't render a
-frame; see that crate's own module doc for why, and docs/roadmap.md's
-`graphics-core`/`Runtime::tick` entry for the current state.
+`meridian-engine-core` has no edge to `meridian-graphics-core` or
+`meridian-asset-core`: `Runtime::tick` doesn't render a frame or load an
+asset (see that crate's own module doc and docs/roadmap.md's
+`graphics-core`/`Runtime::tick` entry). Rule 7 would allow the edges the day
+a frame step needs them; add them then, not before.
 
 **`meridian-sdk` is the composition root** (interface layer,
 [ADR 020](adr/020-craftbook-adoption.md) D3): the single application-facing

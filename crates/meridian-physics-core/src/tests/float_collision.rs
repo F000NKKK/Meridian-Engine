@@ -168,3 +168,42 @@ fn narrow_phase_cuboid_vs_cuboid_handles_rotated_boxes() {
     let bodies = vec![a, separated_b];
     assert!(NarrowPhase::new().test_pair(&bodies, 0, 1).is_none());
 }
+
+/// The x-axis sweep must report exactly the pairs an exhaustive sweep does,
+/// in the same order, including for bodies listed out of x order and for
+/// bodies sharing a boundary.
+#[test]
+fn broad_phase_sweep_matches_exhaustive_pair_search() {
+    let mut seed = 0x2545_F491_u32;
+    let mut next = || {
+        seed = seed.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+        f32::from(u16::try_from(seed >> 16).expect("16 bits")) / 65_536.0
+    };
+    let bodies: Vec<_> = (0..120)
+        .map(|_| {
+            let position = Vec3::new(next() * 30.0, next() * 6.0, next() * 6.0);
+            sphere(position, Vec3::ZERO, 1.0, 1.0)
+        })
+        .collect();
+    let mut expected = Vec::new();
+    for i in 0..bodies.len() {
+        for j in (i + 1)..bodies.len() {
+            if bodies[i].aabb().overlaps(&bodies[j].aabb()) {
+                expected.push((i, j));
+            }
+        }
+    }
+    let mut broad = BroadPhase::new();
+    assert_eq!(broad.find_candidate_pairs(&bodies), expected.as_slice());
+    assert!(!expected.is_empty(), "scenario must contain overlaps");
+}
+
+#[test]
+fn broad_phase_keeps_pairs_that_only_touch_along_x() {
+    let bodies = vec![
+        sphere(Vec3::new(2.0, 0.0, 0.0), Vec3::ZERO, 1.0, 1.0),
+        sphere(Vec3::ZERO, Vec3::ZERO, 1.0, 1.0),
+    ];
+    let mut broad = BroadPhase::new();
+    assert_eq!(broad.find_candidate_pairs(&bodies), &[(0, 1)]);
+}

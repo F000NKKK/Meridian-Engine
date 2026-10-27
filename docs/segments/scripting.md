@@ -97,13 +97,13 @@ the prior art to copy from is Yog-Mod-Loader's `.yui` -> `.g.rs` pipeline
    attributes, property elements (`<Grid.RowDefinitions>`), and accepting
    `{x:Bind}` in tags built by `build_scene` (today `text_attr` rejects
    them).
-7. **Resources.** Started: `.mres` sets (Substrate-Data text, format in
-   [mel-resources.md](../mel-resources.md)) compile to typed constants,
-   and `@res:Set.name` in a UI attribute is resolved at build time against
-   the sets (through substrate-data's `typed::classify`). Still open:
-   culture variants and run-time language switching, `{name}`
-   placeholders, file/image/sound entries, and `Resources` + `x:Key` in
-   markup with `{StaticResource Key}`.
+7. **Resources.** Done for values: `.mres` sets and `@res:Set.name`, plus
+   `<Owner.Resources>` blocks with `x:Key` and `{StaticResource Key}`
+   resolved at build time, nearest block first and `Set.name` falling back
+   to the `.mres` entry (format and rules in
+   [mel-resources.md](../mel-resources.md)). Still open: culture variants
+   and run-time language switching, `{name}` placeholders,
+   file/image/sound entries, styles and templates, `{DynamicResource}`.
 8. **Hot reload of markup.** Re-parse changed `.mel`/resources at run
    time and rebuild the affected scene part; code-behind changes still
    need a rebuild.

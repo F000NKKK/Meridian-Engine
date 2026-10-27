@@ -74,9 +74,35 @@ the attribute's line. A text starting with `@` stays escaped, so it reads
 as the same text. Other references (`@mesh:hero.mesh`) pass through for the
 program to resolve; any other leading `@` is an error.
 
+## Resources inside a `.mel` file
+
+An element of a UI document may carry a `Resources` block, as in XAML:
+
+```xml
+<StackPanel width="{StaticResource Wide}">
+  <StackPanel.Resources>
+    <Number x:Key="Wide" Value="300" />
+    <String x:Key="Title" Value="Settings" />
+    <Color x:Key="Accent" Value="#FF8800" />
+    <Bool x:Key="Compact" Value="false" />
+  </StackPanel.Resources>
+  <TextBlock text="{StaticResource Title}" />
+  <TextBlock text="{StaticResource Strings.title}" />  <!-- a .mres entry -->
+</StackPanel>
+```
+
+A resource is `<String|Number|Bool|Color x:Key="Key" Value="..." />` (same
+value rules as `.mres`); the key is a plain identifier, unique in its
+block. `{StaticResource Key}` is replaced at build time by the value of the
+nearest block, from the element itself outwards, that defines the key; a
+key written `Set.name` is the `.mres` entry, so `{StaticResource
+Strings.title}` and `@res:Strings.title` are the same. An unknown key, a
+bad block or a second block on one element is a build error at its line.
+
 ## Not yet
 
 Culture variants (`Strings.ru_ru.mres`) and run-time language switching,
-placeholders (`{count}`), file/image/sound entries that bundle assets, a
-`Resources`/`x:Key` block inside a `.mel` file with `{StaticResource Key}`,
-and `@res:` in tags built by `build_scene`.
+placeholders (`{count}`), file/image/sound entries that bundle assets,
+styles and templates (`{StaticResource}` of a whole `Style`), run-time
+lookup (`{DynamicResource}`), and resources in tags built by
+`build_scene`.

@@ -18,8 +18,8 @@ assert_eq!(size.total(), 1000);
 
 ## Depends on / used by
 
-- Depends on: [`meridian-compute-driver`](../meridian-compute-driver), [`meridian-memory-core`](../meridian-memory-core), [`meridian-task-core`](../meridian-task-core)
-- Used by: [`meridian-engine-core`](../meridian-engine-core), [`meridian-gac-compute`](../meridian-gac-compute), [`meridian-graphics-core`](../meridian-graphics-core), [`meridian-physics-compute`](../meridian-physics-compute), [`meridian-physics-core`](../meridian-physics-core)
+- Depends on: [`meridian-compute-driver`](../meridian-compute-driver)
+- Used by: [`meridian-engine-core`](../meridian-engine-core), [`meridian-gac-compute`](../meridian-gac-compute), [`meridian-physics-compute`](../meridian-physics-compute)
 
 ## License
 

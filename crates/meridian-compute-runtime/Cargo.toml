@@ -10,8 +10,6 @@ readme = "README.md"
 
 [dependencies]
 meridian-compute-driver = { workspace = true }
-meridian-task-core = { workspace = true }
-meridian-memory-core = { workspace = true }
 tokio = { workspace = true }
 
 [dev-dependencies]

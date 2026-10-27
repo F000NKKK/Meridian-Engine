@@ -31,7 +31,7 @@ assert_eq!(counter.load(Ordering::SeqCst), 11);
 ## Depends on / used by
 
 - Depends on: no workspace crate
-- Used by: [`meridian-compute-runtime`](../meridian-compute-runtime), [`meridian-engine-core`](../meridian-engine-core), [`meridian-sdk`](../meridian-sdk)
+- Used by: [`meridian-engine-core`](../meridian-engine-core)
 
 ## License
 
