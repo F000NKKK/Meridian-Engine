@@ -9,3 +9,4 @@ impl<T> Sealed for Option<&T> {}
 impl<T> Sealed for Option<&mut T> {}
 impl<T> Sealed for crate::With<T> {}
 impl<T> Sealed for crate::Without<T> {}
+impl<T> Sealed for crate::Changed<T> {}

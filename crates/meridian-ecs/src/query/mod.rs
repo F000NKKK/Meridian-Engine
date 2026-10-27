@@ -15,7 +15,7 @@ mod single_mut;
 mod tuples;
 
 pub use fetch::{Fetch, ReadFetch};
-pub use filter::{With, Without};
+pub use filter::{Changed, With, Without};
 pub use many::QueryMany;
 pub use many_mut::QueryManyMut;
 pub use optional_rows::OptionalRows;

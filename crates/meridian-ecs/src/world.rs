@@ -7,24 +7,73 @@ use meridian_memory::ResourcePool;
 
 use crate::{
     AnyColumn, Archetype, Column, Component, Entity, EntityLocation, Query, QueryMany,
-    QueryManyMut, QueryMut, ReadSelection, Selection,
+    QueryManyMut, QueryMut, ReadSelection, Selection, Tick,
 };
 
 /// Owns entity allocation, every archetype, and their `SoA` storage. Not a
 /// global singleton — the application creates and owns a `World` like any
 /// other value, consistent with [ADR 003](../../../docs/adr/003-no-global-managers.md).
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct World {
     entities: ResourcePool<()>,
     locations: HashMap<Entity, EntityLocation>,
     archetypes: Vec<Archetype>,
     archetype_lookup: HashMap<Vec<TypeId>, usize>,
+    tick: Tick,
+}
+
+impl Default for World {
+    fn default() -> Self {
+        Self {
+            entities: ResourcePool::default(),
+            locations: HashMap::new(),
+            archetypes: Vec::new(),
+            archetype_lookup: HashMap::new(),
+            tick: Tick::FIRST,
+        }
+    }
 }
 
 impl World {
     #[must_use]
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// The current tick. Every write stamps its column with it.
+    #[must_use]
+    pub fn tick(&self) -> Tick {
+        self.tick
+    }
+
+    /// Moves the clock forward and returns the new tick. A system that
+    /// reads changes keeps the value this returned when it last finished and
+    /// passes it as `since` to [`World::query_many_since`]: everything
+    /// written during its own run is stamped with an earlier tick and is not
+    /// reported back to it, everything written afterwards is. `Changed<T>`
+    /// compares with "at or after", so no write is ever missed.
+    pub fn advance_tick(&mut self) -> Tick {
+        self.tick = self.tick.next();
+        self.tick
+    }
+
+    /// Stamps the `T` column of `archetype` as changed now.
+    fn mark_column<T: Component>(&mut self, archetype: usize) {
+        let now = self.tick;
+        if let Some(column) = self.archetypes[archetype]
+            .columns
+            .get_mut(&TypeId::of::<T>())
+        {
+            column.mark_changed(now);
+        }
+    }
+
+    /// Stamps every column of `archetype` as changed now.
+    fn mark_archetype(&mut self, archetype: usize) {
+        let now = self.tick;
+        for column in self.archetypes[archetype].columns.values_mut() {
+            column.mark_changed(now);
+        }
     }
 
     /// Returns the index of the archetype for `signature` (a sorted list
@@ -104,6 +153,7 @@ impl World {
         };
         self.entities.remove(entity.into());
         self.remove_row(loc.archetype, loc.row);
+        self.mark_archetype(loc.archetype);
         true
     }
 
@@ -187,6 +237,7 @@ impl World {
 
         if self.archetypes[old_arch].type_ids.contains(&type_id) {
             self.archetypes[old_arch].column_mut::<T>()[old_row] = component;
+            self.mark_column::<T>(old_arch);
             return true;
         }
 
@@ -194,7 +245,7 @@ impl World {
         new_signature.push(type_id);
         new_signature.sort_unstable();
 
-        let extra: Box<dyn AnyColumn> = Box::new(Column::<T>(Vec::new()));
+        let extra: Box<dyn AnyColumn> = Box::new(Column::<T>(Vec::new(), Tick::ZERO));
         let new_arch = self.archetype_for(new_signature, Some(old_arch), Some((type_id, extra)));
 
         self.move_entity(
@@ -208,6 +259,8 @@ impl World {
         );
 
         self.archetypes[new_arch].column_mut::<T>().push(component);
+        self.mark_archetype(new_arch);
+        self.mark_archetype(old_arch);
         true
     }
 
@@ -243,6 +296,8 @@ impl World {
             Some(type_id),
         );
 
+        self.mark_archetype(old_arch);
+        self.mark_archetype(new_arch);
         Some(removed)
     }
 
@@ -257,9 +312,11 @@ impl World {
 
     pub fn get_mut<T: Component>(&mut self, entity: Entity) -> Option<&mut T> {
         let loc = *self.locations.get(&entity)?;
+        let now = self.tick;
         let col = self.archetypes[loc.archetype]
             .columns
             .get_mut(&TypeId::of::<T>())?;
+        col.mark_changed(now);
         col.as_any_mut()
             .downcast_mut::<Column<T>>()?
             .0
@@ -303,10 +360,14 @@ impl World {
     /// every archetype that includes it.
     pub fn query_mut<T: Component>(&mut self) -> QueryMut<'_, T> {
         let type_id = TypeId::of::<T>();
+        let now = self.tick;
         let inner = self.archetypes.iter_mut().flat_map(move |arch| {
             arch.columns
                 .get_mut(&type_id)
-                .and_then(|col| col.as_any_mut().downcast_mut::<Column<T>>())
+                .and_then(|col| {
+                    col.mark_changed(now);
+                    col.as_any_mut().downcast_mut::<Column<T>>()
+                })
                 .into_iter()
                 .flat_map(|col| arch.entities.iter().copied().zip(col.0.iter_mut()))
         });
@@ -319,7 +380,14 @@ impl World {
     /// components in the tuple `Q` (two to four `&T` elements).
     #[must_use]
     pub fn query_many<Q: ReadSelection>(&self) -> QueryMany<'_, Q> {
-        QueryMany::new(self.archetypes.iter())
+        QueryMany::new(self.archetypes.iter(), Tick::ZERO)
+    }
+
+    /// [`World::query_many`] that also admits `Changed<T>` elements: an
+    /// archetype matches only if each such `T` column changed after `since`.
+    #[must_use]
+    pub fn query_many_since<Q: ReadSelection>(&self, since: Tick) -> QueryMany<'_, Q> {
+        QueryMany::new(self.archetypes.iter(), since)
     }
 
     /// Iterates `(Entity, (&A, &mut B, ..))` for every entity that has all
@@ -331,6 +399,17 @@ impl World {
     /// If `Q` names one component type twice, since `(&mut T, &T)` would
     /// alias the same column.
     pub fn query_many_mut<Q: Selection>(&mut self) -> QueryManyMut<'_, Q> {
-        QueryManyMut::new(self.archetypes.iter_mut())
+        QueryManyMut::new(self.archetypes.iter_mut(), Tick::ZERO, self.tick)
+    }
+
+    /// [`World::query_many_mut`] that also admits `Changed<T>` elements. The
+    /// columns behind `&mut` elements count as changed as soon as the query
+    /// hands them out, whether or not the loop writes.
+    ///
+    /// # Panics
+    ///
+    /// If `Q` names one component type twice.
+    pub fn query_many_mut_since<Q: Selection>(&mut self, since: Tick) -> QueryManyMut<'_, Q> {
+        QueryManyMut::new(self.archetypes.iter_mut(), since, self.tick)
     }
 }

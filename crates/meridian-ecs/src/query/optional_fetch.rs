@@ -4,7 +4,7 @@ use std::slice::{Iter, IterMut};
 
 use super::optional_rows::OptionalRows;
 use super::{Fetch, ReadFetch};
-use crate::Component;
+use crate::{Component, Tick};
 
 impl<T: Component> Fetch for Option<&T> {
     type Component = T;
@@ -13,7 +13,7 @@ impl<T: Component> Fetch for Option<&T> {
 
     const ACCESSES_COLUMN: bool = true;
 
-    fn admits(_has_component: bool) -> bool {
+    fn admits(_column: Option<Tick>, _since: Tick) -> bool {
         true
     }
 
@@ -34,8 +34,9 @@ impl<T: Component> Fetch for Option<&mut T> {
     type Iter<'w> = OptionalRows<IterMut<'w, T>>;
 
     const ACCESSES_COLUMN: bool = true;
+    const WRITES: bool = true;
 
-    fn admits(_has_component: bool) -> bool {
+    fn admits(_column: Option<Tick>, _since: Tick) -> bool {
         true
     }
 
