@@ -37,8 +37,6 @@ pub use meridian_asset_png::PngDecoder;
 pub use meridian_asset_symphonia::{
     AnyAudioDecoder, AudioAsset, DecodeStrategy, StreamingAudioDecoder, open_audio,
 };
-// -- meridian-audio-app: the output port --
-pub use meridian_audio_app::AudioSink;
 // -- meridian-audio-app: the output port and audio state --
 pub use meridian_audio_app::{AudioSink, AudioSubsystem};
 // -- meridian-audio-core: spatial audio --
