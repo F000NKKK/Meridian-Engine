@@ -1,15 +1,12 @@
 //! [`GeneratedModule`]: the Rust source of one `<name>.g.rs`.
 
 use crate::MelDocument;
+use crate::code_writer::{ALLOW, CodeWriter};
+use crate::ui_bindings::UiBindings;
 
 /// Where everything the generated code names lives; applications reach
 /// the engine through `meridian-sdk` alone.
 const DSL: &str = "::meridian_sdk::dsl";
-
-/// On every generated item: a code-behind uses only part of the module,
-/// and an `expect` would fail for the parts it does use.
-const ALLOW: &str =
-    "#[allow(dead_code, reason = \"generated from markup; a code-behind uses only part of it\")]";
 
 /// The generated Rust source for one [`MelDocument`].
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -35,8 +32,10 @@ impl GeneratedModule {
         render_names(&mut code, document);
         render_alias(&mut code, "Class", document.class.as_deref());
         render_alias(&mut code, "ViewModel", document.view_model.as_deref());
-        render_functions(&mut code);
-        render_bindings(&mut code, document);
+        if document.ui.is_none() {
+            render_functions(&mut code);
+        }
+        UiBindings::new(document).render(&mut code);
         Self { code: code.text }
     }
 }
@@ -108,136 +107,5 @@ fn render_functions(code: &mut CodeWriter) {
     code.line("}");
 }
 
-/// `type_check_bindings`: never called, it exists so that `rustc` checks
-/// every `{x:Bind}` against the view model, with errors pointing at the
-/// `// @mel` line of the binding.
-fn render_bindings(code: &mut CodeWriter, document: &MelDocument) {
-    if document.view_model.is_none() {
-        return;
-    }
-    code.line("\n/// Checks every `{x:Bind}` against [`ViewModel`] at compile time.");
-    code.line(ALLOW);
-    code.line("fn type_check_bindings(vm: &mut ViewModel) {");
-    for binding in &document.bindings {
-        code.line(format!(
-            "    // @mel {}:{} {}",
-            document.path.display(),
-            binding.span,
-            binding.property
-        ));
-        code.line("    {");
-        for statement in binding.type_check() {
-            code.line(format!("        {statement}"));
-        }
-        code.line("    }");
-    }
-    code.line("    let _ = vm;");
-    code.line("}");
-}
-
-/// Accumulates generated source line by line.
-#[derive(Default)]
-struct CodeWriter {
-    text: String,
-}
-
-impl CodeWriter {
-    fn line(&mut self, line: impl AsRef<str>) {
-        self.text.push_str(line.as_ref());
-        self.text.push('\n');
-    }
-}
-
 #[cfg(test)]
-mod tests {
-    use std::path::Path;
-
-    use super::*;
-
-    fn render(source: &str) -> String {
-        let document = MelDocument::parse(Path::new("/scenes/demo.mel"), source).unwrap();
-        GeneratedModule::render(&document).code
-    }
-
-    #[test]
-    fn names_class_and_functions_are_generated() {
-        let code = render(r#"<Scene x:Class="crate::Demo"><Entity x:Name="left_arm" /></Scene>"#);
-        assert!(
-            code.contains(r#"include_str!("/scenes/demo.mel")"#),
-            "{code}"
-        );
-        assert!(
-            code.contains("    // @mel /scenes/demo.mel:1:30\n    LeftArm,"),
-            "{code}"
-        );
-        assert!(
-            code.contains("pub const ALL: [Self; 1] = [Self::LeftArm];"),
-            "{code}"
-        );
-        assert!(code.contains(r#"Self::LeftArm => "left_arm","#), "{code}");
-        assert!(code.contains("pub type Class = crate::Demo;"), "{code}");
-        assert!(!code.contains("ViewModel"), "{code}");
-        assert!(
-            code.contains("::meridian_sdk::dsl::build_scene(SOURCE, registry)"),
-            "{code}"
-        );
-    }
-
-    #[test]
-    fn bindings_are_type_checked_against_the_view_model() {
-        let code = render(
-            r#"<Hud x:ViewModel="crate::HudVm">
-                <Label x:Name="title" text="{x:Bind player?.name, Fallback='-'}" />
-                <Input x:Name="query" text="{x:Bind search.text, Mode=TwoWay}" />
-                <Toggle x:Name="mute" checked="{x:Bind is_muted(), Mode=TwoWay, BindBack=set_muted}" />
-            </Hud>"#,
-        );
-        assert!(
-            code.contains("fn type_check_bindings(vm: &mut ViewModel) {"),
-            "{code}"
-        );
-        assert!(
-            code.contains("// @mel /scenes/demo.mel:2:39 text"),
-            "{code}"
-        );
-        assert!(
-            code.contains(
-                "(|vm: &ViewModel| -> Option<()> { let _value = &(vm.player.as_ref()?.name); Some(()) })(vm);"
-            ),
-            "{code}"
-        );
-        assert!(code.contains(r#"let _fallback = &("-");"#), "{code}");
-        assert!(
-            code.contains("let _target = &mut (vm.search.text);"),
-            "{code}"
-        );
-        assert!(code.contains("let _value = &(vm.is_muted());"), "{code}");
-        assert!(
-            code.contains("let _bind_back = ViewModel::set_muted;"),
-            "{code}"
-        );
-        assert_eq!(
-            code.matches('{').count(),
-            code.matches('}').count(),
-            "{code}"
-        );
-    }
-
-    #[test]
-    fn document_without_names_has_an_empty_enum() {
-        let code = render("<Scene />");
-        assert!(code.contains("pub enum Name {\n}\n\n"), "{code}");
-        assert!(
-            code.contains("        match self {\n        }\n    }\n}\n"),
-            "{code}"
-        );
-        assert_eq!(
-            code.matches('{').count(),
-            code.matches('}').count(),
-            "{code}"
-        );
-        assert_eq!(code.matches("#[allow(dead_code").count(), 5, "{code}");
-        assert!(!code.contains("type_check_bindings"), "{code}");
-        assert!(code.contains("pub const ALL: [Self; 0] = [];"), "{code}");
-    }
-}
+mod tests;

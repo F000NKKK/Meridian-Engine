@@ -35,3 +35,30 @@ pub enum ElementKind {
     /// A run of text, sized by a [`crate::TextMeasurer`].
     TextBlock,
 }
+
+impl ElementKind {
+    /// Every kind, for tooling that lists or round-trips tags.
+    pub const ALL: [Self; 5] = [
+        Self::Border,
+        Self::StackPanel,
+        Self::DockPanel,
+        Self::Grid,
+        Self::TextBlock,
+    ];
+
+    /// The markup tag of this kind (`<StackPanel>`).
+    pub const fn tag(self) -> &'static str {
+        match self {
+            Self::Border => "Border",
+            Self::StackPanel => "StackPanel",
+            Self::DockPanel => "DockPanel",
+            Self::Grid => "Grid",
+            Self::TextBlock => "TextBlock",
+        }
+    }
+
+    /// The kind a markup tag names, if any. Tags are case-sensitive.
+    pub fn from_tag(tag: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|kind| kind.tag() == tag)
+    }
+}

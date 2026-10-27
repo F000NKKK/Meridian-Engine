@@ -1,18 +1,21 @@
 //! [`PropertyBinding`]: one `property="{x:Bind ...}"` of a named element.
 
-use meridian_dsl_core::{MarkupExtension, MarkupValue, Span};
+use meridian_dsl_core::{MarkupExtension, MarkupValue, QualifiedName, Span};
 
 use super::argument::Argument;
 use super::expr::Expr;
 use super::mode::Mode;
-use crate::InvalidMarkup;
+use super::property_path::PropertyPath;
+use crate::{InvalidMarkup, NamedElement};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct PropertyBinding {
-    /// The `Name` variant of the element the binding sits on.
-    pub element: String,
+    /// The `Names` field of the element the binding sits on.
+    pub field: String,
     /// The bound attribute as written (`text`, `Grid.Row`).
     pub property: String,
+    /// The UI property it resolves to.
+    pub path: PropertyPath,
     pub expr: Expr,
     pub mode: Mode,
     /// `BindBack=method`: called with the new value instead of writing
@@ -27,8 +30,9 @@ pub struct PropertyBinding {
 impl PropertyBinding {
     /// Reads `{x:Bind expr, Mode=.., BindBack=.., Fallback=..}`.
     pub fn new(
-        element: &str,
-        property: &str,
+        element: &NamedElement,
+        tag: &str,
+        attr: &QualifiedName,
         extension: &MarkupExtension,
         span: Span,
     ) -> Result<Self, InvalidMarkup> {
@@ -36,8 +40,9 @@ impl PropertyBinding {
             return Err(InvalidMarkup::BindingArity);
         };
         let mut binding = Self {
-            element: element.to_string(),
-            property: property.to_string(),
+            field: element.field.clone(),
+            property: attr.to_string(),
+            path: PropertyPath::resolve(tag, attr)?,
             expr: Expr::parse(expr).map_err(InvalidMarkup::BindingExpression)?,
             mode: Mode::default(),
             bind_back: None,
@@ -78,6 +83,9 @@ impl PropertyBinding {
             }
             Argument::Fallback => {
                 let fallback = Expr::parse(text).map_err(InvalidMarkup::BindingExpression)?;
+                if fallback.is_optional() {
+                    return Err(InvalidMarkup::OptionalFallback);
+                }
                 self.fallback = Some(fallback);
             }
         }

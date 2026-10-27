@@ -44,4 +44,17 @@ pub enum InvalidMarkup {
     /// `Fallback=` on an expression without `?.`, which never meets `None`.
     #[error("Fallback= only applies to an expression with '?.'")]
     FallbackWithoutOptional,
+    /// A `Fallback=` expression with `?.`: it is the value for `None`, so
+    /// it cannot itself be missing.
+    #[error("Fallback= must not contain '?.'")]
+    OptionalFallback,
+    /// A bound attribute that is not a registered UI property.
+    #[error("<{element}> has no property '{property}'")]
+    UnknownProperty { element: String, property: String },
+    /// An element of a UI document that is not a `meridian-ui-core` kind.
+    #[error("<{0}> is not a UI element (known: Border, StackPanel, DockPanel, Grid, TextBlock)")]
+    UnknownElement(String),
+    /// A markup extension other than `{x:Bind}` on a UI attribute.
+    #[error("{{{0}}} is not supported on UI attributes yet")]
+    UnsupportedExtension(String),
 }

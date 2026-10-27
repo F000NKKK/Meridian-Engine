@@ -8,9 +8,13 @@
 //! - `Name`, one enum variant per `x:Name`, with `as_str` and `ALL`;
 //! - `Class` / `ViewModel`, type aliases for the root's `x:Class` /
 //!   `x:ViewModel`, so a typo in the code-behind path fails the build;
-//! - `build(registry)` and `find(root, name)`;
-//! - with an `x:ViewModel`, `type_check_bindings`: never called, it makes
-//!   `rustc` check every `{x:Bind}` against the view model.
+//! - `build(registry)` and `find(root, name)` for a scene document;
+//! - for a UI document (root is a `meridian-ui-core` element), `build_ui`
+//!   instead, which creates the elements in a `UiTree`;
+//! - with `{x:Bind}` attributes, `Names` (a `NodeId` per `x:Name`),
+//!   `apply_one_time_bindings`, `apply_bindings` and `write_back_bindings`
+//!   against a `meridian-ui-core` tree (ADR 018); `rustc` checks every
+//!   binding against the view model.
 //!
 //! The document is validated while generating, so a malformed `.mel`
 //! fails `cargo build` with `file:line:column`, not the program at run
@@ -19,15 +23,22 @@
 
 mod binding;
 mod build_error;
+mod code_writer;
 mod compile;
 mod generated_module;
 mod invalid_markup;
 mod mel_document;
 mod named_element;
+mod ui_bindings;
+mod ui_build;
+mod ui_literal;
+mod ui_node;
 
+pub(crate) use binding::snake_case;
 pub use binding::{
     CompareOperator, Expr as BindingExpr, ExprError as BindingExprError,
     ExprErrorKind as BindingExprErrorKind, Literal, Mode as BindingMode, PropertyBinding,
+    PropertyPath,
 };
 pub use build_error::BuildError;
 pub use compile::{compile_dir, compile_file};
@@ -35,3 +46,5 @@ pub use generated_module::GeneratedModule;
 pub use invalid_markup::InvalidMarkup;
 pub use mel_document::MelDocument;
 pub use named_element::NamedElement;
+pub use ui_literal::UiLiteral;
+pub use ui_node::UiNode;

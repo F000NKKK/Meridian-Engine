@@ -69,6 +69,9 @@ pub mod scene;
 pub use assets::{AssetCache, AudioTrack, load_audio_track, load_image_asset};
 pub use camera::{FlyCamera, look_at_rotor};
 pub use dsl::dsl_core;
+/// The retained UI runtime (ADR 018); generated `.mel` glue names it
+/// through here.
+pub use meridian_ui_core as ui_core;
 pub use render::{RenderStage, render_frame};
 pub use scene::{
     GraphicsBase, cube_mesh_source, ground_mesh_source, icosphere_mesh_source, pyramid_mesh_source,

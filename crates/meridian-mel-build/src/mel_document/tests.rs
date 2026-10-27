@@ -83,21 +83,21 @@ fn parse_errors_keep_the_path() {
 #[test]
 fn collects_bindings_on_named_elements() {
     let doc = document(
-        r#"<Hud x:ViewModel="Vm">
-            <Label x:Name="score" text="{x:Bind score_text(), Mode=OneTime}" Grid.Row="{x:Bind row}" />
-        </Hud>"#,
+        r#"<StackPanel x:ViewModel="Vm">
+            <TextBlock x:Name="score_label" text="{x:Bind score_text(), Mode=OneTime}" Grid.Row="{x:Bind row}" />
+        </StackPanel>"#,
     )
     .unwrap();
     let bound: Vec<_> = doc
         .bindings
         .iter()
-        .map(|b| (b.element.as_str(), b.property.as_str(), b.mode))
+        .map(|b| (b.field.as_str(), b.property.as_str(), b.mode))
         .collect();
     assert_eq!(
         bound,
         [
-            ("Score", "text", crate::BindingMode::OneTime),
-            ("Score", "Grid.Row", crate::BindingMode::OneWay),
+            ("score_label", "text", crate::BindingMode::OneTime),
+            ("score_label", "Grid.Row", crate::BindingMode::OneWay),
         ]
     );
 }
@@ -114,7 +114,7 @@ fn binding_rules() {
     );
     let bound = |binding: &str| {
         rejection(&format!(
-            r#"<A x:ViewModel="Vm"><B x:Name="b" v="{binding}" /></A>"#
+            r#"<A x:ViewModel="Vm"><Border x:Name="b" width="{binding}" /></A>"#
         ))
     };
     assert_eq!(bound("{x:Bind}"), InvalidMarkup::BindingArity);
@@ -146,6 +146,21 @@ fn binding_rules() {
     assert_eq!(
         bound("{x:Bind a, Fallback=1}"),
         InvalidMarkup::FallbackWithoutOptional
+    );
+    assert_eq!(
+        bound("{x:Bind a?.b, Fallback=c?.d}"),
+        InvalidMarkup::OptionalFallback
+    );
+}
+
+#[test]
+fn bound_attributes_must_be_ui_properties() {
+    assert_eq!(
+        rejection(r#"<A x:ViewModel="Vm"><Border x:Name="b" text="{x:Bind t}" /></A>"#),
+        InvalidMarkup::UnknownProperty {
+            element: "Border".to_string(),
+            property: "text".to_string()
+        }
     );
 }
 

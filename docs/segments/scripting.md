@@ -72,18 +72,31 @@ the prior art to copy from is Yog-Mod-Loader's `.yui` -> `.g.rs` pipeline
    (`on_*` attributes -> code-behind methods), waiting for an engine
    event source to raise them, and porting `physic_figures` once markup
    hot reload (item 8) keeps run-time editing.
-6. **`{x:Bind}` expression compiler.** Done, part 1: the Yog `x:Bind`
-   subset (members, calls, `Type::path`s, literals, `!`, `==`, `!=`,
-   `?.`) is parsed into `BindingExpr` and rendered as Rust over `vm`;
+6. **`{x:Bind}` expression compiler.** Done. The Yog `x:Bind` subset
+   (members, calls, `Type::path`s, literals, `!`, `==`, `!=`, `?.`) is
+   parsed into `Expr` and rendered as Rust over `vm`;
    `Mode`/`BindBack`/`Fallback` are validated (an `x:ViewModel` and an
    `x:Name` are required, `TwoWay` needs a member path or `BindBack`,
-   `Fallback` needs a `?.`); the generated `type_check_bindings` makes
-   `rustc` check every binding against the view model, under a
-   `// @mel file:line:column` marker. Part 2, once `team/ui-ux` lands the
-   element/property model: generated `apply_bindings` (OneWay/OneTime)
-   and write-back from the target's change list (TwoWay), and accepting
-   `{x:Bind}` attributes in built tags (today `text_attr` rejects them,
-   so `build` fails for a document that has bindings).
+   `Fallback` needs a `?.` and may not contain one). A bound attribute is
+   resolved against `meridian-ui-core`'s registry at build time
+   ([ADR 018](../adr/018-ui-architecture.md) section 5), so an unknown
+   property is an error at its `.mel` line. The generated module gets a
+   `Names` struct (a `NodeId` per `x:Name`), `apply_one_time_bindings`,
+   `apply_bindings` (view model -> `tree.set`) and `write_back_bindings`
+   (user edits from `tree.drain_changes()` -> view model or `BindBack`),
+   each statement under a `// @mel file:line:column` marker, so `rustc`
+   checks every binding against the view model. The view-model dirty
+   flag that decides *when* `apply_bindings` runs is the caller's for now.
+   A document whose root is a `ui-core` element (`Border`, `StackPanel`,
+   `DockPanel`, `Grid`, `TextBlock`) also gets `build_ui(tree)`, which
+   creates the elements in markup order, sets plain attributes through
+   `tree.set_literal` (parsed by `PropertyType::parse`, `@@` escapes `@`)
+   and returns the root with `Names`. Unknown tags, unknown properties,
+   property elements and non-`{x:Bind}` extensions are build errors with
+   their `.mel` line. Still open: references (`@kind:id`, `@res:`) in
+   attributes, property elements (`<Grid.RowDefinitions>`), and accepting
+   `{x:Bind}` in tags built by `build_scene` (today `text_attr` rejects
+   them).
 7. **Resources.** `Resources` + `x:Key` in markup and an external
    resource file (Yog's `.yres` analogue, in Substrate-Data text) with
    generated typed accessors, referenced as `@res:Set.name`.
