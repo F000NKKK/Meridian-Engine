@@ -89,6 +89,16 @@ symphonia-adapter-libopus = "0.3"
 # single-format need.
 png = "0.18"
 
+# Every Meridian-owned data format (scenes, prefabs, saves, editor
+# messages) is Substrate Data — see docs/adr/016-data-formats-on-substrate-data.md.
+# `substrate-data` re-exports its `#[derive(Schema)]` (`substrate-data-derive`),
+# so this one entry is all a crate needs. Pinned by git revision because it
+# isn't on crates.io yet: an exact `rev` keeps every build reproducible while
+# the library moves in its own repository; switch to a crates.io version
+# requirement once it's published. Used optionally (`data` feature) by
+# `numeric-core`/`gac-core`, and directly by `meridian-scene`.
+substrate-data = { git = "https://github.com/F000NKKK/substrate-data", rev = "230bd364223caedee29ceccbf18792c9ec7e0c9a" }
+
 [profile.release]
 lto = true
 codegen-units = 1
