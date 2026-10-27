@@ -160,3 +160,30 @@ fn document_without_names_has_an_empty_enum() {
     assert!(!code.contains("Names"), "{code}");
     assert!(code.contains("pub const ALL: [Self; 0] = [];"), "{code}");
 }
+
+#[test]
+fn event_handlers_become_dispatch() {
+    let code = render(
+        r#"<StackPanel x:ViewModel="crate::HudVm">
+            <TextBlock x:Name="title" click="{x:Bind save}" key_pressed="{x:Bind on_key(e)}" />
+        </StackPanel>"#,
+    );
+    assert!(code.contains("pub fn dispatch(vm: &mut ViewModel, tree: &::meridian_sdk::ui_core::UiTree, names: &Names, events: &[::meridian_sdk::ui_core::UiEvent]) {"), "{code}");
+    assert!(
+        code.contains("route.extend(tree.ancestors(event.target));"),
+        "{code}"
+    );
+    assert!(
+        code.contains(
+            "if node == names.title && tag == ::meridian_sdk::ui_core::UiEventTag::Click {"
+        ),
+        "{code}"
+    );
+    assert!(
+        code.contains(
+            "IntoHandled::into_handled(vm.save()) == ::meridian_sdk::ui_core::Handled::Yes"
+        ),
+        "{code}"
+    );
+    assert!(code.contains("vm.on_key(event)"), "{code}");
+}

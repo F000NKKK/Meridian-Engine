@@ -43,7 +43,7 @@ impl UiEventTag {
             Self::PointerEntered => "pointer_entered",
             Self::PointerLeft => "pointer_left",
             Self::KeyPressed => "key_pressed",
-            Self::Text => "text",
+            Self::Text => "text_input",
             Self::FocusGained => "focus_gained",
             Self::FocusLost => "focus_lost",
         }

@@ -3,6 +3,7 @@
 
 mod argument;
 mod compare_operator;
+mod event_handler;
 mod expr;
 mod expr_error;
 mod expr_parser;
@@ -14,6 +15,7 @@ mod render;
 mod ui_code;
 
 pub use compare_operator::CompareOperator;
+pub use event_handler::EventHandler;
 pub use expr::Expr;
 pub use expr_error::{ExprError, ExprErrorKind};
 pub use literal::Literal;

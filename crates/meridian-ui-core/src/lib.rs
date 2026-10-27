@@ -37,7 +37,8 @@ pub use error::UiError;
 pub use geometry::{Point, Rect, Size, Thickness};
 pub use hit_test::hit_test;
 pub use input::{
-    InputEvent, InputOutcome, Key, Modifiers, PointerButton, UiEvent, UiEventKind, UiEventTag,
+    Handled, InputEvent, InputOutcome, IntoHandled, Key, Modifiers, PointerButton, UiEvent,
+    UiEventKind, UiEventTag,
 };
 pub use layout::{FixedAdvanceText, TextMeasurer, compute_layout};
 pub use node::{ElementKind, NodeId};

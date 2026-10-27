@@ -33,6 +33,12 @@ pub enum InvalidMarkup {
     BindingWithoutName(String),
     #[error("{{x:Bind}} takes exactly one expression")]
     BindingArity,
+    /// An event attribute written as anything but `method` or `method(e)`.
+    #[error("event '{0}' binds a view-model method: {{x:Bind method}} or {{x:Bind method(e)}}")]
+    EventHandlerShape(String),
+    /// `Mode`, `BindBack` or `Fallback` on an event attribute.
+    #[error("an event handler takes no {{x:Bind}} argument ('{0}')")]
+    EventHandlerArgument(String),
     #[error("{0}")]
     BindingExpression(crate::BindingExprError),
     #[error("unknown {{x:Bind}} argument '{0}' (known: Mode, BindBack, Fallback)")]

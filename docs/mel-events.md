@@ -4,8 +4,8 @@ Contract between the markup side (`meridian-mel-build`, team/scripting)
 and the event source (`meridian-ui-core`, team/ui-ux). It follows the
 WinUI 3 / MVVM model the owner chose (ADR 017, ADR 018): handlers are
 view-model methods bound with `x:Bind`, events are routed, and code-behind
-handlers stay optional. Nothing here is implemented on the markup side
-yet; the event source (`UiEvent`, `UiTree::drain_events`, bubbling along
+handlers stay optional. Implemented: the event attributes, `dispatch` and
+`Handled`/`IntoHandled` (ui-core); not yet: tunneling and commands. The event source (`UiEvent`, `UiTree::drain_events`, bubbling along
 `UiTree::ancestors`) exists since ui-core #35.
 
 ## Markup
@@ -14,14 +14,17 @@ An attribute whose name is an event of the element, bound with a
 plain `x:Bind` member path, is a handler:
 
 ```xml
-<Button x:Name="save" click="{x:Bind Save}" />
-<TextBox x:Name="name" key_pressed="{x:Bind OnKey}" text_changed="{x:Bind Rename}" />
+<Button x:Name="save" click="{x:Bind save}" />
+<TextBox x:Name="name" key_pressed="{x:Bind on_key(e)}" text_input="{x:Bind rename(e)}" />
 ```
 
 - The right-hand side is a method of the `x:ViewModel`, written as in WinUI
-  `x:Bind` event binding. Its signature is `fn save(&mut self)` or
-  `fn on_key(&mut self, event: &UiEvent) -> Handled`; the generator
-  checks it against the view model like any other `x:Bind` (ADR 017).
+  `x:Bind` event binding and named as in Rust like every other `x:Bind`:
+  `method` or `method()` calls `fn save(&mut self)`, `method(e)` passes the
+  event, `fn on_key(&mut self, event: &UiEvent)`. Either may return `()` or
+  `Handled`. Rust checks the signature against the view model (ADR 017).
+- An attribute that is a property of the element stays a property: the
+  event on `TextBlock`'s `text` property is spelled `text_input`.
 - The element needs an `x:Name` (the handler is keyed by its `NodeId` from
   `Names`).
 - No `{x:Bind}` mode applies; `Mode`, `BindBack` and `Fallback` on an event
@@ -55,7 +58,7 @@ bus (CLAUDE.md: no singleton managers).
 
 ## Commands
 
-`command="{x:Bind SaveCommand}"` on a `Button`-like element binds an
+`command="{x:Bind save_command}"` on a `Button`-like element binds an
 `ICommand` equivalent: the view model's `Command` has `execute(&mut self)`
 and `can_execute(&self) -> bool`; the generator applies `can_execute` to
 the element's `enabled` property in `apply_bindings` and runs `execute`

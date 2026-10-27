@@ -3,6 +3,8 @@
 //! window or a backend.
 
 mod event;
+mod handled;
+mod into_handled;
 mod key;
 mod modifiers;
 mod outcome;
@@ -11,6 +13,8 @@ mod ui_event;
 mod ui_event_tag;
 
 pub use event::InputEvent;
+pub use handled::Handled;
+pub use into_handled::IntoHandled;
 pub use key::Key;
 pub use modifiers::Modifiers;
 pub use outcome::InputOutcome;
