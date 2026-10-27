@@ -1,11 +1,13 @@
 //! A result that a background job will fill in.
 
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Condvar, Mutex, MutexGuard};
 
 /// What a background job has produced so far.
 struct Slot<T> {
     value: Mutex<Option<T>>,
     ready: Condvar,
+    cancelled: AtomicBool,
 }
 
 impl<T> Slot<T> {
@@ -39,6 +41,7 @@ pub(crate) fn channel<T>(fallback: fn() -> T) -> (Pending<T>, Completer<T>) {
     let slot = Arc::new(Slot {
         value: Mutex::new(None),
         ready: Condvar::new(),
+        cancelled: AtomicBool::new(false),
     });
     let pending = Pending {
         slot: Arc::clone(&slot),
@@ -54,6 +57,11 @@ pub(crate) fn channel<T>(fallback: fn() -> T) -> (Pending<T>, Completer<T>) {
 }
 
 impl<T> Completer<T> {
+    /// Whether the caller asked for the job to be skipped.
+    pub(crate) fn is_cancelled(&self) -> bool {
+        self.slot.cancelled.load(Ordering::Acquire)
+    }
+
     pub(crate) fn complete(mut self, value: T) {
         self.fill(value);
     }
@@ -86,6 +94,13 @@ impl<T> Pending<T> {
     #[must_use]
     pub fn take(&self) -> Option<T> {
         self.slot.lock().take()
+    }
+
+    /// Asks the job not to run. A job still queued is skipped and resolves
+    /// as cancelled; one that already started finishes and keeps its result.
+    /// Either way the [`Pending`] still resolves, so `wait` does not hang.
+    pub fn cancel(&self) {
+        self.slot.cancelled.store(true, Ordering::Release);
     }
 
     /// Blocks until the job has finished and returns its result.

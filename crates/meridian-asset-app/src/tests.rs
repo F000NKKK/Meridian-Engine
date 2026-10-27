@@ -24,7 +24,7 @@ impl ByteSource for Files {
 struct Inline;
 
 impl Spawn for Inline {
-    fn spawn(&self, job: Box<dyn FnOnce() + Send>) {
+    fn spawn(&self, _priority: Priority, job: Box<dyn FnOnce() + Send>) {
         job();
     }
 }
@@ -33,7 +33,7 @@ impl Spawn for Inline {
 struct Threaded;
 
 impl Spawn for Threaded {
-    fn spawn(&self, job: Box<dyn FnOnce() + Send>) {
+    fn spawn(&self, _priority: Priority, job: Box<dyn FnOnce() + Send>) {
         thread::spawn(job);
     }
 }
@@ -42,7 +42,7 @@ impl Spawn for Threaded {
 struct Gone;
 
 impl Spawn for Gone {
-    fn spawn(&self, _job: Box<dyn FnOnce() + Send>) {}
+    fn spawn(&self, _priority: Priority, _job: Box<dyn FnOnce() + Send>) {}
 }
 
 struct Sum;
@@ -121,7 +121,7 @@ fn take_polls_without_blocking_and_returns_the_result_once() {
 fn take_is_none_while_the_job_has_not_run() {
     struct Parked(std::sync::Mutex<Vec<Box<dyn FnOnce() + Send>>>);
     impl Spawn for Parked {
-        fn spawn(&self, job: Box<dyn FnOnce() + Send>) {
+        fn spawn(&self, _priority: Priority, job: Box<dyn FnOnce() + Send>) {
             self.0.lock().unwrap().push(job);
         }
     }
@@ -147,4 +147,46 @@ fn many_loads_in_flight_all_resolve() {
         finished.fetch_add(1, Ordering::SeqCst);
     }
     assert_eq!(finished.load(Ordering::SeqCst), 200);
+}
+
+type HeldJob = (Priority, Box<dyn FnOnce() + Send>);
+
+/// Holds every job so a test decides when (and whether) it runs.
+#[derive(Default)]
+struct Held(std::sync::Mutex<Vec<HeldJob>>);
+
+impl Spawn for Held {
+    fn spawn(&self, priority: Priority, job: Box<dyn FnOnce() + Send>) {
+        self.0.lock().unwrap().push((priority, job));
+    }
+}
+
+#[test]
+fn load_with_hands_its_priority_to_the_spawner() {
+    let spawner = Arc::new(Held::default());
+    let loader = loader(spawner.clone());
+    let _plain = loader.load(AssetPath::new("a.bin"), Sum);
+    let _urgent = loader.load_with(Priority::High, AssetPath::new("a.bin"), Sum);
+
+    let queued: Vec<Priority> = spawner.0.lock().unwrap().iter().map(|j| j.0).collect();
+    assert_eq!(queued, [Priority::Normal, Priority::High]);
+}
+
+#[test]
+fn a_cancelled_load_is_skipped_and_still_resolves() {
+    let spawner = Arc::new(Held::default());
+    let pending = loader(spawner.clone()).load(AssetPath::new("a.bin"), Sum);
+    pending.cancel();
+
+    let (_, job) = spawner.0.lock().unwrap().pop().unwrap();
+    job();
+
+    assert_eq!(pending.wait(), Err(LoadError::Cancelled));
+}
+
+#[test]
+fn cancelling_after_the_job_ran_keeps_the_result() {
+    let pending = loader(Arc::new(Inline)).load(AssetPath::new("a.bin"), Sum);
+    pending.cancel();
+    assert_eq!(pending.wait(), Ok(6));
 }

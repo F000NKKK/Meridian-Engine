@@ -27,12 +27,19 @@ decode as one job) and `Pending<T>`. Decoding stays the domain's `Decoder`.
 **D2 — adapters.** `meridian-asset-fs` is the file-system `ByteSource`; it
 rejects a path that leaves its root. `meridian-runtime-threads` gets
 `BackgroundPool`, the `Spawn` implementation: a fixed set of threads fed from
-one queue, separate from the frame workers.
+one queue per priority, separate from the frame workers.
 
 **D3 — no `async` in the engine loop.** A load returns at once with a
 `Pending`. The frame polls it (`take`) or, off the frame thread, blocks on it
 (`wait`). `Pending` always resolves: a decoder panic is caught and becomes
 `LoadError::Panicked`, and a job the pool never ran becomes `LoadError::Cancelled`.
+
+**D3a — priority and cancellation.** `Spawn::spawn` takes a `Priority`
+(`Low`, `Normal`, `High`); a pool starts the highest first and keeps queue
+order within one. `AssetLoader::load` is `Normal`, `load_with` takes the
+priority. `Pending::cancel` is a request: a load still queued is skipped and
+resolves as `LoadError::Cancelled`; one already running finishes and keeps its
+result. A running read is not interrupted.
 
 **D4 — `tokio` stays for the network.** A future HTTP source is another
 `ByteSource` adapter that may use `tokio` inside; the port and the loader do
@@ -43,8 +50,6 @@ does not register ids or decide how long the data lives; that is `resource`.
 
 ## Consequences
 
-- No new dependency: `std` threads and channels only.
-- A load has no priority or cancellation yet; both are additions to
-  `Pending`/`BackgroundPool` when a caller needs them.
+- No new dependency: `std` threads, a mutex and a condvar only.
 - The composition root (`sdk`) builds `FsSource` + `BackgroundPool` and
-  passes them to `AssetLoader::new`. Wiring it into `sdk` is a follow-up.
+  passes them to `AssetLoader::new` (`sdk::asset_loader`).
