@@ -10,16 +10,18 @@ backlog; architecture decisions still go to `docs/adr/`, status to
 | Area | Where | State |
 |---|---|---|
 | UI rendering vocabulary (screen-space = `Scene2D` with pixel `Camera2D`, world-space = `Renderable3D` with `billboard`/`always_on_top`) | `meridian-graphics-core` (`scene.rs`), [graphics-design.md](../graphics-design.md) "UI is a role, not a third scene kind" | Design accepted; `Scene2D`/`Sprite`/`Camera2D` exist; `always_on_top` and blend modes not acted on by the submission bridge yet |
-| Widgets, layout, focus, input routing | future `meridian-ui-core` (ADR-gated) | Not started — roadmap gap 7 |
+| Widgets, layout, focus, input routing | `meridian-ui-core`, [ADR 018](../adr/018-ui-architecture.md) | Element tree, typed properties, layout and hit testing done; no controls, styles, input routing or rendering yet |
 | Text: fonts, shaping, glyph atlas | future crate, own ADR | Not started |
 | Pointer/keyboard input feeding UI | `meridian-platform-core::InputState` (consumer, not owner) | Key/mouse state exists; no text input (IME/char events), no gamepad, no event stream for UI routing |
 | Editor / IDLE UX (inspector, scene tree, viewport gizmos) | Meridian IDLE app (owned by **team/ide**); engine side through the editor protocol in `docs/data-formats.md` / substrate-data | We own UX requirements and engine-side hooks, team/ide owns the app |
 
 ## Boundaries
 
-- `ui-core` sits above `graphics-core` and `platform-core`: it emits
-  `Scene2D`/`Scene3D` renderables and consumes `InputState`. It never
-  calls `graphics-driver` and never adds a UI pass to `graphics-core`.
+- `ui-core` (tier 1) depends on `foundation` and `memory-core` only. A
+  later adapter above `graphics-core` and `platform-core` turns the
+  laid-out tree into `Scene2D`/`Scene3D` renderables and feeds it
+  `InputState`. Nobody calls `graphics-driver` from UI code and nothing
+  adds a UI pass to `graphics-core`.
 - `ecs-core` stays UI-agnostic. If widgets live in the ECS, the
   components are defined in `ui-core`, not in `ecs-core`.
 - Layout math uses `gac-core` (`Motor3` frames, `Aabb`) instead of a
@@ -68,9 +70,9 @@ that syntax onto the element model; ui-ux owns the runtime
 
 In order; nothing here starts without a task from the owner.
 
-1. **ADR: UI architecture** — WPF-style retained tree (see above):
-   ECS-hosted vs standalone tree, layout passes (measure/arrange),
-   binding and styles, how UI consumes input before gameplay does.
+1. ~~**ADR: UI architecture**~~ — done as ADR 018 (proposed): standalone
+   retained tree, measure/arrange, binding contract. Styles and input
+   routing are listed there as not decided.
 2. **ADR: text rendering** — font source formats, shaping scope,
    bitmap/SDF/MSDF atlas, where decoding lives.
 3. **Rendering prerequisites** (with team/rendering) — honour
@@ -79,8 +81,9 @@ In order; nothing here starts without a task from the owner.
 4. **Input prerequisites** (with team/core) — text/IME input and an
    ordered input event stream in `platform-core`, plus a "consumed by
    UI" flag for gameplay.
-5. **`meridian-ui-core` skeleton** — layout tree, hit testing, focus,
-   emits `Scene2D`; tests for layout and hit-testing, no GPU needed.
+5. **`meridian-ui-core` next steps** — skeleton is done (tree, layout,
+   hit testing). Left: focus, `Scene2D` extraction adapter, markup
+   literal parsing for the generator.
 6. **Base widgets** — panel, label, button, image, scroll view, text
    box; theme/style tokens.
 7. **Example** — HUD overlay over `magic_figures` or `physic_figures`
