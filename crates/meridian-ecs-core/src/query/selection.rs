@@ -2,8 +2,7 @@
 
 use std::any::TypeId;
 
-use crate::Archetype;
-use crate::Entity;
+use crate::{Archetype, Entity};
 
 /// A tuple of `&T` / `&mut T` (two to four elements) naming the components a
 /// query reads and writes together. Implemented for those tuples only.

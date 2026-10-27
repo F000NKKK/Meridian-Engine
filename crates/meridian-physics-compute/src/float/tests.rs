@@ -1,8 +1,9 @@
 //! Tests of this module.
 
-use super::*;
 use meridian_gac_core::Vec3;
 use meridian_physics_core::soft_body::float_softbody::{SoftBodyIntegrator, icosphere_soft_body};
+
+use super::*;
 
 fn ground() -> Plane<FloatFlavor> {
     Plane {

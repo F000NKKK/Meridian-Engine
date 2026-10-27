@@ -1,7 +1,6 @@
 //! A kernel dispatched through a context.
 
-use crate::ComputeContext;
-use crate::DispatchSize;
+use crate::{ComputeContext, DispatchSize};
 
 /// A dispatchable unit of compute work. Domain crates (`gac-compute`, and
 /// future `particle-compute`/`physics-compute`/`ai-compute`) implement this

@@ -38,8 +38,9 @@ pub fn icosphere_soft_body(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use meridian_gac_core::{Plane, Vec3};
+
+    use super::*;
 
     fn ground() -> Plane {
         Plane {

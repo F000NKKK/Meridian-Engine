@@ -55,9 +55,6 @@ jobs:
   fmt-nightly:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    # Import grouping is not applied to the tree yet (Craftbook ch. 1 §1.7);
-    # informational until a migration wave runs it once.
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@nightly

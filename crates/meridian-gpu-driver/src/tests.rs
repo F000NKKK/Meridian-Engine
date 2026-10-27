@@ -1,7 +1,8 @@
 //! Tests of this module.
 
-use super::*;
 use meridian_platform_core::BackendCapabilities;
+
+use super::*;
 
 /// Every test here needs a real adapter; some CI/sandboxed
 /// environments have none (no GPU, no software rasterizer ICD

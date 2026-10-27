@@ -3,14 +3,15 @@
 mod cells;
 mod tracks;
 
+use cells::{Cell, auto_extents, cell_of};
+use tracks::{offsets, resolve};
+
 use super::arrange::arrange as arrange_child;
 use super::measure::measure as measure_child;
 use super::text_measurer::TextMeasurer;
 use super::value::GridLength;
 use crate::properties::grid::{COLUMN_DEFINITIONS, ROW_DEFINITIONS};
 use crate::{NodeId, Rect, Size, UiTree};
-use cells::{Cell, auto_extents, cell_of};
-use tracks::{offsets, resolve};
 
 /// The definitions of a grid; no definitions mean one `*` track.
 fn definitions(tree: &UiTree, node: NodeId) -> (Vec<GridLength>, Vec<GridLength>) {

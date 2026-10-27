@@ -1,11 +1,12 @@
 //! Per-shape music tracks mixed to the speakers.
 
-use crate::ShapeSpec;
 use meridian_examples::paths::asset_path;
 use meridian_sdk::{
     AcousticMedium, AudioOutput, AudioTrack, BinauralRenderer, Declicker, DspNode, Emitter,
     Listener, Motor3, SpeakerLayout, Vec3, load_audio_track,
 };
+
+use crate::ShapeSpec;
 
 /// 10 ms of audio per mixed block — the listener pose is re-sampled at
 /// 100 Hz, well past the point where parameter updates read as steps.

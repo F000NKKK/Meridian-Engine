@@ -1,10 +1,11 @@
 //! The physics runtime stepped every frame.
 
-use crate::SceneEntity;
 use meridian_sdk::{
     AudioSubsystem, ConstraintSolver, Mixer, Motor3, PhysicsDispatchMode, PhysicsStepStage,
     PhysicsSubsystem, RigidBody, Runtime, SpeakerLayout, StageId,
 };
+
+use crate::SceneEntity;
 
 const PHYSICS_DT: f32 = 1.0 / 60.0;
 

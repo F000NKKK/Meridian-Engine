@@ -1,8 +1,9 @@
 //! The decoder behind a stream.
 
-use crate::AudioClip;
 use symphonia::core::codecs::audio::AudioDecoder;
 use symphonia::core::formats::FormatReader;
+
+use crate::AudioClip;
 
 pub(crate) enum StreamBackend {
     /// Compressed formats: a live symphonia demux/decode pipeline.

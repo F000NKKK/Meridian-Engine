@@ -1,7 +1,8 @@
 //! Tests of this module.
 
-use super::*;
 use meridian_gac_core::{Motor3, Vec3};
+
+use super::*;
 
 const RATE: u32 = 48_000;
 

@@ -1,11 +1,10 @@
 //! A shape described by the DSL scene.
 
-use crate::Glow;
-use crate::OrbitTag;
-use crate::scene;
 use meridian_sdk::dsl::dsl_core::BuiltNode;
 use meridian_sdk::dsl::dsl_tag;
 use meridian_sdk::{cube_mesh_source, dsl, icosphere_mesh_source, pyramid_mesh_source};
+
+use crate::{Glow, OrbitTag, scene};
 
 /// This example's own "which file plays for this shape" tag.
 #[dsl_tag(name = "Audio")]

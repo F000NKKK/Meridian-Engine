@@ -1,8 +1,9 @@
 //! Criterion benches for the pool and arena allocation paths.
 
+use std::hint::black_box;
+
 use criterion::{Criterion, criterion_group, criterion_main};
 use meridian_memory_core::{FrameArena, ResourcePool};
-use std::hint::black_box;
 
 fn pool_insert_remove(c: &mut Criterion) {
     c.bench_function("resource_pool_insert_remove_1000", |b| {

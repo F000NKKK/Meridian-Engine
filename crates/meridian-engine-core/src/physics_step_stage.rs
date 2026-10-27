@@ -1,15 +1,12 @@
 //! The stage that steps physics.
 
-use crate::PhysicsDispatchMode;
-use crate::RELAXATION_ITERATIONS;
-use crate::Stage;
-use crate::StageContext;
-use meridian_compute_runtime::ComputeKernel;
-use meridian_compute_runtime::{ComputeContext, DispatchSize};
+use meridian_compute_runtime::{ComputeContext, ComputeKernel, DispatchSize};
 use meridian_physics_compute::broad_phase::BroadPhasePairsKernel;
 use meridian_physics_compute::constraint_solver::ConstraintSolverBatchKernel;
 use meridian_physics_compute::narrow_phase::GenerateContactsKernel;
 use meridian_physics_compute::rigid_body::RigidBodyIntegratorKernel;
+
+use crate::{PhysicsDispatchMode, RELAXATION_ITERATIONS, Stage, StageContext};
 
 /// Built-in convenience stage wrapping physics stepping — either
 /// [`PhysicsSubsystem::step`](crate::PhysicsSubsystem::step)'s plain sequential loop, or

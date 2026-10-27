@@ -2,8 +2,7 @@
 
 mod support;
 
-use meridian_ui_core::layout::value::Dock;
-use meridian_ui_core::layout::value::Visibility;
+use meridian_ui_core::layout::value::{Dock, Visibility};
 use meridian_ui_core::properties::dock_panel::{DOCK, LAST_CHILD_FILL};
 use meridian_ui_core::properties::element::VISIBILITY;
 use meridian_ui_core::{ElementKind, NodeId, Point, Rect, UiTree, hit_test};

@@ -147,9 +147,10 @@ pub fn log(level: LogLevel, target: &str, args: std::fmt::Arguments<'_>) {
 /// deleted.
 #[cfg(feature = "file-logging")]
 pub mod file {
-    use super::LogLevel;
     use std::path::PathBuf;
     use std::sync::OnceLock;
+
+    use super::LogLevel;
 
     /// Configuration for the file sink.
     #[derive(Debug, Clone)]

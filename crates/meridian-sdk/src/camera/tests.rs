@@ -1,7 +1,8 @@
 //! Tests of this module.
 
-use super::*;
 use meridian_platform_core::{InputState, KeyCode};
+
+use super::*;
 
 /// Returns (`forward_horiz`, right, up) expected from the camera's yaw.
 fn expected_basis(yaw: f32) -> (Vec3, Vec3, Vec3) {

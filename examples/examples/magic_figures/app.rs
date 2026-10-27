@@ -1,17 +1,14 @@
 //! The application handler: window, GPU state and the frame loop.
 
-use crate::MusicRig;
-use crate::ORBIT_RADIUS;
-use crate::SUN_DIRECTION;
-use crate::ShapeSpec;
-use crate::load_scene;
-use crate::mesh_source_for;
-use crate::orbit_position;
-use crate::sun_renderable;
 use meridian_examples::paths::asset_path;
 use meridian_sdk::{
     AppHandler, Device, FlyCamera, GraphicsSession, InputState, KeyCode, Light, Listener, Material,
     Motor3, Renderable3d, Rotor, Scene3d, Vec3, Window, ground_mesh_source, look_at_rotor,
+};
+
+use crate::{
+    MusicRig, ORBIT_RADIUS, SUN_DIRECTION, ShapeSpec, load_scene, mesh_source_for, orbit_position,
+    sun_renderable,
 };
 
 pub(crate) struct App {

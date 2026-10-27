@@ -1,9 +1,6 @@
 //! Fullscreen post-process pipeline creation on the device.
 
-use crate::ColorFormat;
-use crate::Device;
-use crate::RenderPipeline;
-use crate::Surface;
+use crate::{ColorFormat, Device, RenderPipeline, Surface};
 
 impl Device {
     /// Builds a full-screen-triangle pipeline: no vertex buffer (three

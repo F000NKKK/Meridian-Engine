@@ -1,11 +1,6 @@
 //! Render pipeline creation on the device.
 
-use crate::ColorFormat;
-use crate::Device;
-use crate::RenderPipeline;
-use crate::ShaderStages;
-use crate::Surface;
-use crate::VertexLayout;
+use crate::{ColorFormat, Device, RenderPipeline, ShaderStages, Surface, VertexLayout};
 
 impl Device {
     /// Builds a depth-only pipeline — no fragment stage, no color

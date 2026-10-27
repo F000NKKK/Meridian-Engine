@@ -240,9 +240,10 @@ impl GpuComputeDevice {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::sync::Mutex;
     use std::sync::atomic::{AtomicUsize, Ordering};
+
+    use super::*;
 
     #[test]
     fn capabilities_report_at_least_one_cpu_thread_and_no_gpu() {

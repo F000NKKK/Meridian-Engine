@@ -1,7 +1,8 @@
 //! `Thickness` literals: `5`, `4,2` (horizontal, vertical) or
 //! `left,top,right,bottom`.
 
-use super::{LiteralError, number::float};
+use super::LiteralError;
+use super::number::float;
 use crate::Thickness;
 
 pub(in crate::property) fn thickness(text: &str) -> Result<Thickness, LiteralError> {

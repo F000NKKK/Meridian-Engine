@@ -1,7 +1,8 @@
 //! Running layout over a tree.
 
+use super::arrange::arrange;
+use super::measure::measure;
 use super::text_measurer::TextMeasurer;
-use super::{arrange::arrange, measure::measure};
 use crate::{NodeId, Rect, Size, UiError, UiTree};
 
 /// Lays out the subtree under `root` inside `viewport`: measures every

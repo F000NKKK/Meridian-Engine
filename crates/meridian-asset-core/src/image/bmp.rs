@@ -172,8 +172,9 @@ pub(crate) mod tests_support {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use tests_support::make_bmp;
+
+    use super::*;
 
     #[test]
     fn bmp_decodes_solid_color_and_dimensions() {

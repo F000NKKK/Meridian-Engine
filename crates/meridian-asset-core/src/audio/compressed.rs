@@ -13,15 +13,15 @@
 //! [`AudioClip`] — the same bytes-in/CPU-data-out contract as every other
 //! decoder in this crate (no streaming, no I/O, no lifetime policy).
 
-use super::wav::WavDecoder;
-use crate::{AudioClip, DecodeError, Decoder};
-
 use symphonia::core::codecs::audio::AudioDecoderOptions;
 use symphonia::core::codecs::registry::CodecRegistry;
 use symphonia::core::formats::probe::Hint;
 use symphonia::core::formats::{FormatOptions, TrackType};
 use symphonia::core::io::MediaSourceStream;
 use symphonia::core::meta::MetadataOptions;
+
+use super::wav::WavDecoder;
+use crate::{AudioClip, DecodeError, Decoder};
 
 /// One codec registry for every compressed format this module decodes:
 /// symphonia's own enabled codecs (MP3/Vorbis/FLAC) plus libopus via the

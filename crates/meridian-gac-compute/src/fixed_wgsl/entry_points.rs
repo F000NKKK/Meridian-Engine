@@ -1,7 +1,6 @@
 //! WGSL dispatch entry points, one per operation.
 
-use super::CORDIC_LIB_WGSL;
-use super::FIXED_ARITHMETIC_LIB_WGSL;
+use super::{CORDIC_LIB_WGSL, FIXED_ARITHMETIC_LIB_WGSL};
 
 /// The four dispatch entry points, sharing [`FIXED_ARITHMETIC_LIB_WGSL`](super::FIXED_ARITHMETIC_LIB_WGSL):
 /// each reads one `(a, b)` pair from `operands` and writes one result

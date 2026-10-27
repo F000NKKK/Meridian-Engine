@@ -1,13 +1,15 @@
 //! A Symphonia format reader positioned on its default track.
 
-use crate::DecodeError;
-use crate::audio::compressed::codec_registry;
 use std::sync::Arc;
+
 use symphonia::core::codecs::audio::{AudioDecoder, AudioDecoderOptions};
 use symphonia::core::formats::probe::Hint;
 use symphonia::core::formats::{FormatOptions, FormatReader, TrackType};
 use symphonia::core::io::MediaSourceStream;
 use symphonia::core::meta::MetadataOptions;
+
+use crate::DecodeError;
+use crate::audio::compressed::codec_registry;
 
 /// An opened symphonia track: reader, decoder and the metadata the
 /// container declares (any of which may be missing).
