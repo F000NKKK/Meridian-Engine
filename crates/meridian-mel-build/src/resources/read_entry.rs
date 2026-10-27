@@ -92,7 +92,7 @@ fn wrong(name: &str, expected: &'static str) -> ResourceProblem {
 
 /// A bare string is a number or flag only through its type; here it is
 /// text, so a reference or bytes is a mistake.
-fn read_text(name: &str, raw: &str) -> Result<ResourceValue, ResourceProblem> {
+pub(super) fn read_text(name: &str, raw: &str) -> Result<ResourceValue, ResourceProblem> {
     match typed::classify(raw) {
         Ok(Spelled::Plain(text)) => Ok(ResourceValue::Text(text)),
         Ok(other) => Err(ResourceProblem::NotPlainText {
@@ -109,7 +109,7 @@ fn read_text(name: &str, raw: &str) -> Result<ResourceValue, ResourceProblem> {
     }
 }
 
-fn read_color(name: &str, raw: &str) -> Result<ResourceValue, ResourceProblem> {
+pub(super) fn read_color(name: &str, raw: &str) -> Result<ResourceValue, ResourceProblem> {
     let bad = || ResourceProblem::BadColor {
         entry: name.to_string(),
         found: raw.to_string(),
