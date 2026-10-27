@@ -97,8 +97,8 @@ pub fn dsl_tag(attr: TokenStream, item: TokenStream) -> TokenStream {
 
         let init = if let Some(inner_ty) = is_option {
             quote! {
-                #field_name: match attrs.iter().find(|(k, _)| k == #field_name_str) {
-                    Some((_, v)) => Some(v.parse::<#inner_ty>().map_err(|e| {
+                #field_name: match #sdk::dsl_core::text_attr(attrs, #tag_name, #field_name_str)? {
+                    Some(v) => Some(v.parse::<#inner_ty>().map_err(|e| {
                         #sdk::dsl_core::TagParseError {
                             message: format!(
                                 concat!(#tag_name, ".", #field_name_str, ": {}"),
@@ -112,13 +112,10 @@ pub fn dsl_tag(attr: TokenStream, item: TokenStream) -> TokenStream {
         } else {
             let field_ty = &field.ty;
             quote! {
-                #field_name: attrs
-                    .iter()
-                    .find(|(k, _)| k == #field_name_str)
+                #field_name: #sdk::dsl_core::text_attr(attrs, #tag_name, #field_name_str)?
                     .ok_or_else(|| #sdk::dsl_core::TagParseError {
                         message: concat!(#tag_name, ": missing attribute '", #field_name_str, "'").to_string(),
                     })?
-                    .1
                     .parse::<#field_ty>()
                     .map_err(|e| #sdk::dsl_core::TagParseError {
                         message: format!(concat!(#tag_name, ".", #field_name_str, ": {}"), e),
@@ -135,7 +132,7 @@ pub fn dsl_tag(attr: TokenStream, item: TokenStream) -> TokenStream {
             const TAG_NAME: &'static str = #tag_name;
 
             fn from_attrs(
-                attrs: &[(String, String)],
+                attrs: &[#sdk::dsl_core::Attribute],
             ) -> Result<Self, #sdk::dsl_core::TagParseError> {
                 Ok(Self {
                     #(#field_inits),*

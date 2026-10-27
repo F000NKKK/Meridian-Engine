@@ -623,7 +623,10 @@ priority before writing implementations is keeping that document and the
     deliberately deferred; `.mel` behavior (WPF-style code-behind,
     generated `.g.rs` glue, compiled `{x:Bind}` bindings, later an own
     script language) — decided in
-    [ADR 017](adr/017-mel-markup-and-code-behind.md), not started.
+    [ADR 017](adr/017-mel-markup-and-code-behind.md). Started: the
+    `dsl-core` side is done (line/column spans, the `x:` prefix, dotted
+    names and property elements, parsed markup extensions, typed
+    `ParseErrorKind`); the `.g.rs` generator and bindings are next.
 
 ## Scaling beyond a tech demo (Minecraft/Satisfactory-class scope)
 
