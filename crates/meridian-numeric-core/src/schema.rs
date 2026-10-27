@@ -61,7 +61,10 @@ mod tests {
     #[test]
     fn bits_beyond_i32_are_refused() {
         let e = substrate_data::from_text::<Fixed>("4294967296").unwrap_err();
-        assert_eq!(e.0[0].code, Some(substrate_data::Problem::Invalid.into()));
+        assert_eq!(
+            e.0[0].code,
+            Some(substrate_data::Problem::OutOfRange.into())
+        );
     }
 
     #[test]
