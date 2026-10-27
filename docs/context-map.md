@@ -52,6 +52,7 @@ dependencies need one of these:
 | audio → platform | customer–supplier | capability report |
 | physics → platform | customer–supplier | capability report (`physics-driver`) |
 | runtime → physics, audio, rendering, platform, assets, compute | customer–supplier | each context's published API, called by runtime use cases |
+| ui → rendering | customer–supplier | `ui-render` extracts the UI tree into `graphics-core::Scene2d` (ADR 021) |
 | editor → data | customer–supplier | the protocol carries scene documents and entity refs |
 | scene-markup → runtime | anticorruption layer | markup tags translated into runtime commands |
 
