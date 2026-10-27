@@ -35,32 +35,44 @@
 //!   and passes around ([ADR 003](../../../docs/adr/003-no-global-managers.md)).
 //! - **`ecs-core` stays file-blind.** `Transform` lives in `ecs-core`, and
 //!   the orphan rule forbids implementing `substrate_data::Schema` for it
-//!   here. Rather than give `ecs-core` a `data` feature (which would make
-//!   the ECS crate know about a file format, against
+//!   here. `ecs-core` gets no `data` feature (team/core's decision, and
 //!   [ADR 016](../../../docs/adr/016-data-formats-on-substrate-data.md)'s
-//!   decision 3), a component can be registered through a codec
-//!   (`substrate_data::with::With`): [`TransformCodec`] is the one for
-//!   `Transform`, and any application type whose crate can't implement
-//!   `Schema` uses the same door ([`ComponentRegistry::register_with`]).
+//!   decision 3); instead [`TransformData`], a newtype of this crate,
+//!   implements `Schema` and converts to and from `Transform`, and
+//!   [`TransformCodec`] registers `Transform` through it
+//!   ([`ComponentRegistry::register_with`] — the same door for any
+//!   component whose crate can't implement `Schema`).
+//! - **Registered by name and by type.** One name per component type and
+//!   one type per name; [`ComponentRegistry::name_of`] finds a type's name.
+//!   Saving walks the registered types for each entity (until `ecs-core`
+//!   can list an entity's component types).
+//! - **Runtime handles never reach a file.** `Entity { index, generation }`
+//!   is process-local; documents use their own string ids, remapped to
+//!   freshly spawned entities on load ([`SceneMap`]).
 //! - **Loading is all-or-nothing.** Every problem in a document is
 //!   collected (with line, column and path) before the `World` is touched;
 //!   a document with any error spawns nothing.
-//! - **Hierarchy is recorded, not applied.** `ecs-core` has no parent
-//!   concept yet, so `parent: "@entity:…"` is checked against the
-//!   document's ids and kept in the [`SceneMap`] ([`SceneEntity::parent`],
-//!   [`SceneMap::parent_of`]); turning it into an ECS relationship is a
-//!   later step (docs/roadmap.md).
+//! - **Hierarchy as a [`Parent`] component, here for now.** `ecs-core` has
+//!   no parent concept yet; `parent: "@entity:…"` is checked against the
+//!   document's ids and inserted as this crate's [`Parent`] component
+//!   (also kept in [`SceneMap`]). It moves to `ecs-core` once that has a
+//!   hierarchy (docs/roadmap.md).
+//! - **Thin over `substrate-data`.** Its API is used in three places only
+//!   — `TransformData`, the registry's read/write function pointers, and
+//!   `document.rs` — so its coming typed-API change stays a local edit.
 //! - **Prefabs are referenced, not instanced yet.** `prefab: "@prefab:…"`
 //!   goes through the caller's resolver and is kept in the map; `.mprefab`
 //!   instancing is designed (docs/data-formats.md), not implemented.
 
 mod document;
+mod parent;
 mod registry;
 mod transform;
 
 pub use document::{FORMAT, SceneEntity, SceneMap};
+pub use parent::Parent;
 pub use registry::ComponentRegistry;
-pub use transform::TransformCodec;
+pub use transform::{TransformCodec, TransformData};
 
 pub use substrate_data::{Diagnostic, Errors, Resolve};
 

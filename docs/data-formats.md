@@ -135,18 +135,26 @@ let shapes = registry.describe();                                   // for the I
 ```
 
 `Transform` is `ecs-core`'s, and `ecs-core` stays file-blind (ADR 016,
-decision 3), so it has no `Schema` impl; `meridian-scene::TransformCodec`
-(a `substrate_data::with::With` codec) reads and writes it as
-`{ motor }`. Any component whose crate can't implement `Schema` uses the
-same `register_with` door.
+decision 3; no `data` feature on `ecs-core`), so it has no `Schema` impl:
+`meridian-scene::TransformData`, a newtype implementing `Schema` and
+converting to and from `Transform`, stores it as `{ motor }`, and
+`TransformCodec` registers `Transform` through it. Any component whose
+crate can't implement `Schema` uses the same `register_with` door. The
+registry is keyed by name and by `TypeId` (`name_of::<T>()`); saving walks
+the registered types per entity. Runtime `Entity { index, generation }`
+never reaches a file: document ids are remapped to fresh entities on
+load.
 
 Loading is all-or-nothing: every problem is collected first, and a
 document with any error spawns nothing. `@entity:` references (in
 `parent` or inside components) are resolved against the document's own
 ids; every other kind goes to the caller's `Resolve`. `ecs-core` has no
-hierarchy yet, so `parent` is kept in the returned `SceneMap`
-(`parent_of`) rather than stored as a component — that is a later step,
-as is instancing `prefab`.
+hierarchy yet, so `parent` becomes `meridian-scene::Parent(Entity)` — a
+component that lives in `meridian-scene` for now and moves to `ecs-core`
+once it has a hierarchy — and is also kept in the returned `SceneMap`
+(`parent_of`). Saving writes a `Parent` component back as the parent's
+document id. Nothing propagates transforms along it yet; instancing
+`prefab` is also a later step.
 
 `describe()` returns one `Value`: every component's `Shape::describe()`
 by name. Meridian IDLE reads it to build its inspector and `.mel`
@@ -183,7 +191,7 @@ different times still talk. The protocol itself (handshake, `Describe`,
 |---|---|
 | `substrate-data` crates | done (separate repository) |
 | `data` feature on `numeric-core`/`gac-core` | done |
-| `meridian-scene` (registry, `.mscene` load/save, `describe()`) | done (text form; parents kept in `SceneMap`, not the ECS) |
+| `meridian-scene` (registry, `.mscene` load/save, `describe()`) | done (text form; hierarchy as `meridian-scene::Parent` until `ecs-core` has one) |
 | `.mscene` binary form, patching an existing file on save | not implemented |
 | `.mprefab`, `.meta`, `.msave`, `.mpak` | designed, not implemented |
 | editor protocol | designed with Meridian IDLE |

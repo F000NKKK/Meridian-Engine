@@ -13,7 +13,7 @@ use substrate_data::{
 };
 
 use crate::registry::{ComponentRegistry, Insert};
-use crate::{EntityKind, PrefabKind};
+use crate::{EntityKind, Parent, PrefabKind};
 
 /// The `.mscene` format version this crate reads and writes. Formats evolve
 /// by appending; a bump comes with a `Value -> Value` migration (ADR 016).
@@ -38,8 +38,9 @@ pub struct SceneEntity {
     pub name: Option<String>,
     /// The prefab it starts from (the reference's id, as the resolver kept it).
     pub prefab: Option<String>,
-    /// The `id` of its parent in the same document. Kept here, not in the
-    /// ECS: `ecs-core` has no hierarchy yet (see the crate doc).
+    /// The `id` of its parent in the same document. On load the parent is
+    /// also inserted as a [`Parent`] component; on save a [`Parent`]
+    /// component, when the entity has one, wins over this.
     pub parent: Option<String>,
     /// Components the registry doesn't know, kept as written when it
     /// [allows unknown ones](ComponentRegistry::allow_unknown), so saving
@@ -92,7 +93,8 @@ impl SceneMap {
             .map(|e| e.id.as_str())
     }
 
-    /// The parent the document gives `entity`.
+    /// The parent the document gives `entity` (the [`Parent`] component
+    /// `load_scene` inserted holds the same).
     pub fn parent_of(&self, entity: Entity) -> Option<Entity> {
         let e = self.entities.iter().find(|e| e.entity == entity)?;
         self.entity(e.parent.as_deref()?)
@@ -197,6 +199,13 @@ impl ComponentRegistry {
                 parent: p.parent,
                 unknown: p.unknown,
             });
+        }
+        // Parents last: every id has its entity by now (`@entity:` refs
+        // were checked against the document while reading).
+        for e in &scene.entities {
+            if let Some(parent) = e.parent.as_deref().and_then(|p| scene.entity(p)) {
+                world.insert(e.entity, Parent(parent));
+            }
         }
         Ok(scene)
     }
@@ -346,13 +355,13 @@ impl ComponentRegistry {
             .entities
             .iter()
             .filter(|e| world.is_alive(e.entity))
-            .map(|e| self.entity_value(world, e))
+            .map(|e| self.entity_value(world, scene, e))
             .collect();
         doc.insert(KEY_ENTITIES, Value::List(entities));
         text::to_string_pretty(&Value::Map(doc))
     }
 
-    fn entity_value(&self, world: &World, e: &SceneEntity) -> Value {
+    fn entity_value(&self, world: &World, scene: &SceneMap, e: &SceneEntity) -> Value {
         use substrate_data::Kind;
         let mut m = Map::new();
         m.insert(KEY_ID, plain(&e.id));
@@ -365,7 +374,11 @@ impl ComponentRegistry {
                 Value::Ref(Ref::new(PrefabKind::NAME, prefab.clone())),
             );
         }
-        if let Some(parent) = &e.parent {
+        let parent = match world.get::<Parent>(e.entity) {
+            Some(Parent(p)) => scene.id_of(*p).map(str::to_owned),
+            None => e.parent.clone(),
+        };
+        if let Some(parent) = &parent {
             m.insert(
                 KEY_PARENT,
                 Value::Ref(Ref::new(EntityKind::NAME, parent.clone())),

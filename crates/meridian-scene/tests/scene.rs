@@ -1,6 +1,8 @@
 use meridian_ecs_core::{Component, Transform, World};
 use meridian_gac_core::{Motor3, Rotor, Vec3};
-use meridian_scene::{ComponentRegistry, EntityKind, NoResolver, SceneMap, TransformCodec};
+use meridian_scene::{
+    ComponentRegistry, EntityKind, NoResolver, Parent, SceneMap, TransformCodec, TransformData,
+};
 use substrate_data::with::RefTo;
 use substrate_data::{Path, Ref, Resolve, Schema};
 
@@ -95,6 +97,16 @@ fn loads_a_commented_scene() {
     assert_eq!(scene.parent_of(hero), scene.entity("world"));
     let camera = scene.entity("camera").unwrap();
     assert_eq!(scene.parent_of(camera), Some(hero));
+    assert_eq!(world.get::<Parent>(camera), Some(&Parent(hero)));
+    assert_eq!(
+        world.get::<Parent>(hero),
+        scene.entity("world").map(Parent).as_ref()
+    );
+    assert!(
+        world
+            .get::<Parent>(scene.entity("world").unwrap())
+            .is_none()
+    );
     assert_eq!(world.get::<Follow>(camera).unwrap().target, "hero");
     assert!(world.get::<Transform>(camera).is_none());
 }
@@ -307,6 +319,35 @@ fn describe_lists_every_component_shape_by_name() {
         body.get("doc").and_then(|n| n.as_str()),
         Some("A body the physics moves.")
     );
+}
+
+#[test]
+fn the_registry_knows_types_by_name() {
+    let r = registry();
+    assert_eq!(r.name_of::<Transform>(), Some("transform"));
+    assert_eq!(r.name_of::<Follow>(), Some("follow"));
+    assert_eq!(r.name_of::<Parent>(), None);
+    let t = TransformData(Motor3::translation(Vec3::new(1.0, 2.0, 3.0)));
+    let back: TransformData = substrate_data::from_text(&substrate_data::to_text(&t))
+        .unwrap()
+        .value;
+    assert_eq!(Transform::from(back).motor, t.0);
+}
+
+#[test]
+fn a_parent_component_set_in_code_is_saved_by_id() {
+    let mut world = World::new();
+    let (a, b) = (world.spawn(), world.spawn());
+    world.insert(b, Parent(a));
+    let mut scene = SceneMap::new();
+    scene.push("a", a);
+    scene.push("b", b);
+    let text = registry().save_scene(&world, &scene);
+    assert!(text.contains("\"@entity:a\""), "{text}");
+    let loaded = registry()
+        .load_scene(&text, &mut World::new(), &mut NoResolver)
+        .unwrap();
+    assert_eq!(loaded.get("b").unwrap().parent.as_deref(), Some("a"));
 }
 
 #[test]

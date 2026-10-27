@@ -711,13 +711,17 @@ rest are not started.
    `Bivector3`/`Rotor`/`Motor3` and their `Fixed*` counterparts as
    `Shape::Named` values, bit-exact through text, binary and frames), and
    the `meridian-scene` crate: an application-built `ComponentRegistry`
-   (`register`/`register_with` a codec — `Transform` goes through
-   `TransformCodec` so `ecs-core` stays file-blind), `.mscene` load into a
+   (by name and `TypeId`; `register`/`register_with` a codec —
+   `Transform` goes through the `TransformData` newtype so `ecs-core`
+   stays file-blind), `.mscene` load into a
    `World` (all-or-nothing, every problem with line/column/path, unknown
    component names with a "did you mean" or kept as written for editors),
-   save, and `describe()` for an IDE. **Not yet done:** parent links are
-   checked and kept in `SceneMap` but `ecs-core` has no hierarchy to put
-   them in; `.mprefab` instancing, `.meta`, `.msave` (voxel/chunk data via
+   save, and `describe()` for an IDE. Parent links load as
+   `meridian-scene::Parent`, a stand-in until `ecs-core` gets a
+   hierarchy (it moves there then). **Not yet done:** transform
+   propagation along parents; `World::component_types(entity)` in
+   `ecs-core` (saving walks registered types until then); `.mprefab`
+   instancing, `.meta`, `.msave` (voxel/chunk data via
    `substrate_data::Stream`), `.mpak`, the editor protocol, and wiring
    scene loading into `engine-core`/`sdk`. The substrate-data dependency
    is a git revision pin until it is published to crates.io.

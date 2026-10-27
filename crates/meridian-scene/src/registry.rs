@@ -2,6 +2,7 @@
 //! write out of one.
 
 use std::any::TypeId;
+use std::collections::HashMap;
 
 use meridian_ecs_core::{Component, Entity, World};
 use substrate_data::with::{Plain, With};
@@ -13,7 +14,6 @@ pub(crate) type Insert = Box<dyn FnOnce(&mut World, Entity)>;
 
 pub(crate) struct Entry {
     pub(crate) name: String,
-    type_id: TypeId,
     shape: fn() -> Shape,
     pub(crate) read: fn(&ValueRef<'_>, &mut Reader) -> Option<Insert>,
     pub(crate) write: fn(&World, Entity) -> Option<Value>,
@@ -39,6 +39,7 @@ fn write_component<T: Component, W: With<T>>(world: &World, entity: Entity) -> O
 #[derive(Default)]
 pub struct ComponentRegistry {
     pub(crate) entries: Vec<Entry>,
+    by_type: HashMap<TypeId, usize>,
     pub(crate) allow_unknown: bool,
 }
 
@@ -66,10 +67,10 @@ impl ComponentRegistry {
     /// As [`ComponentRegistry::register`].
     pub fn register_with<T: Component, W: With<T>>(&mut self, name: &str) -> &mut Self {
         let type_id = TypeId::of::<T>();
-        if let Some(e) = self
-            .entries
-            .iter()
-            .find(|e| e.name == name || e.type_id == type_id)
+        let by_name = self.entries.iter().position(|e| e.name == name);
+        if let Some(e) = by_name
+            .or_else(|| self.by_type.get(&type_id).copied())
+            .map(|i| &self.entries[i])
         {
             panic!(
                 "component `{name}` ({}): already registered as `{}`",
@@ -77,9 +78,9 @@ impl ComponentRegistry {
                 e.name
             );
         }
+        self.by_type.insert(type_id, self.entries.len());
         self.entries.push(Entry {
             name: name.to_owned(),
-            type_id,
             shape: W::shape,
             read: read_component::<T, W>,
             write: write_component::<T, W>,
@@ -99,6 +100,18 @@ impl ComponentRegistry {
     /// The registered names, in registration order.
     pub fn names(&self) -> impl Iterator<Item = &str> {
         self.entries.iter().map(|e| e.name.as_str())
+    }
+
+    /// The name `T` is registered under.
+    pub fn name_of<T: 'static>(&self) -> Option<&str> {
+        self.name_of_type(TypeId::of::<T>())
+    }
+
+    /// The name the component type `id` is registered under.
+    pub fn name_of_type(&self, id: TypeId) -> Option<&str> {
+        self.by_type
+            .get(&id)
+            .map(|&i| self.entries[i].name.as_str())
     }
 
     pub(crate) fn entry(&self, name: &str) -> Option<&Entry> {
