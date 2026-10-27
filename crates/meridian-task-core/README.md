@@ -1,10 +1,10 @@
 # meridian-task-core
 
-Job graph scheduler: worker threads and dependency tracking for parallel frame execution.
+Job graph scheduler: worker threads and dependency tracking for parallel frame execution, and the engine-core `JobExecutor` adapter.
 
 **Layer and context:** infrastructure (adapter) · runtime
 
-- **For:** `JobGraph`: named jobs with dependencies, and a `Scheduler` that runs them on worker threads.
+- **For:** `JobGraph`: named jobs with dependencies, a `Scheduler` that runs them on worker threads, and `TaskExecutor`, the implementation of `meridian-engine-core`'s `JobExecutor` port.
 - **Not for:** domain-specific work: frame stages are composed in `meridian-engine-core`.
 
 ## Usage
@@ -30,8 +30,8 @@ assert_eq!(counter.load(Ordering::SeqCst), 11);
 
 ## Depends on / used by
 
-- Depends on: no workspace crate
-- Used by: [`meridian-engine-core`](../meridian-engine-core)
+- Depends on: [`meridian-engine-core`](../meridian-engine-core)
+- Used by: [`meridian-sdk`](../meridian-sdk)
 
 ## License
 

@@ -15,11 +15,11 @@ clippy::items_after_statements	4
 clippy::let_underscore_untyped	1
 clippy::manual_midpoint	2
 clippy::many_single_char_names	3
-clippy::map_unwrap_or	7
+clippy::map_unwrap_or	6
 clippy::missing_errors_doc	30
-clippy::missing_panics_doc	15
+clippy::missing_panics_doc	14
 clippy::module_name_repetitions	27
-clippy::must_use_candidate	255
+clippy::must_use_candidate	250
 clippy::needless_raw_string_hashes	15
 clippy::panic	25
 clippy::print_stderr	3
@@ -37,6 +37,6 @@ clippy::unreachable	2
 clippy::unused_async	1
 clippy::unused_self	4
 elided_lifetimes_in_paths	1
-missing_docs	663
+missing_docs	662
 unreachable_pub	12
 unused_qualifications	5

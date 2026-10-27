@@ -5,8 +5,7 @@ use std::sync::{Arc, Mutex};
 use meridian_examples::paths::asset_path;
 use meridian_sdk::{
     AppHandler, Camera, Device, FlyCamera, GraphicsSession, InputState, KeyCode, Light, Material,
-    Motor3, RenderStage, Renderable3d, RigidBody, Scene3d, StageContext, StageId, Vec3, Window,
-    look_at_rotor,
+    Motor3, RenderStage, Renderable3d, RigidBody, Scene3d, StageId, Vec3, Window, look_at_rotor,
 };
 
 use crate::{
@@ -23,10 +22,9 @@ pub(crate) struct App {
     tokio_runtime: tokio::runtime::Runtime,
     /// The render stage's closure reads the current camera from here —
     /// `on_redraw` writes it just before ticking the render stage. This
-    /// is the same category of "app state a `Stage` needs but
-    /// `RuntimeState` doesn't own" as `magic_figures`' orbit positions
-    /// (see `meridian_engine_core`'s own module doc): a camera pose
-    /// driven by per-frame input isn't physics/audio/world state.
+    /// is app state a `Stage` needs but no runtime owns (as
+    /// `magic_figures`' orbit positions are): a camera pose driven by
+    /// per-frame input isn't physics state.
     render_camera: Arc<Mutex<Camera>>,
     /// `None` until [`AppHandler::on_ready`] registers the render stage
     /// (it needs a real `Device`/`Surface`, built there).
@@ -118,13 +116,10 @@ impl AppHandler for App {
         let lights = vec![sun_light()];
 
         let render_camera = self.render_camera.clone();
-        let render_stage = RenderStage::new(
-            base,
-            window.clone(),
-            [0.05, 0.05, 0.08, 1.0],
-            move |ctx: &StageContext| {
-                let bodies = &ctx.physics().bodies;
-                let mut renderables = entity_renderables(&render_entities, bodies);
+        let physics = self.physics.physics.clone();
+        let render_stage =
+            RenderStage::new(base, window.clone(), [0.05, 0.05, 0.08, 1.0], move || {
+                let mut renderables = entity_renderables(&render_entities, &physics.lock().bodies);
                 renderables.push(sun.clone());
                 Scene3d {
                     renderables,
@@ -135,8 +130,7 @@ impl AppHandler for App {
                     ambient_ground: [0.02, 0.02, 0.025],
                     ambient_sky: [0.04, 0.04, 0.055],
                 }
-            },
-        );
+            });
         self.render_stage = Some(self.physics.runtime.add_stage(
             "render",
             &[self.physics.physics_stage],

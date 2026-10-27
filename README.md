@@ -67,14 +67,15 @@ crate has its own README.
 |---|---|---|
 | [`meridian-compute-runtime`](crates/meridian-compute-runtime) | compute | Compute context, kernel interfaces, dispatch size and split |
 | [`meridian-audio-app`](crates/meridian-audio-app) | audio | The `AudioSink` port, with a fake and a contract suite |
+| [`meridian-physics-app`](crates/meridian-physics-app) | physics | `PhysicsSubsystem`, the `PhysicsStepper` port and `SequentialStepper` |
 | [`meridian-rendering-app`](crates/meridian-rendering-app) | rendering | Ports `FrameRecorder`, `MeshStore`, `TextureStore`, with fakes and contract suites |
-| [`meridian-engine-core`](crates/meridian-engine-core) | runtime | `Runtime`: frame scheduler, events, physics/audio subsystems, stages |
+| [`meridian-engine-core`](crates/meridian-engine-core) | runtime | `Runtime`: stages in dependency order, `JobExecutor` port, events (owns no state) |
 
 **Infrastructure (adapters)**
 
 | Crate | Context | What it gives |
 |---|---|---|
-| [`meridian-task-core`](crates/meridian-task-core) | runtime | Job graph scheduler with worker threads |
+| [`meridian-task-core`](crates/meridian-task-core) | runtime | Job graph scheduler with worker threads; implements `JobExecutor` |
 | [`meridian-platform-core`](crates/meridian-platform-core) | platform | Window, input, clock, capabilities, dynamic libraries |
 | [`meridian-gpu-driver`](crates/meridian-gpu-driver) | compute | Shared `wgpu` device, buffers, shaders, compute pipelines |
 | [`meridian-compute-driver`](crates/meridian-compute-driver) | compute | CPU-SIMD and GPU compute dispatch |
@@ -139,7 +140,7 @@ and every layer may use the shared kernel.
 
 ```mermaid
 flowchart LR
-    I[interface<br/>sdk, dsl-macros, examples] --> A[application<br/>engine-core, compute-runtime, audio-app, rendering-app]
+    I[interface<br/>sdk, dsl-macros, examples] --> A[application<br/>engine-core, compute-runtime, audio-app, physics-app, rendering-app]
     A --> D[domain<br/>graphics, physics, audio, assets, ui]
     X[infrastructure<br/>drivers, adapters, scene, editor-protocol, editor-host, editor-tcp] --> D
     K[shared kernel<br/>foundation, numeric, gac, memory, resource, ecs, dsl-core]

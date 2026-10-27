@@ -1151,6 +1151,7 @@ name = "meridian-audio-app"
 version = "0.1.0"
 dependencies = [
  "meridian-audio-core",
+ "meridian-gac-core",
 ]
 
 [[package]]
@@ -1253,15 +1254,11 @@ dependencies = [
 name = "meridian-engine-core"
 version = "0.31.0"
 dependencies = [
- "meridian-audio-core",
  "meridian-compute-runtime",
- "meridian-ecs-core",
  "meridian-foundation",
  "meridian-gac-core",
- "meridian-physics-compute",
+ "meridian-physics-app",
  "meridian-physics-core",
- "meridian-platform-core",
- "meridian-task-core",
 ]
 
 [[package]]
@@ -1368,6 +1365,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "meridian-physics-app"
+version = "0.1.0"
+dependencies = [
+ "meridian-gac-core",
+ "meridian-physics-core",
+]
+
+[[package]]
 name = "meridian-physics-compute"
 version = "0.6.0"
 dependencies = [
@@ -1378,6 +1383,7 @@ dependencies = [
  "meridian-gac-core",
  "meridian-gpu-driver",
  "meridian-numeric-core",
+ "meridian-physics-app",
  "meridian-physics-core",
  "tokio",
 ]
@@ -1445,9 +1451,12 @@ dependencies = [
  "meridian-gac-core",
  "meridian-graphics-core",
  "meridian-graphics-driver",
+ "meridian-physics-app",
+ "meridian-physics-compute",
  "meridian-physics-core",
  "meridian-platform-core",
  "meridian-rendering-app",
+ "meridian-task-core",
  "meridian-ui-core",
  "png",
 ]
@@ -1457,6 +1466,7 @@ name = "meridian-task-core"
 version = "0.7.0"
 dependencies = [
  "criterion",
+ "meridian-engine-core",
 ]
 
 [[package]]

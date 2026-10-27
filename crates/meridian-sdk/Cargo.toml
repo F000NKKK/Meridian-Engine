@@ -23,6 +23,9 @@ meridian-audio-core = { workspace = true }
 meridian-audio-app = { workspace = true }
 meridian-audio-driver = { workspace = true }
 meridian-engine-core = { workspace = true }
+meridian-physics-app = { workspace = true }
+meridian-physics-compute = { workspace = true }
+meridian-task-core = { workspace = true }
 meridian-compute-driver = { workspace = true }
 meridian-compute-runtime = { workspace = true }
 meridian-dsl-core = { workspace = true }

@@ -1,39 +1,40 @@
-//! `Runtime`: the single entry point tying every other crate into the
-//! main loop. Owns real instances of the driver-independent subsystems
-//! that exist today — an `ecs-core` [`World`](meridian_ecs_core::World), [`PhysicsSubsystem`]
-//! (`physics-core`'s body list, broad/narrow-phase, solver/integrator)
-//! and [`AudioSubsystem`] (`audio-core`'s listener, emitters, mixer) —
-//! this is still the one place in the workspace allowed to know about
-//! every `*-core` at once (see docs/dependency-rules.md rule 7).
+//! Runtime use cases: [`Runtime`] runs registered [`Stage`]s in dependency
+//! order through the [`JobExecutor`] port, with the built-in
+//! [`PhysicsStepStage`] and [`ComputeStage`] and a typed [`EventSystem`].
 //!
 //! Layer: application; bounded context: runtime (`craftbook.toml`,
 //! docs/context-map.md).
 //!
+//! This crate owns **no application state** (ADR 025): the composition root
+//! creates the world, physics and audio state, wraps what several stages
+//! share in [`Shared`], and gives each stage its handles. It names no
+//! adapter: threads come from a [`JobExecutor`] (`meridian-task-core`),
+//! physics stepping from a `PhysicsStepper` (`meridian-physics-app`,
+//! `meridian-physics-compute`), compute from a `ComputeContext`.
+//!
 //! Design notes: docs/notes/meridian-engine-core.md (`lib`).
 
+#![doc = include_str!("../README.md")]
 #![forbid(unsafe_code)]
 
-mod audio_subsystem;
 mod compute_stage;
 mod event_system;
-mod frame_scheduler;
-mod physics_dispatch_mode;
+mod job;
+mod job_executor;
 mod physics_step_stage;
-mod physics_subsystem;
 mod runtime;
-mod runtime_state;
+mod shared;
 mod stages;
+#[cfg(any(test, feature = "testing"))]
+pub mod testing;
 #[cfg(test)]
 mod tests;
 
-pub use audio_subsystem::AudioSubsystem;
 pub use compute_stage::ComputeStage;
 pub use event_system::EventSystem;
-pub use frame_scheduler::FrameScheduler;
-pub use physics_dispatch_mode::PhysicsDispatchMode;
+pub use job::Job;
+pub use job_executor::JobExecutor;
 pub use physics_step_stage::PhysicsStepStage;
-pub use physics_subsystem::PhysicsSubsystem;
-pub(crate) use physics_subsystem::RELAXATION_ITERATIONS;
 pub use runtime::Runtime;
-pub use runtime_state::RuntimeState;
+pub use shared::Shared;
 pub use stages::*;

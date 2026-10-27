@@ -2,63 +2,40 @@
 
 use std::sync::{Arc, Mutex};
 
-use meridian_platform_core::CpuCapabilities;
-use meridian_task_core::JobGraph;
+use crate::{Job, JobExecutor, Stage, StageEntry, StageId};
 
-use crate::{
-    AudioSubsystem, FrameScheduler, PhysicsSubsystem, RuntimeState, Stage, StageEntry, StageId,
-};
-
-/// Owns [`RuntimeState`](crate::RuntimeState) and a set of registered [`Stage`](crate::Stage)s, and runs
-/// them in dependency order every [`Runtime::tick`] — see the module doc
-/// for the `JobGraph`-based mechanism and the locking guarantee. The
-/// single entry point for a frame's work in this workspace — see the
-/// module doc's "one mechanism, not two" section.
-#[derive(Debug)]
+/// A set of registered [`Stage`]s run in dependency order every
+/// [`Runtime::tick`] through a [`JobExecutor`]. It owns no application
+/// state: each stage holds the [`Shared`](crate::Shared) handles it needs,
+/// wired by the composition root.
 pub struct Runtime {
-    state: RuntimeState,
-    scheduler: FrameScheduler,
+    executor: Arc<dyn JobExecutor>,
     stages: Vec<StageEntry>,
 }
 
-impl Runtime {
-    /// Builds a `Runtime` with no stages registered yet (see
-    /// [`add_stage`](Self::add_stage)) and a [`FrameScheduler`](crate::FrameScheduler) sized to
-    /// the real detected CPU thread count. Use
-    /// [`with_worker_count`](Self::with_worker_count) to size it
-    /// explicitly instead (e.g. a fixed worker count for reproducible
-    /// benchmarks).
-    pub fn new(physics: PhysicsSubsystem, audio: AudioSubsystem) -> Self {
-        Self::with_worker_count(physics, audio, CpuCapabilities::detect().threads)
+impl std::fmt::Debug for Runtime {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Runtime")
+            .field("stages", &self.stages)
+            .finish_non_exhaustive()
     }
+}
 
-    pub fn with_worker_count(
-        physics: PhysicsSubsystem,
-        audio: AudioSubsystem,
-        worker_count: usize,
-    ) -> Self {
+impl Runtime {
+    /// A runtime with no stages (see [`add_stage`](Self::add_stage)) that
+    /// runs them on `executor`.
+    #[must_use]
+    pub fn new(executor: Arc<dyn JobExecutor>) -> Self {
         meridian_foundation::log_info!("engine-core Runtime initialized");
         Self {
-            state: RuntimeState::new(physics, audio),
-            scheduler: FrameScheduler::new(worker_count),
+            executor,
             stages: Vec::new(),
         }
     }
 
-    /// The shared state this runtime's stages run against — clone it
-    /// (cheap: `Arc` clones) to read/write it directly between ticks,
-    /// e.g. to seed initial bodies or read back positions after
-    /// [`tick`](Self::tick) returns.
-    pub fn state(&self) -> &RuntimeState {
-        &self.state
-    }
-
     /// Registers `stage`, runnable only once every stage in `deps` has
-    /// completed this tick — the same contract
-    /// `meridian_task_core::JobGraph::add_job` documents, one layer
-    /// down. `deps` must be [`StageId`](crate::StageId)s this same `Runtime` already
-    /// returned (stages are registered in dependency order, same as
-    /// `JobGraph` itself).
+    /// completed this tick. `deps` must be [`StageId`]s this same `Runtime`
+    /// already returned (stages are registered in dependency order).
     pub fn add_stage(
         &mut self,
         name: &'static str,
@@ -74,70 +51,62 @@ impl Runtime {
         id
     }
 
-    /// Runs every registered stage once, in dependency order,
-    /// independent branches in parallel — rebuilds a fresh `JobGraph`
-    /// every call (matching `JobGraph`'s own "a dependency-ordered set
-    /// of jobs for one frame" contract — its job actions are `FnOnce`,
-    /// consumed once by `Scheduler::run`, not meant to be reused across
-    /// frames). Blocks until every stage has finished.
+    /// Runs every registered stage once, in dependency order, independent
+    /// branches in parallel if the executor allows. Builds a fresh job list
+    /// every call (job actions are `FnOnce`, consumed once per frame).
+    /// Blocks until every stage has finished.
     pub fn tick(&self) {
         let all_ids: Vec<StageId> = (0..self.stages.len()).map(StageId).collect();
         self.tick_only(&all_ids);
     }
 
-    /// Like [`tick`](Self::tick), but runs only the stages named in
-    /// `ids` (each still gated on any of *its own* dependencies that are
-    /// also in `ids` — a dependency left out of `ids` is treated as
-    /// already satisfied, not an error, since the whole point of this
-    /// method is running a subset on its own schedule). The concrete
-    /// reason this exists rather than every application always calling
-    /// plain [`tick`](Self::tick): physics and rendering genuinely run
-    /// at different multiplicities per real display frame — a
-    /// fixed-timestep physics accumulator calls its stage 0-8 times to
-    /// catch up on one real frame's elapsed time, while a rendering
-    /// stage must run exactly once per display frame (a
-    /// `Runtime::tick`-per-catch-up-step render would present several
-    /// swapchain frames per real frame, wrong and wasteful). Both still
-    /// go through this same `Runtime` and the same dependency-graph
-    /// mechanism — `tick_only(&[physics_id])` in the accumulator loop,
-    /// `tick_only(&[render_id])` once after it, rather than either stage
-    /// being invoked outside `Runtime` entirely.
+    /// Like [`tick`](Self::tick), but runs only the stages named in `ids`
+    /// (each still gated on any of *its own* dependencies that are also in
+    /// `ids`; a dependency left out is treated as already satisfied). It
+    /// exists because physics and rendering run at different
+    /// multiplicities per display frame: a fixed-timestep accumulator
+    /// calls the physics stage 0-8 times, while the render stage runs
+    /// exactly once.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a stage appears in `ids` before one of its dependencies
+    /// that is also in `ids`.
     pub fn tick_only(&self, ids: &[StageId]) {
-        let selected: std::collections::HashSet<usize> = ids.iter().map(|id| id.0).collect();
-        let mut graph = JobGraph::new();
-        let mut job_ids: Vec<Option<meridian_task_core::JobId>> = vec![None; self.stages.len()];
-
+        let mut position: Vec<Option<usize>> = vec![None; self.stages.len()];
+        let mut jobs = Vec::with_capacity(ids.len());
         for &id in ids {
             let entry = &self.stages[id.0];
-            let dep_job_ids: Vec<_> = entry
+            let deps = entry
                 .deps
                 .iter()
-                .filter(|dep| selected.contains(&dep.0))
-                .map(|dep| {
-                    job_ids[dep.0]
-                        .expect("tick_only: a dependency must appear before its dependent in `ids`")
+                .filter_map(|dep| {
+                    let selected = ids.contains(dep);
+                    selected.then(|| {
+                        position[dep.0].expect(
+                            "tick_only: a dependency must appear before its dependent in `ids`",
+                        )
+                    })
                 })
                 .collect();
-            let stage = entry.stage.clone();
-            let ctx = self.state.context();
-            let job_id = graph.add_job(entry.name, &dep_job_ids, move || {
-                stage
-                    .lock()
-                    .unwrap_or_else(std::sync::PoisonError::into_inner)
-                    .run(&ctx);
+            let stage = Arc::clone(&entry.stage);
+            position[id.0] = Some(jobs.len());
+            jobs.push(Job {
+                name: entry.name,
+                deps,
+                action: Box::new(move || {
+                    stage
+                        .lock()
+                        .unwrap_or_else(std::sync::PoisonError::into_inner)
+                        .run();
+                }),
             });
-            job_ids[id.0] = Some(job_id);
         }
-
-        self.scheduler.run(graph);
+        self.executor.execute(jobs);
     }
 
-    /// Calls [`Stage::resize`](crate::Stage::resize) on every registered stage, in
-    /// registration order (no dependency graph needed here — resize
-    /// isn't a per-frame data-flow operation, and stages don't depend on
-    /// each other's resize side effects the way [`tick`](Self::tick)'s
-    /// stages depend on each other's *data*). Call this from an
-    /// application's window-resize handler.
+    /// Calls [`Stage::resize`] on every registered stage, in registration
+    /// order. Call this from an application's window-resize handler.
     pub fn resize_all(&self, width: u32, height: u32) {
         for entry in &self.stages {
             entry

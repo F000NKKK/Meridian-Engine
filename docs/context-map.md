@@ -24,12 +24,12 @@ two layers today is listed under the one it is moving to; Craftbook's
 | compute | application + adapters | `compute-runtime` (app), `compute-driver` (infra), `gpu-driver` (infra) | compute context, kernels, dispatch size, untyped buffers, GPU device |
 | assets | domain | `asset-core` (domain: types, `Decoder` port, pure parsers), `asset-png`, `asset-symphonia` (infra: codec adapters) | decoded images, meshes, audio, shader sources, decoders |
 | rendering | domain + adapter | `graphics-core` (domain), `rendering-app` (app: ports `FrameRecorder`/`MeshStore`/`TextureStore`), `graphics-driver` (infra: wgpu recording, implements the ports) | scenes, cameras, lights, materials, render graph, frame submission |
-| physics | domain + adapters | `physics-core` (domain, perf), `physics-compute` (infra) | rigid bodies, colliders, contacts, solver, integrator, soft bodies |
-| audio | domain + adapter | `audio-core` (domain), `audio-app` (app: the `AudioSink` port), `audio-driver` (infra: cpal, implements it) | listener, emitters, speakers, mixer, DSP graph |
+| physics | domain + adapters | `physics-core` (domain, perf), `physics-app` (app: `PhysicsSubsystem`, the `PhysicsStepper` port), `physics-compute` (infra: batched stepper) | rigid bodies, colliders, contacts, solver, integrator, soft bodies |
+| audio | domain + adapter | `audio-core` (domain), `audio-app` (app: `AudioSubsystem`, the `AudioSink` port), `audio-driver` (infra: cpal, implements it) | listener, emitters, speakers, mixer, DSP graph |
 | ui | domain + adapter | `ui-core` (domain), `mel-build` (infra: build-time `.mel` generator), `ui-render` (infra: adapter from the UI tree to `graphics-core::Scene2d`) | element tree, typed properties, layout, hit testing, generated bindings |
 | data | infrastructure | `scene` (infra: Substrate Data scene documents) | scene document schema and migration |
 | editor | infrastructure | `editor-protocol`, `editor-host`, `editor-tcp` (infra) | host/editor wire messages, versions, ids; the host's session, ports and loopback TCP adapter |
-| runtime | application + interface | `engine-core` (app), `task-core` (infra), `sdk` (interface: composition root), `examples` (interface) | frame stages, scheduler, events, job graph |
+| runtime | application + interface | `engine-core` (app: stages, `JobExecutor` port, events; owns no state), `task-core` (infra: implements `JobExecutor`), `sdk` (interface: composition root), `examples` (interface) | frame stages, job executor, events, job graph |
 
 ## Relations
 

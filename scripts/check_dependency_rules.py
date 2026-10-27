@@ -40,7 +40,7 @@ ALLOWED = {
     "meridian-gac-core": {"meridian-numeric-core"},
     "meridian-memory-core": set(),
     "meridian-resource-core": {"meridian-memory-core"},
-    "meridian-task-core": set(),
+    "meridian-task-core": {"meridian-engine-core"},
     "meridian-platform-core": {"meridian-foundation"},
     "meridian-gpu-driver": {"meridian-foundation", "meridian-platform-core"},
     "meridian-compute-driver": {
@@ -92,6 +92,7 @@ ALLOWED = {
     "meridian-physics-compute": {
         "meridian-foundation",
         "meridian-physics-core",
+        "meridian-physics-app",
         "meridian-gac-core",
         "meridian-gac-compute",
         "meridian-compute-runtime",
@@ -109,12 +110,10 @@ ALLOWED = {
     },
     "meridian-engine-core": {
         "meridian-foundation",
-        "meridian-gac-core",
-        "meridian-ecs-core",
-        "meridian-physics-core",
-        "meridian-audio-core",
+        "meridian-physics-app",
         "meridian-compute-runtime",
     },
+    "meridian-physics-app": {"meridian-physics-core", "meridian-gac-core"},
     "meridian-scene": {"meridian-ecs-core", "meridian-gac-core"},
     "meridian-editor-protocol": {"meridian-ecs-core", "meridian-scene"},
     "meridian-editor-host": {
@@ -147,6 +146,9 @@ ALLOWED = {
         "meridian-audio-driver",
         "meridian-rendering-app",
         "meridian-engine-core",
+        "meridian-physics-app",
+        "meridian-physics-compute",
+        "meridian-task-core",
         "meridian-compute-driver",
         "meridian-compute-runtime",
         "meridian-dsl-core",
@@ -159,9 +161,6 @@ ALLOWED = {
 # These edges point outwards and contradict ADR 019; they stay until that
 # wave inverts them. Never add to this table.
 PENDING = {
-    ("meridian-engine-core", "meridian-task-core"): "migration pending (wave 6)",
-    ("meridian-engine-core", "meridian-platform-core"): "migration pending (wave 6)",
-    ("meridian-engine-core", "meridian-physics-compute"): "migration pending (wave 6)",
 }
 
 NAME_RE = re.compile(r'^name *= *"([^"]+)"', re.M)

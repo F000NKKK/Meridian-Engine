@@ -66,8 +66,9 @@ Meridian-Engine — небольшой устойчивый набор крей�
 |---|---|---|
 | [`meridian-compute-runtime`](crates/meridian-compute-runtime) | compute | Контекст вычислений, интерфейсы ядер, размер диспетчеризации и разделение |
 | [`meridian-audio-app`](crates/meridian-audio-app) | audio | Порт `AudioSink` с фейком и контрактным набором тестов |
+| [`meridian-physics-app`](crates/meridian-physics-app) | physics | `PhysicsSubsystem`, порт `PhysicsStepper` и `SequentialStepper` |
 | [`meridian-rendering-app`](crates/meridian-rendering-app) | rendering | Порты `FrameRecorder`, `MeshStore`, `TextureStore` с фейками и контрактными наборами |
-| [`meridian-engine-core`](crates/meridian-engine-core) | runtime | `Runtime`: планировщик кадра, события, подсистемы физики и звука, стадии |
+| [`meridian-engine-core`](crates/meridian-engine-core) | runtime | `Runtime`: стадии в порядке зависимостей, порт `JobExecutor`, события (состоянием не владеет) |
 
 **Инфраструктура (адаптеры)**
 
@@ -138,7 +139,7 @@ fn main() {
 
 ```mermaid
 flowchart LR
-    I[interface<br/>sdk, dsl-macros, examples] --> A[application<br/>engine-core, compute-runtime, audio-app, rendering-app]
+    I[interface<br/>sdk, dsl-macros, examples] --> A[application<br/>engine-core, compute-runtime, audio-app, physics-app, rendering-app]
     A --> D[domain<br/>graphics, physics, audio, assets, ui]
     X[infrastructure<br/>drivers, adapters, scene, editor-protocol, editor-host, editor-tcp] --> D
     K[shared kernel<br/>foundation, numeric, gac, memory, resource, ecs, dsl-core]

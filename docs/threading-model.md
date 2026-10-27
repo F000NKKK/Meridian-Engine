@@ -61,21 +61,18 @@ itself depends on `task-core` for CPU-side scheduling of that compute work,
 but the two are not the same layer: `task-core` doesn't know what a compute
 buffer is, and `compute-runtime` doesn't schedule general application logic.
 
-## `engine-core`'s `FrameScheduler`
+## `engine-core`'s `JobExecutor` port
 
-`meridian-engine-core::FrameScheduler` is the engine-layer application of
-`Scheduler` above — real and tested on its own terms, sized by default to
-the real detected CPU thread count (`platform-core::CpuCapabilities`), not
-a hardcoded guess. `Runtime::tick`, however, does *not* run physics and
-audio through it: those are the only two real per-frame systems today, and
-they have a genuine sequential data dependency (audio reads the emitter
-frames physics just updated), not two independent branches like the
-Physics/Audio split in the "shape of a frame" diagram above implies once
-more systems exist. Wrapping a strictly sequential two-step in a job graph
-would be decorative, not functional. `FrameScheduler` becomes load-bearing
-once a second real per-frame system exists that's genuinely independent of
-physics (animation, particles, ...) to run alongside it — see
-`meridian-engine-core`'s module doc.
+`meridian-engine-core::Runtime` runs its stages through the `JobExecutor`
+port (ADR 025): it builds a list of `Job`s (name, dependency indices, action)
+every tick and hands it to the executor. `meridian-task-core::TaskExecutor`
+implements the port with the `Scheduler` above, sized by the composition root
+(`meridian_sdk::parallel_runtime` uses the detected CPU thread count from
+`platform-core`, so `engine-core` itself never asks). Independent stages run
+in parallel; a stage that depends on another sees its finished work. Stages
+share state through `Shared` handles the composition root passes in, not
+through a runtime-owned hub. `testing::InlineExecutor` is the deterministic
+single-threaded fake.
 
 ## Determinism note
 

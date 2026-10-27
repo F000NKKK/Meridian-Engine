@@ -34,10 +34,10 @@ is in ["All edges, exactly"](#all-edges-exactly) below — read the
 diagram for the shape of the graph, that section for the ground truth
 of any one crate's dependencies.
 
-`meridian-foundation`, `meridian-memory-core`, and `meridian-task-core`
-are the graph's independent leaves — each depends on nothing (rule 0
-covers `foundation` specifically: *any* other crate may take an edge to
-it, so it isn't drawn as a dependency of anything below).
+`meridian-foundation` and `meridian-memory-core` are the graph's
+independent leaves — each depends on nothing (rule 0 covers `foundation`
+specifically: *any* other crate may take an edge to it, so it isn't drawn
+as a dependency of anything below).
 
 The real graph has too many crisscrossing edges (many crates each
 depend directly on `foundation`, `gac-core`, `resource-core`, ... —
@@ -52,13 +52,13 @@ depend on crates in tiers `0..N`, never a same-tier or higher-tier one
 (that's what makes the graph a DAG):
 
 ```text
-tier 0  compute-runtime, dsl-macros, foundation, memory-core, task-core
+tier 0  compute-runtime, dsl-macros, foundation, memory-core
 tier 1  asset-core, dsl-core, numeric-core, platform-core, resource-core, ui-core
 tier 2  asset-png, asset-symphonia, gac-core, gpu-driver, mel-build
 tier 3  audio-core, compute-driver, ecs-core, physics-core
-tier 4  audio-app, gac-compute, graphics-core, scene
-tier 5  audio-driver, editor-protocol, physics-compute, rendering-app, ui-render
-tier 6  editor-host, engine-core, graphics-driver
+tier 4  audio-app, gac-compute, graphics-core, physics-app, scene
+tier 5  audio-driver, editor-protocol, engine-core, physics-compute, rendering-app, ui-render
+tier 6  editor-host, graphics-driver, task-core
 tier 7  editor-tcp, sdk
 ```
 
@@ -227,20 +227,13 @@ logs via `log_warn!` when a pair's manifold exceeds its fixed
 `MAX_CONTACTS_PER_PAIR` output slot, the same `MAX_LIGHTS`-style
 truncation policy `graphics-core::submission` uses.
 
-`meridian-engine-core` depends on `meridian-physics-compute` too (moving
-`engine-core` from tier 7 to tier 8, since it now sits above
-`physics-compute` rather than beside it) — `Runtime`'s
-`PhysicsComputeStepStage` (see that crate's own module doc) dispatches
-`physics-compute`'s batched `RigidBodyIntegratorKernel`/
-`BroadPhasePairsKernel`/`GenerateContactsKernel`/
-`ConstraintSolverBatchKernel` instead of `PhysicsSubsystem::step`'s
-plain sequential loop — the concrete answer to "physics needs to scale
-past a handful of bodies" docs/roadmap.md's "Scaling beyond a tech
-demo" section names. Not a new coordination-logic violation of rule 7:
-`engine-core` is still the *only* crate reaching into `physics-compute`
-for this, and `PhysicsComputeStepStage` is a thin `Stage` wrapper
-dispatching real batched kernels, not a reimplementation (CLAUDE.md's
-"don't drag another crate's logic into your own" rule).
+`meridian-engine-core` takes no edge to `physics-compute`, `task-core` or
+`platform-core` ([ADR 025](adr/025-wave-6-runtime-and-composition-root.md)):
+physics stepping is the `PhysicsStepper` port of `meridian-physics-app`,
+implemented by `physics-compute`'s `BatchedStepper`; threads are the
+`JobExecutor` port of `engine-core`, implemented by `task-core`'s
+`TaskExecutor`. Only the composition root (`sdk`, examples) chooses which
+implementation a `Runtime` gets.
 
 ## All edges, exactly
 
@@ -252,7 +245,7 @@ bottom-up.
 
 - `meridian-foundation` -> (nothing)
 - `meridian-memory-core` -> (nothing)
-- `meridian-task-core` -> (nothing)
+- `meridian-task-core` -> `meridian-engine-core`
 - `meridian-numeric-core` -> `meridian-foundation`
 - `meridian-platform-core` -> `meridian-foundation`
 - `meridian-gac-core` -> `meridian-numeric-core`
@@ -272,8 +265,9 @@ bottom-up.
 - `meridian-graphics-core` -> `meridian-ecs-core`, `meridian-foundation`, `meridian-gac-core`, `meridian-memory-core`, `meridian-resource-core`
 - `meridian-audio-core` -> `meridian-gac-core`
 - `meridian-physics-core` -> `meridian-gac-core`, `meridian-numeric-core`, `meridian-resource-core`
-- `meridian-physics-compute` -> `meridian-compute-driver`, `meridian-compute-runtime`, `meridian-foundation`, `meridian-gac-compute`, `meridian-gac-core`, `meridian-gpu-driver`, `meridian-numeric-core`, `meridian-physics-core`
-- `meridian-engine-core` -> `meridian-audio-core`, `meridian-compute-runtime`, `meridian-ecs-core`, `meridian-foundation`, `meridian-gac-core`, `meridian-physics-compute` (pending, wave 6), `meridian-physics-core`, `meridian-platform-core` (pending, wave 6), `meridian-task-core` (pending, wave 6)
+- `meridian-physics-compute` -> `meridian-compute-driver`, `meridian-compute-runtime`, `meridian-foundation`, `meridian-gac-compute`, `meridian-gac-core`, `meridian-gpu-driver`, `meridian-numeric-core`, `meridian-physics-app`, `meridian-physics-core`
+- `meridian-engine-core` -> `meridian-compute-runtime`, `meridian-foundation`, `meridian-physics-app`
+- `meridian-physics-app` -> `meridian-gac-core`, `meridian-physics-core`
 - `meridian-scene` -> `meridian-ecs-core`, `meridian-gac-core`
 - `meridian-editor-protocol` -> `meridian-ecs-core`, `meridian-scene`
 - `meridian-editor-host` -> `meridian-ecs-core`, `meridian-editor-protocol`, `meridian-scene`
@@ -283,7 +277,7 @@ bottom-up.
 - `meridian-mel-build` -> `meridian-dsl-core`, `meridian-ui-core`
 - `meridian-ui-core` -> `meridian-foundation`, `meridian-memory-core`
 - `meridian-ui-render` -> `meridian-gac-core`, `meridian-graphics-core`, `meridian-ui-core`
-- `meridian-sdk` -> `meridian-asset-core`, `meridian-asset-png`, `meridian-asset-symphonia`, `meridian-audio-app`, `meridian-audio-core`, `meridian-audio-driver`, `meridian-compute-driver`, `meridian-compute-runtime`, `meridian-dsl-core`, `meridian-dsl-macros`, `meridian-engine-core`, `meridian-foundation`, `meridian-gac-core`, `meridian-graphics-core`, `meridian-graphics-driver`, `meridian-physics-core`, `meridian-platform-core`, `meridian-rendering-app`, `meridian-ui-core`
+- `meridian-sdk` -> `meridian-asset-core`, `meridian-asset-png`, `meridian-asset-symphonia`, `meridian-audio-app`, `meridian-audio-core`, `meridian-audio-driver`, `meridian-compute-driver`, `meridian-compute-runtime`, `meridian-dsl-core`, `meridian-dsl-macros`, `meridian-engine-core`, `meridian-foundation`, `meridian-gac-core`, `meridian-graphics-core`, `meridian-graphics-driver`, `meridian-physics-app`, `meridian-physics-compute`, `meridian-physics-core`, `meridian-platform-core`, `meridian-rendering-app`, `meridian-task-core`, `meridian-ui-core`
 
 `meridian-engine-core` has no edge to `meridian-graphics-core` or
 `meridian-asset-core`: `Runtime::tick` doesn't render a frame or load an
@@ -368,8 +362,9 @@ crates it belongs to (wave 6). Applications depend on `sdk` alone.
    If two subsystems need to talk outside the edges drawn above, that
    coordination is a use case in `engine-core`, not a new cross-dependency
    between domain crates. It is the runtime context's application layer,
-   not a hub: per [ADR 020](adr/020-craftbook-adoption.md) D2 it stops
-   owning subsystem state (wave 6).
+   not a hub: per [ADR 020](adr/020-craftbook-adoption.md) D2 and
+   [ADR 025](adr/025-wave-6-runtime-and-composition-root.md) it owns no
+   subsystem state and names no adapter.
 
 8. **`meridian-resource-core` defines resource *identity*, not lifetime
    policy.** `Handle`, `ResourceId`, versioning, and dependency-tracking

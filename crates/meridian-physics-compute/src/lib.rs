@@ -65,9 +65,12 @@
 //! Porting those three faithfully (not just "compiles and looks
 //! plausible") is real, disclosed follow-up work, not bundled in here.
 
+mod batched_stepper;
 pub mod broad_phase;
 pub mod constraint_solver;
 pub mod narrow_phase;
 mod readback;
 pub mod rigid_body;
 pub mod soft_body;
+
+pub use batched_stepper::BatchedStepper;

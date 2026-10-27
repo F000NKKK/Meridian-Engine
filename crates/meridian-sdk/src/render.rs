@@ -10,7 +10,7 @@
 //! `build_scene` closure reads (typically the physics stage), and
 //! `Runtime::tick` guarantees it never runs before that state is ready.
 
-use meridian_engine_core::{Stage, StageContext};
+use meridian_engine_core::Stage;
 use meridian_graphics_core::Scene3d;
 use meridian_platform_core::Window;
 use meridian_rendering_app::{FrameOutcome, FrameRecorder, FrameRequest};
@@ -46,9 +46,10 @@ pub fn render_frame(
 }
 
 /// A [`Stage`] that owns a [`GraphicsSession`] and presents a frame every
-/// tick: `build_scene` reads whatever it needs from the current
-/// [`StageContext`] (typically `ctx.physics().bodies` for a
-/// physics-driven scene) and returns the [`Scene3d`] to draw — the same
+/// tick: `build_scene` reads whatever it needs from the
+/// [`Shared`](meridian_engine_core::Shared) handles it captured (typically
+/// the physics bodies of a physics-driven scene) and returns the
+/// [`Scene3d`] to draw — the same
 /// split `meridian_engine_core::PhysicsStepStage` makes between "what
 /// runs" (this type, generic over any scene-building closure) and "when
 /// it runs" (wherever an application registers it via
@@ -67,7 +68,7 @@ pub struct RenderStage<F> {
 
 impl<F> RenderStage<F>
 where
-    F: FnMut(&StageContext) -> Scene3d + Send + 'static,
+    F: FnMut() -> Scene3d + Send + 'static,
 {
     pub fn new(
         base: GraphicsSession,
@@ -86,10 +87,10 @@ where
 
 impl<F> Stage for RenderStage<F>
 where
-    F: FnMut(&StageContext) -> Scene3d + Send,
+    F: FnMut() -> Scene3d + Send,
 {
-    fn run(&mut self, ctx: &StageContext) {
-        let scene = (self.build_scene)(ctx);
+    fn run(&mut self) {
+        let scene = (self.build_scene)();
         render_frame(&mut self.base, &scene, self.clear_color, &self.window);
     }
 

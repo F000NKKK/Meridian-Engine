@@ -702,7 +702,10 @@ the rest are not started.
    machine footprints) that share an x range: a uniform grid keyed to
    chunk size or a BVH, plus incremental updates for static bodies.
 4. **Done: `physics-compute`'s batched rigid-body kernels are wired
-   into `engine-core::Runtime`.** `PhysicsStepStage` (in `engine-core`,
+   into `engine-core::Runtime`.** (Wave 6, ADR 025: the `PhysicsDispatchMode`
+   flag described below became the `PhysicsStepper` port; `BatchedStepper`
+   in `physics-compute` is the batched mode and `SequentialStepper` in
+   `physics-app` the sequential one.) `PhysicsStepStage` (in `engine-core`,
    re-exported from `meridian-sdk`, alongside its `PhysicsDispatchMode`
    flag) dispatches `RigidBodyIntegratorKernel`/`BroadPhasePairsKernel`/
    `GenerateContactsKernel`/`ConstraintSolverBatchKernel` when in

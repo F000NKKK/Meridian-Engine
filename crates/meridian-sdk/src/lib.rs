@@ -25,13 +25,13 @@ pub mod assets;
 pub mod camera;
 pub mod dsl;
 pub mod render;
+mod runtime;
 pub mod scene;
 
+pub use any_image_decoder::AnyImageDecoder;
 pub use assets::{AssetCache, AudioTrack, load_audio_track, load_image_asset};
 pub use camera::{FlyCamera, look_at_rotor};
 pub use dsl::dsl_core;
-// -- meridian-asset-core: decoding --
-pub use any_image_decoder::AnyImageDecoder;
 pub use meridian_asset_core::{Decoder, ImageAsset};
 pub use meridian_asset_png::PngDecoder;
 pub use meridian_asset_symphonia::{
@@ -42,21 +42,23 @@ pub use meridian_audio_core::{
     AcousticMedium, AttenuationModel, BinauralRenderer, Channel, Declicker, DspNode, Emitter,
     Listener, Mixer, SpeakerLayout,
 };
-// -- meridian-audio-app: the output port --
-pub use meridian_audio_app::AudioSink;
-// -- meridian-audio-driver: the platform audio adapter (composition root) --
+// -- meridian-audio-app: the output port and audio state --
+pub use meridian_audio_app::{AudioSink, AudioSubsystem};
+// -- meridian-audio-driver: the platform audio adapter --
 pub use meridian_audio_driver::{AudioStream, open_output};
-// -- meridian-compute-driver: the platform compute adapter (composition root) --
+// -- meridian-compute-driver: the platform compute adapter --
 pub use meridian_compute_driver::{CpuComputeDevice, GpuComputeDevice, cpu_context, gpu_context};
 // -- meridian-compute-runtime: dispatch ports --
 pub use meridian_compute_runtime::{ComputeContext, ComputeDevice, GpuBackend};
-// -- meridian-engine-core: Runtime — the single frame-work entry point
-// (see this crate's own module doc's "Runtime is the single frame-work
-// entry point" section) --
+// -- meridian-engine-core: Runtime, the single frame-work entry point --
 pub use meridian_engine_core::{
-    AudioSubsystem, ComputeStage, EventSystem, FrameScheduler, PhysicsDispatchMode,
-    PhysicsStepStage, PhysicsSubsystem, Runtime, RuntimeState, Stage, StageContext, StageId,
+    ComputeStage, EventSystem, Job, JobExecutor, PhysicsStepStage, Runtime, Shared, Stage, StageId,
 };
+// -- meridian-physics-app / -compute: the world state and its steppers --
+pub use meridian_physics_app::{PhysicsStepper, PhysicsSubsystem, SequentialStepper};
+pub use meridian_physics_compute::BatchedStepper;
+// -- meridian-task-core: the threaded job executor --
+pub use meridian_task_core::TaskExecutor;
 // -- meridian-foundation: logging, crash reporting --
 pub use meridian_foundation::{
     CrashReportConfig, EngineError, crash_reporting, log_error, log_info, log_warn, logging,
@@ -84,12 +86,13 @@ pub use meridian_physics_core::{
 };
 // -- meridian-platform-core: windowing, input, time --
 pub use meridian_platform_core::{
-    AppHandler, Clock, InputState, KeyCode, MouseButton, Time, Window, run_windowed_app,
+    AppHandler, Clock, CpuCapabilities, InputState, KeyCode, MouseButton, Time, Window,
+    run_windowed_app,
 };
-/// The retained UI runtime (ADR 018); generated `.mel` glue names it
-/// through here.
+/// The retained UI runtime (ADR 018), named by generated `.mel` glue.
 pub use meridian_ui_core as ui_core;
 pub use render::{RenderStage, render_frame};
+pub use runtime::parallel_runtime;
 pub use scene::{
     GraphicsSession, cube_mesh_source, ground_mesh_source, icosphere_mesh_source,
     pyramid_mesh_source,

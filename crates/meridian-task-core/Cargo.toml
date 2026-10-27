@@ -5,15 +5,17 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Job graph scheduler: worker threads and dependency tracking for parallel frame execution."
+description = "Job graph scheduler: worker threads and dependency tracking for parallel frame execution, and the engine-core JobExecutor adapter."
 readme = "README.md"
 
 [dependencies]
+meridian-engine-core = { workspace = true }
 
 [lints]
 workspace = true
 
 [dev-dependencies]
+meridian-engine-core = { workspace = true, features = ["testing"] }
 criterion = { version = "0.8", default-features = false }
 
 [[bench]]

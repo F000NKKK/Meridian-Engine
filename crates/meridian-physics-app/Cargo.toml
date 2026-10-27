@@ -1,0 +1,23 @@
+[package]
+name = "meridian-physics-app"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Physics use cases: the PhysicsSubsystem world state, the PhysicsStepper port and its sequential implementation."
+readme = "README.md"
+
+[dependencies]
+meridian-physics-core = { workspace = true }
+meridian-gac-core = { workspace = true, optional = true }
+
+[dev-dependencies]
+meridian-gac-core = { workspace = true }
+
+[features]
+# The `PhysicsStepper` contract suite, for adapters' own tests (Craftbook 8.4).
+testing = ["dep:meridian-gac-core"]
+
+[lints]
+workspace = true

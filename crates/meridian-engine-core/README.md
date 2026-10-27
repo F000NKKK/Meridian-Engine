@@ -1,20 +1,45 @@
 # meridian-engine-core
 
-Runtime: frame scheduler, event system, subsystem manager; ties every other crate into the main loop.
+Runtime use cases: stages run in dependency order through a job-executor port, the event system, and the physics and compute step stages.
 
 **Layer and context:** application · runtime
 
-- **For:** `Runtime`: frame scheduler, event system, physics and audio subsystems, and `Stage`s run on a `JobGraph`.
-- **Not for:** subsystem algorithms: it only coordinates other crates.
+- **For:** `Runtime` and `Stage`s run in dependency order through the `JobExecutor` port, `Shared` state handles, `EventSystem`, `PhysicsStepStage` and `ComputeStage`.
+- **Not for:** owning application state or naming adapters (ADR 025): threads come from `meridian-task-core`, physics steppers from `meridian-physics-app` and `meridian-physics-compute`, subsystem algorithms from the `*-core` crates.
 
 ## Usage
 
-The entry points are documented on [docs.rs](https://docs.rs/meridian-engine-core); see `src/lib.rs` for the module overview and `docs/` in the repository for the design.
+```rust
+use std::sync::Arc;
+
+use meridian_engine_core::testing::InlineExecutor;
+use meridian_engine_core::{Runtime, Shared, Stage};
+
+struct Count(Shared<u32>);
+
+impl Stage for Count {
+    fn run(&mut self) {
+        *self.0.lock() += 1;
+    }
+}
+
+let frames = Shared::new(0);
+let mut runtime = Runtime::new(Arc::new(InlineExecutor));
+runtime.add_stage("count", &[], Count(frames.clone()));
+runtime.tick();
+assert_eq!(*frames.lock(), 1);
+```
+
+## Features
+
+| Feature | Enables |
+|---|---|
+| `testing` | `testing::InlineExecutor` and `testing::run_executor_contract` for adapters' own tests |
 
 ## Depends on / used by
 
-- Depends on: [`meridian-audio-core`](../meridian-audio-core), [`meridian-compute-runtime`](../meridian-compute-runtime), [`meridian-ecs-core`](../meridian-ecs-core), [`meridian-foundation`](../meridian-foundation), [`meridian-gac-core`](../meridian-gac-core), [`meridian-physics-compute`](../meridian-physics-compute), [`meridian-physics-core`](../meridian-physics-core), [`meridian-platform-core`](../meridian-platform-core), [`meridian-task-core`](../meridian-task-core)
-- Used by: [`meridian-sdk`](../meridian-sdk)
+- Depends on: [`meridian-compute-runtime`](../meridian-compute-runtime), [`meridian-foundation`](../meridian-foundation), [`meridian-physics-app`](../meridian-physics-app)
+- Used by: [`meridian-sdk`](../meridian-sdk), [`meridian-task-core`](../meridian-task-core)
 
 ## License
 

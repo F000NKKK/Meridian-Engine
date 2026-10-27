@@ -8,7 +8,7 @@ description: Guide Meridian engine-core and example integration work. Use when e
 ## Workflow
 
 1. Read `AGENTS.md`, `docs/architecture.md`, `docs/threading-model.md`, and `docs/roadmap.md`.
-2. Put cross-subsystem orchestration in `engine-core` as use cases, not in ad hoc dependencies between domain crates; do not add state to `RuntimeState` (ADR 020 D2). Concrete adapters are named only in `sdk`/examples (the composition root).
+2. Put cross-subsystem orchestration in `engine-core` as use cases, not in ad hoc dependencies between domain crates; the runtime owns no state and names no adapter (ADR 025); stages hold `Shared` handles the composition root passes in. Concrete adapters are named only in `sdk`/examples (the composition root).
 3. Keep examples small and demonstrative. Examples may compose crates; core crates must remain layered.
 4. Do not make lower crates depend upward to satisfy example convenience.
 5. Update roadmap/status docs if an example demonstrates newly implemented behavior.
