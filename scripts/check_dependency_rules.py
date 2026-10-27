@@ -137,6 +137,8 @@ ALLOWED = {
         "meridian-ui-domain",
     },
     "meridian-sdk": {
+        "meridian-asset-app",
+        "meridian-asset-fs",
         "meridian-diagnostics",
         "meridian-gac",
         "meridian-platform-winit",

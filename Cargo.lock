@@ -1457,7 +1457,9 @@ dependencies = [
 name = "meridian-sdk"
 version = "0.5.0"
 dependencies = [
+ "meridian-asset-app",
  "meridian-asset-domain",
+ "meridian-asset-fs",
  "meridian-asset-png",
  "meridian-asset-symphonia",
  "meridian-audio-app",
