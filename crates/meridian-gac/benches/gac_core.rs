@@ -3,7 +3,8 @@
 use std::hint::black_box;
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use meridian_gac::{Motor3, Rotor, Vec3};
+use meridian_gac::{FixedMotor3, FixedRotor, FixedVec3, Motor3, Rotor, Vec3};
+use meridian_numeric::Fixed;
 
 fn rotor_transform(c: &mut Criterion) {
     let rotor = Rotor::from_axis_angle(Vec3::new(1.0, 2.0, 3.0), 0.7);
@@ -51,5 +52,26 @@ fn motor_batch(c: &mut Criterion) {
     c.bench_function("motor_to_mat4", |b| b.iter(|| black_box(motor).to_mat4()));
 }
 
-criterion_group!(benches, rotor_transform, motor_compose, motor_batch);
+fn fixed_motor(c: &mut Criterion) {
+    let axis = FixedVec3::new(Fixed::ONE, Fixed::ONE, Fixed::ONE);
+    let motor = FixedMotor3::from_rotation_translation(
+        FixedRotor::from_axis_angle(axis, Fixed::from_num(0.7)),
+        FixedVec3::new(Fixed::ONE, Fixed::ZERO, Fixed::ONE),
+    );
+    let point = FixedVec3::new(Fixed::from_num(0.25), Fixed::ONE, Fixed::ZERO);
+    c.bench_function("fixed_motor_transform_point", |b| {
+        b.iter(|| black_box(motor).transform_point(black_box(point)));
+    });
+    c.bench_function("fixed_motor_transform_vector", |b| {
+        b.iter(|| black_box(motor).transform_vector(black_box(point)));
+    });
+}
+
+criterion_group!(
+    benches,
+    rotor_transform,
+    motor_compose,
+    motor_batch,
+    fixed_motor
+);
 criterion_main!(benches);
