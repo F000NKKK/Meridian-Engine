@@ -56,7 +56,13 @@ element tree, layout panels (`Grid` with rows/columns in pixels/`Auto`/`*`,
 `StackPanel`, `DockPanel`), styles/templates, data binding — modelled on
 how `yog-ui` and Yog IDLE already do it. The UI-architecture ADR starts
 from this, not from an open choice between retained and immediate mode.
-Markup syntax is shared with team/scripting.
+Markup syntax is owned by team/scripting: ADR 017 (`.mel` markup and
+code-behind, branch `claude/project-thread-h5kbvo`) — `x:Class`/
+`x:ViewModel`, `x:Name`, `x:Key`, dotted property elements and attached
+properties (`Grid.Row`), compiled `{x:Bind ...}` and `{StaticResource}`,
+`foo.mel` → `foo.g.rs` via `mel_include!`. The UI-architecture ADR maps
+that syntax onto the element model; ui-ux owns the runtime
+(`meridian-ui-core`), scripting owns syntax, `dsl-core` and codegen.
 
 ## Backlog
 
