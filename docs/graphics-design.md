@@ -156,7 +156,7 @@ UI does not get its own rendering vocabulary. A UI is either:
 
 What UI adds over plain scenes is *content*, not rendering: widgets,
 layout, text, input routing. All of that is deliberately out of
-`graphics-core` — a future `ui-core` consumes this vocabulary (it emits
+`graphics-core` — `ui-core` ([ADR 018](adr/018-ui-architecture.md)) consumes this vocabulary (it emits
 `Scene2D`/`Scene3D` renderables) the same way `physics-core` consumes
 `gac-core` shapes. Text/font rendering (glyph atlases, shaping) is its
 own future decision with its own ADR; nothing in this vocabulary blocks

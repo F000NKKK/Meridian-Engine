@@ -726,11 +726,13 @@ rest are not started.
    lockstep-style sync, but the actual transport/replication layer is
    unstarted. This is its own multi-month subsystem, not an add-on to
    an existing crate.
-7. **No UI framework.** Inventory, crafting, HUD, building-placement
-   previews — `graphics-core::Scene2D`/`Sprite` exist (a layer-sorted
-   2D plane) but there's no widget/layout/input-routing system built on
-   top. Every UI element today would be hand-assembled sprites with
-   hand-rolled input handling.
+7. **UI framework: runtime started, rendering not.**
+   `meridian-ui-core` ([ADR 018](adr/018-ui-architecture.md)) has the
+   WPF-style element tree, typed properties, measure/arrange layout
+   (`Border`, `StackPanel`, `DockPanel`, `Grid`, `TextBlock`) and hit
+   testing, tested without a GPU. Still missing: extraction to
+   `Scene2D`, text rendering, input routing and controls, styles and
+   templates, parsing markup literals for the `.mel` generator.
 8. **Asset pipeline stops at static meshes.** `asset-core::ObjDecoder`
    has no skeletal/skinning support and there's no animation system at
    all — a blocker for any animated creature (Minecraft mobs) or
