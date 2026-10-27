@@ -3,7 +3,7 @@
 use crate::scene::{BlendMode, Material};
 
 /// The depth and blend behaviour a [`Material`] asks for. The variants are
-/// in drawing order: [`draw_order`](super::draw_order) emits them front to
+/// in drawing order: [`order_draws`](super::order_draws) emits them front to
 /// back as listed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum DrawState {
