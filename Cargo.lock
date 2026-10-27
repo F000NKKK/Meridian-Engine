@@ -1192,6 +1192,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "meridian-diagnostics-fs"
+version = "0.1.0"
+dependencies = [
+ "meridian-foundation",
+ "tokio",
+]
+
+[[package]]
 name = "meridian-dsl-core"
 version = "0.1.0"
 dependencies = [
@@ -1273,9 +1281,6 @@ dependencies = [
 [[package]]
 name = "meridian-foundation"
 version = "0.7.0"
-dependencies = [
- "tokio",
-]
 
 [[package]]
 name = "meridian-gac-compute"
@@ -1444,6 +1449,7 @@ dependencies = [
  "meridian-audio-driver",
  "meridian-compute-driver",
  "meridian-compute-runtime",
+ "meridian-diagnostics-fs",
  "meridian-dsl-core",
  "meridian-dsl-macros",
  "meridian-engine-core",

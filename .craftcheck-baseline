@@ -11,8 +11,6 @@ crates/meridian-dsl-core/src/parse/parser/mod.rs	C101		1
 crates/meridian-dsl-core/src/tag/dsl_registry/mod.rs	S701		1
 crates/meridian-ecs-core/src/world.rs	C101		1
 crates/meridian-editor-protocol/src/version.rs	C108	ProtocolVersion	1
-crates/meridian-foundation/src/crash_reporting.rs	C108	CrashReportConfig	1
-crates/meridian-foundation/src/crash_reporting.rs	S701		1
 crates/meridian-gac-compute/src/fixed_wgsl/arithmetic_lib.rs	C101		1
 crates/meridian-gac-compute/src/fixed_wgsl/tests.rs	C101		1
 crates/meridian-graphics-core/src/fly/tests.rs	C101		1

@@ -36,6 +36,7 @@ INWARD = {
 # crate -> direct meridian-* dependencies that follow the target direction.
 ALLOWED = {
     "meridian-foundation": set(),
+    "meridian-diagnostics-fs": {"meridian-foundation"},
     "meridian-numeric-core": {"meridian-foundation"},
     "meridian-gac-core": {"meridian-numeric-core"},
     "meridian-memory-core": set(),
@@ -145,6 +146,7 @@ ALLOWED = {
         "meridian-audio-app",
         "meridian-audio-driver",
         "meridian-rendering-app",
+        "meridian-diagnostics-fs",
         "meridian-engine-core",
         "meridian-physics-app",
         "meridian-physics-compute",

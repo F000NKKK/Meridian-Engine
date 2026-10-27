@@ -52,3 +52,13 @@ with the wave 7 renames. `assets.rs` (file reading, the image and audio
 decoder wiring, the path cache) stays for now: it is composition work until an
 `asset-app` crate with a file-source port exists; the pure geometry in it
 (smooth normals) moves to `graphics-core`.
+
+**D6 — `foundation` splits along the I/O line (ADR 020 D7).** The kernel keeps
+`EngineError`, `FeatureFlags` and the log kernel (formatting, level filter,
+the in-memory ring) plus the `LogSink` port with `install_sink`; it now has no
+dependencies at all. The tokio file writer and the crash-report panic hook
+move to the new adapter `meridian-diagnostics-fs` (`FileLog`,
+`install_crash_hook`), which the composition root starts. `FileLog` replaces
+the former `static FILE_TX`: it is a handle (`flush(&self)`), so the adapter
+owns no global; the kernel's one process log stays the single named global.
+The sdk's `file-logging` feature is gone, as the adapter is a plain dependency.

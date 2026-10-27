@@ -84,5 +84,5 @@ Parse errors ([`dsl_core::ParseError`]) and tag-build errors
 `meridian_foundation::EngineError` (see that trait's own doc) — a
 caller that lets one propagate into a panic (rather than, say,
 falling back to an empty scene) gets it captured by
-`crash_reporting`'s post-mortem for free, same as every other engine
+the crash hook's post-mortem for free, same as every other engine
 error; nothing about this module is a silent dead end.

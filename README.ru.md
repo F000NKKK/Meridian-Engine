@@ -42,7 +42,8 @@ Meridian-Engine — небольшой устойчивый набор крей�
 
 | Crate | Context | Что даёт |
 |---|---|---|
-| [`meridian-foundation`](crates/meridian-foundation) | diagnostics | Соглашения об ошибках, журнал, отчёты о падениях, флаги возможностей CPU |
+| [`meridian-foundation`](crates/meridian-foundation) | diagnostics | Соглашения об ошибках, ядро журнала и порт `LogSink`, флаги возможностей CPU |
+| [`meridian-diagnostics-fs`](crates/meridian-diagnostics-fs) | diagnostics | Файловый журнал и отчёты о падениях (адаптер) |
 | [`meridian-numeric-core`](crates/meridian-numeric-core) | geometry | Скалярные типы, детерминированный `Fixed`, числовые трейты |
 | [`meridian-gac-core`](crates/meridian-gac-core) | geometry | Геометрическая алгебра: векторы, роторы, моторы, фигуры (float и `Fixed`) |
 | [`meridian-memory-core`](crates/meridian-memory-core) | identity | Арены, пулы ресурсов, поколенческие дескрипторы |

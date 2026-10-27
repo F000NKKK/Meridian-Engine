@@ -18,7 +18,7 @@ two layers today is listed under the one it is moving to; Craftbook's
 | geometry | shared kernel | `numeric-core` (kernel), `gac-core` (kernel, perf), `gac-compute` (infra) | scalars, `Fixed`, vectors, bivectors, rotors, motors, shapes |
 | identity | shared kernel | `memory-core` (kernel, perf), `resource-core` (kernel) | generational handles, pools, arenas, resource ids, versions, dependency graph |
 | entity | shared kernel | `ecs-core` (kernel, perf) | entities, components, archetypes, queries, `Transform` |
-| diagnostics | shared kernel | `foundation` (kernel; file sink and crash report move to an adapter, ADR 020 D7) | `EngineError`, log levels, the process log sink |
+| diagnostics | shared kernel | `foundation` (kernel: `EngineError`, the log kernel and `LogSink` port), `diagnostics-fs` (infra: log file and crash report, implements `LogSink`) | `EngineError`, log levels, the process log sink |
 | scene-markup | shared kernel / published language | `dsl-core` (kernel), `dsl-macros` (interface) | markup elements, tags, the tag registry |
 | platform | infrastructure | `platform-core` (infra) | window, input state, clock, CPU/GPU capabilities, dynamic libraries |
 | compute | application + adapters | `compute-runtime` (app), `compute-driver` (infra), `gpu-driver` (infra) | compute context, kernels, dispatch size, untyped buffers, GPU device |
@@ -51,7 +51,7 @@ dependencies need one of these:
 | compute → platform | customer–supplier | GPU/CPU capability report |
 | audio → platform | customer–supplier | capability report |
 | physics → platform | customer–supplier | `CpuCapabilities` (`platform-core`) |
-| runtime → physics, audio, rendering, platform, assets, compute | customer–supplier | each context's published API, called by runtime use cases |
+| runtime → physics, audio, rendering, platform, assets, compute, diagnostics | customer–supplier | each context's published API, called by runtime use cases |
 | ui → rendering | customer–supplier | `ui-render` extracts the UI tree into `graphics-core::Scene2d` (ADR 021) |
 | editor → data | customer–supplier | the protocol carries scene documents and entity refs |
 | scene-markup → runtime | anticorruption layer | markup tags translated into runtime commands |

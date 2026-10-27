@@ -53,7 +53,7 @@ depend on crates in tiers `0..N`, never a same-tier or higher-tier one
 
 ```text
 tier 0  compute-runtime, dsl-macros, foundation, memory-core
-tier 1  asset-core, dsl-core, numeric-core, platform-core, resource-core, ui-core
+tier 1  asset-core, diagnostics-fs, dsl-core, numeric-core, platform-core, resource-core, ui-core
 tier 2  asset-png, asset-symphonia, gac-core, gpu-driver, mel-build
 tier 3  audio-core, compute-driver, ecs-core, physics-core
 tier 4  audio-app, gac-compute, graphics-core, physics-app, scene
@@ -259,6 +259,7 @@ bottom-up.
 - `meridian-audio-driver` -> `meridian-audio-app`, `meridian-audio-core`, `meridian-foundation`, `meridian-platform-core`
 - `meridian-compute-runtime` -> (none; it owns the `ComputeDevice` and `GpuBackend` ports)
 - `meridian-gac-compute` -> `meridian-compute-driver`, `meridian-compute-runtime`, `meridian-gac-core`, `meridian-gpu-driver`, `meridian-numeric-core`
+- `meridian-diagnostics-fs` -> `meridian-foundation`
 - `meridian-asset-core` -> `meridian-foundation`
 - `meridian-asset-png` -> `meridian-asset-core`
 - `meridian-asset-symphonia` -> `meridian-asset-core`
@@ -277,7 +278,7 @@ bottom-up.
 - `meridian-mel-build` -> `meridian-dsl-core`, `meridian-ui-core`
 - `meridian-ui-core` -> `meridian-foundation`, `meridian-memory-core`
 - `meridian-ui-render` -> `meridian-gac-core`, `meridian-graphics-core`, `meridian-ui-core`
-- `meridian-sdk` -> `meridian-asset-core`, `meridian-asset-png`, `meridian-asset-symphonia`, `meridian-audio-app`, `meridian-audio-core`, `meridian-audio-driver`, `meridian-compute-driver`, `meridian-compute-runtime`, `meridian-dsl-core`, `meridian-dsl-macros`, `meridian-engine-core`, `meridian-foundation`, `meridian-gac-core`, `meridian-graphics-core`, `meridian-graphics-driver`, `meridian-physics-app`, `meridian-physics-compute`, `meridian-physics-core`, `meridian-platform-core`, `meridian-rendering-app`, `meridian-task-core`, `meridian-ui-core`
+- `meridian-sdk` -> `meridian-asset-core`, `meridian-asset-png`, `meridian-asset-symphonia`, `meridian-audio-app`, `meridian-audio-core`, `meridian-audio-driver`, `meridian-compute-driver`, `meridian-compute-runtime`, `meridian-diagnostics-fs`, `meridian-dsl-core`, `meridian-dsl-macros`, `meridian-engine-core`, `meridian-foundation`, `meridian-gac-core`, `meridian-graphics-core`, `meridian-graphics-driver`, `meridian-physics-app`, `meridian-physics-compute`, `meridian-physics-core`, `meridian-platform-core`, `meridian-rendering-app`, `meridian-task-core`, `meridian-ui-core`
 
 `meridian-engine-core` has no edge to `meridian-graphics-core` or
 `meridian-asset-core`: `Runtime::tick` doesn't render a frame or load an
@@ -296,19 +297,16 @@ crates it belongs to (wave 6). Applications depend on `sdk` alone.
 ## Rules
 
 0. **`meridian-foundation` is the open bottom of the graph.** It depends
-   on nothing (its optional `file-logging` feature is the one external
-   exception, pulling `tokio` for the buffered async log-file sink), and
-   *any* crate may take an edge to it — that edge is added to
+   on nothing, and *any* crate may take an edge to it — that edge is added to
    `scripts/check_dependency_rules.py` when actually taken, not
    pre-declared. It exists for exactly two kinds of content: shared
    conventions (`EngineError`, `FeatureFlags`) and process-wide
-   diagnostics (the unified `logging` sink and `crash_reporting` panic
-   hook). Diagnostics are deliberately *not* a "global manager" in rule
+   diagnostics (the `logging` kernel and its `LogSink` port). Diagnostics are deliberately *not* a "global manager" in rule
    3's sense: the sink owns no engine objects and hands out no handles —
    it appends lines, the same category as `std`'s own panic hook. It is
-   the one global exempted in `craftbook.toml`; its file sink and crash
-   report are I/O and move to an adapter crate, with the sink installed by
-   the composition root ([ADR 020](adr/020-craftbook-adoption.md) D7).
+   the one global exempted in `craftbook.toml`; the log file and the crash
+   report are the adapter `meridian-diagnostics-fs`, installed by the
+   composition root ([ADR 020](adr/020-craftbook-adoption.md) D7).
 1. **A domain or application crate never depends on a driver.** Drivers
    are adapters: they depend on the crate that owns the port and implement
    it ([ADR 019](adr/019-ports-in-domain-drivers-as-adapters.md)). Only the

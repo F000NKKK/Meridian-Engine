@@ -50,14 +50,14 @@ pub use meridian_audio_driver::{AudioStream, open_output};
 pub use meridian_compute_driver::{CpuComputeDevice, GpuComputeDevice, cpu_context, gpu_context};
 // -- meridian-compute-runtime: dispatch ports --
 pub use meridian_compute_runtime::{ComputeContext, ComputeDevice, GpuBackend};
+// -- meridian-diagnostics-fs: the log file and the crash report --
+pub use meridian_diagnostics_fs::{CrashReportConfig, FileLog, FileLogConfig, install_crash_hook};
 // -- meridian-engine-core: Runtime, the single frame-work entry point --
 pub use meridian_engine_core::{
     ComputeStage, EventSystem, Job, JobExecutor, PhysicsStepStage, Runtime, Shared, Stage, StageId,
 };
-// -- meridian-foundation: logging, crash reporting --
-pub use meridian_foundation::{
-    CrashReportConfig, EngineError, crash_reporting, log_error, log_info, log_warn, logging,
-};
+// -- meridian-foundation: errors and the log kernel --
+pub use meridian_foundation::{EngineError, log_error, log_info, log_warn, logging};
 // -- meridian-gac-core: spatial math --
 pub use meridian_gac_core::{Aabb, Bivector3, Motor3, Projection, Rotor, Vec3};
 // -- meridian-graphics-core: scene/material/lighting/submission --

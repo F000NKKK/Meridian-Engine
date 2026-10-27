@@ -43,7 +43,8 @@ crate has its own README.
 
 | Crate | Context | What it gives |
 |---|---|---|
-| [`meridian-foundation`](crates/meridian-foundation) | diagnostics | Error conventions, log sink, crash reporting, CPU feature flags |
+| [`meridian-foundation`](crates/meridian-foundation) | diagnostics | Error conventions, log kernel and `LogSink` port, CPU feature flags |
+| [`meridian-diagnostics-fs`](crates/meridian-diagnostics-fs) | diagnostics | Log file sink and crash-report hook (adapter) |
 | [`meridian-numeric-core`](crates/meridian-numeric-core) | geometry | Scalar types, deterministic `Fixed`, numeric traits |
 | [`meridian-gac-core`](crates/meridian-gac-core) | geometry | Geometric algebra: vectors, rotors, motors, shapes (float and `Fixed`) |
 | [`meridian-memory-core`](crates/meridian-memory-core) | identity | Arenas, resource pools, generational handles |

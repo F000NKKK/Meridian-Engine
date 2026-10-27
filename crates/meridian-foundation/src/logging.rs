@@ -8,7 +8,7 @@
 //! no more scattered `eprintln!`s that vanish when no terminal is
 //! attached. Output goes to stderr; the last messages are additionally
 //! kept in an in-memory ring so a crash report
-//! ([`crash_reporting`](crate::crash_reporting)) can include what the
+//! (`meridian-diagnostics-fs`) can include what the
 //! engine was doing right before it died.
 //!
 //! This is deliberately a process-wide *diagnostics sink*, the same
@@ -23,7 +23,7 @@
 
 use std::collections::VecDeque;
 use std::sync::atomic::{AtomicU8, Ordering};
-use std::sync::{Mutex, OnceLock};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Instant;
 
 /// Log severity, most severe first.
@@ -62,17 +62,34 @@ impl LogLevel {
 /// How many formatted lines the in-memory ring keeps for crash reports.
 const RING_CAPACITY: usize = 256;
 
-struct LogSink {
+struct ProcessLog {
     start: Instant,
     ring: Mutex<VecDeque<String>>,
 }
 
-static SINK: OnceLock<LogSink> = OnceLock::new();
+static SINK: OnceLock<ProcessLog> = OnceLock::new();
+
+/// Where the composition root sends formatted lines besides stderr and the
+/// ring: a file writer, a network forwarder. The kernel does no file I/O;
+/// adapters implement this port (`meridian-diagnostics-fs`).
+pub trait LogSink: Send + Sync {
+    /// Takes one formatted line. Must not block on I/O and must not log.
+    fn write(&self, level: LogLevel, line: &str);
+}
+
+static EXTRA_SINK: OnceLock<Arc<dyn LogSink>> = OnceLock::new();
+
+/// Installs the extra sink; the first call wins and later ones return
+/// `false`.
+pub fn install_sink(sink: Arc<dyn LogSink>) -> bool {
+    EXTRA_SINK.set(sink).is_ok()
+}
+
 /// `u8::MAX` = "not configured yet" (resolve from env on first use).
 static MAX_LEVEL: AtomicU8 = AtomicU8::new(u8::MAX);
 
-fn sink() -> &'static LogSink {
-    SINK.get_or_init(|| LogSink {
+fn sink() -> &'static ProcessLog {
+    SINK.get_or_init(|| ProcessLog {
         start: Instant::now(),
         ring: Mutex::new(VecDeque::with_capacity(RING_CAPACITY)),
     })
@@ -104,8 +121,7 @@ pub fn enabled(level: LogLevel) -> bool {
 }
 
 /// The macro back end: formats one line, writes it to stderr, into the
-/// crash-report ring, and (when [`file::init`] has run) hands it to the
-/// buffered async file sink. Use the `log_*!` macros instead of calling
+/// crash-report ring and the installed [`LogSink`] (if any). Use the `log_*!` macros instead of calling
 /// this directly (they fill in the module path as the target).
 pub fn log(level: LogLevel, target: &str, args: std::fmt::Arguments<'_>) {
     if !enabled(level) {
@@ -125,287 +141,13 @@ pub fn log(level: LogLevel, target: &str, args: std::fmt::Arguments<'_>) {
         }
         ring.push_back(line.clone());
     }
-    #[cfg(feature = "file-logging")]
-    file::submit(level, line);
-}
-
-/// Buffered, asynchronous file logging (feature `file-logging`; pulls
-/// in `tokio` — the only reason this lives behind a feature is to keep
-/// the crate's zero-dependency default intact for consumers that never
-/// write log files).
-///
-/// [`init`](file::init) spawns one background thread running a
-/// current-thread `tokio` runtime; log lines reach it over a channel
-/// (the game thread never touches the filesystem) and are written
-/// through a buffered writer, flushed on an interval — and immediately
-/// on `Error`, so a crash can't lose the line that explains it. Only
-/// `Error`/`Warn`/`Info` reach the file; `Debug`/`Trace` stay
-/// stderr-only diagnostics.
-///
-/// Retention: on startup and then daily, files matching
-/// `<app_name>-*.log` older than `retention_days` (default 7) are
-/// deleted.
-#[cfg(feature = "file-logging")]
-pub mod file {
-    use std::path::PathBuf;
-    use std::sync::OnceLock;
-
-    use super::LogLevel;
-
-    /// Configuration for the file sink.
-    #[derive(Debug, Clone)]
-    pub struct FileLogConfig {
-        /// Log file name prefix (typically the binary name).
-        pub app_name: String,
-        /// Directory for log files; created on demand. Default `logs`.
-        pub directory: PathBuf,
-        /// Files older than this are deleted (checked at startup and
-        /// daily). Default 7 days.
-        pub retention_days: u64,
-        /// How often the buffer is flushed to disk. Default 500 ms.
-        pub flush_interval_ms: u64,
-    }
-
-    impl FileLogConfig {
-        pub fn new(app_name: impl Into<String>) -> Self {
-            Self {
-                app_name: app_name.into(),
-                directory: PathBuf::from("logs"),
-                retention_days: 7,
-                flush_interval_ms: 500,
-            }
-        }
-
-        pub fn with_directory(mut self, directory: impl Into<PathBuf>) -> Self {
-            self.directory = directory.into();
-            self
-        }
-
-        pub fn with_retention_days(mut self, days: u64) -> Self {
-            self.retention_days = days;
-            self
-        }
-    }
-
-    enum Message {
-        Line { level: LogLevel, line: String },
-        Flush(std::sync::mpsc::Sender<()>),
-    }
-
-    static FILE_TX: OnceLock<std::sync::mpsc::Sender<Message>> = OnceLock::new();
-
-    /// Starts the async file sink. Second and later calls are no-ops
-    /// (the first configuration wins).
-    pub fn init(config: FileLogConfig) {
-        FILE_TX.get_or_init(|| {
-            let (tx, rx) = std::sync::mpsc::channel::<Message>();
-            std::thread::Builder::new()
-                .name("meridian-log-writer".into())
-                .spawn(move || writer_thread(config, rx))
-                .expect("failed to spawn log writer thread");
-            tx
-        });
-    }
-
-    /// Blocks until every line submitted so far is on disk — call
-    /// before process exit if the last lines matter.
-    pub fn flush() {
-        if let Some(tx) = FILE_TX.get() {
-            let (done_tx, done_rx) = std::sync::mpsc::channel();
-            // Either error means the writer thread has stopped, after
-            // printing why; there is nothing left to wait for.
-            if tx.send(Message::Flush(done_tx)).is_ok() && done_rx.recv().is_err() {
-                crate::log_warn!("log flush incomplete: the file writer stopped");
-            }
-        }
-    }
-
-    /// Queues `line` for the file and returns whether the writer took it.
-    /// `false` for Debug/Trace (never written), without a sink, or after
-    /// the writer stopped — it prints why when it stops, and later lines
-    /// reach the in-memory ring only.
-    pub(super) fn submit(level: LogLevel, line: String) -> bool {
-        // Debug/Trace never reach the file — Error/Warn/Info only.
-        if level > LogLevel::Info {
-            return false;
-        }
-        FILE_TX
-            .get()
-            .is_some_and(|tx| tx.send(Message::Line { level, line }).is_ok())
-    }
-
-    /// The dedicated writer thread: a current-thread tokio runtime
-    /// draining the channel into a buffered async writer.
-    fn writer_thread(config: FileLogConfig, rx: std::sync::mpsc::Receiver<Message>) {
-        let runtime = match tokio::runtime::Builder::new_current_thread()
-            .enable_time()
-            .build()
-        {
-            Ok(runtime) => runtime,
-            Err(err) => {
-                crate::log_error!("file logging disabled: failed to start tokio runtime: {err}");
-                return;
-            }
-        };
-        runtime.block_on(async move {
-            let Some(mut sink) = FileSink::open(config).await else {
-                return;
-            };
-            let flush_every =
-                std::time::Duration::from_millis(sink.config.flush_interval_ms.max(1));
-            // The producer side is a plain std channel (callers must
-            // never need an async context to log). Blocking on it here is
-            // safe: this current-thread runtime exists only for this
-            // loop, and recv and the awaited writes strictly alternate.
-            while sink.handle(rx.recv_timeout(flush_every)).await {}
-        });
-    }
-
-    /// The open log file and the writer thread's bookkeeping.
-    struct FileSink {
-        config: FileLogConfig,
-        path: PathBuf,
-        writer: tokio::io::BufWriter<tokio::fs::File>,
-        dirty: bool,
-        last_cleanup: std::time::Instant,
-    }
-
-    impl FileSink {
-        /// Creates the directory and today's file, after a retention pass.
-        /// Prints why and returns `None` when the file cannot be created.
-        async fn open(config: FileLogConfig) -> Option<Self> {
-            if let Err(err) = tokio::fs::create_dir_all(&config.directory).await {
-                crate::log_error!(
-                    "file logging disabled: cannot create {}: {err}",
-                    config.directory.display()
-                );
-                return None;
-            }
-            clean_old_logs(&config).await;
-            let unix_seconds = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .map_or(0, |d| d.as_secs());
-            let path = config
-                .directory
-                .join(format!("{}-{unix_seconds}.log", config.app_name));
-            match tokio::fs::File::create(&path).await {
-                Ok(file) => Some(Self {
-                    config,
-                    path,
-                    writer: tokio::io::BufWriter::new(file),
-                    dirty: false,
-                    last_cleanup: std::time::Instant::now(),
-                }),
-                Err(err) => {
-                    crate::log_error!(
-                        "file logging disabled: cannot create {}: {err}",
-                        path.display()
-                    );
-                    None
-                }
-            }
-        }
-
-        /// Handles one channel event; `false` once the writer must stop.
-        async fn handle(
-            &mut self,
-            message: Result<Message, std::sync::mpsc::RecvTimeoutError>,
-        ) -> bool {
-            let written = match message {
-                Ok(Message::Line { level, line }) => self.write_line(level, &line).await,
-                Ok(Message::Flush(done)) => {
-                    let flushed = self.flush().await;
-                    // The caller of `flush` may have stopped waiting; then
-                    // nobody is left to tell.
-                    let _told: bool = done.send(()).is_ok();
-                    flushed
-                }
-                Err(std::sync::mpsc::RecvTimeoutError::Timeout) => self.idle().await,
-                Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
-                    if let Err(err) = self.flush().await {
-                        crate::log_warn!(
-                            "file logging: final flush of {} failed: {err}",
-                            self.path.display()
-                        );
-                    }
-                    return false;
-                }
-            };
-            if let Err(err) = written {
-                crate::log_error!(
-                    "file logging disabled: write to {} failed: {err}",
-                    self.path.display()
-                );
-                return false;
-            }
-            true
-        }
-
-        /// Appends `line`; an Error may be the process's last words, so it
-        /// is flushed at once instead of sitting in the buffer.
-        async fn write_line(&mut self, level: LogLevel, line: &str) -> std::io::Result<()> {
-            use tokio::io::AsyncWriteExt;
-
-            self.writer.write_all(line.as_bytes()).await?;
-            self.writer.write_all(b"\n").await?;
-            self.dirty = true;
-            if level == LogLevel::Error {
-                self.flush().await?;
-            }
-            Ok(())
-        }
-
-        async fn flush(&mut self) -> std::io::Result<()> {
-            use tokio::io::AsyncWriteExt;
-
-            self.dirty = false;
-            self.writer.flush().await
-        }
-
-        /// A quiet interval: flush pending lines, run the daily retention pass.
-        async fn idle(&mut self) -> std::io::Result<()> {
-            if self.last_cleanup.elapsed() > std::time::Duration::from_secs(24 * 60 * 60) {
-                clean_old_logs(&self.config).await;
-                self.last_cleanup = std::time::Instant::now();
-            }
-            if self.dirty {
-                self.flush().await?;
-            }
-            Ok(())
-        }
-    }
-
-    /// Deletes `<app_name>-*.log` files older than the retention window.
-    async fn clean_old_logs(config: &FileLogConfig) {
-        let retention = std::time::Duration::from_secs(config.retention_days * 24 * 60 * 60);
-        let prefix = format!("{}-", config.app_name);
-        let Ok(mut entries) = tokio::fs::read_dir(&config.directory).await else {
-            return;
-        };
-        while let Ok(Some(entry)) = entries.next_entry().await {
-            let name = entry.file_name();
-            let Some(name) = name.to_str() else { continue };
-            if !name.starts_with(&prefix) || !name.ends_with(".log") {
-                continue;
-            }
-            let Ok(metadata) = entry.metadata().await else {
-                continue;
-            };
-            let old_enough = metadata
-                .modified()
-                .ok()
-                .and_then(|m| m.elapsed().ok())
-                .is_some_and(|age| age > retention);
-            if old_enough && let Err(err) = tokio::fs::remove_file(entry.path()).await {
-                // Retention is best effort: a file we cannot delete stays.
-                crate::log_warn!("file logging: cannot remove old log {name}: {err}");
-            }
-        }
+    if let Some(extra) = EXTRA_SINK.get() {
+        extra.write(level, &line);
     }
 }
 
 /// The most recent formatted log lines (oldest first) — what
-/// [`crash_reporting`](crate::crash_reporting) embeds in a report.
+/// the crash reporter (`meridian-diagnostics-fs`) embeds in a report.
 pub fn recent_lines() -> Vec<String> {
     match SINK.get() {
         Some(sink) => sink
@@ -468,44 +210,6 @@ mod tests {
         static LOCK: Mutex<()> = Mutex::new(());
         LOCK.lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
-    }
-
-    #[cfg(feature = "file-logging")]
-    #[test]
-    fn file_sink_writes_flushes_and_cleans_old_logs() {
-        let _sink = own_the_sink();
-        let dir = std::env::temp_dir().join(format!("meridian-log-test-{}", std::process::id()));
-        if dir.exists() {
-            std::fs::remove_dir_all(&dir).unwrap();
-        }
-        std::fs::create_dir_all(&dir).unwrap();
-
-        // A stale log that the retention pass must delete: mtime can't
-        // be set portably without external crates, so use retention of
-        // zero days — everything pre-existing is "too old".
-        let stale = dir.join("file-log-test-1.log");
-        std::fs::write(&stale, "old").unwrap();
-
-        set_max_level(LogLevel::Info);
-        file::init(
-            file::FileLogConfig::new("file-log-test")
-                .with_directory(&dir)
-                .with_retention_days(0),
-        );
-        crate::log_info!("file sink info line");
-        crate::log_error!("file sink error line");
-        crate::log_debug!("file sink debug line must not reach the file");
-        file::flush();
-
-        assert!(!stale.exists(), "retention must remove the stale file");
-        let current: Vec<_> = std::fs::read_dir(&dir).unwrap().flatten().collect();
-        assert_eq!(current.len(), 1, "exactly the current log file");
-        let content = std::fs::read_to_string(current[0].path()).unwrap();
-        assert!(content.contains("file sink info line"));
-        assert!(content.contains("file sink error line"));
-        assert!(!content.contains("debug line must not"));
-
-        std::fs::remove_dir_all(&dir).unwrap();
     }
 
     #[test]
