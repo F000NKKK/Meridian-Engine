@@ -37,13 +37,15 @@ pub use meridian_asset_png::PngDecoder;
 pub use meridian_asset_symphonia::{
     AnyAudioDecoder, AudioAsset, DecodeStrategy, StreamingAudioDecoder, open_audio,
 };
+// -- meridian-audio-app: the output port --
+pub use meridian_audio_app::AudioSink;
+// -- meridian-audio-app: the output port and audio state --
+pub use meridian_audio_app::{AudioSink, AudioSubsystem};
 // -- meridian-audio-core: spatial audio --
 pub use meridian_audio_core::{
     AcousticMedium, AttenuationModel, BinauralRenderer, Channel, Declicker, DspNode, Emitter,
     Listener, Mixer, SpeakerLayout,
 };
-// -- meridian-audio-app: the output port and audio state --
-pub use meridian_audio_app::{AudioSink, AudioSubsystem};
 // -- meridian-audio-driver: the platform audio adapter --
 pub use meridian_audio_driver::{AudioStream, open_output};
 // -- meridian-compute-driver: the platform compute adapter --
@@ -54,11 +56,6 @@ pub use meridian_compute_runtime::{ComputeContext, ComputeDevice, GpuBackend};
 pub use meridian_engine_core::{
     ComputeStage, EventSystem, Job, JobExecutor, PhysicsStepStage, Runtime, Shared, Stage, StageId,
 };
-// -- meridian-physics-app / -compute: the world state and its steppers --
-pub use meridian_physics_app::{PhysicsStepper, PhysicsSubsystem, SequentialStepper};
-pub use meridian_physics_compute::BatchedStepper;
-// -- meridian-task-core: the threaded job executor --
-pub use meridian_task_core::TaskExecutor;
 // -- meridian-foundation: logging, crash reporting --
 pub use meridian_foundation::{
     CrashReportConfig, EngineError, crash_reporting, log_error, log_info, log_warn, logging,
@@ -72,16 +69,15 @@ pub use meridian_graphics_core::{
     cube_mesh_source, ground_mesh_source, icosphere_mesh_source, look_at_rotor,
     pyramid_mesh_source, smooth_normals,
 };
-// -- meridian-rendering-app: the GPU ports --
-pub use meridian_rendering_app::{
-    FrameOutcome, FrameRecorder, FrameRequest, MeshStore, RenderSession, TextureStore,
-};
 // -- meridian-graphics-driver: the GPU device a windowed app opens once --
 pub use meridian_graphics_driver::{
     BloomPass, CommandBuffer, DEFAULT_SHADOW_MAP_SIZE, DepthTexture, Device, DeviceError,
     DrawBuffers, GpuFrameRecorder, GpuTextureStore, RenderPass, SceneRenderer, Surface,
     TextureRegistry, submit_scene3d,
 };
+// -- meridian-physics-app / -compute: the world state and its steppers --
+pub use meridian_physics_app::{PhysicsStepper, PhysicsSubsystem, SequentialStepper};
+pub use meridian_physics_compute::BatchedStepper;
 // -- meridian-physics-core: rigid bodies --
 pub use meridian_physics_core::{
     BroadPhase, ColliderShape, ConstraintSolver, Contact, Integrator, NarrowPhase, RigidBody,
@@ -91,6 +87,12 @@ pub use meridian_platform_core::{
     AppHandler, Clock, CpuCapabilities, InputState, KeyCode, MouseButton, Time, Window,
     run_windowed_app,
 };
+// -- meridian-rendering-app: the GPU ports --
+pub use meridian_rendering_app::{
+    FrameOutcome, FrameRecorder, FrameRequest, MeshStore, RenderSession, TextureStore,
+};
+// -- meridian-task-core: the threaded job executor --
+pub use meridian_task_core::TaskExecutor;
 /// The retained UI runtime (ADR 018), named by generated `.mel` glue.
 pub use meridian_ui_core as ui_core;
 pub use render::{RenderStage, render_frame};

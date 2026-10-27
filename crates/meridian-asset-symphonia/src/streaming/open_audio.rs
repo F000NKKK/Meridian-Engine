@@ -1,7 +1,8 @@
 //! Opens audio bytes under a decode strategy.
 
-use super::{AudioAsset, DecodeMode, DecodeStrategy, StreamingAudioDecoder};
 use meridian_asset_core::DecodeError;
+
+use super::{AudioAsset, DecodeMode, DecodeStrategy, StreamingAudioDecoder};
 
 /// The strategy-driven front door: sniff the format by signature, then
 /// decode eagerly or hand back a [`StreamingAudioDecoder`](super::StreamingAudioDecoder) per

@@ -3,9 +3,8 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
-use meridian_compute_runtime::{
-    ComputeContext, ComputeKernel, ComputeScheduler, DispatchSize, testing::SequentialDevice,
-};
+use meridian_compute_runtime::testing::SequentialDevice;
+use meridian_compute_runtime::{ComputeContext, ComputeKernel, ComputeScheduler, DispatchSize};
 
 use crate::testing::InlineExecutor;
 use crate::*;

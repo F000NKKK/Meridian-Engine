@@ -1,7 +1,6 @@
 //! The port that puts decoded images on the GPU.
 
 use meridian_asset_core::ImageAsset;
-
 use meridian_graphics_core::TextureHandle;
 
 /// Where decoded images become sampleable textures, addressed by

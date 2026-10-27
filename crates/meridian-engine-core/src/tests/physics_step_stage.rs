@@ -1,9 +1,10 @@
 //! Tests of the physics step stage.
 
+use std::sync::Arc;
+
 use meridian_gac_core::{Motor3, Vec3};
 use meridian_physics_app::{PhysicsStepper, PhysicsSubsystem, SequentialStepper};
 use meridian_physics_core::{ColliderShape, RigidBody};
-use std::sync::Arc;
 
 use crate::testing::InlineExecutor;
 use crate::*;

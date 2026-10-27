@@ -1,9 +1,8 @@
 //! The decoder behind a stream.
 
+use meridian_asset_core::AudioClip;
 use symphonia::core::codecs::audio::AudioDecoder;
 use symphonia::core::formats::FormatReader;
-
-use meridian_asset_core::AudioClip;
 
 pub(crate) enum StreamBackend {
     /// Compressed formats: a live symphonia demux/decode pipeline.
