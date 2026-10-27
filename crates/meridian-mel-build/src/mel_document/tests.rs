@@ -79,3 +79,78 @@ fn parse_errors_keep_the_path() {
     let error = document("<A>").unwrap_err();
     assert!(error.to_string().starts_with("scene.mel:1:"), "{error}");
 }
+
+#[test]
+fn collects_bindings_on_named_elements() {
+    let doc = document(
+        r#"<Hud x:ViewModel="Vm">
+            <Label x:Name="score" text="{x:Bind score_text(), Mode=OneTime}" Grid.Row="{x:Bind row}" />
+        </Hud>"#,
+    )
+    .unwrap();
+    let bound: Vec<_> = doc
+        .bindings
+        .iter()
+        .map(|b| (b.element.as_str(), b.property.as_str(), b.mode))
+        .collect();
+    assert_eq!(
+        bound,
+        [
+            ("Score", "text", crate::BindingMode::OneTime),
+            ("Score", "Grid.Row", crate::BindingMode::OneWay),
+        ]
+    );
+}
+
+#[test]
+fn binding_rules() {
+    assert_eq!(
+        rejection(r#"<A><B x:Name="b" v="{x:Bind n}" /></A>"#),
+        InvalidMarkup::BindingWithoutViewModel
+    );
+    assert_eq!(
+        rejection(r#"<A x:ViewModel="Vm"><B v="{x:Bind n}" /></A>"#),
+        InvalidMarkup::BindingWithoutName("B".to_string())
+    );
+    let bound = |binding: &str| {
+        rejection(&format!(
+            r#"<A x:ViewModel="Vm"><B x:Name="b" v="{binding}" /></A>"#
+        ))
+    };
+    assert_eq!(bound("{x:Bind}"), InvalidMarkup::BindingArity);
+    assert_eq!(bound("{x:Bind a, b}"), InvalidMarkup::BindingArity);
+    assert!(matches!(
+        bound("{x:Bind a +}"),
+        InvalidMarkup::BindingExpression(_)
+    ));
+    assert_eq!(
+        bound("{x:Bind a, Path=b}"),
+        InvalidMarkup::UnknownBindingArgument("Path".to_string())
+    );
+    assert_eq!(
+        bound("{x:Bind a, Mode=Sometimes}"),
+        InvalidMarkup::InvalidBindingArgument("Mode".to_string())
+    );
+    assert_eq!(
+        bound("{x:Bind a, Mode={x:Bind b}}"),
+        InvalidMarkup::InvalidBindingArgument("Mode".to_string())
+    );
+    assert_eq!(
+        bound("{x:Bind a, BindBack=not-a-name}"),
+        InvalidMarkup::InvalidBindingArgument("BindBack".to_string())
+    );
+    assert_eq!(
+        bound("{x:Bind a(), Mode=TwoWay}"),
+        InvalidMarkup::TwoWayNeedsTarget
+    );
+    assert_eq!(
+        bound("{x:Bind a, Fallback=1}"),
+        InvalidMarkup::FallbackWithoutOptional
+    );
+}
+
+#[test]
+fn other_extensions_are_not_bindings() {
+    let doc = document(r#"<A x:ViewModel="Vm"><B v="{StaticResource K}" /></A>"#).unwrap();
+    assert!(doc.bindings.is_empty());
+}
