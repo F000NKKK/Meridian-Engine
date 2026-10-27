@@ -2,7 +2,7 @@
 
 use std::any::TypeId;
 
-use super::*;
+use crate::*;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 struct Position(f32, f32);
