@@ -14,7 +14,7 @@ pub enum LoadError<E> {
     Decode(E),
     /// The decoder panicked; the panic stays on the background thread.
     Panicked,
-    /// The background thread went away before the job ran.
+    /// The job never ran: it was cancelled, or the background threads went away.
     Cancelled,
 }
 

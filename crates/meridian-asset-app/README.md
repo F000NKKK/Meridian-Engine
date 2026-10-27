@@ -12,7 +12,7 @@ Asset loading ports: where bytes come from, where background work runs, and the 
 ```rust
 use std::sync::Arc;
 
-use meridian_asset_app::{AssetLoader, AssetPath, ByteSource, SourceError, Spawn};
+use meridian_asset_app::{AssetLoader, AssetPath, ByteSource, Priority, SourceError, Spawn};
 use meridian_asset_domain::Decoder;
 
 struct Memory(Vec<u8>);
@@ -25,7 +25,7 @@ impl ByteSource for Memory {
 /// Runs the job right away on the caller; a real adapter uses a thread pool.
 struct Inline;
 impl Spawn for Inline {
-    fn spawn(&self, job: Box<dyn FnOnce() + Send>) {
+    fn spawn(&self, _priority: Priority, job: Box<dyn FnOnce() + Send>) {
         job();
     }
 }

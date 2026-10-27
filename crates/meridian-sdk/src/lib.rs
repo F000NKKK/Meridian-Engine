@@ -30,7 +30,7 @@ pub use assets::{AssetCache, AudioTrack, load_audio_track, load_image_asset};
 pub use dsl::dsl_core;
 pub use fly_controls::fly_controls;
 pub use meridian_asset_app::{
-    AssetLoader, AssetPath, ByteSource, LoadError, Pending, SourceError, Spawn,
+    AssetLoader, AssetPath, ByteSource, LoadError, Pending, Priority, SourceError, Spawn,
 };
 pub use meridian_asset_domain::{Decoder, ImageAsset};
 pub use meridian_asset_fs::FsSource;

@@ -17,6 +17,7 @@ mod background_pool;
 mod job_entry;
 mod job_graph;
 mod job_id;
+mod job_queue;
 mod run_state;
 mod scheduler;
 mod task_executor;

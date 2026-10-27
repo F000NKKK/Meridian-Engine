@@ -13,6 +13,7 @@ mod asset_path;
 mod byte_source;
 mod load_error;
 mod pending;
+mod priority;
 mod source_error;
 mod spawn;
 #[cfg(test)]
@@ -23,5 +24,6 @@ pub use asset_path::AssetPath;
 pub use byte_source::ByteSource;
 pub use load_error::LoadError;
 pub use pending::Pending;
+pub use priority::Priority;
 pub use source_error::SourceError;
 pub use spawn::Spawn;
