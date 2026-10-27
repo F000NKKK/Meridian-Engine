@@ -95,6 +95,7 @@ pub fn render_frame(
 /// `Runtime::resize_all` keeps this stage's swapchain-sized resources
 /// correct without an application needing its own separate handle to
 /// reach into.
+#[derive(Debug)]
 pub struct RenderStage<F> {
     base: GraphicsBase,
     window: Window,

@@ -66,6 +66,7 @@ impl Default for DecodeStrategy {
 
 /// What [`open_audio`] produced: the whole track, or an incremental
 /// decoder to pull it from block by block.
+#[derive(Debug)]
 pub enum AudioAsset {
     Decoded(AudioData),
     Streaming(StreamingAudioDecoder),
@@ -103,12 +104,36 @@ enum StreamBackend {
     Wav { audio: AudioData, cursor: usize },
 }
 
+impl std::fmt::Debug for StreamBackend {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Symphonia {
+                track_id,
+                pending,
+                finished,
+                ..
+            } => f
+                .debug_struct("Symphonia")
+                .field("track_id", track_id)
+                .field("pending_samples", &pending.len())
+                .field("finished", finished)
+                .finish_non_exhaustive(),
+            Self::Wav { audio, cursor } => f
+                .debug_struct("Wav")
+                .field("samples", &audio.samples.len())
+                .field("cursor", cursor)
+                .finish(),
+        }
+    }
+}
+
 /// Incremental audio decoder: identifies the format by signature (never
 /// by extension), then yields interleaved-`i16` blocks of at most the
 /// configured size via [`next_block`](Self::next_block);
 /// [`rewind`](Self::rewind) restarts from the beginning without re-copying the
 /// compressed bytes (they're shared, not cloned) — the loop-playback
 /// primitive.
+#[derive(Debug)]
 pub struct StreamingAudioDecoder {
     bytes: Arc<[u8]>,
     backend: StreamBackend,
@@ -142,20 +167,19 @@ impl StreamingAudioDecoder {
                 })
             }
             Some(_) => {
-                let (format, decoder, track_id, total_frames, params_rate, params_channels) =
-                    open_symphonia(&bytes)?;
+                let track = open_symphonia(&bytes)?;
                 let mut this = Self {
                     bytes,
                     backend: StreamBackend::Symphonia {
-                        format,
-                        decoder,
-                        track_id,
+                        format: track.format,
+                        decoder: track.decoder,
+                        track_id: track.track_id,
                         pending: Vec::new(),
                         finished: false,
                     },
-                    sample_rate: params_rate.unwrap_or(0),
-                    channels: params_channels.unwrap_or(0),
-                    total_frames,
+                    sample_rate: track.sample_rate.unwrap_or(0),
+                    channels: track.channels.unwrap_or(0),
+                    total_frames: track.total_frames,
                     block_frames,
                 };
                 // Codec params may omit rate/channels (e.g. some OGG
@@ -318,22 +342,20 @@ impl Iterator for StreamingAudioDecoder {
     }
 }
 
+/// An opened symphonia track: reader, decoder and the metadata the
+/// container declares (any of which may be missing).
+struct SymphoniaTrack {
+    format: Box<dyn FormatReader>,
+    decoder: Box<dyn AudioDecoder>,
+    track_id: u32,
+    total_frames: Option<u64>,
+    sample_rate: Option<u32>,
+    channels: Option<u16>,
+}
+
 /// Probes `bytes` with the shared codec registry pipeline and returns
 /// the open reader/decoder pair plus the track's declared metadata.
-#[allow(clippy::type_complexity)]
-fn open_symphonia(
-    bytes: &Arc<[u8]>,
-) -> Result<
-    (
-        Box<dyn FormatReader>,
-        Box<dyn AudioDecoder>,
-        u32,
-        Option<u64>,
-        Option<u32>,
-        Option<u16>,
-    ),
-    DecodeError,
-> {
+fn open_symphonia(bytes: &Arc<[u8]>) -> Result<SymphoniaTrack, DecodeError> {
     let source = Box::new(std::io::Cursor::new(Arc::clone(bytes)));
     let stream = MediaSourceStream::new(source, Default::default());
     let format = symphonia::default::get_probe()
@@ -362,14 +384,14 @@ fn open_symphonia(
         .make_audio_decoder(params, &AudioDecoderOptions::default())
         .map_err(|e| DecodeError::Codec(e.to_string()))?;
 
-    Ok((
+    Ok(SymphoniaTrack {
         format,
         decoder,
         track_id,
         total_frames,
-        params_rate,
-        params_channels,
-    ))
+        sample_rate: params_rate,
+        channels: params_channels,
+    })
 }
 
 /// The strategy-driven front door: sniff the format by signature, then

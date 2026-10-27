@@ -211,20 +211,26 @@ pub mod file {
     pub fn flush() {
         if let Some(tx) = FILE_TX.get() {
             let (done_tx, done_rx) = std::sync::mpsc::channel();
-            if tx.send(Message::Flush(done_tx)).is_ok() {
-                let _ = done_rx.recv();
+            // Either error means the writer thread has stopped, after
+            // printing why; there is nothing left to wait for.
+            if tx.send(Message::Flush(done_tx)).is_ok() && done_rx.recv().is_err() {
+                crate::log_warn!("log flush incomplete: the file writer stopped");
             }
         }
     }
 
-    pub(super) fn submit(level: LogLevel, line: String) {
+    /// Queues `line` for the file and returns whether the writer took it.
+    /// `false` for Debug/Trace (never written), without a sink, or after
+    /// the writer stopped — it prints why when it stops, and later lines
+    /// reach the in-memory ring only.
+    pub(super) fn submit(level: LogLevel, line: String) -> bool {
         // Debug/Trace never reach the file — Error/Warn/Info only.
         if level > LogLevel::Info {
-            return;
+            return false;
         }
-        if let Some(tx) = FILE_TX.get() {
-            let _ = tx.send(Message::Line { level, line });
-        }
+        FILE_TX
+            .get()
+            .is_some_and(|tx| tx.send(Message::Line { level, line }).is_ok())
     }
 
     /// The dedicated writer thread: a current-thread tokio runtime
@@ -236,82 +242,136 @@ pub mod file {
         {
             Ok(runtime) => runtime,
             Err(err) => {
-                eprintln!("file logging disabled: failed to start tokio runtime: {err}");
+                crate::log_error!("file logging disabled: failed to start tokio runtime: {err}");
                 return;
             }
         };
         runtime.block_on(async move {
-            use tokio::io::AsyncWriteExt;
-
-            if let Err(err) = tokio::fs::create_dir_all(&config.directory).await {
-                eprintln!(
-                    "file logging disabled: cannot create {:?}: {err}",
-                    config.directory
-                );
+            let Some(mut sink) = FileSink::open(config).await else {
                 return;
+            };
+            let flush_every =
+                std::time::Duration::from_millis(sink.config.flush_interval_ms.max(1));
+            // The producer side is a plain std channel (callers must
+            // never need an async context to log). Blocking on it here is
+            // safe: this current-thread runtime exists only for this
+            // loop, and recv and the awaited writes strictly alternate.
+            while sink.handle(rx.recv_timeout(flush_every)).await {}
+        });
+    }
+
+    /// The open log file and the writer thread's bookkeeping.
+    struct FileSink {
+        config: FileLogConfig,
+        path: PathBuf,
+        writer: tokio::io::BufWriter<tokio::fs::File>,
+        dirty: bool,
+        last_cleanup: std::time::Instant,
+    }
+
+    impl FileSink {
+        /// Creates the directory and today's file, after a retention pass.
+        /// Prints why and returns `None` when the file cannot be created.
+        async fn open(config: FileLogConfig) -> Option<Self> {
+            if let Err(err) = tokio::fs::create_dir_all(&config.directory).await {
+                crate::log_error!(
+                    "file logging disabled: cannot create {}: {err}",
+                    config.directory.display()
+                );
+                return None;
             }
             clean_old_logs(&config).await;
-            let mut last_cleanup = std::time::Instant::now();
-
             let unix_seconds = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
-                .map(|d| d.as_secs())
-                .unwrap_or(0);
+                .map_or(0, |d| d.as_secs());
             let path = config
                 .directory
                 .join(format!("{}-{unix_seconds}.log", config.app_name));
-            let file = match tokio::fs::File::create(&path).await {
-                Ok(file) => file,
+            match tokio::fs::File::create(&path).await {
+                Ok(file) => Some(Self {
+                    config,
+                    path,
+                    writer: tokio::io::BufWriter::new(file),
+                    dirty: false,
+                    last_cleanup: std::time::Instant::now(),
+                }),
                 Err(err) => {
-                    eprintln!("file logging disabled: cannot create {path:?}: {err}");
-                    return;
-                }
-            };
-            let mut writer = tokio::io::BufWriter::new(file);
-            let flush_every = std::time::Duration::from_millis(config.flush_interval_ms.max(1));
-            let mut dirty = false;
-
-            loop {
-                // The producer side is a plain std channel (callers must
-                // never need an async context to log). Blocking on it
-                // here is safe: this current-thread runtime exists only
-                // for this loop, and nothing else is pending while we
-                // wait — recv and the awaited writes strictly alternate.
-                let message = rx.recv_timeout(flush_every);
-                match message {
-                    Ok(Message::Line { level, line }) => {
-                        let _ = writer.write_all(line.as_bytes()).await;
-                        let _ = writer.write_all(b"\n").await;
-                        dirty = true;
-                        // An Error may be the process's last words —
-                        // never leave it sitting in the buffer.
-                        if level == LogLevel::Error {
-                            let _ = writer.flush().await;
-                            dirty = false;
-                        }
-                    }
-                    Ok(Message::Flush(done)) => {
-                        let _ = writer.flush().await;
-                        dirty = false;
-                        let _ = done.send(());
-                    }
-                    Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
-                        if dirty {
-                            let _ = writer.flush().await;
-                            dirty = false;
-                        }
-                        if last_cleanup.elapsed() > std::time::Duration::from_secs(24 * 60 * 60) {
-                            clean_old_logs(&config).await;
-                            last_cleanup = std::time::Instant::now();
-                        }
-                    }
-                    Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
-                        let _ = writer.flush().await;
-                        return;
-                    }
+                    crate::log_error!(
+                        "file logging disabled: cannot create {}: {err}",
+                        path.display()
+                    );
+                    None
                 }
             }
-        });
+        }
+
+        /// Handles one channel event; `false` once the writer must stop.
+        async fn handle(
+            &mut self,
+            message: Result<Message, std::sync::mpsc::RecvTimeoutError>,
+        ) -> bool {
+            let written = match message {
+                Ok(Message::Line { level, line }) => self.write_line(level, &line).await,
+                Ok(Message::Flush(done)) => {
+                    let flushed = self.flush().await;
+                    // The caller of `flush` may have stopped waiting; then
+                    // nobody is left to tell.
+                    let _told: bool = done.send(()).is_ok();
+                    flushed
+                }
+                Err(std::sync::mpsc::RecvTimeoutError::Timeout) => self.idle().await,
+                Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
+                    if let Err(err) = self.flush().await {
+                        crate::log_warn!(
+                            "file logging: final flush of {} failed: {err}",
+                            self.path.display()
+                        );
+                    }
+                    return false;
+                }
+            };
+            if let Err(err) = written {
+                crate::log_error!(
+                    "file logging disabled: write to {} failed: {err}",
+                    self.path.display()
+                );
+                return false;
+            }
+            true
+        }
+
+        /// Appends `line`; an Error may be the process's last words, so it
+        /// is flushed at once instead of sitting in the buffer.
+        async fn write_line(&mut self, level: LogLevel, line: &str) -> std::io::Result<()> {
+            use tokio::io::AsyncWriteExt;
+
+            self.writer.write_all(line.as_bytes()).await?;
+            self.writer.write_all(b"\n").await?;
+            self.dirty = true;
+            if level == LogLevel::Error {
+                self.flush().await?;
+            }
+            Ok(())
+        }
+
+        async fn flush(&mut self) -> std::io::Result<()> {
+            use tokio::io::AsyncWriteExt;
+
+            self.dirty = false;
+            self.writer.flush().await
+        }
+
+        /// A quiet interval: flush pending lines, run the daily retention pass.
+        async fn idle(&mut self) -> std::io::Result<()> {
+            if self.last_cleanup.elapsed() > std::time::Duration::from_secs(24 * 60 * 60) {
+                clean_old_logs(&self.config).await;
+                self.last_cleanup = std::time::Instant::now();
+            }
+            if self.dirty {
+                self.flush().await?;
+            }
+            Ok(())
+        }
     }
 
     /// Deletes `<app_name>-*.log` files older than the retention window.
@@ -335,8 +395,9 @@ pub mod file {
                 .ok()
                 .and_then(|m| m.elapsed().ok())
                 .is_some_and(|age| age > retention);
-            if old_enough {
-                let _ = tokio::fs::remove_file(entry.path()).await;
+            if old_enough && let Err(err) = tokio::fs::remove_file(entry.path()).await {
+                // Retention is best effort: a file we cannot delete stays.
+                crate::log_warn!("file logging: cannot remove old log {name}: {err}");
             }
         }
     }
@@ -400,7 +461,9 @@ mod tests {
     #[test]
     fn file_sink_writes_flushes_and_cleans_old_logs() {
         let dir = std::env::temp_dir().join(format!("meridian-log-test-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
+        if dir.exists() {
+            std::fs::remove_dir_all(&dir).unwrap();
+        }
         std::fs::create_dir_all(&dir).unwrap();
 
         // A stale log that the retention pass must delete: mtime can't
@@ -428,7 +491,7 @@ mod tests {
         assert!(content.contains("file sink error line"));
         assert!(!content.contains("debug line must not"));
 
-        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 
     #[test]

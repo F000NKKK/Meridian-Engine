@@ -18,6 +18,7 @@ use meridian_resource_core::ResourceId;
 use crate::{Frustum, MeshHandle, TextureHandle};
 
 /// Typed identity for a material — see the module doc's handle note.
+#[derive(Debug)]
 pub struct MaterialMarker;
 pub type MaterialHandle = ResourceId<MaterialMarker>;
 

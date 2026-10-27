@@ -1,9 +1,14 @@
 //! Execution backend for physics: memory backend, SIMD/GPU dispatch and synchronization. Owns no collision algorithms, BVH, or broad-phase structures — those belong to physics-core.
 //!
+//! Layer: infrastructure (adapter); bounded context: physics
+//! (`craftbook.toml`, docs/context-map.md).
+//!
 //! No GPU backend yet. Planned: `wgpu`, once `graphics-driver` needs it —
 //! see docs/roadmap.md. `PhysicsBackend` reports real CPU capability so
 //! `physics-core` can decide batch-size cutoffs the same way
 //! `compute-runtime` does.
+
+#![forbid(unsafe_code)]
 
 use meridian_platform_core::{BackendCapabilities, CpuCapabilities, GpuCapabilities};
 

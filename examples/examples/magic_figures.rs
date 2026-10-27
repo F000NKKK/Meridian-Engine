@@ -19,43 +19,7 @@
 //! game adds its own vocabulary without touching `meridian-sdk` at all
 //! (see [ADR 015](../../docs/adr/015-extensible-scene-dsl.md)).
 //!
-//! Rendering goes entirely through `graphics-core`'s submission bridge
-//! (`meridian_sdk::GraphicsBase` bundles `SceneRenderer`/`BloomPass`/the
-//! three registries — the same base `physic_figures` builds): the floor
-//! is a real Blinn-Phong-lit material under one directional light +
-//! ambient; each shape is `unlit` + `emissive` in its own color, so it
-//! always reads as glowing regardless of scene lighting, and
-//! `BloomPass` turns that emissive value into a real halo — see
-//! `meridian_graphics_core::bloom`'s module doc for the shader details
-//! (separable Gaussian blur, additive composite).
-//!
-//! A free-fly camera (WASD + mouse, cursor grabbed on launch, Escape
-//! toggles the grab) doubles as the audio listener — same `Motor3`
-//! frame, same local-forward-`+X` convention `audio-core::Listener`
-//! uses — so all three tracks pan/attenuate through
-//! `audio-core::BinauralRenderer` as you fly around, mixed down to one
-//! output stream in a single `render` call per frame (all three source
-//! files happen to share a sample rate, so one `BinauralRenderer`/
-//! `AudioOutput` pair suffices — see [`load_music_tracks`]). This
-//! example doesn't use `meridian_sdk::Runtime` at all — no rigid bodies
-//! (pure kinematic orbit motion), and [`MusicRig`]'s real per-sample
-//! `BinauralRenderer` synthesis doesn't reduce to a `Runtime::Stage`
-//! cleanly either: its actual inputs (each orbiting shape's position,
-//! the free-fly camera's pose) are plain application state here, not
-//! anything `Runtime`'s `PhysicsSubsystem`/`AudioSubsystem` own — see
-//! `meridian_engine_core`'s own module doc for the same reasoning.
-//! Orbit/spin motion itself stays genuine per-frame Rust logic (the DSL
-//! describes composition, not behavior) — only each shape's *fixed*
-//! identity comes from the scene file.
-//!
-//! This example depends on `meridian-sdk` alone (plus `tokio`, for its
-//! own async GPU/audio-device handshakes) — every type below is reached
-//! through `meridian_sdk`'s re-exports, never through
-//! `meridian-gac-core`/`meridian-audio-core`/`meridian-graphics-core`/
-//! etc. directly.
-//!
-//! Run with:
-//!   ./build.sh run magic_figures
+//! Design notes: docs/notes/meridian-examples.md (`examples/magic_figures`).
 
 use meridian_examples::paths::asset_path;
 use meridian_examples::scene_loader::load_dsl_scene;

@@ -14,7 +14,10 @@ pub type FixedSpring = super::generic_softbody::Spring<FixedFlavor>;
 pub type FixedSoftBody = super::generic_softbody::SoftBody<FixedFlavor>;
 pub type FixedSoftBodyIntegrator = super::generic_softbody::SoftBodyIntegrator<FixedFlavor>;
 
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "replaced by an options/value type in Craftbook migration wave 3"
+)]
 pub fn fixed_icosphere_soft_body(
     center: meridian_gac_core::fixed_ga::FixedVec3,
     radius: meridian_numeric_core::Fixed,

@@ -9,7 +9,10 @@ pub type Spring = super::generic_softbody::Spring<FloatFlavor>;
 pub type SoftBody = super::generic_softbody::SoftBody<FloatFlavor>;
 pub type SoftBodyIntegrator = super::generic_softbody::SoftBodyIntegrator<FloatFlavor>;
 
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "replaced by an options/value type in Craftbook migration wave 3"
+)]
 pub fn icosphere_soft_body(
     center: meridian_gac_core::Vec3,
     radius: f32,

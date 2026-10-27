@@ -1,5 +1,8 @@
 //! Low-level GPU abstraction (device, command queues, buffers, textures, shaders, pipelines, synchronization). Knows nothing about scenes or materials.
 //!
+//! Layer: infrastructure (adapter); bounded context: rendering
+//! (`craftbook.toml`, docs/context-map.md).
+//!
 //! Real, backed by `wgpu` via [`meridian_gpu_driver`] — the crate shared
 //! with `compute-driver` that owns the actual wgpu device/buffer/shader
 //! mechanics (see that crate's module doc and
@@ -19,16 +22,9 @@
 //! — see `platform-core::Window::surface_target` and
 //! [ADR 010](../../../docs/adr/010-windowing-via-winit.md).
 //!
-//! **Async on genuine I/O, not on everything** — see
-//! [ADR 009](../../../docs/adr/009-async-io-via-tokio.md) and
-//! `meridian_gpu_driver`'s module doc for the same policy this crate
-//! inherits: [`Device::new`]/[`Device::new_windowed`]/[`Device::read_buffer`]
-//! are real `async fn`s; recording/allocation calls stay synchronous.
-//!
-//! Everything here is exercised end-to-end by the `magic_figures`/
-//! `physic_figures` examples (windowed render path); `meridian_gpu_driver`'s
-//! own tests cover the shared device/buffer/shader mechanics (headless
-//! compute path).
+//! Design notes: docs/notes/meridian-graphics-driver.md (`lib`).
+
+#![forbid(unsafe_code)]
 
 use meridian_platform_core::{BackendCapabilities, CpuCapabilities, GpuCapabilities};
 
@@ -224,7 +220,10 @@ impl Device {
     /// textured, shadow-receiving lit pipeline needs (see
     /// `graphics-core::submission`'s `lit_textured_shadow_shader_wgsl`
     /// for the binding declarations this must match).
-    #[allow(clippy::too_many_arguments)]
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "replaced by an options/value type in Craftbook migration wave 3"
+    )]
     pub fn create_textured_shadow_bind_group(
         &self,
         pipeline: &RenderPipeline,
@@ -308,18 +307,11 @@ impl Device {
                     topology: wgpu::PrimitiveTopology::TriangleList,
                     strip_index_format: None,
                     // Same winding/cull convention as the main pass
-                    // (back-face culling) — an earlier version of this
-                    // pipeline culled *front* faces instead, reasoning
-                    // that it would offset the recorded depth away from
-                    // the light to "cancel" the lookup shader's own
-                    // bias. In practice the two stacked instead of
-                    // cancelling: a resting object's contact point
-                    // showed a visible shadow *gap* right next to it
-                    // (classic over-biased peter-panning) before the
-                    // shadow reappeared a short distance away. Back-face
-                    // culling here, with the lookup shader's bias alone
-                    // handling acne, is the standard, easier-to-reason-
-                    // about combination.
+                    // (back-face culling). Not front-face culling: that
+                    // offset stacks with the lookup shader's own bias
+                    // and leaves a visible shadow gap at contact points
+                    // (peter-panning). Back-face culling with the lookup
+                    // bias alone handling acne is the standard pairing.
                     front_face: wgpu::FrontFace::Ccw,
                     cull_mode: Some(wgpu::Face::Back),
                     ..Default::default()

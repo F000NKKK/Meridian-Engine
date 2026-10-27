@@ -250,6 +250,7 @@ pub fn ground_mesh_source(half_size: f32, uv_tiles: f32) -> MeshSource {
 /// the actual decode/cache/register logic lives in [`crate::assets`],
 /// which has nothing to do with scene composition (see that module's
 /// own doc comment for why it's split out from this one).
+#[derive(Debug)]
 pub struct GraphicsBase {
     pub device: Device,
     pub surface: Surface,

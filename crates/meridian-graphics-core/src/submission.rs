@@ -25,28 +25,7 @@
 //! `bake_draw_buffers` — so a mesh can glow (feed a bloom pass)
 //! whether or not it's lit.
 //!
-//! **No per-instance uniform, no GPU-side instancing yet.** A render
-//! pass here has exactly one shared uniform buffer (view-projection,
-//! camera position, ambient, lights) per view — there is no dynamic-
-//! offset or per-draw uniform mechanism in `graphics-driver` today, and
-//! writing a *shared* uniform once per draw would race (every draw only
-//! executes once the whole command buffer is submitted, by which point
-//! the last write wins for *all* of them — the same footgun the
-//! soft-body examples' buffer-lifetime comments call out). So each
-//! [`Renderable3D`]'s world-space position/normal, its UV (if textured)
-//! and its material's tint/emissive are baked into a fresh vertex buffer
-//! at [`SceneRenderer::prepare`] time, once per instance, per frame —
-//! correct today, and exactly the CPU-side cost docs/graphics-design.md's
-//! "GPU-driven rendering" section already names as the long-term thing
-//! to fix via instancing/indirect draw. Per-textured-draw bind groups
-//! are similarly rebuilt every frame rather than cached per texture —
-//! the same "correct now, batch later" trade-off.
-//!
-//! **Lights are capped at [`MAX_LIGHTS`]** (a fixed-size WGSL uniform
-//! array, not a dynamically-sized storage buffer — keeping the uniform
-//! shape simple until a scene actually needs more): extra lights beyond
-//! the cap are dropped, logged once per [`SceneRenderer::prepare`] call
-//! via `meridian_foundation::log_warn!`, not silently ignored.
+//! Design notes: docs/notes/meridian-graphics-core.md (`submission`).
 
 use meridian_gac_core::{Motor3, Projection, Vec3};
 use meridian_graphics_driver::{
@@ -657,7 +636,10 @@ fn vec3_to_padded_bytes(v: [f32; 3]) -> [u8; 16] {
 /// `light_direction` is that same light's travel direction (unit
 /// vector), independent of `shadow_caster` — the shadow lookup uses it
 /// directly for its slope-scaled bias rather than re-indexing `lights`.
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "replaced by an options/value type in Craftbook migration wave 3"
+)]
 fn lit_uniform_bytes(
     camera: &Camera,
     light_view_proj: [[f32; 4]; 4],
@@ -911,6 +893,7 @@ impl TextureRegistry {
 /// Which family (colored vs. textured) one [`DrawBuffers`] entry belongs
 /// to, and the per-draw state its main pipeline needs beyond the shared
 /// vertex/index buffers.
+#[derive(Debug)]
 pub(crate) enum DrawKind {
     Colored,
     /// A fresh bind group naming this draw's specific texture — see the
@@ -929,6 +912,7 @@ pub(crate) enum DrawKind {
 /// that example's module doc). [`crate::bloom`] redraws the same
 /// `vertex_buffer`/`index_buffer` through its own emissive-extraction
 /// pipeline, so both stay `pub(crate)`.
+#[derive(Debug)]
 pub struct DrawBuffers {
     pub(crate) vertex_buffer: Buffer,
     pub(crate) index_buffer: Buffer,
@@ -946,7 +930,10 @@ pub struct DrawBuffers {
 /// selects; the baked bytes are identical either way (see the module
 /// doc: both lit and unlit pipelines within a family share one vertex
 /// layout).
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "replaced by an options/value type in Craftbook migration wave 3"
+)]
 fn bake_draw_buffers(
     device: &Device,
     renderer: &SceneRenderer,
@@ -1071,6 +1058,7 @@ fn bake_draw_buffers(
 /// render into `BloomPass`'s own offscreen texture, whose format is
 /// `BloomPass`'s to pick, not something this type should guess at (see
 /// `bloom.rs`'s module doc and `uniform_buffer`(Self::uniform_buffer)).
+#[derive(Debug)]
 pub struct SceneRenderer {
     colored_unlit_pipeline: RenderPipeline,
     colored_unlit_bind_group: BindGroup,
@@ -1250,7 +1238,10 @@ impl SceneRenderer {
     /// [`render_shadow_pass`](Self::render_shadow_pass) (which computes
     /// `light_view_proj` and `shadow_caster`). Lights beyond
     /// [`MAX_LIGHTS`] are dropped and logged.
-    #[allow(clippy::too_many_arguments)]
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "replaced by an options/value type in Craftbook migration wave 3"
+    )]
     pub fn set_view(
         &self,
         device: &Device,
@@ -1431,7 +1422,10 @@ impl SceneRenderer {
 /// function) — see [`SceneRenderer::render_shadow_pass`]'s own doc
 /// comment for why baking has to happen once, before either pass opens,
 /// not per-pass.
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "replaced by an options/value type in Craftbook migration wave 3"
+)]
 pub fn submit_scene3d(
     device: &Device,
     renderer: &SceneRenderer,

@@ -25,7 +25,7 @@ use meridian_compute_runtime::ComputeContext;
 use meridian_gac_core::Vec3;
 use meridian_gac_core::float_ga::FloatFlavor;
 use meridian_gac_core::generic::Plane;
-use meridian_gpu_driver::{BufferUsage, ComputePipeline, Shader};
+use meridian_gpu_driver::{BufferUsage, ComputePipeline};
 use meridian_physics_core::generic::RigidBody;
 use meridian_physics_core::soft_body::float_softbody::SoftBody;
 
@@ -168,8 +168,6 @@ fn source() -> String {
 /// [`crate`]'s module doc).
 #[derive(Debug)]
 pub struct SoftBodyGpuKernel {
-    #[allow(dead_code)]
-    shader: Shader,
     pipeline: ComputePipeline,
 }
 
@@ -184,7 +182,7 @@ impl SoftBodyGpuKernel {
         );
         let shader = gpu.create_shader("soft_body_step_f32", &source());
         let pipeline = gpu.create_compute_pipeline(&shader, "soft_body_step");
-        Self { shader, pipeline }
+        Self { pipeline }
     }
 
     /// Advances every particle of `body` by one timestep on the GPU and
@@ -311,15 +309,15 @@ impl SoftBodyGpuKernel {
 
         for (i, p) in body.positions.iter_mut().enumerate() {
             let base = i * 12;
-            p.x = f32::from_le_bytes(positions_result[base..base + 4].try_into().unwrap());
-            p.y = f32::from_le_bytes(positions_result[base + 4..base + 8].try_into().unwrap());
-            p.z = f32::from_le_bytes(positions_result[base + 8..base + 12].try_into().unwrap());
+            p.x = f32::from_le_bytes(crate::readback::le_word(&positions_result, base));
+            p.y = f32::from_le_bytes(crate::readback::le_word(&positions_result, base + 4));
+            p.z = f32::from_le_bytes(crate::readback::le_word(&positions_result, base + 8));
         }
         for (i, v) in body.velocities.iter_mut().enumerate() {
             let base = i * 12;
-            v.x = f32::from_le_bytes(velocities_result[base..base + 4].try_into().unwrap());
-            v.y = f32::from_le_bytes(velocities_result[base + 4..base + 8].try_into().unwrap());
-            v.z = f32::from_le_bytes(velocities_result[base + 8..base + 12].try_into().unwrap());
+            v.x = f32::from_le_bytes(crate::readback::le_word(&velocities_result, base));
+            v.y = f32::from_le_bytes(crate::readback::le_word(&velocities_result, base + 4));
+            v.z = f32::from_le_bytes(crate::readback::le_word(&velocities_result, base + 8));
         }
     }
 }
@@ -389,8 +387,6 @@ fn broad_phase_overlap(@builtin(global_invocation_id) id: vec3<u32>) {
 /// dispatch is safe to take on first.
 #[derive(Debug)]
 pub struct BroadPhaseGpuKernel {
-    #[allow(dead_code)]
-    shader: Shader,
     pipeline: ComputePipeline,
 }
 
@@ -404,7 +400,7 @@ impl BroadPhaseGpuKernel {
         );
         let shader = gpu.create_shader("broad_phase_overlap_f32", BROAD_PHASE_WGSL);
         let pipeline = gpu.create_compute_pipeline(&shader, "broad_phase_overlap");
-        Self { shader, pipeline }
+        Self { pipeline }
     }
 
     /// Every `(i, j)`, `i < j` candidate pair among `bodies` that
@@ -494,7 +490,7 @@ impl BroadPhaseGpuKernel {
             .enumerate()
             .filter(|(k, _)| {
                 let base = k * 4;
-                u32::from_le_bytes(overlaps_result[base..base + 4].try_into().unwrap()) != 0
+                u32::from_le_bytes(crate::readback::le_word(&overlaps_result, base)) != 0
             })
             .map(|(_, (i, j))| (i as usize, j as usize))
             .collect()

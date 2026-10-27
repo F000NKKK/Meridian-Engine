@@ -66,13 +66,10 @@ crates/meridian-audio-core/src/lib.rs	C103	struct Listener	1
 crates/meridian-audio-core/src/lib.rs	C103	struct Mixer	1
 crates/meridian-audio-core/src/lib.rs	C103	struct Speaker	1
 crates/meridian-audio-core/src/lib.rs	C103	struct SpeakerLayout	1
-crates/meridian-audio-core/src/lib.rs	D302		1
 crates/meridian-audio-core/src/lib.rs	D305		7
 crates/meridian-audio-driver/src/lib.rs	C101		1
-crates/meridian-audio-driver/src/lib.rs	E403		1
 crates/meridian-compute-runtime/src/lib.rs	C101		1
 crates/meridian-compute-runtime/src/lib.rs	C102		1
-crates/meridian-compute-runtime/src/lib.rs	D302		1
 crates/meridian-dsl-core/src/lib.rs	C103		1
 crates/meridian-dsl-core/src/lib.rs	C103	fn parse	1
 crates/meridian-dsl-core/src/lib.rs	C103	impl	1
@@ -93,7 +90,6 @@ crates/meridian-ecs-core/src/lib.rs	N202	ArchetypeData	1
 crates/meridian-ecs-core/src/lib.rs	N203	get_or_create_archetype	1
 crates/meridian-engine-core/src/lib.rs	C101		1
 crates/meridian-engine-core/src/lib.rs	C102		1
-crates/meridian-engine-core/src/lib.rs	D302		1
 crates/meridian-foundation/src/crash_reporting.rs	A501	REPORT_INDEX	1
 crates/meridian-foundation/src/crash_reporting.rs	C108	CrashReportConfig	1
 crates/meridian-foundation/src/crash_reporting.rs	S701		1
@@ -103,7 +99,6 @@ crates/meridian-gac-compute/src/fixed_wgsl.rs	C101		1
 crates/meridian-gac-compute/src/fixed_wgsl.rs	C102		1
 crates/meridian-gac-compute/src/fixed_wgsl.rs	C108	FixedArithmeticKernels	1
 crates/meridian-gac-compute/src/fixed_wgsl.rs	C108	FixedBinaryOp	1
-crates/meridian-gac-compute/src/fixed_wgsl.rs	D302		1
 crates/meridian-gac-compute/src/lib.rs	C102		1
 crates/meridian-gac-compute/src/lib.rs	C103		1
 crates/meridian-gac-compute/src/lib.rs	C103	impl ComputeKernel	4
@@ -117,19 +112,15 @@ crates/meridian-gac-compute/src/lib.rs	C103	struct MotorComposeKernel	1
 crates/meridian-gac-compute/src/lib.rs	C103	struct MotorTransformKernel	1
 crates/meridian-gac-core/src/fixed_ga.rs	C101		1
 crates/meridian-gac-core/src/fixed_ga.rs	C102		1
-crates/meridian-gac-core/src/fixed_ga.rs	D302		1
 crates/meridian-gac-core/src/fixed_ga.rs	D305		3
 crates/meridian-gac-core/src/float_ga.rs	C101		1
 crates/meridian-gac-core/src/float_ga.rs	C102		1
 crates/meridian-gac-core/src/float_ga.rs	D305		3
 crates/meridian-gac-core/src/generic.rs	C101		1
-crates/meridian-gac-core/src/lib.rs	D302		1
 crates/meridian-gpu-driver/src/lib.rs	C101		1
-crates/meridian-gpu-driver/src/lib.rs	E403		1
 crates/meridian-graphics-core/src/bloom.rs	C101		1
 crates/meridian-graphics-core/src/bloom.rs	C108	BloomConfig	1
 crates/meridian-graphics-core/src/bloom.rs	C108	BloomPass	1
-crates/meridian-graphics-core/src/bloom.rs	D302		1
 crates/meridian-graphics-core/src/lib.rs	C101		1
 crates/meridian-graphics-core/src/lib.rs	C102		1
 crates/meridian-graphics-core/src/lib.rs	C103		1
@@ -175,15 +166,11 @@ crates/meridian-graphics-core/src/submission.rs	C108	MeshRegistryError	1
 crates/meridian-graphics-core/src/submission.rs	C108	MeshSource	1
 crates/meridian-graphics-core/src/submission.rs	C108	SceneRenderer	1
 crates/meridian-graphics-core/src/submission.rs	C108	TextureRegistry	1
-crates/meridian-graphics-core/src/submission.rs	D302		1
 crates/meridian-graphics-driver/src/lib.rs	C101		1
-crates/meridian-graphics-driver/src/lib.rs	D302		1
 crates/meridian-numeric-core/src/fixed.rs	C101		1
 crates/meridian-numeric-core/src/lib.rs	C103	trait NumericBackend	1
 crates/meridian-physics-compute/src/broad_phase.rs	C108	BroadPhasePairsKernel	1
-crates/meridian-physics-compute/src/constraint_solver.rs	C101		1
 crates/meridian-physics-compute/src/constraint_solver.rs	C108	ConstraintSolverBatchKernel	1
-crates/meridian-physics-compute/src/constraint_solver.rs	D302		1
 crates/meridian-physics-compute/src/fixed.rs	C101		1
 crates/meridian-physics-compute/src/fixed.rs	C102		1
 crates/meridian-physics-compute/src/fixed.rs	C108	FixedSoftBodyGpuKernel	1
@@ -192,8 +179,6 @@ crates/meridian-physics-compute/src/float.rs	C102		1
 crates/meridian-physics-compute/src/float.rs	C108	BroadPhaseGpuKernel	1
 crates/meridian-physics-compute/src/float.rs	C108	SoftBodyGpuKernel	1
 crates/meridian-physics-compute/src/generic.rs	C108	Adjacency	1
-crates/meridian-physics-compute/src/generic.rs	D302		1
-crates/meridian-physics-compute/src/lib.rs	D302		1
 crates/meridian-physics-compute/src/narrow_phase.rs	C102		1
 crates/meridian-physics-compute/src/narrow_phase.rs	C108	GenerateContactsKernel	1
 crates/meridian-physics-compute/src/narrow_phase.rs	C108	NarrowPhaseTestPairKernel	1
@@ -201,7 +186,6 @@ crates/meridian-physics-compute/src/rigid_body.rs	C108	RigidBodyIntegratorKernel
 crates/meridian-physics-core/src/fixed.rs	C102		1
 crates/meridian-physics-core/src/float.rs	C102		1
 crates/meridian-physics-core/src/generic.rs	C101		1
-crates/meridian-physics-core/src/lib.rs	D302		1
 crates/meridian-platform-core/src/capabilities.rs	C108	BackendCapabilities	1
 crates/meridian-platform-core/src/capabilities.rs	C108	CpuCapabilities	1
 crates/meridian-platform-core/src/capabilities.rs	C108	GpuCapabilities	1
@@ -224,17 +208,12 @@ crates/meridian-sdk/src/dsl.rs	C108	Mesh	1
 crates/meridian-sdk/src/dsl.rs	C108	RigidBody	1
 crates/meridian-sdk/src/dsl.rs	C108	Scene	1
 crates/meridian-sdk/src/dsl.rs	C108	Transform	1
-crates/meridian-sdk/src/dsl.rs	D302		1
-crates/meridian-sdk/src/lib.rs	C103		1
-crates/meridian-sdk/src/lib.rs	D302		1
 crates/meridian-sdk/src/render.rs	C108	RenderStage	1
 crates/meridian-sdk/src/scene.rs	C101		1
 crates/meridian-sdk/src/scene.rs	C108	GraphicsBase	1
 crates/meridian-sdk/src/scene.rs	N202	GraphicsBase	1
 examples/examples/magic_figures.rs	C101		1
-examples/examples/magic_figures.rs	D302		1
 examples/examples/magic_figures.rs	S702		3
 examples/examples/physic_figures.rs	C101		1
-examples/examples/physic_figures.rs	D302		1
 examples/examples/physic_figures.rs	S702		8
 examples/src/paths.rs	S701		1

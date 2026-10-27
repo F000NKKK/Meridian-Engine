@@ -70,9 +70,14 @@ impl Window {
             winit::window::CursorGrabMode::None
         };
         if self.inner.set_cursor_grab(mode).is_err() && grabbed {
-            let _ = self
+            // Platforms without a locked mode get the confined one; with
+            // neither, the cursor stays free and the window still works.
+            if let Err(err) = self
                 .inner
-                .set_cursor_grab(winit::window::CursorGrabMode::Confined);
+                .set_cursor_grab(winit::window::CursorGrabMode::Confined)
+            {
+                meridian_foundation::log_warn!("cursor grab unavailable: {err}");
+            }
         }
         self.inner.set_cursor_visible(!grabbed);
     }

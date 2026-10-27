@@ -21,7 +21,7 @@ use meridian_compute_runtime::ComputeContext;
 use meridian_gac_compute::fixed_wgsl::FIXED_ARITHMETIC_LIB_WGSL;
 use meridian_gac_core::fixed_ga::{FixedFlavor, FixedVec3};
 use meridian_gac_core::generic::Plane;
-use meridian_gpu_driver::{BufferUsage, ComputePipeline, Shader};
+use meridian_gpu_driver::{BufferUsage, ComputePipeline};
 use meridian_numeric_core::Fixed;
 use meridian_physics_core::soft_body::fixed_softbody::FixedSoftBody;
 
@@ -229,8 +229,6 @@ fn source() -> String {
 /// mirrors structurally.
 #[derive(Debug)]
 pub struct FixedSoftBodyGpuKernel {
-    #[allow(dead_code)]
-    shader: Shader,
     pipeline: ComputePipeline,
 }
 
@@ -243,7 +241,7 @@ impl FixedSoftBodyGpuKernel {
         );
         let shader = gpu.create_shader("soft_body_step_fixed", &source());
         let pipeline = gpu.create_compute_pipeline(&shader, "soft_body_step");
-        Self { shader, pipeline }
+        Self { pipeline }
     }
 
     /// Advances every particle of `body` by one timestep on the GPU and
@@ -365,27 +363,33 @@ impl FixedSoftBodyGpuKernel {
 
         for (i, p) in body.positions.iter_mut().enumerate() {
             let base = i * 12;
-            p.x = Fixed::from_bits(i32::from_le_bytes(
-                positions_result[base..base + 4].try_into().unwrap(),
-            ));
-            p.y = Fixed::from_bits(i32::from_le_bytes(
-                positions_result[base + 4..base + 8].try_into().unwrap(),
-            ));
-            p.z = Fixed::from_bits(i32::from_le_bytes(
-                positions_result[base + 8..base + 12].try_into().unwrap(),
-            ));
+            p.x = Fixed::from_bits(i32::from_le_bytes(crate::readback::le_word(
+                &positions_result,
+                base,
+            )));
+            p.y = Fixed::from_bits(i32::from_le_bytes(crate::readback::le_word(
+                &positions_result,
+                base + 4,
+            )));
+            p.z = Fixed::from_bits(i32::from_le_bytes(crate::readback::le_word(
+                &positions_result,
+                base + 8,
+            )));
         }
         for (i, v) in body.velocities.iter_mut().enumerate() {
             let base = i * 12;
-            v.x = Fixed::from_bits(i32::from_le_bytes(
-                velocities_result[base..base + 4].try_into().unwrap(),
-            ));
-            v.y = Fixed::from_bits(i32::from_le_bytes(
-                velocities_result[base + 4..base + 8].try_into().unwrap(),
-            ));
-            v.z = Fixed::from_bits(i32::from_le_bytes(
-                velocities_result[base + 8..base + 12].try_into().unwrap(),
-            ));
+            v.x = Fixed::from_bits(i32::from_le_bytes(crate::readback::le_word(
+                &velocities_result,
+                base,
+            )));
+            v.y = Fixed::from_bits(i32::from_le_bytes(crate::readback::le_word(
+                &velocities_result,
+                base + 4,
+            )));
+            v.z = Fixed::from_bits(i32::from_le_bytes(crate::readback::le_word(
+                &velocities_result,
+                base + 8,
+            )));
         }
     }
 }
@@ -518,10 +522,9 @@ mod tests {
     /// algorithm (no WGSL, no GPU) — proves the *reformulation itself*
     /// (independent of its WGSL/GPU execution) is bit-exact with
     /// `FixedSoftBodyIntegrator::step`. See `crate::generic`'s module doc
-    /// for why this needs the `is_a`-conditional canonical direction
-    /// (an earlier version that recomputed direction/`total` naively per
-    /// endpoint failed this exact test, diverging by one raw bit at step
-    /// 48 — this is the regression test for that bug).
+    /// for why this needs the `is_a`-conditional canonical direction:
+    /// recomputing direction/`total` per endpoint diverges by one raw bit
+    /// at step 48, and this test is the regression test for that.
     fn rust_gather_step(
         body: &FixedSoftBody,
         gravity: FixedVec3,

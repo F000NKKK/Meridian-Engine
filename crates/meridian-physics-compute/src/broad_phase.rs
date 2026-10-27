@@ -88,7 +88,10 @@ where
     /// order `BroadPhase::find_candidate_pairs` produces. Empty if
     /// `dispatch` hasn't run yet.
     pub fn pairs(&self) -> Vec<(usize, usize)> {
-        let overlaps = self.overlaps.lock().unwrap();
+        let overlaps = self
+            .overlaps
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         self.candidate_pairs
             .iter()
             .zip(overlaps.iter())
@@ -112,7 +115,9 @@ where
         context.parallel_for(count, |k| {
             let (i, j) = self.candidate_pairs[k];
             let overlap = self.bodies[i].aabb().overlaps(&self.bodies[j].aabb());
-            self.overlaps.lock().unwrap()[k] = overlap;
+            self.overlaps
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)[k] = overlap;
         });
     }
 }

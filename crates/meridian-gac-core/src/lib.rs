@@ -1,5 +1,10 @@
 //! Geometric Algebra Core — vectors, bivectors, multivectors, rotors and motors; the shared spatial math foundation for every other subsystem.
 //!
+//! Layer: shared kernel; bounded context: geometry (`craftbook.toml`,
+//! docs/context-map.md). A performance kernel (Craftbook §7.8): its
+//! data-oriented layout is provisional until a benchmark justifies it
+//! (ADR 019 D8).
+//!
 //! Two flavors, in their own modules: [`float_ga`] (`f32`, the default —
 //! re-exported at the crate root, so `meridian_gac_core::Vec3`/`Motor3`/
 //! `Aabb`/etc. resolve to it unchanged) and [`fixed_ga`] (`Fixed`,
@@ -16,23 +21,9 @@
 //! nondeterminism — a tradeoff for the caller to accept knowingly, not
 //! something forbidden here).
 //!
-//! Everything else — geometric primitives (`Aabb`, `Sphere`, `Obb`,
-//! `Cone`, `Plane`, `Shape`, `ConvexVolume`, `Projection`, `Frame`) —
-//! lives in [`generic`], written **once**, generic over `GaFlavor`,
-//! because none of it has `float_ga`/`fixed_ga`'s Motor3-specific
-//! GPU-dispatch constraint: an AABB overlap test or a projection matrix
-//! derivation is the same sequence of operations regardless of which
-//! scalar type it runs on, so duplicating it would just be maintenance
-//! risk for no reason (see `CLAUDE.md`'s "Float/Fixed branching" rule).
-//! `float_ga`/`fixed_ga` each expose thin type aliases
-//! (`float_ga::Aabb = generic::Aabb<FloatFlavor>`,
-//! `fixed_ga::FixedAabb = generic::Aabb<FixedFlavor>`, ...) so existing
-//! call sites don't need to think about the generic parameter at all —
-//! only code that wants to *be* generic over the flavor (like
-//! `physics-core`'s engine) reaches into `generic` directly.
-//!
-//! See docs/gac-design.md and
-//! [ADR 001](../../../docs/adr/001-geometric-algebra-as-spatial-model.md).
+//! Design notes: docs/notes/meridian-gac-core.md (`lib`).
+
+#![forbid(unsafe_code)]
 
 pub mod fixed_ga;
 pub mod float_ga;

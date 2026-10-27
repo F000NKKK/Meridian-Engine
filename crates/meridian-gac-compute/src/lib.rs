@@ -1,5 +1,8 @@
 //! Batch execution kernels for `gac-core`'s `Motor3` transforms — the adapter between pure geometric algebra and `compute-runtime`'s dispatch interface. See docs/adr/007-batch-transforms-via-compute.md.
 //!
+//! Layer: infrastructure (adapter); bounded context: geometry
+//! (`craftbook.toml`, docs/context-map.md).
+//!
 //! [`fixed_wgsl`] is a second, independent kind of GPU work this crate
 //! hosts: `Fixed`-point (Q16.16) arithmetic running as real WGSL compute
 //! shaders, bit-exact against the CPU `Fixed` implementation — phase 1 of
@@ -18,6 +21,8 @@
 //! safety-first with the optimization explicitly deferred (see
 //! `meridian-task-core`'s shared-ready-queue-not-work-stealing-deques
 //! note for the same tradeoff made elsewhere).
+
+#![forbid(unsafe_code)]
 
 //! [`FixedMotorTransformKernel`]/[`FixedMotorComposeKernel`] are the same
 //! two kernels built on `gac-core::fixed_ga::FixedMotor3` instead —
@@ -68,7 +73,10 @@ impl MotorTransformKernel {
     /// The `world[i] = locals[i].compose(parent)` results from the most
     /// recent dispatch. All-identity if `dispatch` hasn't run yet.
     pub fn results(&self) -> Vec<Motor3> {
-        self.results.lock().unwrap().clone()
+        self.results
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .clone()
     }
 }
 
@@ -77,7 +85,9 @@ impl ComputeKernel for MotorTransformKernel {
         let count = size.total().min(self.locals.len());
         context.parallel_for(count, |i| {
             let world = self.locals[i].compose(self.parent);
-            self.results.lock().unwrap()[i] = world;
+            self.results
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)[i] = world;
         });
     }
 }
@@ -99,7 +109,10 @@ impl MotorComposeKernel {
     }
 
     pub fn results(&self) -> Vec<Motor3> {
-        self.results.lock().unwrap().clone()
+        self.results
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .clone()
     }
 }
 
@@ -108,7 +121,9 @@ impl ComputeKernel for MotorComposeKernel {
         let count = size.total().min(self.pairs.len());
         context.parallel_for(count, |i| {
             let (child, parent) = self.pairs[i];
-            self.results.lock().unwrap()[i] = child.compose(parent);
+            self.results
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)[i] = child.compose(parent);
         });
     }
 }
@@ -134,7 +149,10 @@ impl FixedMotorTransformKernel {
     }
 
     pub fn results(&self) -> Vec<FixedMotor3> {
-        self.results.lock().unwrap().clone()
+        self.results
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .clone()
     }
 }
 
@@ -143,7 +161,9 @@ impl ComputeKernel for FixedMotorTransformKernel {
         let count = size.total().min(self.locals.len());
         context.parallel_for(count, |i| {
             let world = self.locals[i].compose(self.parent);
-            self.results.lock().unwrap()[i] = world;
+            self.results
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)[i] = world;
         });
     }
 }
@@ -163,7 +183,10 @@ impl FixedMotorComposeKernel {
     }
 
     pub fn results(&self) -> Vec<FixedMotor3> {
-        self.results.lock().unwrap().clone()
+        self.results
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .clone()
     }
 }
 
@@ -172,7 +195,9 @@ impl ComputeKernel for FixedMotorComposeKernel {
         let count = size.total().min(self.pairs.len());
         context.parallel_for(count, |i| {
             let (child, parent) = self.pairs[i];
-            self.results.lock().unwrap()[i] = child.compose(parent);
+            self.results
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)[i] = child.compose(parent);
         });
     }
 }

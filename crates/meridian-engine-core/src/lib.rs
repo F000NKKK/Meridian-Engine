@@ -6,78 +6,12 @@
 //! this is still the one place in the workspace allowed to know about
 //! every `*-core` at once (see docs/dependency-rules.md rule 7).
 //!
-//! **One mechanism, not two.** Earlier revisions of this crate had a
-//! plain sequential `Runtime::tick` (physics-then-audio, hardcoded
-//! order, no extensibility) *and* a separate `meridian-sdk`-level
-//! `Pipeline` built on `task-core::JobGraph` (composable, dependency-
-//! ordered `Stage`s, fine-grained locking) — two competing answers to
-//! "how does a frame's work get run," with the second only invented
-//! because the first couldn't be extended without engine-core knowing
-//! about every possible consumer's specific need (`BinauralRenderer`'s
-//! per-sample synthesis being the concrete case that broke it). That
-//! split is gone: [`Stage`]/[`StageContext`]/[`Runtime`] (the
-//! `JobGraph`-based mechanism, promoted here from where it used to live
-//! in `meridian-sdk`) *is* this crate's `Runtime` now — there is no
-//! second, lower-level "raw pipeline" type an application reaches for
-//! instead; [`Runtime::tick`]/[`Runtime::tick_only`] are the only
-//! per-frame entry points, and each rebuilds and runs a fresh `JobGraph`
-//! every call internally (see
-//! [`Runtime::tick`]'s own doc for why a fresh graph, not a cached one).
+//! Layer: application; bounded context: runtime (`craftbook.toml`,
+//! docs/context-map.md).
 //!
-//! **Locking: fine-grained, deadlock-free by construction.**
-//! [`RuntimeState`] splits shared state into independently-lockable
-//! pieces ([`World`], [`PhysicsSubsystem`], [`AudioSubsystem`]) so two
-//! stages that only touch *different* resources genuinely don't contend
-//! on each other's lock. The risk with more than one lock is a classic
-//! lock-order-inversion deadlock: stage A locks physics-then-audio
-//! while an independent stage B locks audio-then-physics, running
-//! concurrently. [`StageContext`] makes that inversion structurally
-//! unrepresentable rather than documenting a convention a stage author
-//! could still get wrong: every accessor takes exactly one lock, and
-//! the only ways to hold more than one at once
-//! ([`StageContext::physics_and_audio`]/
-//! [`StageContext::world_physics_and_audio`]) always acquire them in
-//! one fixed order (`world`, then `physics`, then `audio`) internally.
-//! There is no API path that lets calling code choose the order itself.
-//!
-//! **Extensibility — this is the actual point of the merge.** Physics
-//! ([`PhysicsStepStage`], selecting a plain sequential loop or
-//! `meridian-physics-compute`'s batched-dispatch kernels via its
-//! [`PhysicsDispatchMode`] flag — see that type's own doc for when to
-//! reach for which) and arbitrary GPU/CPU compute
-//! ([`ComputeStage`], wrapping any `compute-runtime::ComputeKernel` —
-//! `gac-compute`/`physics-compute`'s own kernels included, or a game's
-//! own) are both just [`Stage`]s registered the same way, dependency-
-//! ordered against each other and anything else an application adds.
-//! Rendering is the one thing that *can't* live as a built-in stage
-//! here — presenting a frame needs a real windowed `Device`/`Surface`
-//! (driver state), and this crate deliberately never depends on
-//! `graphics-driver` (only `graphics-core` — see
-//! docs/dependency-rules.md). That isn't a gap in this mechanism,
-//! though: a render-presenting [`Stage`] is exactly what an application
-//! (via `meridian-sdk`, the one crate allowed to hold both `Runtime` and
-//! `*-driver` types) implements and registers itself, through the exact
-//! same `Stage` trait every other stage uses — not a second, parallel
-//! "render pipeline" mechanism. See `meridian-sdk`'s own module docs for
-//! that implementation once it exists.
-//!
-//! **`examples/physic_figures` proves this end-to-end** — physics *and*
-//! rendering both go through one `Runtime`: a registered
-//! [`PhysicsStepStage`] and a `meridian-sdk`-implemented render-
-//! presenting `Stage`, the concrete case the previous paragraph
-//! describes. They run at different multiplicities per real display
-//! frame (a fixed-timestep accumulator calls the physics stage 0-8
-//! times to catch up; rendering must run exactly once) — see
-//! [`Runtime::tick_only`]'s own doc for the selective-tick mechanism
-//! that makes both still go through this one `Runtime` rather than
-//! either bypassing it. `examples/magic_figures` still doesn't use
-//! `Runtime` at all: it has no physics bodies (pure kinematic orbit
-//! motion) and needs `audio-core::BinauralRenderer`'s real per-sample
-//! stereo synthesis, which doesn't reduce to a `StageContext`-shaped
-//! `Stage` cleanly (its inputs — orbiting shapes' positions, the
-//! free-fly camera's pose — are plain application state, not anything
-//! `RuntimeState` owns) — see [`AudioSubsystem::mix`]'s own doc comment
-//! for why forcing it through `AudioSubsystem` was rejected instead.
+//! Design notes: docs/notes/meridian-engine-core.md (`lib`).
+
+#![forbid(unsafe_code)]
 
 use std::any::{Any, TypeId};
 use std::collections::HashMap;
@@ -305,7 +239,7 @@ impl AudioSubsystem {
 /// is defined anywhere in the workspace yet, and inventing one here
 /// would be new, undocumented design, not wiring together what already
 /// exists.
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct RuntimeState {
     world: Arc<Mutex<World>>,
     physics: Arc<Mutex<PhysicsSubsystem>>,
@@ -339,25 +273,32 @@ impl RuntimeState {
     /// way [`StageContext`] does mid-tick — this is a plain, single
     /// lock.
     pub fn world(&self) -> MutexGuard<'_, World> {
-        self.world.lock().unwrap()
+        self.world
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 
     /// Locks the physics state directly — see [`world`](Self::world)'s
     /// doc comment for the same "between ticks, not mid-tick" scoping.
     pub fn physics(&self) -> MutexGuard<'_, PhysicsSubsystem> {
-        self.physics.lock().unwrap()
+        self.physics
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 
     /// Locks the audio state directly — see [`world`](Self::world)'s
     /// doc comment for the same "between ticks, not mid-tick" scoping.
     pub fn audio(&self) -> MutexGuard<'_, AudioSubsystem> {
-        self.audio.lock().unwrap()
+        self.audio
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 }
 
 /// What a running [`Stage`] sees — locked access to [`RuntimeState`]'s
 /// pieces, shaped so a lock-order inversion can't be expressed (see the
 /// module doc's "Locking" section).
+#[derive(Debug)]
 pub struct StageContext {
     world: Arc<Mutex<World>>,
     physics: Arc<Mutex<PhysicsSubsystem>>,
@@ -367,7 +308,9 @@ pub struct StageContext {
 impl StageContext {
     /// Locks only the world state.
     pub fn world(&self) -> MutexGuard<'_, World> {
-        self.world.lock().unwrap()
+        self.world
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 
     /// Locks only the physics state. Blocks if another stage currently
@@ -376,12 +319,16 @@ impl StageContext {
     /// contends, since the dependency already guaranteed the earlier
     /// stage finished and dropped its guard first).
     pub fn physics(&self) -> MutexGuard<'_, PhysicsSubsystem> {
-        self.physics.lock().unwrap()
+        self.physics
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 
     /// Locks only the audio state.
     pub fn audio(&self) -> MutexGuard<'_, AudioSubsystem> {
-        self.audio.lock().unwrap()
+        self.audio
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 
     /// Locks both physics and audio, always physics-then-audio
@@ -395,8 +342,14 @@ impl StageContext {
         MutexGuard<'_, PhysicsSubsystem>,
         MutexGuard<'_, AudioSubsystem>,
     ) {
-        let physics = self.physics.lock().unwrap();
-        let audio = self.audio.lock().unwrap();
+        let physics = self
+            .physics
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let audio = self
+            .audio
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         (physics, audio)
     }
 
@@ -411,9 +364,18 @@ impl StageContext {
         MutexGuard<'_, PhysicsSubsystem>,
         MutexGuard<'_, AudioSubsystem>,
     ) {
-        let world = self.world.lock().unwrap();
-        let physics = self.physics.lock().unwrap();
-        let audio = self.audio.lock().unwrap();
+        let world = self
+            .world
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let physics = self
+            .physics
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let audio = self
+            .audio
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         (world, physics, audio)
     }
 }
@@ -453,11 +415,21 @@ struct StageEntry {
     stage: Arc<Mutex<dyn Stage>>,
 }
 
+impl std::fmt::Debug for StageEntry {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("StageEntry")
+            .field("name", &self.name)
+            .field("deps", &self.deps)
+            .finish_non_exhaustive()
+    }
+}
+
 /// Owns [`RuntimeState`] and a set of registered [`Stage`]s, and runs
 /// them in dependency order every [`Runtime::tick`] — see the module doc
 /// for the `JobGraph`-based mechanism and the locking guarantee. The
 /// single entry point for a frame's work in this workspace — see the
 /// module doc's "one mechanism, not two" section.
+#[derive(Debug)]
 pub struct Runtime {
     state: RuntimeState,
     scheduler: FrameScheduler,
@@ -564,7 +536,10 @@ impl Runtime {
             let stage = entry.stage.clone();
             let ctx = self.state.context();
             let job_id = graph.add_job(entry.name, &dep_job_ids, move || {
-                stage.lock().unwrap().run(&ctx);
+                stage
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner)
+                    .run(&ctx);
             });
             job_ids[id.0] = Some(job_id);
         }
@@ -580,17 +555,19 @@ impl Runtime {
     /// application's window-resize handler.
     pub fn resize_all(&self, width: u32, height: u32) {
         for entry in &self.stages {
-            entry.stage.lock().unwrap().resize(width, height);
+            entry
+                .stage
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .resize(width, height);
         }
     }
 }
 
 /// Selects [`PhysicsStepStage`]'s dispatch shape — the flag this crate
-/// uses instead of two separate `Stage` types (see [`PhysicsStepStage`]'s
-/// own doc for the full history: `PhysicsStepStage`/`PhysicsComputeStepStage`
-/// used to be two distinct structs; a single type switching on this enum
-/// is the same "one mechanism, not two" reasoning this crate already
-/// applies to `Runtime` itself, just at the stage level).
+/// uses instead of two separate `Stage` types: one type switching on this
+/// enum is the same "one mechanism, not two" reasoning this crate applies
+/// to `Runtime` itself, at the stage level.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum PhysicsDispatchMode {
     /// Plain sequential CPU loop: [`PhysicsSubsystem::step`] as-is.
@@ -637,6 +614,7 @@ pub enum PhysicsDispatchMode {
 /// graph-colored Gauss-Seidel passes) would need their own WGSL first
 /// for a `Gpu` dispatch mode to mean "the whole pipeline runs on the
 /// GPU" rather than silently mixing GPU and CPU work under one name.
+#[derive(Debug)]
 pub struct PhysicsStepStage {
     pub dt: f32,
     pub mode: PhysicsDispatchMode,
@@ -706,6 +684,7 @@ impl Stage for PhysicsStepStage {
 /// specific to any domain — `gac-compute`/`physics-compute`'s own
 /// kernels work here exactly as well as a game-specific one; this crate
 /// still doesn't know what any given kernel actually computes.
+#[derive(Debug)]
 pub struct ComputeStage<K> {
     scheduler: ComputeScheduler,
     kernel: K,

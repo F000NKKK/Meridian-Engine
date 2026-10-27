@@ -84,6 +84,14 @@ pub struct DslRegistry {
     builders: HashMap<String, Builder>,
 }
 
+impl fmt::Debug for DslRegistry {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut tags: Vec<&String> = self.builders.keys().collect();
+        tags.sort();
+        f.debug_struct("DslRegistry").field("tags", &tags).finish()
+    }
+}
+
 impl DslRegistry {
     pub fn new() -> Self {
         Self::default()

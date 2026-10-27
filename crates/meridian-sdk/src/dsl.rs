@@ -10,38 +10,7 @@
 //!
 //! ## The three layers
 //!
-//! - [`meridian_dsl_core`] (re-exported here as [`dsl_core`]) — the
-//!   domain-blind text parser (`<Tag attr="value">...</Tag>` ->
-//!   `Element`) plus [`dsl_core::DslTag`]/[`dsl_core::DslRegistry`], the
-//!   generic "typed thing buildable from attributes" machinery. Never
-//!   changes when a new tag is added.
-//! - [`dsl_tag`] (the `#[dsl_tag(name = "...")]` attribute macro,
-//!   re-exported from `meridian-dsl-macros`) — code generation: turn a
-//!   plain struct into a [`dsl_core::DslTag`] impl, one required
-//!   attribute per field (`Option<T>` fields are optional). This is how
-//!   a game adds `<MyGameSpecificWidget hp="100" />` without touching
-//!   this crate at all.
-//! - This module's own [`Scene`]/[`Entity`]/[`Mesh`]/[`Material`]/
-//!   [`RigidBody`]/[`Transform`] — built-in tags for the composition
-//!   primitives every application needs, registered by
-//!   [`default_registry`]. An application that doesn't want one of
-//!   these can build its own `DslRegistry` from scratch instead of
-//!   calling [`default_registry`].
-//!
-//! ## Scope, deliberately
-//!
-//! This DSL describes scene/entity composition only — no window title,
-//! no logging config, no crash-report directory (see the earlier design
-//! discussion that scoped this to Phase 1). An application still writes
-//! that part in plain Rust `main()`, same as today.
-//!
-//! Parse errors ([`dsl_core::ParseError`]) and tag-build errors
-//! ([`dsl_core::TagParseError`]) both implement
-//! `meridian_foundation::EngineError` (see that trait's own doc) — a
-//! caller that lets one propagate into a panic (rather than, say,
-//! falling back to an empty scene) gets it captured by
-//! `crash_reporting`'s post-mortem for free, same as every other engine
-//! error; nothing about this module is a silent dead end.
+//! Design notes: docs/notes/meridian-sdk.md (`dsl`).
 
 /// The domain-blind parser and typed-tag machinery — see the module doc
 /// above for how this layers under [`dsl_tag`] and this module's

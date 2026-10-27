@@ -1,5 +1,8 @@
 //! Spatial audio built on the GAC: mixer, DSP graph, listener and emitter frames.
 //!
+//! Layer: domain; bounded context: audio (`craftbook.toml`,
+//! docs/context-map.md).
+//!
 //! Listener-local convention (deliberately chosen, not inherited from
 //! anywhere else — `gac-core`'s `Vec3` has no built-in "forward"): facing
 //! direction is local `+X`, up is local `+Y`, and `+X × +Y = +Z` (see
@@ -19,16 +22,9 @@
 //! real rear speakers) need different edge behavior: see
 //! [`SpeakerLayout::wraps_around`] and [`fold_to_front_hemisphere`].
 //!
-//! No elevation/height channels (Dolby Atmos-style object audio) —
-//! standard consumer speaker layouts are one horizontal plane, and
-//! panning here only ever looks at horizontal azimuth. No measured HRTF —
-//! that needs an impulse-response database this crate doesn't have. The
-//! [`Mixer`] path is amplitude-only panning (front/back collapse on
-//! headphones — see [`fold_to_front_hemisphere`]); the
-//! [`effects::BinauralRenderer`] path is the physically-motivated
-//! headphone upgrade: interaural time difference, head-shadow filtering
-//! and rear damping, so front and back genuinely differ there. Effects
-//! live one-per-file under [`effects`].
+//! Design notes: docs/notes/meridian-audio-core.md (`lib`).
+
+#![forbid(unsafe_code)]
 
 use meridian_gac_core::{Motor3, Vec3};
 
@@ -205,7 +201,7 @@ impl SpeakerLayout {
             .enumerate()
             .filter_map(|(i, s)| s.azimuth_degrees.map(|a| (i, normalize_angle(a))))
             .collect();
-        directional.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+        directional.sort_by(|a, b| a.1.total_cmp(&b.1));
 
         let n = directional.len();
         if n == 0 {
@@ -270,15 +266,13 @@ impl SpeakerLayout {
         // and the non-wrapping clamp already handled the out-of-range
         // cases above, so this is unreachable in practice — kept as a
         // safe fallback (nearest speaker, full gain) rather than a panic.
-        let nearest = directional
+        // `directional` is non-empty: the `n == 0` guard returned above.
+        if let Some(nearest) = directional
             .iter()
-            .min_by(|a, b| {
-                angular_distance(az, a.1)
-                    .partial_cmp(&angular_distance(az, b.1))
-                    .unwrap()
-            })
-            .unwrap();
-        gains[nearest.0].1 = 1.0;
+            .min_by(|a, b| angular_distance(az, a.1).total_cmp(&angular_distance(az, b.1)))
+        {
+            gains[nearest.0].1 = 1.0;
+        }
         gains
     }
 }
@@ -452,6 +446,7 @@ impl Mixer {
 /// `audio-driver::AudioStream` with one stream channel per speaker, in
 /// speaker order — exactly the interleaving [`Mixer::render_interleaved`]
 /// produces.
+#[derive(Debug)]
 pub struct AudioOutput {
     stream: meridian_audio_driver::AudioStream,
 }

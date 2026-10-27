@@ -1,5 +1,8 @@
 //! Low-level compute dispatch abstraction (CPU SIMD backends, GPU compute queues/buffers). Knows nothing about physics, animation or rendering.
 //!
+//! Layer: infrastructure (adapter); bounded context: compute
+//! (`craftbook.toml`, docs/context-map.md).
+//!
 //! Two independent backends. [`ComputeDevice`] (CPU) is real, not a stub:
 //! [`ComputeDevice::dispatch_parallel`] runs work across real OS threads
 //! via `std::thread::scope`, safe, no `unsafe`. [`GpuComputeDevice`] is
@@ -16,13 +19,9 @@
 //! the GPU path alongside it) — there's no automatic fallback between
 //! them.
 //!
-//! **Async on genuine I/O, not on everything** — same policy as every
-//! other driver crate (see
-//! [ADR 009](../../../docs/adr/009-async-io-via-tokio.md)):
-//! [`GpuComputeDevice::new`] (an OS/driver handshake) and
-//! [`GpuComputeDevice::read_buffer`] (waiting on in-flight GPU work) are
-//! real `async fn`s; `ComputeDevice`'s CPU path and GPU allocation/
-//! dispatch-recording calls stay synchronous.
+//! Design notes: docs/notes/meridian-compute-driver.md (`lib`).
+
+#![forbid(unsafe_code)]
 
 use meridian_platform_core::{BackendCapabilities, CpuCapabilities, GpuCapabilities};
 

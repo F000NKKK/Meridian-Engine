@@ -1,10 +1,15 @@
 //! Resource identity: typed handles, versioning, lifetime and dependency tracking for textures/meshes/buffers/shaders. Not a manager — the type system resource lifecycle is built on.
 //!
+//! Layer: shared kernel; bounded context: identity (`craftbook.toml`,
+//! docs/context-map.md).
+//!
 //! Deliberately does not load, cache, or evict anything (see ADR 006 /
 //! docs/dependency-rules.md rule 8) — [`DependencyGraph`] tracks the
 //! topology of declared dependencies between resources a caller already
 //! owns elsewhere; it never owns a resource's data or decides when it's
 //! freed.
+
+#![forbid(unsafe_code)]
 
 use core::marker::PhantomData;
 use std::collections::HashMap;

@@ -1,5 +1,10 @@
 //! Archetype-based, data-oriented Entity Component System with SoA storage, built for cache- and SIMD-friendly iteration.
 //!
+//! Layer: shared kernel; bounded context: entity (`craftbook.toml`,
+//! docs/context-map.md). A performance kernel (Craftbook §7.8): its
+//! data-oriented layout is provisional until a benchmark justifies it
+//! (ADR 019 D8).
+//!
 //! `World` owns everything: entity allocation, archetypes, and per-
 //! archetype Structure-of-Arrays component storage. Entities move between
 //! archetypes on [`World::insert`]/[`World::remove`] — the SoA columns are
@@ -14,6 +19,8 @@
 //! genuinely harder, `unsafe`-adjacent problem — deferred until there's a
 //! system that actually needs it, not built speculatively. See
 //! docs/ecs-design.md.
+
+#![forbid(unsafe_code)]
 
 use std::any::{Any, TypeId};
 use std::collections::HashMap;
@@ -112,7 +119,29 @@ struct ArchetypeData {
     columns: HashMap<TypeId, Box<dyn AnyColumn>>,
 }
 
-#[derive(Clone, Copy)]
+impl ArchetypeData {
+    /// The `T` column of an archetype whose signature contains `T`.
+    fn column_mut<T: Component>(&mut self) -> &mut Vec<T> {
+        &mut self
+            .columns
+            .get_mut(&TypeId::of::<T>())
+            .and_then(|column| column.as_any_mut().downcast_mut::<Column<T>>())
+            .expect("an archetype has a `Column<T>` for every `T` in its signature")
+            .0
+    }
+}
+
+impl std::fmt::Debug for ArchetypeData {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ArchetypeData")
+            .field("type_ids", &self.type_ids)
+            .field("entities", &self.entities)
+            .field("column_count", &self.columns.len())
+            .finish()
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
 struct EntityLocation {
     archetype: usize,
     row: usize,
@@ -121,7 +150,7 @@ struct EntityLocation {
 /// Owns entity allocation, every archetype, and their SoA storage. Not a
 /// global singleton — the application creates and owns a `World` like any
 /// other value, consistent with [ADR 003](../../../docs/adr/003-no-global-managers.md).
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct World {
     entities: ResourcePool<()>,
     locations: HashMap<Entity, EntityLocation>,
@@ -192,7 +221,10 @@ impl World {
             col.swap_remove_erased(row);
         }
         if let Some(&moved_entity) = arch.entities.get(row) {
-            self.locations.get_mut(&moved_entity).unwrap().row = row;
+            self.locations
+                .get_mut(&moved_entity)
+                .expect("every entity stored in an archetype has a location")
+                .row = row;
         }
     }
 
@@ -252,7 +284,10 @@ impl World {
         }
 
         if let Some(&moved_entity) = old.entities.get(old_row) {
-            self.locations.get_mut(&moved_entity).unwrap().row = old_row;
+            self.locations
+                .get_mut(&moved_entity)
+                .expect("every entity stored in an archetype has a location")
+                .row = old_row;
         }
         self.locations.insert(
             entity,
@@ -278,8 +313,7 @@ impl World {
         let type_id = TypeId::of::<T>();
 
         if self.archetypes[old_arch].type_ids.contains(&type_id) {
-            let col = self.archetypes[old_arch].columns.get_mut(&type_id).unwrap();
-            col.as_any_mut().downcast_mut::<Column<T>>().unwrap().0[old_row] = component;
+            self.archetypes[old_arch].column_mut::<T>()[old_row] = component;
             return true;
         }
 
@@ -293,12 +327,7 @@ impl World {
 
         self.move_entity(entity, old_arch, old_row, new_arch, None);
 
-        let col = self.archetypes[new_arch].columns.get_mut(&type_id).unwrap();
-        col.as_any_mut()
-            .downcast_mut::<Column<T>>()
-            .unwrap()
-            .0
-            .push(component);
+        self.archetypes[new_arch].column_mut::<T>().push(component);
         true
     }
 
@@ -320,14 +349,9 @@ impl World {
 
         let new_arch = self.get_or_create_archetype(new_signature, Some(old_arch), None);
 
-        let removed = {
-            let col = self.archetypes[old_arch].columns.get_mut(&type_id).unwrap();
-            col.as_any_mut()
-                .downcast_mut::<Column<T>>()
-                .unwrap()
-                .0
-                .swap_remove(old_row)
-        };
+        let removed = self.archetypes[old_arch]
+            .column_mut::<T>()
+            .swap_remove(old_row);
 
         self.move_entity(entity, old_arch, old_row, new_arch, Some(type_id));
 
@@ -396,6 +420,12 @@ pub struct Query<'w, T> {
     inner: Box<dyn Iterator<Item = (Entity, &'w T)> + 'w>,
 }
 
+impl<T> std::fmt::Debug for Query<'_, T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Query").finish_non_exhaustive()
+    }
+}
+
 impl<'w, T> Iterator for Query<'w, T> {
     type Item = (Entity, &'w T);
     fn next(&mut self) -> Option<Self::Item> {
@@ -407,6 +437,12 @@ impl<'w, T> Iterator for Query<'w, T> {
 /// [`World::query_mut`].
 pub struct QueryMut<'w, T> {
     inner: Box<dyn Iterator<Item = (Entity, &'w mut T)> + 'w>,
+}
+
+impl<T> std::fmt::Debug for QueryMut<'_, T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("QueryMut").finish_non_exhaustive()
+    }
 }
 
 impl<'w, T> Iterator for QueryMut<'w, T> {

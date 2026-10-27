@@ -19,21 +19,7 @@
 //! `float_ga` counterpart function-for-function so the two stay easy to
 //! compare and keep in sync by inspection.
 //!
-//! This is deterministic-simulation opt-in, not the default —
-//! `float_ga`'s `Motor3` (`f32`) remains the everyday, GPU-dispatchable
-//! pose type for everything else (rendering, ECS, audio, and
-//! `physics-core`'s own default `float::RigidBody`). But it's *usable by
-//! any crate* that needs CPU-deterministic geometry (`physics-core`'s
-//! `fixed::RigidBody` today, potentially a deterministic `graphics-core`
-//! CPU path or a large precise CPU/GPU-emulated simulation later) —
-//! that reusability is exactly why the primitives below live here in
-//! `gac-core`, not inside `physics-core`, the same reason `float_ga`'s
-//! primitives aren't `physics-core`-local either. `physics-core`'s own
-//! engine (`RigidBody`/`BroadPhase`/`NarrowPhase`/`ConstraintSolver`/
-//! `Integrator`) goes a step further: it has no GPU-dispatch constraint
-//! of its own at all, so it's written once, generic over
-//! `crate::generic::GaFlavor`, rather than duplicated like `float_ga`/
-//! `fixed_ga` are here.
+//! Design notes: docs/notes/meridian-gac-core.md (`fixed_ga`).
 
 use core::ops::{Add, Mul, Neg, Sub};
 use meridian_numeric_core::Fixed;

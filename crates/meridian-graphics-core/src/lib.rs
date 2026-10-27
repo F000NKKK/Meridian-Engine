@@ -1,4 +1,9 @@
 //! High-level rendering: render graph, scene extraction, visibility/culling, lighting, materials, camera and post-processing.
+//!
+//! Layer: domain; bounded context: rendering (`craftbook.toml`,
+//! docs/context-map.md).
+
+#![forbid(unsafe_code)]
 
 use std::collections::{HashMap, VecDeque};
 
@@ -25,8 +30,11 @@ pub use submission::{
 
 /// Marker types distinguishing `ResourceId`s of different graphics resource
 /// kinds — see docs/adr/006-resource-core-separation.md.
+#[derive(Debug)]
 pub struct TextureMarker;
+#[derive(Debug)]
 pub struct MeshMarker;
+#[derive(Debug)]
 pub struct ShaderMarker;
 
 pub type TextureHandle = ResourceId<TextureMarker>;

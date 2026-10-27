@@ -1,5 +1,8 @@
 //! Low-level audio device abstraction: output streams, buffers and platform audio backends.
 //!
+//! Layer: infrastructure (adapter); bounded context: audio
+//! (`craftbook.toml`, docs/context-map.md).
+//!
 //! Real, backed by `cpal` — the same class of decision as `wgpu` for GPU
 //! and `winit` for windowing: hand-writing FFI to ALSA/PulseAudio/WASAPI/
 //! CoreAudio would be a multi-month undertaking with three or more
@@ -13,21 +16,9 @@
 //! crate) knows about spatial panning, mixing, and DSP. This crate never
 //! depends on `audio-core`.
 //!
-//! **Stream model**: CPAL uses a callback-driven model — the audio
-//! hardware calls a user-provided function on a real-time audio thread to
-//! fill an output buffer. This crate bridges that into a push-based model
-//! suitable for a game engine: [`AudioStream::push_samples`] is called
-//! from the main/game thread to write interleaved float samples into an
-//! internal ring buffer, and the CPAL callback drains that ring buffer.
-//! This decouples the game's audio processing rate from the hardware's
-//! buffer request rate — the game can push a full frame's worth of audio
-//! at once, and the hardware drains it in smaller chunks.
-//!
-//! **Async on genuine I/O**: [`AudioDevice::new`] is a real `async fn`
-//! (enumerating audio devices is an OS/driver handshake with unbounded
-//! completion time, matching the same policy as
-//! `graphics-driver::Device::new` — see ADR 009). Stream creation and
-//! sample pushing are synchronous (bounded, local work).
+//! Design notes: docs/notes/meridian-audio-driver.md (`lib`).
+
+#![forbid(unsafe_code)]
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -103,6 +94,15 @@ pub struct AudioStream {
     _error_flag: Arc<AtomicBool>,
 }
 
+impl std::fmt::Debug for AudioStream {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AudioStream")
+            .field("capacity", &self.capacity)
+            .field("config", &self.config)
+            .finish_non_exhaustive()
+    }
+}
+
 impl AudioStream {
     /// Returns the stream's configuration.
     pub fn config(&self) -> AudioStreamConfig {
@@ -119,9 +119,11 @@ impl AudioStream {
     /// Samples outside `[-1.0, 1.0]` will clip on output.
     pub fn push_samples(&self, samples: &[f32]) {
         for &sample in samples {
-            // Ignore the error — if the stream was dropped, the receiver
-            // is disconnected and we just stop pushing.
-            let _ = self.sample_tx.send(sample);
+            // A send error means the stream was dropped and the receiver
+            // is disconnected: there is nobody left to play the rest.
+            if self.sample_tx.send(sample).is_err() {
+                break;
+            }
         }
     }
 
@@ -360,7 +362,7 @@ mod tests {
         };
 
         // Steady loud signal, then sudden starvation, then recovery —
-        // the exact sequence that used to click.
+        // the sequence that clicks without the declicker.
         for _ in 0..64 {
             track(anti.process(Some(0.9), 0), &mut max_step);
         }

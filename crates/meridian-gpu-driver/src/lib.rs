@@ -1,5 +1,8 @@
 //! Shared low-level `wgpu` device/buffer/shader/compute-pipeline mechanics underneath `graphics-driver` and `compute-driver`. Knows nothing about scenes, materials, render passes/swapchains, or compute-dispatch scheduling policy — see docs/adr/011-shared-gpu-driver-crate.md.
 //!
+//! Layer: infrastructure (adapter); bounded context: compute
+//! (`craftbook.toml`, docs/context-map.md).
+//!
 //! Both `graphics-driver` (rendering) and `compute-driver` (general GPU
 //! compute) need the same underlying primitives: acquire an adapter/
 //! device, allocate/read/write buffers, compile a shader, build a compute
@@ -20,12 +23,9 @@
 //! `Surface` type). `compute-driver` never touches this constructor at
 //! all — it only ever needs [`Device::new`] (headless).
 //!
-//! **Async on genuine I/O, not on everything** — same policy as every
-//! other driver crate in this workspace (see
-//! [ADR 009](../../../docs/adr/009-async-io-via-tokio.md)): [`Device::new`]/
-//! [`Device::new_windowed`] (an OS/driver handshake) and
-//! [`Device::read_buffer`] (waiting on in-flight GPU work) are real
-//! `async fn`s; allocation/recording calls stay synchronous.
+//! Design notes: docs/notes/meridian-gpu-driver.md (`lib`).
+
+#![forbid(unsafe_code)]
 
 use std::sync::mpsc;
 
@@ -223,7 +223,11 @@ impl Device {
         let slice = staging.slice(..);
         let (tx, rx) = mpsc::channel();
         slice.map_async(wgpu::MapMode::Read, move |result| {
-            let _ = tx.send(result);
+            // A closed channel means the reading future was dropped before
+            // the map finished; the staging buffer is freed with it.
+            if tx.send(result).is_err() {
+                meridian_foundation::log_debug!("read_buffer: map finished after the reader left");
+            }
         });
 
         let device = self.device.clone();
@@ -496,7 +500,10 @@ impl Device {
     /// `@binding(4)` — the shape a textured, shadow-receiving lit shader
     /// needs (uniform, albedo texture, albedo sampler, shadow map,
     /// shadow sampler, in that binding order).
-    #[allow(clippy::too_many_arguments)]
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "replaced by an options/value type in Craftbook migration wave 3"
+    )]
     pub fn create_textured_shadow_bind_group(
         &self,
         pipeline_layout: &wgpu::BindGroupLayout,
@@ -716,7 +723,6 @@ impl Buffer {
 /// A GPU texture resource, with its default view already created.
 #[derive(Debug)]
 pub struct Texture {
-    #[allow(dead_code)]
     raw: wgpu::Texture,
     view: wgpu::TextureView,
     pub width: u32,

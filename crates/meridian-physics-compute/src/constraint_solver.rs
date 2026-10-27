@@ -24,37 +24,7 @@
 //! comment for the last time a solver-ordering assumption broke
 //! silently).
 //!
-//! **The fix: graph coloring.** [`color_contacts`] partitions `contacts`
-//! into groups such that no two contacts in the same group share a body
-//! index — contacts in the same color are provably independent (their
-//! writes touch fully disjoint bodies), so they can run concurrently
-//! with zero risk of a race, *and* the result is identical to running
-//! them one at a time in any order (since none of them can observe each
-//! other's writes). Colors themselves still run in sequence, in the
-//! same relative order the contacts were encountered in (greedy
-//! coloring assigns a contact to the first color that doesn't already
-//! touch one of its bodies, scanning colors in creation order) — this
-//! reproduces the *exact* Gauss-Seidel dependency chain the sequential
-//! loop has: whichever contact would have run first still effectively
-//! runs first (in its own color), and any contact that depends on an
-//! earlier one sharing a body is guaranteed to land in a later color
-//! (they can never share a color, by construction), so it always sees
-//! the update. [`ConstraintSolverBatchKernel::step`]'s own test proves
-//! this equivalence directly against the sequential loop, not just
-//! "produces plausible output."
-//!
-//! **Per-body locking, not one shared lock over the whole body array.**
-//! Bodies are `Vec<Mutex<RigidBody<F>>>` — each body individually
-//! lockable. Within one color, no two contacts ever touch the same
-//! body (that's the coloring invariant), so no thread ever contends
-//! another thread's lock — real parallelism, not `parallel_for`
-//! serialized behind one coarse `Mutex<Vec<_>>` the way
-//! [`crate::rigid_body::RigidBodyIntegratorKernel`]'s independent
-//! per-body writes still are (a deliberate "correct first, profile
-//! before optimizing further" choice there — this module can do
-//! better *safely*, at zero extra `unsafe`, only because coloring
-//! already proves the disjointness a per-body lock would otherwise
-//! exist to arbitrate).
+//! Design notes: docs/notes/meridian-physics-compute.md (`constraint_solver`).
 
 use std::collections::HashSet;
 use std::sync::Mutex;
@@ -154,7 +124,10 @@ where
     /// The bodies' current state — call after [`step`](Self::step) to
     /// read back the result.
     pub fn bodies(&self) -> Vec<RigidBody<F>> {
-        self.bodies.iter().map(|b| *b.lock().unwrap()).collect()
+        self.bodies
+            .iter()
+            .map(|b| *b.lock().unwrap_or_else(std::sync::PoisonError::into_inner))
+            .collect()
     }
 
     /// One relaxation pass: every color's contacts resolved via
@@ -170,8 +143,12 @@ where
                 // concurrently-running closure in this `parallel_for`
                 // call ever wants either lock, so this never contends —
                 // real parallelism, not serialization dressed up as one.
-                let mut a = self.bodies[contact.a].lock().unwrap();
-                let mut b = self.bodies[contact.b].lock().unwrap();
+                let mut a = self.bodies[contact.a]
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner);
+                let mut b = self.bodies[contact.b]
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner);
                 resolve_velocity_pair(&self.solver, &mut a, &mut b, contact);
             });
         }
@@ -186,8 +163,12 @@ where
         for color in &self.colors {
             context.parallel_for(color.len(), |k| {
                 let contact = &self.contacts[color[k]];
-                let mut a = self.bodies[contact.a].lock().unwrap();
-                let mut b = self.bodies[contact.b].lock().unwrap();
+                let mut a = self.bodies[contact.a]
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner);
+                let mut b = self.bodies[contact.b]
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner);
                 apply_positional_correction_pair(&self.solver, &mut a, &mut b, contact);
             });
         }

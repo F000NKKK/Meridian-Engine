@@ -6,44 +6,7 @@
 //! Gaussian blur, and an additive composite back onto the main render
 //! target.
 //!
-//! **Pipeline, once per frame a bloom-enabled view renders:**
-//! 1. [`SceneRenderer::draw`] — the ordinary lit/unlit scene, straight
-//!    into the real render target (swapchain or an offscreen color
-//!    texture).
-//! 2. [`BloomPass::apply`]'s bright pass — the *same* `DrawBuffers`
-//!    redrawn through this module's own emissive-extraction pipelines
-//!    (built here, not on `SceneRenderer` — see [`BloomPass::new`]'s doc
-//!    comment for why) into an offscreen "bright" texture. A material
-//!    with `emissive = [0,0,0]` (the default) contributes solid black
-//!    here — harmless once additively composited in step 4 — so no
-//!    per-material bloom flag or threshold is needed; `emissive` itself
-//!    *is* the mask.
-//! 3. Two blur passes (horizontal, then vertical — the standard
-//!    separable-Gaussian trick: an `N*N` blur becomes two `N`-tap passes)
-//!    ping-ponging between two same-sized offscreen textures, each a
-//!    full-screen-triangle draw sampling the previous pass's texture.
-//! 4. The composite pass: the blurred bright texture, scaled by
-//!    [`BloomConfig::intensity`], additively blended onto the *same*
-//!    view the main pass (step 1) already drew into — via
-//!    `CommandBuffer::begin_render_pass_loaded`, which preserves existing
-//!    contents instead of clearing them.
-//!
-//! **Deliberately not HDR.** Every offscreen texture here (bright/ping/
-//! pong) is [`ColorFormat::SrgbRgba8`], the same format `TextureRegistry`
-//! uses for uploaded textures — an emissive value is whatever a
-//! `Material` sets (no bloom-specific tone mapping or exposure control),
-//! clamped to `[0,1]` like every other color in this bridge. A true HDR
-//! pipeline (`Rgba16Float` intermediate targets, exposure/tone-mapping)
-//! is real future work if a scene ever needs emissive values above `1.0`
-//! to look right — it would only mean adding a variant to
-//! `graphics-driver::ColorFormat` and passing it through, not a redesign
-//! here; the visible glow this produces today does not depend on it.
-//!
-//! **Fixed at construction size**, matching the swapchain/target it was
-//! built for — resize by constructing a new [`BloomPass`] (cheap: a
-//! handful of small offscreen textures and three tiny pipelines), the
-//! same "rebuild on resize" pattern `DepthTexture` already uses in every
-//! windowed example.
+//! Design notes: docs/notes/meridian-graphics-core.md (`bloom`).
 
 use meridian_graphics_driver::{
     BindGroup, BufferUsage, ColorFormat, DepthTexture, Device, RenderPipeline, Sampler, Surface,
@@ -59,10 +22,8 @@ use crate::submission::{
 /// Every offscreen texture [`BloomPass`] creates uses this format — one
 /// value threaded through both texture and pipeline creation (see
 /// `graphics-driver::ColorFormat`'s own doc comment for why that
-/// matters: a mismatch between the two is exactly the `wgpu` validation
-/// error this module used to be able to trigger before the format
-/// became one shared value instead of two independently-hardcoded
-/// assumptions).
+/// matters: a mismatch between the two is a `wgpu` validation error,
+/// which one shared value makes impossible).
 const OFFSCREEN_FORMAT: ColorFormat = ColorFormat::SrgbRgba8;
 
 /// A full-screen-triangle vertex shader shared by both blur directions
@@ -200,10 +161,11 @@ impl Default for BloomConfig {
 /// deliberately: they only ever render into *this* struct's own
 /// `bright` texture, never the swapchain, so the format they're built
 /// against has to be `BloomPass`'s own `OFFSCREEN_FORMAT` — building
-/// them on `SceneRenderer` against the surface's format instead (an
-/// earlier version of this code did) is exactly the class of bug
+/// them on `SceneRenderer` against the surface's format instead is the
+/// class of bug
 /// `graphics-driver::ColorFormat` exists to make structurally
 /// impossible: a mesh pipeline built for the wrong render pass's format.
+#[derive(Debug)]
 pub struct BloomPass {
     bright: Texture,
     /// Depth buffer for the bright pass only — cleared and depth-tested
@@ -320,9 +282,8 @@ impl BloomPass {
         // distinct object even when two shaders declare an identical
         // `@group`/`@binding` shape — a bind group built against one
         // pipeline is rejected ("exclusive pipelines don't match") the
-        // moment a *different* pipeline is bound, which is exactly what
-        // reusing one bind group across the colored/textured pipeline
-        // switch below used to do. Both rebuilt every frame, same
+        // moment a *different* pipeline is bound, as the colored/textured
+        // pipeline switch below does. Both rebuilt every frame, same
         // "correct now, cache later" trade-off as the per-texture bind
         // groups in `submission.rs`.
         let colored_bind_group = device.create_uniform_bind_group(

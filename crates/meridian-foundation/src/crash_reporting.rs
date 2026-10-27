@@ -126,7 +126,9 @@ mod tests {
     #[test]
     fn a_panicking_thread_produces_a_report_file() {
         let dir = std::env::temp_dir().join(format!("meridian-crash-test-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
+        if dir.exists() {
+            std::fs::remove_dir_all(&dir).unwrap();
+        }
 
         install(CrashReportConfig::new("crash-test").with_directory(&dir));
 
@@ -151,6 +153,6 @@ mod tests {
         // other tests sharing the global ring, so no line assertion.
         assert!(content.contains("---- recent log"));
 
-        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 }

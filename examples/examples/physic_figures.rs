@@ -16,43 +16,7 @@
 //! frame) rather than one `Runtime::tick()` running both together every
 //! time.
 //!
-//! **Scene composition itself lives in
-//! `assets/scenes/physic_figures.mel`**, parsed through
-//! `meridian_sdk::dsl` (via this workspace's shared
-//! `meridian_examples::scene_loader`) — every entity's position, mesh
-//! shape, texture and collider is data, not Rust code; this file only
-//! reads it once ([`load_scene`]) and turns it into real physics bodies
-//! ([`PhysicsRig::new`]) and renderables (the `RenderStage`'s
-//! `build_scene` closure, registered in
-//! [`AppHandler::on_ready`]). What stays genuine Rust logic (per this
-//! workspace's rule that the DSL describes composition, not behavior):
-//! the fixed-timestep accumulator, the free-fly camera, and each
-//! shape's own render-frame quirk (the floor mesh is a thin visual quad
-//! rendered at identity while its *collider* is a thicker slab; the
-//! pyramid mesh's origin is its base center while its *collider* is
-//! centered on the body — both disclosed per-shape offsets in
-//! [`mesh_render_frame`], the same simplification the hand-written
-//! version had, just no longer duplicated as four hardcoded literals).
-//!
-//! `physics-core` only has two collider shapes today, `Sphere` and
-//! `Cuboid` — there is no dedicated pyramid collider, so the DSL scene
-//! gives the pyramid entity a `Cuboid` collider roughly bounding its
-//! mesh (it settles and rests like a box).
-//!
-//! Shares its base with `magic_figures` (`meridian_sdk::scene`'s
-//! `GraphicsBase`): same mesh builders, same lighting model. No bloom
-//! emissive glow here beyond the visible "sun" sphere — these are
-//! ordinary lit, textured physics props, not the "magic" glowing
-//! shapes.
-//!
-//! This example depends on `meridian-sdk` alone (plus `tokio`, for its
-//! own async GPU-device handshake) — every type below is reached
-//! through `meridian_sdk`'s re-exports, never through
-//! `meridian-gac-core`/`meridian-physics-core`/`meridian-graphics-core`/
-//! etc. directly.
-//!
-//! Run with:
-//!   ./build.sh run physic_figures
+//! Design notes: docs/notes/meridian-examples.md (`examples/physic_figures`).
 
 use std::sync::{Arc, Mutex};
 
@@ -287,7 +251,7 @@ struct RenderEntity {
 /// — the physics stepping
 /// itself (integrate/relax-contacts/resolve, batched through
 /// `physics-compute`'s kernels rather than a plain sequential loop) is
-/// no longer hand-rolled here; see that stage's own doc comment for
+/// the stage's job, not this file's; see that stage's own doc comment for
 /// the multi-point-manifold relaxation semantics it preserves exactly.
 /// What's left at this layer is
 /// deliberately application policy, not engine plumbing: the render
@@ -461,7 +425,9 @@ impl AppHandler for App {
                 Scene3D {
                     renderables,
                     lights: lights.clone(),
-                    camera: *render_camera.lock().unwrap(),
+                    camera: *render_camera
+                        .lock()
+                        .unwrap_or_else(std::sync::PoisonError::into_inner),
                     ambient_ground: [0.02, 0.02, 0.025],
                     ambient_sky: [0.04, 0.04, 0.055],
                 }
@@ -494,7 +460,10 @@ impl AppHandler for App {
         self.physics.step(frame_dt);
 
         let aspect = window.width() as f32 / window.height().max(1) as f32;
-        *self.render_camera.lock().unwrap() = self.camera.camera(aspect);
+        *self
+            .render_camera
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = self.camera.camera(aspect);
 
         self.physics.runtime.tick_only(&[render_stage]);
     }

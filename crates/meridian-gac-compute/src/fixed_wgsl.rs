@@ -14,30 +14,10 @@
 //! just "close") via [`FixedArithmeticKernels::dispatch`]'s own test
 //! suite below.
 //!
-//! **Scope: `+`/`-`/`*`/`/`/`sqrt`/`sin_cos`/`atan2`.** The CORDIC
-//! `sin_cos`/`atan2` port (see [`CORDIC_LIB_WGSL`]) needs no 64-bit
-//! emulation, unlike the arithmetic above — CORDIC is only shifts and
-//! adds on a single `i32`, and WGSL's `>>` on `i32` is already an
-//! arithmetic (sign-extending) shift, exactly matching
-//! `meridian_numeric_core::fixed`'s `Fixed(x.0 >> i)` — so it's a near-
-//! literal translation of `cordic_rotate`/`cordic_vector_angle`, not a
-//! second emulation layer. The `atan` table and gain/pi constants are
-//! precomputed on the Rust side (`Fixed::from_num`'s exact
-//! round-half-away-from-zero rounding, replicated by hand — see
-//! [`CORDIC_LIB_WGSL`]'s constants) and embedded as WGSL literals rather
-//! than recomputed in-shader, since they're fixed at compile time either
-//! way.
-//!
-//! [`FixedArithmeticKernels`] compiles the four binary-op compute
-//! pipelines once against a [`meridian_compute_runtime::ComputeContext`]'s
-//! GPU backend (see that crate's module doc for `ComputeContext::with_gpu`)
-//! and [`FixedArithmeticKernels::dispatch`] runs one operation over a
-//! batch of operand pairs, returning one [`Fixed`] result per pair — the
-//! real, reusable API this phase's work is for, not just a
-//! proof-of-concept hidden in a test.
+//! Design notes: docs/notes/meridian-gac-compute.md (`fixed_wgsl`).
 
 use meridian_compute_runtime::ComputeContext;
-use meridian_gpu_driver::{BufferUsage, ComputePipeline, Shader};
+use meridian_gpu_driver::{BufferUsage, ComputePipeline};
 use meridian_numeric_core::Fixed;
 
 /// The shared WGSL library: 32x32->64 unsigned multiply (via 16-bit limb
@@ -560,8 +540,6 @@ fn dispatch_sin_cos(@builtin(global_invocation_id) id: vec3<u32>) {{
 /// ([`ComputeContext::with_gpu`]) and reused across dispatches.
 #[derive(Debug)]
 pub struct FixedArithmeticKernels {
-    #[allow(dead_code)]
-    shader: Shader,
     add: ComputePipeline,
     sub: ComputePipeline,
     mul: ComputePipeline,
@@ -592,7 +570,6 @@ impl FixedArithmeticKernels {
         let atan2 = gpu.create_compute_pipeline(&shader, FixedBinaryOp::Atan2.entry_point());
         let sin_cos = gpu.create_compute_pipeline(&shader, "dispatch_sin_cos");
         Self {
-            shader,
             add,
             sub,
             mul,
@@ -660,7 +637,7 @@ impl FixedArithmeticKernels {
         let result_bytes = gpu.read_buffer(&results).await;
         result_bytes
             .chunks_exact(4)
-            .map(|c| Fixed::from_bits(i32::from_le_bytes(c.try_into().unwrap())))
+            .map(|c| Fixed::from_bits(i32::from_le_bytes(le_word(c, 0))))
             .collect()
     }
 
@@ -699,7 +676,7 @@ impl FixedArithmeticKernels {
         let result_bytes = gpu.read_buffer(&results).await;
         result_bytes
             .chunks_exact(4)
-            .map(|c| Fixed::from_bits(i32::from_le_bytes(c.try_into().unwrap())))
+            .map(|c| Fixed::from_bits(i32::from_le_bytes(le_word(c, 0))))
             .collect()
     }
 
@@ -742,12 +719,19 @@ impl FixedArithmeticKernels {
         result_bytes
             .chunks_exact(8)
             .map(|pair| {
-                let sin = Fixed::from_bits(i32::from_le_bytes(pair[0..4].try_into().unwrap()));
-                let cos = Fixed::from_bits(i32::from_le_bytes(pair[4..8].try_into().unwrap()));
+                let sin = Fixed::from_bits(i32::from_le_bytes(le_word(pair, 0)));
+                let cos = Fixed::from_bits(i32::from_le_bytes(le_word(pair, 4)));
                 (sin, cos)
             })
             .collect()
     }
+}
+
+/// The four bytes of the little-endian word at `at` in a GPU readback.
+/// Readback buffers are sized by the dispatch that wrote them, so `at + 4`
+/// is in range for every index the caller computes from that size.
+fn le_word(bytes: &[u8], at: usize) -> [u8; 4] {
+    [bytes[at], bytes[at + 1], bytes[at + 2], bytes[at + 3]]
 }
 
 #[cfg(test)]

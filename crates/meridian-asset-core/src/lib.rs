@@ -1,5 +1,8 @@
 //! Loading and decoding of images, meshes, audio, shaders and binary formats. Does not manage ownership or lifetime of loaded data.
 //!
+//! Layer: domain; bounded context: assets (`craftbook.toml`,
+//! docs/context-map.md).
+//!
 //! This crate must never define an `AssetManager`, `ResourceManager`, or
 //! `CacheManager` type — see `docs/dependency-rules.md` rule 4.
 //!
@@ -16,6 +19,8 @@
 //! same signature-not-extension rule [`image`]'s decoders follow. JPEG
 //! and glTF remain future work on the same
 //! when-a-concrete-asset-needs-it trigger.
+
+#![forbid(unsafe_code)]
 
 pub mod audio;
 pub mod image;

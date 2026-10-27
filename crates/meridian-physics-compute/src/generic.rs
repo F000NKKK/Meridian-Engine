@@ -15,29 +15,7 @@
 //! particle `i`'s incident springs) so each GPU thread only ever *reads*
 //! its neighbors' old state and *writes* its own new state.
 //!
-//! Each half-edge also encodes, in `neighbor`'s top bit, whether *this*
-//! particle is the original [`Spring`](
-//! meridian_physics_core::soft_body::generic_softbody::Spring)'s `a` or
-//! `b` endpoint (see [`decode_neighbor`]) — not a topology detail, a
-//! numerical-correctness one. `Fixed::mul`'s `>>16` truncation rounds
-//! toward negative infinity, so `fixed_mul(-p, q)` is *not* always
-//! exactly `-fixed_mul(p, q)` (they differ by one raw bit whenever the
-//! discarded low bits are nonzero, which is the common case) — meaning
-//! recomputing a spring's direction independently from each endpoint's
-//! own (sign-flipped) `delta` and multiplying is **not** bit-exact with
-//! `SoftBodyIntegrator::step`'s "compute `total` once from `a`'s
-//! direction, then `forces[b] -= total`" (this was found the hard way: an
-//! earlier version of this module recomputed direction/`total` per
-//! endpoint and passed every test except a 60-step bit-exact
-//! reproducibility check, which diverged by one raw bit at step 48 —
-//! `Vector::Sub`/`Neg`, unlike `Fixed::mul`, *are* exact under negation,
-//! since they're plain two's-complement add/negate with no shift/
-//! truncation involved). The fix: both endpoints compute the *same*
-//! canonical `a`-to-`b` direction and `total` (via `is_a`-conditional
-//! subtraction order, still exact), and only the non-`a` endpoint
-//! negates the finished `total` vector — an exact negation, never a
-//! multiply — reproducing `SoftBodyIntegrator::step` bit-for-bit. See
-//! [`crate::fixed`]'s kernel for where this canonicalization happens.
+//! Design notes: docs/notes/meridian-physics-compute.md (`generic`).
 
 use meridian_gac_core::generic::{GaFlavor, ScalarLike};
 use meridian_physics_core::soft_body::generic_softbody::SoftBody;

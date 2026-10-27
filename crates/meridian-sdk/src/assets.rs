@@ -94,6 +94,7 @@ fn compute_smooth_normals(positions: &[[f32; 3]], indices: &[u32]) -> Vec<[f32; 
 /// meshes, since a track carries its own playback cursor and two
 /// listeners of the same file need two independent cursors, not one
 /// shared handle.
+#[derive(Debug)]
 pub enum AudioTrack {
     Memory {
         mono: Vec<f32>,

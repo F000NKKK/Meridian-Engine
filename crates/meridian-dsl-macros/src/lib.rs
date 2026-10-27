@@ -5,6 +5,9 @@
 //! doc): no fixed schema anywhere in this workspace lists tag names,
 //! only whatever structs each crate happens to annotate.
 //!
+//! Layer: interface; bounded context: scene-markup (`craftbook.toml`,
+//! docs/context-map.md).
+//!
 //! Every field becomes a required attribute parsed via `FromStr`
 //! (`f32`, `bool`, `String`, `u32`, ... anything `.parse()`-able), except
 //! `Option<T>` fields, which are optional (`None` when the attribute is
@@ -20,6 +23,8 @@
 //! there), matching this workspace's rule that applications reach
 //! everything through `meridian-sdk` alone; it isn't meant to be usable
 //! from a crate that doesn't depend on `meridian-sdk`.
+
+#![forbid(unsafe_code)]
 
 use proc_macro::TokenStream;
 use proc_macro_crate::{FoundCrate, crate_name};

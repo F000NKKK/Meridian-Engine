@@ -21,6 +21,7 @@ use meridian_platform_core::{InputState, KeyCode};
 /// camera gives no way to inspect a scene from angles the author didn't
 /// hardcode — both `magic_figures` and `physic_figures` want to walk
 /// around and look at their scenes from any angle.
+#[derive(Debug)]
 pub struct FlyCamera {
     pub position: Vec3,
     /// Radians, measured from `+X` toward `+Z` (matches `Vec3::X` being

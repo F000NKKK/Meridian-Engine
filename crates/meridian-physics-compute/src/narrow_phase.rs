@@ -75,7 +75,10 @@ where
     /// [`ComputeKernel::dispatch`] call — all `None` if `dispatch` hasn't
     /// run yet.
     pub fn results(&self) -> Vec<Option<Contact<F>>> {
-        self.results.lock().unwrap().clone()
+        self.results
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .clone()
     }
 }
 
@@ -93,7 +96,9 @@ where
         context.parallel_for(count, |i| {
             let (a, b) = self.pairs[i];
             let contact = self.narrow_phase.test_pair(&self.bodies, a, b);
-            self.results.lock().unwrap()[i] = contact;
+            self.results
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)[i] = contact;
         });
     }
 }
@@ -175,7 +180,7 @@ where
     pub fn results(&self) -> Vec<Contact<F>> {
         self.results
             .lock()
-            .unwrap()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .iter()
             .flat_map(|slots| slots.iter().filter_map(|slot| *slot))
             .collect()
@@ -210,7 +215,9 @@ where
             for (slot, contact) in slots.iter_mut().zip(contacts) {
                 *slot = Some(contact);
             }
-            self.results.lock().unwrap()[i] = slots;
+            self.results
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)[i] = slots;
         });
     }
 }
