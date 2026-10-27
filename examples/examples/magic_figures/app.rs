@@ -9,7 +9,7 @@ use meridian_sdk::{
 
 use crate::{
     Hud, MusicRig, ORBIT_RADIUS, SUN_DIRECTION, ShapeSpec, load_scene, mesh_source_for,
-    orbit_position, sun_renderable,
+    orbit_position, scene_extras,
 };
 
 pub(crate) struct App {
@@ -69,7 +69,7 @@ impl GpuState {
             shape_renderable_indices.push(renderables.len());
             renderables.push(shape_renderable(&mut base, shape));
         }
-        renderables.push(sun_renderable(&mut base));
+        renderables.extend(scene_extras(&mut base));
 
         let (lights, point_light_indices) = scene_lights(shapes);
         let scene = Scene3d {

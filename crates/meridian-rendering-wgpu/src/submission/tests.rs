@@ -1,8 +1,8 @@
 //! Tests of the submission adapter.
 
 use meridian_gac::{Motor3, Vec3};
-use meridian_rendering_domain::scene::Light;
-use meridian_rendering_domain::{Camera, ShadowLight, ViewUniforms};
+use meridian_rendering_domain::scene::{Light, Material};
+use meridian_rendering_domain::{Camera, MeshSource, ShadowLight, ViewUniforms};
 
 use super::{lit_uniform_bytes, mat4_to_bytes, *};
 
@@ -140,4 +140,67 @@ async fn texture_registry_round_trips_a_real_upload() {
     assert!(textures.get(handle).is_some());
     assert!(textures.unregister(handle).is_some());
     assert!(textures.get(handle).is_none());
+}
+
+fn triangle_request<'a>(
+    mesh: &'a MeshSource,
+    material: &'a Material,
+    frame: &'a Motor3,
+) -> DrawRequest<'a> {
+    DrawRequest {
+        mesh,
+        material,
+        frame,
+        albedo: None,
+        casts_shadow: true,
+    }
+}
+
+fn triangle_mesh() -> MeshSource {
+    MeshSource {
+        positions: vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+        normals: vec![[0.0, 0.0, 1.0]; 3],
+        uvs: vec![[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]],
+        indices: vec![0, 1, 2],
+    }
+}
+
+#[test]
+fn baked_vertices_match_their_layout_strides_and_carry_the_gloss() {
+    use meridian_rendering_domain::scene::Material;
+
+    use super::draw_buffers::{colored_vertex_bytes, textured_vertex_bytes};
+
+    let mesh = triangle_mesh();
+    let material = Material {
+        shininess: 8.0,
+        specular: 0.75,
+        ..Material::default()
+    };
+    let frame = Motor3::translation(Vec3::ZERO);
+    let request = triangle_request(&mesh, &material, &frame);
+
+    for (bytes, stride) in [
+        (
+            colored_vertex_bytes(&request),
+            colored_vertex_layout().stride,
+        ),
+        (
+            textured_vertex_bytes(&request),
+            textured_vertex_layout().stride,
+        ),
+    ] {
+        let stride = usize::try_from(stride).expect("stride fits usize");
+        assert_eq!(bytes.len(), 3 * stride);
+        let gloss = &bytes[stride - 8..stride];
+        assert_eq!(&gloss[..4], &8.0f32.to_le_bytes());
+        assert_eq!(&gloss[4..], &0.75f32.to_le_bytes());
+    }
+}
+
+#[test]
+fn the_default_material_keeps_the_original_highlight() {
+    let material = Material::default();
+    assert_eq!(material.shininess, 32.0);
+    assert_eq!(material.specular, 0.3);
 }

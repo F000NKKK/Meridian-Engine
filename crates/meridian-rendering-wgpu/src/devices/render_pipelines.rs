@@ -1,5 +1,7 @@
 //! Render pipeline creation on the device.
 
+use meridian_rendering_domain::DrawState;
+
 use crate::{ColorFormat, Device, RenderPipeline, ShaderStages, Surface, VertexLayout};
 
 impl Device {
@@ -126,6 +128,49 @@ impl Device {
         format: wgpu::TextureFormat,
         depth_enabled: bool,
     ) -> RenderPipeline {
+        let depth = depth_enabled.then(|| depth_stencil(DrawState::Opaque));
+        self.build_pipeline(
+            stages,
+            vertex_layout,
+            format,
+            FixedFunction {
+                blend: false,
+                depth_stencil: depth,
+            },
+        )
+    }
+
+    /// A main-pass pipeline for `state`: alpha blending for the blended
+    /// states, and a depth stage matching
+    /// [`Device::create_depth_texture`](crate::Device::create_depth_texture)'s
+    /// format whose test and write follow [`DrawState`]. The on-top states
+    /// keep the depth stage (the pass has a depth attachment, so every
+    /// pipeline in it must declare one) but always pass and never write.
+    pub fn create_scene_pipeline(
+        &self,
+        stages: &ShaderStages<'_>,
+        vertex_layout: &VertexLayout,
+        surface: &Surface,
+        state: DrawState,
+    ) -> RenderPipeline {
+        self.build_pipeline(
+            stages,
+            vertex_layout,
+            surface.config.format,
+            FixedFunction {
+                blend: state.blends(),
+                depth_stencil: Some(depth_stencil(state)),
+            },
+        )
+    }
+
+    fn build_pipeline(
+        &self,
+        stages: &ShaderStages<'_>,
+        vertex_layout: &VertexLayout,
+        format: wgpu::TextureFormat,
+        fixed: FixedFunction,
+    ) -> RenderPipeline {
         let shader = stages.shader;
         let wgpu_attributes = wgpu_attributes(vertex_layout);
         let buffer_layout = wgpu::VertexBufferLayout {
@@ -152,7 +197,11 @@ impl Device {
                     compilation_options: wgpu::PipelineCompilationOptions::default(),
                     targets: &[Some(wgpu::ColorTargetState {
                         format,
-                        blend: Some(wgpu::BlendState::REPLACE),
+                        blend: Some(if fixed.blend {
+                            wgpu::BlendState::ALPHA_BLENDING
+                        } else {
+                            wgpu::BlendState::REPLACE
+                        }),
                         write_mask: wgpu::ColorWrites::ALL,
                     })],
                 }),
@@ -163,18 +212,33 @@ impl Device {
                     cull_mode: Some(wgpu::Face::Back),
                     ..Default::default()
                 },
-                depth_stencil: depth_enabled.then(|| wgpu::DepthStencilState {
-                    format: wgpu::TextureFormat::Depth32Float,
-                    depth_write_enabled: Some(true),
-                    depth_compare: Some(wgpu::CompareFunction::Less),
-                    stencil: wgpu::StencilState::default(),
-                    bias: wgpu::DepthBiasState::default(),
-                }),
+                depth_stencil: fixed.depth_stencil,
                 multisample: wgpu::MultisampleState::default(),
                 multiview_mask: None,
                 cache: None,
             });
         RenderPipeline { raw }
+    }
+}
+
+/// The blend and depth settings that vary between pipelines of one shader.
+struct FixedFunction {
+    blend: bool,
+    depth_stencil: Option<wgpu::DepthStencilState>,
+}
+
+/// The depth test and write `state` asks for.
+fn depth_stencil(state: DrawState) -> wgpu::DepthStencilState {
+    wgpu::DepthStencilState {
+        format: wgpu::TextureFormat::Depth32Float,
+        depth_write_enabled: Some(state.writes_depth()),
+        depth_compare: Some(if state.tests_depth() {
+            wgpu::CompareFunction::Less
+        } else {
+            wgpu::CompareFunction::Always
+        }),
+        stencil: wgpu::StencilState::default(),
+        bias: wgpu::DepthBiasState::default(),
     }
 }
 

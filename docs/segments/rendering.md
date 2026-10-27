@@ -54,10 +54,10 @@ Not started; ordered by suggested priority. Items wait for an explicit task.
 1. **Docs drift — done (2026-10-27).** Shadow mapping, the windowed driver
    and the Motor3 batching cost are reconciled across `graphics-design.md`
    and `roadmap.md`.
-2. **Material flags the bridge ignores (3D).** `BlendMode::AlphaBlend` and
-   `always_on_top` exist on `Material` but every draw is opaque and
-   depth-tested. Needs a sorted transparent pass and a no-depth overlay
-   pass in the render graph.
+2. **Material flags (3D) — done (2026-10-27).** `BlendMode::AlphaBlend` and
+   `always_on_top` pick a `DrawState`; see graphics-design.md step 3.
+   Follow-ups: per-triangle sorting or order-independent transparency, and
+   keeping translucent surfaces out of bloom.
 3. **`Scene2d` path — done (2026-10-27).** `sprites/` in
    `rendering-domain`; see graphics-design.md step 5. Clip rectangles are done
    too (`ClipSpan`/`ClipRect`, scissor per run). Bind groups are shared per
@@ -68,7 +68,8 @@ Not started; ordered by suggested priority. Items wait for an explicit task.
    and textured bind groups rebuilt every frame. Add a per-instance uniform
    or storage buffer, then indirect draw and compute culling (GPU-driven
    direction in graphics-design.md).
-5. **Per-material roughness/specular.** Shininess is hard-coded to 32.
+5. **Per-material highlights — done (2026-10-27).** `Material::shininess` and
+   `Material::specular`; roughness/metallic wait for a PBR shader.
 6. **Render-graph resource lifetime.** Ordering is real; transient target
    allocation/aliasing is not.
 7. **`Runtime::tick` integration.** Blocked on an architecture decision:

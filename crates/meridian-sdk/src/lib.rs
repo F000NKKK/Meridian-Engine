@@ -7,10 +7,8 @@
 //! — spatial math, physics bodies, graphics scene/material types, the
 //! windowed-app loop, audio types, asset decoding, and `runtime-app`'s
 //! own [`Runtime`] — is re-exported from here; nothing in `examples/`
-//! reaches into the composed crates directly. This crate may depend on
-//! drivers (application ergonomics) that `runtime-app` itself may not.
-//!
-//! Design notes: docs/notes/meridian-sdk.md (`lib`).
+//! reaches into the composed crates directly, and this crate may depend
+//! on drivers that `runtime-app` itself may not. Notes: docs/notes/meridian-sdk.md.
 
 #![forbid(unsafe_code)]
 
@@ -34,6 +32,7 @@ pub use meridian_asset_app::{
 };
 pub use meridian_asset_domain::{Decoder, ImageAsset};
 pub use meridian_asset_fs::FsSource;
+pub use meridian_asset_http::{HttpSource, HttpSourceError};
 pub use meridian_asset_png::PngDecoder;
 pub use meridian_asset_symphonia::{
     AnyAudioDecoder, AudioAsset, DecodeStrategy, StreamingAudioDecoder, open_audio,
@@ -75,8 +74,8 @@ pub use meridian_rendering_app::{
 };
 // -- meridian-rendering-domain: scene/material/lighting/submission --
 pub use meridian_rendering_domain::{
-    Camera, Camera2d, ClipRect, ClipSpan, FlyCamera, FlyControls, Frustum, Light, Material,
-    MaterialHandle, MaterialRegistry, MeshHandle, MeshRegistry, MeshSource, Overlay2d,
+    BlendMode, Camera, Camera2d, ClipRect, ClipSpan, FlyCamera, FlyControls, Frustum, Light,
+    Material, MaterialHandle, MaterialRegistry, MeshHandle, MeshRegistry, MeshSource, Overlay2d,
     Renderable3d, Scene2d, Scene3d, Sprite, TextureHandle, cube_mesh_source, ground_mesh_source,
     icosphere_mesh_source, look_at_rotor, pyramid_mesh_source, smooth_normals,
 };

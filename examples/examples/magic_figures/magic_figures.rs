@@ -23,6 +23,7 @@
 //! Design notes: docs/notes/meridian-examples.md (`examples/magic_figures`).
 
 mod app;
+mod glass;
 mod glow;
 mod hud;
 mod music_rig;
@@ -40,6 +41,7 @@ mod shape_spec;
 mod sun;
 
 use app::App;
+pub(crate) use glass::scene_extras;
 pub(crate) use glow::Glow;
 pub(crate) use hud::Hud;
 use meridian_sdk::run_windowed_app;

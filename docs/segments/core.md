@@ -99,7 +99,9 @@ change that closed them.
    and costs ~2.5 µs per small file on 4 threads (`cargo bench -p
    meridian-asset-fs`). Wired into `sdk` (`asset_loader`, `default_asset_loader`, `load_image`, loader
    types re-exported). Priority (`Low`/`Normal`/`High`) and
-   `Pending::cancel` are in. Open: an HTTP `ByteSource` (tokio inside the adapter).
+   `Pending::cancel` are in. `asset-http` (`HttpSource`, plain `http` only,
+   [ADR 028](../adr/028-http-asset-source.md)) is the network source. Open: `https`,
+   which waits for a decision on the `ring` licence.
 7. **Done: compute buffer reuse.** `compute-wgpu` has `ScratchSlot` (a GPU
    buffer rewritten in place, reallocated only when the data outgrows it),
    `GenerationCache` (a bind group rebuilt only when a slot reallocated) and
