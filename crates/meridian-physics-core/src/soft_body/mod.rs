@@ -1,19 +1,27 @@
-//! Deformable-body physics — a mass-spring soft-body model, its own
-//! submodule (not folded into the crate root) since it's a genuinely
-//! separate domain from the rigid-body engine [`crate::generic`] owns
-//! (different state shape — particles, not a collider transformed by one
-//! frame — and a different collision response, per-particle rather than
-//! whole-body impulse resolution). Same float/fixed split convention as
-//! the rest of this crate: [`generic_softbody`] is the one, real,
-//! `GaFlavor`-generic engine; [`float_softbody`]/[`fixed_softbody`] are
-//! thin `FloatFlavor`/`FixedFlavor` aliases over it, not a second copy —
-//! see CLAUDE.md's "Float/Fixed branching" rule. [`float_softbody`] is
-//! re-exported at this module's own root (`physics_core::soft_body::SoftBody`
-//! resolves to the `f32` path), mirroring how `crate::float` is
-//! re-exported at the crate root.
+//! Deformable-body physics: a mass-spring soft-body model, a submodule of its
+//! own since it is a separate domain from the rigid-body engine in
+//! [`crate::dynamics`] (different state shape, particles rather than a
+//! collider moved by one frame, and a per-particle collision response).
+//!
+//! Same float/fixed convention as the rest of the crate: the engine
+//! ([`spring`], [`mass_spring`], [`time_step`], [`ball`]) is written once,
+//! generic over `F: GaFlavor`; [`float`] and [`fixed`] are thin aliases.
+//! [`float`] is re-exported at this module's root, so
+//! `physics_core::soft_body::SoftBody` resolves to the `f32` path, as
+//! `crate::float` is re-exported at the crate root.
 
-pub mod fixed_softbody;
-pub mod float_softbody;
-pub mod generic_softbody;
+pub mod ball;
+#[expect(
+    clippy::module_name_repetitions,
+    reason = "the `Fixed*` aliases sit in `fixed` because they are re-exported next to the float names"
+)]
+pub mod fixed;
+pub mod float;
+pub mod mass_spring;
+pub mod spring;
+pub mod time_step;
 
-pub use float_softbody::*;
+#[cfg(test)]
+mod tests;
+
+pub use float::*;

@@ -30,8 +30,9 @@ use std::collections::HashSet;
 use std::sync::Mutex;
 
 use meridian_compute_runtime::ComputeContext;
-use meridian_gac_core::generic::GaFlavor;
-use meridian_physics_core::generic::{ConstraintSolver, Contact, RigidBody};
+use meridian_gac_core::GaFlavor;
+use meridian_physics_core::collision::Contact;
+use meridian_physics_core::dynamics::{ConstraintSolver, RigidBody};
 
 /// Partitions `contacts` into color groups: no two contacts in the same
 /// group share `contact.a` or `contact.b`. Greedy, contacts assigned in
@@ -245,9 +246,8 @@ fn with_pair_as_slice<F: GaFlavor>(
 
 #[cfg(test)]
 mod tests {
-    use meridian_gac_core::float_ga::FloatFlavor;
-    use meridian_gac_core::{Motor3, Vec3};
-    use meridian_physics_core::generic::{BroadPhase, ColliderShape, NarrowPhase};
+    use meridian_gac_core::{FloatFlavor, Motor3, Vec3};
+    use meridian_physics_core::collision::{BroadPhase, ColliderShape, NarrowPhase};
 
     use super::*;
 

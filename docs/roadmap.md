@@ -197,7 +197,7 @@ back to pair order for the result), rather than a true dynamic
 prefix-sum — the same `MAX_LIGHTS`-style fixed-capacity-array approach
 `graphics-core::submission` uses for its own per-frame uniform array,
 truncating (with a logged warning) only if a pair's manifold ever
-exceeds the cap, which `physics-core::generic::face_manifold`'s own
+exceeds the cap, which `physics-core::collision::face_manifold`'s own
 `.take(4)` currently guarantees it never does. So all five rigid-body
 pipeline steps — `Integrator`, `BroadPhase::find_candidate_pairs`,
 `NarrowPhase::test_pair`, `NarrowPhase::generate_contacts` and
@@ -531,10 +531,11 @@ committed baselines, which only shrink: `.craftcheck-baseline`,
 - Waves 1–3 (hygiene, wiring-only `lib.rs`, splitting the largest files,
   long and wide functions, `proptest` for `numeric-core`/`gac-core`,
   `criterion` benches for the four `perf` crates) — done, except the
-  files and functions that wave 4 rewrites anyway (`gac-core`
-  `generic.rs`/`float_ga`/`fixed_ga`, `physics-compute`, `soft_body`).
-  Waves 4–7 (float/fixed layout, inverting the
-  driver edges, runtime/composition root, crate renames) follow.
+  files and functions that wave 4 rewrote.
+- Wave 4 (float/fixed layout: `gac-core`, `physics-core`, `soft_body`,
+  `physics-compute` as one directory per concept) — done. Waves 5–7
+  (inverting the driver edges, runtime/composition root, crate renames)
+  follow.
 
 ## Why implementation is deliberately last
 

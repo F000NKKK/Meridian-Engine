@@ -3,10 +3,10 @@
 use std::sync::Mutex;
 
 use meridian_compute_runtime::{ComputeContext, ComputeKernel, DispatchSize};
-use meridian_gac_core::fixed_ga::FixedMotor3;
+use meridian_gac_core::FixedMotor3;
 
 /// Mirrors [`MotorTransformKernel`](crate::MotorTransformKernel), built on
-/// `gac-core::fixed_ga::FixedMotor3`. See the module doc for why this
+/// `gac-core::FixedMotor3`. See the module doc for why this
 /// (and [`FixedMotorComposeKernel`](crate::FixedMotorComposeKernel)) are CPU-dispatch only.
 #[derive(Debug)]
 pub struct FixedMotorTransformKernel {

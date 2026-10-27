@@ -9,7 +9,7 @@
 /// offscreen texture's format and the pipeline that renders into it
 /// *one* value instead of two independently-hardcoded assumptions that
 /// can silently drift apart — the wgpu validation error this replaces
-/// ("RenderPass uses textures with format X but the RenderPipeline
+/// ("`RenderPass` uses textures with format X but the `RenderPipeline`
 /// uses Y") is exactly what happens when they do.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ColorFormat {

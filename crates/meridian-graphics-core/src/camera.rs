@@ -1,7 +1,6 @@
 //! A camera frame plus projection.
 
-use meridian_gac_core::float_ga::mat4_mul;
-use meridian_gac_core::{Motor3, Projection, Rotor, Vec3};
+use meridian_gac_core::{Motor3, Projection, Rotor, Vec3, mat4_mul};
 
 /// Remaps `gac-core`'s local camera axes (forward `+X`, up `+Y`, right
 /// `+Z` — the same listener-local convention `audio-core` already commits

@@ -3,8 +3,7 @@
 use std::f32::consts::PI;
 
 use meridian_compute_runtime::{ComputeScheduler, DispatchSize};
-use meridian_gac_core::fixed_ga::{FixedMotor3, FixedRotor, FixedVec3};
-use meridian_gac_core::{Motor3, Rotor, Vec3};
+use meridian_gac_core::{FixedMotor3, FixedRotor, FixedVec3, Motor3, Rotor, Vec3};
 use meridian_numeric_core::Fixed;
 
 use super::*;

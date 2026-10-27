@@ -5,8 +5,7 @@ use substrate_data::schema::NamedType;
 use substrate_data::{Problem, Schema, Shape, frame, read_bytes, to_bytes};
 
 use super::{MotorBlades, StoredScalar};
-use crate::fixed_ga::{FixedBivector3, FixedMotor3, FixedRotor, FixedVec3};
-use crate::{Bivector3, Motor3, Rotor, Vec3};
+use crate::{Bivector3, FixedBivector3, FixedMotor3, FixedRotor, FixedVec3, Motor3, Rotor, Vec3};
 
 const TRICKY: [f32; 6] = [0.1, 1e-7, -0.0, -3.75, f32::MAX, f32::MIN_POSITIVE];
 

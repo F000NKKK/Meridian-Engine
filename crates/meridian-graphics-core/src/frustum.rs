@@ -1,8 +1,6 @@
 //! A view frustum for culling.
 
-use meridian_gac_core::float_ga::FloatFlavor;
-use meridian_gac_core::generic::Shape;
-use meridian_gac_core::{ConvexVolume, Plane, Vec3};
+use meridian_gac_core::{ConvexVolume, FloatFlavor, Plane, Shape, Vec3};
 
 /// The six half-spaces bounding a camera's visible volume, extracted from
 /// a view-projection matrix via the Gribb/Hartmann method: each plane's

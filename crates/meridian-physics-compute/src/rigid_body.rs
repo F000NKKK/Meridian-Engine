@@ -1,4 +1,4 @@
-//! Batch [`Integrator::step`](meridian_physics_core::generic::Integrator)
+//! Batch [`Integrator::step`](meridian_physics_core::dynamics::Integrator)
 //! for many independent [`RigidBody`]s through `compute-runtime`, the
 //! rigid-body half of docs/roadmap.md's "batching through compute-runtime
 //! is additive later" follow-up (`Integrator`/`BroadPhase`/`NarrowPhase`/
@@ -11,7 +11,7 @@
 //! split this crate's `float`/`fixed` soft-body kernels already exercise.
 //!
 //! **Generic over `F: GaFlavor`, not float/fixed-split**, unlike
-//! [`crate::float`]/[`crate::fixed`]: `Integrator::step` has no
+//! [`crate::soft_body::float`]/[`crate::soft_body::fixed`]: `Integrator::step` has no
 //! GPU-dispatch constraint of its own — it's a per-body loop of GA
 //! composition/exponential-map calls, the same reason `physics-core`'s
 //! own `Integrator` is written once and generic (see that crate's module
@@ -23,8 +23,8 @@
 use std::sync::Mutex;
 
 use meridian_compute_runtime::{ComputeContext, ComputeKernel, DispatchSize};
-use meridian_gac_core::generic::GaFlavor;
-use meridian_physics_core::generic::{Integrator, RigidBody};
+use meridian_gac_core::GaFlavor;
+use meridian_physics_core::dynamics::{Integrator, RigidBody};
 
 /// Batch-integrates `bodies` by one timestep `dt`, sharing one
 /// [`Integrator`] (gravity vector) across the whole batch — the common
@@ -105,9 +105,8 @@ where
 
 #[cfg(test)]
 mod tests {
-    use meridian_gac_core::float_ga::FloatFlavor;
-    use meridian_gac_core::{Motor3, Vec3};
-    use meridian_physics_core::generic::ColliderShape;
+    use meridian_gac_core::{FloatFlavor, Motor3, Vec3};
+    use meridian_physics_core::collision::ColliderShape;
 
     use super::*;
 

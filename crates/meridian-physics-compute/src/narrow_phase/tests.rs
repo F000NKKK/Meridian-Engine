@@ -1,8 +1,7 @@
 //! Tests of this module.
 
-use meridian_gac_core::float_ga::FloatFlavor;
-use meridian_gac_core::{Motor3, Vec3};
-use meridian_physics_core::generic::ColliderShape;
+use meridian_gac_core::{FloatFlavor, Motor3, Vec3};
+use meridian_physics_core::collision::ColliderShape;
 
 use super::*;
 

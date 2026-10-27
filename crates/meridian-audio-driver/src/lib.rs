@@ -5,7 +5,7 @@
 //!
 //! Real, backed by `cpal` — the same class of decision as `wgpu` for GPU
 //! and `winit` for windowing: hand-writing FFI to ALSA/PulseAudio/WASAPI/
-//! CoreAudio would be a multi-month undertaking with three or more
+//! `CoreAudio` would be a multi-month undertaking with three or more
 //! independent classes of platform bugs; `cpal` is to audio output what
 //! `winit` is to windowing (see ADR 012 and the workspace `Cargo.toml`'s
 //! `cpal` entry for the full rationale).

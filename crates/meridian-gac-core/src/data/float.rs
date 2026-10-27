@@ -1,4 +1,4 @@
-//! The float flavour: `f32` and [`crate::float_ga`]'s types bound to the
+//! The float flavour: `f32` and [`crate`]'s types bound to the
 //! generic stored forms.
 
 use meridian_numeric_core::Scalar;
@@ -7,7 +7,7 @@ use substrate_data::schema::NamedType;
 
 use super::blades::{motor_components, motor_multivector, rotor_components, rotor_multivector};
 use super::{MotorBlades, MotorForm, StoredScalar};
-use crate::float_ga::{Bivector3, Motor3, Multivector, Rotor, Vec3};
+use crate::{Bivector3, Motor3, Multivector, Rotor, Vec3};
 
 impl StoredScalar for Scalar {
     fn same_bits(self, other: Self) -> bool {

@@ -10,7 +10,7 @@ owns what and what the segment plans to do next.
 | Crate | Tier | Role |
 |---|---|---|
 | `meridian-physics-driver` | 2 | Execution backend only: `PhysicsBackend` (CPU/GPU capabilities), `PhysicsSync` (step generation counter). No collision algorithms. |
-| `meridian-physics-core` | 6 | The simulation: `RigidBody`, `ColliderShape`, `Contact`, `BroadPhase`, `NarrowPhase`, `ConstraintSolver`, `Integrator`, written once in `generic.rs` over `GaFlavor`; `float.rs`/`fixed.rs` are thin aliases. `soft_body/` is the separate mass-spring domain. |
+| `meridian-physics-core` | 6 | The simulation: `RigidBody`, `ColliderShape`, `Contact`, `BroadPhase`, `NarrowPhase`, `ConstraintSolver`, `Integrator`, written once in `collision/` and `dynamics/` over `GaFlavor`; each has thin `float.rs`/`fixed.rs` aliases. `soft_body/` is the separate mass-spring domain. |
 | `meridian-physics-compute` | 7 | Adapter to `compute-runtime`: batched kernels for all five rigid-body pipeline steps (CPU `parallel_for`), WGSL soft-body kernels, WGSL broad-phase overlap kernel. |
 
 Shared with other segments (physics reviews changes, the other segment owns

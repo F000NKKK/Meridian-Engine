@@ -17,7 +17,7 @@ fn emitter_at(position: Vec3) -> Emitter {
 }
 
 /// A model with `gain == 1.0` for any distance used in these tests
-/// (reference_distance far beyond them) — isolates *direction* tests
+/// (`reference_distance` far beyond them) — isolates *direction* tests
 /// from *distance* attenuation, which has its own dedicated tests.
 fn no_attenuation() -> AttenuationModel {
     AttenuationModel {
