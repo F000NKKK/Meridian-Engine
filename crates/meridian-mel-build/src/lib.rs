@@ -35,6 +35,7 @@ mod invalid_markup;
 mod mel_document;
 mod named_element;
 mod resources;
+mod source_dir;
 mod ui_bindings;
 mod ui_build;
 mod ui_builder;
@@ -50,7 +51,7 @@ pub use binding::{
 pub use build_error::BuildError;
 pub use compile::{compile_dir, compile_file, compile_file_with};
 pub use generated_module::GeneratedModule;
-pub use hot_reload::{LiveUi, Reload};
+pub use hot_reload::{HotDocument, LiveUi, Rebuilt, Refreshed, Reload, ReloadError, SourceWatcher};
 pub use invalid_markup::InvalidMarkup;
 pub use mel_document::MelDocument;
 pub use named_element::NamedElement;

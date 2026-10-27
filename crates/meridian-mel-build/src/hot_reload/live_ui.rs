@@ -4,7 +4,8 @@ use std::collections::HashMap;
 
 use meridian_ui_core::{NodeId, PropertyId, UiError, UiTree, properties};
 
-use super::Reload;
+use super::tree_builder::build;
+use super::{Rebuilt, Reload};
 use crate::UiNode;
 
 /// The document last applied to a tree, rooted at `root`. Only plain
@@ -33,6 +34,22 @@ impl LiveUi {
         let changed = patch(tree, self.root, &self.applied, &next)?;
         self.applied = next;
         Ok(Reload::Patched { changed })
+    }
+
+    /// Builds `next` as a new subtree (under the old root's parent, if it
+    /// had one) and removes the old one: the answer to
+    /// [`Reload::Restructured`]. Every old `NodeId` of the document is
+    /// stale afterwards, and `{x:Bind}` values have to be applied again.
+    pub fn rebuild(&mut self, tree: &mut UiTree, next: UiNode) -> Result<Rebuilt, UiError> {
+        let mut named = Vec::new();
+        let root = build(tree, &next, &mut named)?;
+        if let Some(parent) = tree.parent(self.root)? {
+            tree.append_child(parent, root)?;
+        }
+        tree.remove(self.root)?;
+        self.root = root;
+        self.applied = next;
+        Ok(Rebuilt { root, named })
     }
 }
 

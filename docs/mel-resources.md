@@ -101,10 +101,14 @@ bad block or a second block on one element is a build error at its line.
 
 ## Reloading
 
-A changed `.mres` or `.mel` is picked up at run time by parsing the
-document again with the new `ResourceSets` (`MelDocument::parse_with`) and
-handing its `ui` to `LiveUi::reload`; resource values are resolved while
-parsing, so a changed entry reaches the attributes that use it.
+`HotDocument::open(mel, Some(resources_dir), root, debounce)` watches the
+`.mel` and every `.mres` under the directory; the host calls
+`refresh(tree, Instant::now())` each frame. A changed file is parsed
+again with the new `ResourceSets` (resource values are resolved while
+parsing, so a changed entry reaches the attributes that use it), and the
+tree is patched in place or, when the shape changed, built again
+(`Refreshed::Patched` / `Refreshed::Rebuilt`). A file that does not parse
+is an error and leaves the tree as it was; the next change tries again.
 
 ## Not yet
 
