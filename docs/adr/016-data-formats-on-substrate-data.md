@@ -69,11 +69,11 @@ own".
 - The IDE gets component descriptions from `ComponentRegistry::describe()`
   and edits files through `substrate_data::patch`, so hand-written comments
   survive inspector edits.
-- `.mel` (ADR 015) stays the authoring markup for scenes written by hand;
+- `.meui` (ADR 015) stays the authoring markup for scenes written by hand;
   `.mscene` is what tools save. Settled by
-  [ADR 017](017-mel-markup-and-code-behind.md): the two stay separate
-  formats (`.mel` is not compiled into `.mscene`) but share one literal
-  grammar — `.mel` attribute values follow the Substrate Data string rules
+  [ADR 017](017-meui-markup-and-code-behind.md): the two stay separate
+  formats (`.meui` is not compiled into `.mscene`) but share one literal
+  grammar — `.meui` attribute values follow the Substrate Data string rules
   (`@kind:id` is a reference, `@@` escapes, any other leading `@` is an
   error; resources are `@res:Set.name`).
 - New external dependency `substrate-data` (git, pinned by revision until

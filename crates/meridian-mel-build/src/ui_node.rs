@@ -1,4 +1,4 @@
-//! [`UiNode`]: an element of a `.mel` document that builds a
+//! [`UiNode`]: an element of a `.meui` document that builds a
 //! `meridian-ui-core` element.
 
 use meridian_dsl_core::{Element, Span};

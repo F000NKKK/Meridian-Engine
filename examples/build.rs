@@ -1,4 +1,4 @@
-//! Compiles `assets/scenes/*.mel` into `$OUT_DIR/mel/*.g.rs` for
+//! Compiles `assets/scenes/*.meui` into `$OUT_DIR/mel/*.g.rs` for
 //! `meridian_sdk::mel_include!` (ADR 017). A malformed scene fails the
 //! build here, with its file, line and column.
 

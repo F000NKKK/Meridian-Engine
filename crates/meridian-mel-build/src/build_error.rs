@@ -1,4 +1,4 @@
-//! [`BuildError`]: why a `.mel` document could not be compiled.
+//! [`BuildError`]: why a `.meui` document could not be compiled.
 
 use std::path::{Path, PathBuf};
 
@@ -30,7 +30,7 @@ pub enum BuildError {
     },
     #[error(transparent)]
     Resource(#[from] ResourceError),
-    /// Something the parser accepts but `.mel` code-behind does not.
+    /// Something the parser accepts but `.meui` code-behind does not.
     #[error("{}:{span}: {reason}", path.display())]
     Invalid {
         path: PathBuf,

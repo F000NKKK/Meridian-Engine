@@ -54,7 +54,7 @@ lays out through the port and extraction emits nothing for it.
 design requirements for `ui-core`, `ui-render` and every control, and a
 change that breaks one needs an ADR:
 
-- Markup is optional. Everything `.mel` can do is reachable from plain
+- Markup is optional. Everything `.meui` can do is reachable from plain
   Rust through `UiTree` (create, set, bind); markup is generated code on
   top of the same API.
 - Custom elements, panels and controls are defined through public traits

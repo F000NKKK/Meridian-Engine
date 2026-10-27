@@ -1,4 +1,4 @@
-//! [`InvalidMarkup`]: a rule of ADR 017 that a parsed `.mel` document breaks.
+//! [`InvalidMarkup`]: a rule of ADR 017 that a parsed `.meui` document breaks.
 
 use crate::ResourceProblem;
 

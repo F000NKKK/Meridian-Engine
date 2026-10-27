@@ -1,7 +1,7 @@
-//! Reading a `.mel` scene file at run time into a built
+//! Reading a `.meui` scene file at run time into a built
 //! `meridian_sdk::dsl` tree (`physic_figures`), plus [`find_child`],
 //! shared by both examples. `magic_figures` instead uses the module
-//! `build.rs` generates from its `.mel` (ADR 017).
+//! `build.rs` generates from its `.meui` (ADR 017).
 
 use meridian_sdk::dsl::build_scene;
 use meridian_sdk::dsl::dsl_core::{BuiltNode, DslRegistry};

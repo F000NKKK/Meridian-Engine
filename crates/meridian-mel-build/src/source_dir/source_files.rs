@@ -4,11 +4,11 @@ use std::path::{Path, PathBuf};
 
 use crate::BuildError;
 
-/// The `.mel` and `.mres` files under a directory, each list sorted
+/// The `.meui` and `.mres` files under a directory, each list sorted
 /// (culture variants last).
 #[derive(Debug, Default)]
 pub(crate) struct SourceFiles {
-    pub mel: Vec<PathBuf>,
+    pub meui: Vec<PathBuf>,
     pub mres: Vec<PathBuf>,
 }
 
@@ -17,7 +17,7 @@ impl SourceFiles {
     pub(crate) fn find(dir: &Path) -> Result<Self, BuildError> {
         let mut found = Self::default();
         found.walk(dir)?;
-        found.mel.sort();
+        found.meui.sort();
         // Default sets first: a variant is checked against its default.
         found
             .mres
@@ -31,8 +31,8 @@ impl SourceFiles {
             let path = entry.map_err(|error| BuildError::io(dir, error))?.path();
             if path.is_dir() {
                 self.walk(&path)?;
-            } else if path.extension().is_some_and(|ext| ext == "mel") {
-                self.mel.push(path);
+            } else if path.extension().is_some_and(|ext| ext == "meui") {
+                self.meui.push(path);
             } else if path.extension().is_some_and(|ext| ext == "mres") {
                 self.mres.push(path);
             }

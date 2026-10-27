@@ -1,4 +1,4 @@
-//! Finding and reading the `.mel` / `.mres` files under a directory, for
+//! Finding and reading the `.meui` / `.mres` files under a directory, for
 //! the build script and for hot reload.
 
 mod insert_set;

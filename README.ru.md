@@ -48,7 +48,7 @@ Meridian-Engine — небольшой устойчивый набор крей�
 | [`meridian-memory-core`](crates/meridian-memory-core) | identity | Арены, пулы ресурсов, поколенческие дескрипторы |
 | [`meridian-resource-core`](crates/meridian-resource-core) | identity | Типизированные id ресурсов, версии, граф зависимостей |
 | [`meridian-ecs-core`](crates/meridian-ecs-core) | entity | Архетипный ECS с хранением SoA |
-| [`meridian-dsl-core`](crates/meridian-dsl-core) | scene-markup | Парсер разметки `.mel` без знания домена и реестр тегов |
+| [`meridian-dsl-core`](crates/meridian-dsl-core) | scene-markup | Парсер разметки `.meui` без знания домена и реестр тегов |
 
 **Домен**
 
@@ -84,7 +84,7 @@ Meridian-Engine — небольшой устойчивый набор крей�
 | [`meridian-editor-protocol`](crates/meridian-editor-protocol) | editor | Типизированные сообщения игра/редактор в кадрах Substrate Data |
 | [`meridian-editor-host`](crates/meridian-editor-host) | editor | Сторона игры в протоколе без ввода-вывода: `Session`, `SimulationControl`, `RequestHandler` |
 | [`meridian-editor-tcp`](crates/meridian-editor-tcp) | editor | Обслуживает один редактор по loopback TCP (единственный crate редактора с `tokio`) |
-| [`meridian-mel-build`](crates/meridian-mel-build) | ui | Генератор для `build.rs`: `.mel` в типизированный Rust |
+| [`meridian-mel-build`](crates/meridian-mel-build) | ui | Генератор для `build.rs`: `.meui` в типизированный Rust |
 
 **Интерфейс**
 
@@ -124,7 +124,7 @@ fn main() {
 ./build.sh run physic_figures    # те же фигуры как твёрдые тела, падающие на пол
 ```
 
-Оба примера собирают сцену из файла `.mel` в
+Оба примера собирают сцену из файла `.meui` в
 [`examples/assets/scenes/`](examples/assets/scenes) и импортируют всё через
 `meridian_sdk`.
 

@@ -1,4 +1,4 @@
-//! [`UiBuilder`]: turns a `.mel` element tree into [`UiNode`]s, resolving
+//! [`UiBuilder`]: turns a `.meui` element tree into [`UiNode`]s, resolving
 //! resources on the way.
 
 use meridian_dsl_core::{Attribute, Element, MarkupExtension, MarkupValue};

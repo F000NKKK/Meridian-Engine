@@ -39,7 +39,7 @@ every domain adapter builds on.
   over; physics must reuse them, not copy them.
 - `team/audio`: `audio-driver`, `audio-core`. Core owns the audio decoders
   in `asset-core`.
-- `team/scripting`: `dsl-core`, `dsl-macros`, the `.mel` extension. Core
+- `team/scripting`: `dsl-core`, `dsl-macros`, the `.meui` extension. Core
   owns `sdk::dsl` registration of built-in tags only as far as the SDK
   re-export surface goes.
 - `team/ui-ux`: no crate yet. When a UI crate appears, input routing stays

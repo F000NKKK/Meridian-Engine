@@ -1,4 +1,4 @@
-//! Turning `.mel` text into a syntax tree: the parser, its errors and
+//! Turning `.meui` text into a syntax tree: the parser, its errors and
 //! source positions.
 
 mod error;

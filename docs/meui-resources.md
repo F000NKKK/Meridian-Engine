@@ -3,9 +3,9 @@
 A `.mres` file is a set of named values a game keeps out of its markup and
 code: texts, numbers, flags and colors, each with an optional comment. It
 is the Meridian counterpart of Yog's `.yres` and of a .NET `.resx`: a build
-step turns it into typed constants, and `.mel` attributes refer to entries
+step turns it into typed constants, and `.meui` attributes refer to entries
 as `@res:Set.name`. Decided in
-[ADR 017](adr/017-mel-markup-and-code-behind.md); built by
+[ADR 017](adr/017-meui-markup-and-code-behind.md); built by
 `meridian-mel-build`.
 
 ## Where they go
@@ -66,7 +66,7 @@ impl Strings {
 }
 ```
 
-## In `.mel`
+## In `.meui`
 
 A UI attribute whose value is `@res:Set.name` takes the resource's value
 when the document is compiled; an unknown set or name is a build error at
@@ -74,7 +74,7 @@ the attribute's line. A text starting with `@` stays escaped, so it reads
 as the same text. Other references (`@mesh:hero.mesh`) pass through for the
 program to resolve; any other leading `@` is an error.
 
-## Resources inside a `.mel` file
+## Resources inside a `.meui` file
 
 An element of a UI document may carry a `Resources` block, as in XAML:
 
@@ -109,7 +109,7 @@ leaves out falls back to the default, and `en-gb` falls back to `en` and
 then to the default. A variant without a default set, an unknown entry, a
 type mismatch, a bad tag or two files for one culture is a build error at
 its file. Variants generate no constants: `Strings::TITLE` is the default
-value, and `@res:Strings.title` in a `.mel` compiled by the build script is
+value, and `@res:Strings.title` in a `.meui` compiled by the build script is
 the default too.
 
 The language switch is a run-time reload: `HotDocument::set_culture(Some(
@@ -120,7 +120,7 @@ change needed; `set_culture(None)` goes back to the default.
 ## Reloading
 
 `HotDocument::open(mel, Some(resources_dir), root, debounce)` watches the
-`.mel` and every `.mres` under the directory; the host calls
+`.meui` and every `.mres` under the directory; the host calls
 `refresh(tree, Instant::now())` each frame. A changed file is parsed
 again with the new `ResourceSets` (resource values are resolved while
 parsing, so a changed entry reaches the attributes that use it), and the

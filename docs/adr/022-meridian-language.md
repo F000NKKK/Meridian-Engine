@@ -10,7 +10,7 @@ implemented. Order of work (owner): resources, hot reload, then this.
 
 ## Context
 
-[ADR 017](017-mel-markup-and-code-behind.md) joins `.mel` markup to
+[ADR 017](017-meui-markup-and-code-behind.md) joins `.meui` markup to
 code-behind in Rust, compiled with the game. That covers engine code and
 trusted game logic. It does not cover logic written in a language of the
 engine's own: gameplay, mods, UI behavior, and code that runs in the
@@ -62,13 +62,13 @@ must agree on the semantics, as Yog's backend and interpreter do.
 - **Front end (`lang-core`, domain-blind).** Lexer, parser, name and type
   checking, ownership by value / `in` / `out` (no borrow checker over a
   GC), diagnostics with spans and stable codes. It names no engine
-  concept. The same diagnostics feed the build, hot reload and the `.mel`
+  concept. The same diagnostics feed the build, hot reload and the `.meui`
   language server on Substrate's `lsp`.
 - **Typed IR between front end and backends.** A backend takes the checked
   IR; a construct a backend lacks is a compile error, never a silent
   fallback.
 - **Rust backend first.** It generates `.g.rs` modules like the markup
-  glue (`mel_include!`-style), so a `.mel` `{x:Bind}` or event handler can
+  glue (`mel_include!`-style), so a `.meui` `{x:Bind}` or event handler can
   name a function of the language the way it names a Rust method today.
   `Fixed`, `Handled` and the UI types map to the engine's own types.
 - **WASM backend second,** for what must change without a rebuild of the
@@ -83,15 +83,44 @@ must agree on the semantics, as Yog's backend and interpreter do.
   (UI, scene, input, time) and adapted by a host crate; typed ids checked
   at compile time, no stringly-typed host calls.
 - **Events and commands** follow the WinUI 3 model of
-  [ADR 018](018-ui-architecture.md) and `docs/mel-events.md`: handlers are
+  [ADR 018](018-ui-architecture.md) and `docs/meui-events.md`: handlers are
   named in markup and bound at compile time; a panic disables the handler
   and is reported with `file:line`.
 - **Determinism.** A module marked `fixed` may use only `Fixed`, integers
   and host calls declared deterministic; the checker rejects `f32` and
   unordered iteration there.
-- **Naming.** It is the Meridian language, not a "script language". The
-  markup stays `.mel`, resources stay `.mres`; the language's own file
-  extension is open (see Consequences).
+- **Naming (owner, 2026-10-27).** **MEL is Meridian Engine Language**
+  (owner-confirmed). It is a compiled language, not a "script language".
+  Its files use **`.mel`**; UI markup moves to
+  **`.meui`**; resources stay `.mres`. The markup and its generator keep
+  their current crate and identifier names (`mel-build`, `MelDocument`,
+  `mel_include!`) until the engine freeze lifts; renaming them to `meui`
+  is a separate change.
+- **Pairing.** A UI is a `.meui` markup file plus a `.mel` code-behind
+  file (ADR 017's code-behind, written in MEL instead of Rust). Both are
+  compiled to Rust (`.g.rs`), the engine's native and fast target, so the
+  Rust backend is the primary one.
+- **Syntax (owner, 2026-10-27): C#-like with Rust-style ownership.** C#
+  surface syntax (classes, properties, `in`/`out`), ownership by move and
+  borrow as in Rust, no garbage collector. Errors are values:
+  `Result<T, E>` with a propagation operator, no exceptions. Enums carry
+  data per variant (Rust-style algebraic enums) and are consumed by
+  exhaustive `match`; the checker rejects a missing variant.
+- **Shape: Yog Script, aimed at the engine.** Same family as Yog's `.ys`
+  (the owner's reference), but the host surface is the engine's, not a
+  game's. Yog's logic is ported, not copied: it lives in a few very large
+  files there and is hard to read and maintain.
+- **Source layout of the compiler: one concept per file.** Every
+  keyword, every expression form and every statement form is its own
+  file in `lang-core`, with its lexing rule, parser, checker rule, IR
+  lowering and tests next to it (a directory per concept, as
+  `rotor/{float,fixed}.rs` is in `gac-core`). Orchestration (pipeline
+  order, pass scheduling, diagnostics collection) is separate, small and
+  names no concept, so adding a construct means adding a directory and one
+  registration line. No boilerplate tables and no giant `match` over all
+  syntax: a concept registers itself through a trait that the pipeline
+  iterates. Craftbook limits apply (files at most 400 lines, one primary
+  item per file, no `utils`).
 
 ## Consequences
 
@@ -103,8 +132,10 @@ must agree on the semantics, as Yog's backend and interpreter do.
   syntax.
 - Hot reload of language code is a module swap (WASM) or a program
   rebuild (Rust backend), not statement-level patching.
-- Open for the owner: the file extension (proposed `.mer`, markup `.mel`
-  and resources `.mres` unchanged; the alternative is `.mel` for both,
-  told apart by the root) and Rust-like (default) or C#-like syntax.
+- The first step is architecture, before any code: the concept trait, the
+  pass pipeline, the port of Yog's analysis split into per-concept files,
+  and the grammar document.
+- Nothing is open for the owner in this ADR now; it stays Proposed until
+  the grammar document lands.
 - Engine freeze: while team/standards freezes the engine for waves 5-7,
   this ADR changes only on a branch.

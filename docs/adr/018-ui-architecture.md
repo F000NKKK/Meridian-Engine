@@ -15,8 +15,8 @@ templates, controls and rendering are not.
 *role* of scenes (a pixel-space `Scene2D` over the world, or billboarded
 quads in a `Scene3D`) and that widgets, layout, text and input routing
 belong to a separate `ui-core`. The roadmap lists "no UI framework" as a
-gap (7). [ADR 017](017-mel-markup-and-code-behind.md) fixed the markup
-side: `.mel` is declarative, behavior lives in a code-behind, the two meet
+gap (7). [ADR 017](017-meui-markup-and-code-behind.md) fixed the markup
+side: `.meui` is declarative, behavior lives in a code-behind, the two meet
 through `x:Name`, attached properties (`Grid.Row`) and compiled
 `{x:Bind}`; `meridian-mel-build` generates `foo.g.rs`. That generator needs
 a runtime to write into. This ADR is that runtime.

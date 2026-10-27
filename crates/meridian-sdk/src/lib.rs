@@ -70,7 +70,7 @@ pub use meridian_physics_core::{
 pub use meridian_platform_core::{
     AppHandler, Clock, InputState, KeyCode, MouseButton, Time, Window, run_windowed_app,
 };
-/// The retained UI runtime (ADR 018); generated `.mel` glue names it
+/// The retained UI runtime (ADR 018); generated `.meui` glue names it
 /// through here.
 pub use meridian_ui_core as ui_core;
 pub use render::{RenderStage, render_frame};

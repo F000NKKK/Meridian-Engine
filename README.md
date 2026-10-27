@@ -49,7 +49,7 @@ crate has its own README.
 | [`meridian-memory-core`](crates/meridian-memory-core) | identity | Arenas, resource pools, generational handles |
 | [`meridian-resource-core`](crates/meridian-resource-core) | identity | Typed resource ids, versions, dependency graph |
 | [`meridian-ecs-core`](crates/meridian-ecs-core) | entity | Archetype ECS with SoA storage |
-| [`meridian-dsl-core`](crates/meridian-dsl-core) | scene-markup | Domain-blind `.mel` markup parser and tag registry |
+| [`meridian-dsl-core`](crates/meridian-dsl-core) | scene-markup | Domain-blind `.meui` markup parser and tag registry |
 
 **Domain**
 
@@ -85,7 +85,7 @@ crate has its own README.
 | [`meridian-editor-protocol`](crates/meridian-editor-protocol) | editor | Typed game/editor messages as Substrate Data frames |
 | [`meridian-editor-host`](crates/meridian-editor-host) | editor | The game's side of the protocol, without I/O: `Session`, `SimulationControl`, `RequestHandler` |
 | [`meridian-editor-tcp`](crates/meridian-editor-tcp) | editor | Serves one editor over loopback TCP (the only editor crate with `tokio`) |
-| [`meridian-mel-build`](crates/meridian-mel-build) | ui | `build.rs` generator turning `.mel` into typed Rust |
+| [`meridian-mel-build`](crates/meridian-mel-build) | ui | `build.rs` generator turning `.meui` into typed Rust |
 
 **Interface**
 
@@ -125,7 +125,7 @@ needs a display and a GPU adapter:
 ./build.sh run physic_figures    # the same shapes as rigid bodies falling onto a floor
 ```
 
-Both examples build their scene from a `.mel` file under
+Both examples build their scene from a `.meui` file under
 [`examples/assets/scenes/`](examples/assets/scenes) and import everything through
 `meridian_sdk`.
 

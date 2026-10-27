@@ -1,4 +1,4 @@
-//! [`ResourceTag`]: the tag of a resource element in a `.mel` document.
+//! [`ResourceTag`]: the tag of a resource element in a `.meui` document.
 
 /// `<String|Number|Bool|Color x:Key=".." Value=".." />`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -78,7 +78,7 @@ defined in `meridian-sdk::dsl` (built-ins) or in a game's own crate
 (custom tags), both just ordinary `#[dsl_tag]`-annotated structs.
 `meridian-mel-build` (tier 2, on `dsl-core` and `ui-core`; the latter only
 to resolve a bound attribute to its UI property at build time) is the build-time
-`.mel` -> `.g.rs` generator of [ADR 017](adr/017-mel-markup-and-code-behind.md).
+`.meui` -> `.g.rs` generator of [ADR 017](adr/017-meui-markup-and-code-behind.md).
 An application takes it as a **build-dependency** for its `build.rs`,
 the one exception to "applications depend on `meridian-sdk` alone": a
 build script cannot use the SDK without compiling the whole engine for

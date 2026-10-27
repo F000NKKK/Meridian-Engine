@@ -5,7 +5,7 @@ use super::line_index::LineIndex;
 use crate::syntax::is_identifier_byte;
 use crate::{Attribute, Element, MarkupValue, QualifiedName, QualifiedNameError};
 
-/// Parses a complete `.mel` document into its single root [`Element`].
+/// Parses a complete `.meui` document into its single root [`Element`].
 /// Leading/trailing whitespace around the root is ignored; anything
 /// else outside the root tag (a second root element, stray text) is a
 /// [`ParseError`].

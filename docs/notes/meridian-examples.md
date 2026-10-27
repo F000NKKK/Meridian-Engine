@@ -46,7 +46,7 @@ Run with:
 ## `examples/physic_figures`
 
 **Scene composition itself lives in
-`assets/scenes/physic_figures.mel`**, parsed through
+`assets/scenes/physic_figures.meui`**, parsed through
 `meridian_sdk::dsl` (via this workspace's shared
 `meridian_examples::scene_loader`) — every entity's position, mesh
 shape, texture and collider is data, not Rust code; this file only

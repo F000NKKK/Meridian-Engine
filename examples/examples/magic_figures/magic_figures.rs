@@ -8,7 +8,7 @@
 //! (`examples/assets/textures/*.{png,bmp}` — signature-sniffed the same
 //! way via `asset-core::AnyImageDecoder`).
 //!
-//! **Scene composition lives in `assets/scenes/magic_figures.mel`**,
+//! **Scene composition lives in `assets/scenes/magic_figures.meui`**,
 //! compiled by this crate's `build.rs` into a generated module (typed
 //! `x:Name` ids, markup checked at build time; ADR 017) and built
 //! through `meridian_sdk::dsl` — unlike `physic_figures`, which still
@@ -26,7 +26,7 @@ mod app;
 mod glow;
 mod music_rig;
 mod orbit;
-/// The code generated from `assets/scenes/magic_figures.mel` by this
+/// The code generated from `assets/scenes/magic_figures.meui` by this
 /// crate's `build.rs` (ADR 017): `Name` has one variant per `x:Name`.
 #[expect(
     clippy::allow_attributes,

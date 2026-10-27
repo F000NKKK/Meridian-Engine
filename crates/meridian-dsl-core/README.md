@@ -4,7 +4,7 @@ Generic tag/attribute/children text parser underlying the SDK's extensible scene
 
 **Layer and context:** shared kernel · scene-markup
 
-- **For:** A domain-blind `.mel` tag/attribute parser: `parse`, spans for diagnostics, markup extensions, `DslRegistry` and the `DslTag` trait.
+- **For:** A domain-blind `.meui` tag/attribute parser: `parse`, spans for diagnostics, markup extensions, `DslRegistry` and the `DslTag` trait.
 - **Not for:** knowing any tag: `Mesh`, `RigidBody` and the rest live in `meridian-sdk::dsl`; the `#[dsl_tag]` macro is `meridian-dsl-macros`.
 
 ## Usage

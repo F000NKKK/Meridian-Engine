@@ -1,4 +1,4 @@
-//! [`ParseError`]: what went wrong while parsing a `.mel` document, and
+//! [`ParseError`]: what went wrong while parsing a `.meui` document, and
 //! where.
 
 use std::fmt;
