@@ -1127,7 +1127,6 @@ name = "meridian-asset-core"
 version = "0.13.0"
 dependencies = [
  "meridian-foundation",
- "meridian-platform-core",
  "png",
  "symphonia",
  "symphonia-adapter-libopus",
@@ -1139,7 +1138,6 @@ version = "0.19.0"
 dependencies = [
  "meridian-audio-driver",
  "meridian-gac-core",
- "meridian-resource-core",
  "tokio",
 ]
 
@@ -1169,8 +1167,6 @@ version = "0.20.0"
 dependencies = [
  "meridian-compute-driver",
  "meridian-gpu-driver",
- "meridian-memory-core",
- "meridian-task-core",
  "tokio",
 ]
 
@@ -1237,14 +1233,11 @@ dependencies = [
 name = "meridian-engine-core"
 version = "0.31.0"
 dependencies = [
- "meridian-asset-core",
  "meridian-audio-core",
  "meridian-compute-runtime",
  "meridian-ecs-core",
  "meridian-foundation",
  "meridian-gac-core",
- "meridian-graphics-core",
- "meridian-memory-core",
  "meridian-physics-compute",
  "meridian-physics-core",
  "meridian-platform-core",
@@ -1303,10 +1296,8 @@ name = "meridian-graphics-core"
 version = "0.26.0"
 dependencies = [
  "meridian-asset-core",
- "meridian-compute-runtime",
  "meridian-ecs-core",
  "meridian-foundation",
- "meridian-gac-compute",
  "meridian-gac-core",
  "meridian-graphics-driver",
  "meridian-memory-core",
@@ -1422,7 +1413,6 @@ dependencies = [
  "meridian-graphics-driver",
  "meridian-physics-core",
  "meridian-platform-core",
- "meridian-task-core",
  "meridian-ui-core",
 ]
 

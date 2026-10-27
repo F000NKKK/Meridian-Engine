@@ -11,12 +11,10 @@ readme = "README.md"
 [dependencies]
 meridian-foundation = { workspace = true }
 meridian-gac-core = { workspace = true }
-meridian-gac-compute = { workspace = true }
 meridian-memory-core = { workspace = true }
 meridian-ecs-core = { workspace = true }
 meridian-asset-core = { workspace = true }
 meridian-graphics-driver = { workspace = true }
-meridian-compute-runtime = { workspace = true }
 meridian-resource-core = { workspace = true }
 
 [dev-dependencies]

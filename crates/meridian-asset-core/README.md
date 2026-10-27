@@ -19,8 +19,8 @@ let mesh = ObjDecoder.decode(b"v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n")?;
 
 ## Depends on / used by
 
-- Depends on: [`meridian-foundation`](../meridian-foundation), [`meridian-platform-core`](../meridian-platform-core)
-- Used by: [`meridian-engine-core`](../meridian-engine-core), [`meridian-graphics-core`](../meridian-graphics-core), [`meridian-sdk`](../meridian-sdk)
+- Depends on: [`meridian-foundation`](../meridian-foundation)
+- Used by: [`meridian-graphics-core`](../meridian-graphics-core), [`meridian-sdk`](../meridian-sdk)
 
 ## License
 

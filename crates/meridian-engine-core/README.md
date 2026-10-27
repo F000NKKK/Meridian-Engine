@@ -13,7 +13,7 @@ The entry points are documented on [docs.rs](https://docs.rs/meridian-engine-cor
 
 ## Depends on / used by
 
-- Depends on: [`meridian-asset-core`](../meridian-asset-core), [`meridian-audio-core`](../meridian-audio-core), [`meridian-compute-runtime`](../meridian-compute-runtime), [`meridian-ecs-core`](../meridian-ecs-core), [`meridian-foundation`](../meridian-foundation), [`meridian-gac-core`](../meridian-gac-core), [`meridian-graphics-core`](../meridian-graphics-core), [`meridian-memory-core`](../meridian-memory-core), [`meridian-physics-compute`](../meridian-physics-compute), [`meridian-physics-core`](../meridian-physics-core), [`meridian-platform-core`](../meridian-platform-core), [`meridian-task-core`](../meridian-task-core)
+- Depends on: [`meridian-audio-core`](../meridian-audio-core), [`meridian-compute-runtime`](../meridian-compute-runtime), [`meridian-ecs-core`](../meridian-ecs-core), [`meridian-foundation`](../meridian-foundation), [`meridian-gac-core`](../meridian-gac-core), [`meridian-physics-compute`](../meridian-physics-compute), [`meridian-physics-core`](../meridian-physics-core), [`meridian-platform-core`](../meridian-platform-core), [`meridian-task-core`](../meridian-task-core)
 - Used by: [`meridian-sdk`](../meridian-sdk)
 
 ## License

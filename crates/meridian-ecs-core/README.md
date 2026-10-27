@@ -26,7 +26,7 @@ assert_eq!(world.query::<Position>().count(), 1);
 ## Depends on / used by
 
 - Depends on: [`meridian-gac-core`](../meridian-gac-core), [`meridian-memory-core`](../meridian-memory-core)
-- Used by: [`meridian-editor-host`](../meridian-editor-host), [`meridian-editor-protocol`](../meridian-editor-protocol), [`meridian-engine-core`](../meridian-engine-core), [`meridian-graphics-core`](../meridian-graphics-core), [`meridian-physics-core`](../meridian-physics-core), [`meridian-scene`](../meridian-scene)
+- Used by: [`meridian-editor-host`](../meridian-editor-host), [`meridian-editor-protocol`](../meridian-editor-protocol), [`meridian-engine-core`](../meridian-engine-core), [`meridian-graphics-core`](../meridian-graphics-core), [`meridian-scene`](../meridian-scene)
 
 ## License
 

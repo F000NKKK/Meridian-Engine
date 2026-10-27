@@ -44,7 +44,7 @@ ALLOWED = {
     "meridian-platform-core": {"meridian-foundation"},
     "meridian-gpu-driver": {"meridian-foundation", "meridian-platform-core"},
     "meridian-compute-driver": {"meridian-platform-core", "meridian-gpu-driver"},
-    "meridian-compute-runtime": {"meridian-memory-core"},
+    "meridian-compute-runtime": set(),
     "meridian-gac-compute": {
         "meridian-gac-core",
         "meridian-numeric-core",
@@ -80,17 +80,13 @@ ALLOWED = {
     },
     "meridian-audio-core": {
         "meridian-gac-core",
-        "meridian-resource-core",
     },
     "meridian-engine-core": {
         "meridian-foundation",
         "meridian-gac-core",
-        "meridian-memory-core",
         "meridian-ecs-core",
-        "meridian-graphics-core",
         "meridian-physics-core",
         "meridian-audio-core",
-        "meridian-asset-core",
         "meridian-compute-runtime",
     },
     "meridian-scene": {"meridian-ecs-core", "meridian-gac-core"},
@@ -108,7 +104,6 @@ ALLOWED = {
     "meridian-sdk": {
         "meridian-foundation",
         "meridian-gac-core",
-        "meridian-task-core",
         "meridian-platform-core",
         "meridian-asset-core",
         "meridian-graphics-driver",
@@ -127,12 +122,8 @@ ALLOWED = {
 # wave inverts them. Never add to this table.
 PENDING = {
     ("meridian-graphics-core", "meridian-graphics-driver"): "migration pending (wave 5)",
-    ("meridian-graphics-core", "meridian-gac-compute"): "migration pending (wave 5)",
-    ("meridian-graphics-core", "meridian-compute-runtime"): "migration pending (wave 5)",
     ("meridian-audio-core", "meridian-audio-driver"): "migration pending (wave 5)",
     ("meridian-compute-runtime", "meridian-compute-driver"): "migration pending (wave 5)",
-    ("meridian-asset-core", "meridian-platform-core"): "migration pending (wave 5)",
-    ("meridian-compute-runtime", "meridian-task-core"): "migration pending (wave 6)",
     ("meridian-engine-core", "meridian-task-core"): "migration pending (wave 6)",
     ("meridian-engine-core", "meridian-platform-core"): "migration pending (wave 6)",
     ("meridian-engine-core", "meridian-physics-compute"): "migration pending (wave 6)",

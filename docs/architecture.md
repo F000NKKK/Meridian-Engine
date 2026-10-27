@@ -62,10 +62,10 @@ GAC operations, and also depends on `gpu-driver` directly for the GPU
 resource types (`Buffer`, `Shader`, `ComputePipeline`, ...) a real
 GPU-dispatching kernel has to name — see
 [dependency-rules.md](dependency-rules.md) for why that's not the same as
-depending on `compute-driver` directly (still forbidden). `graphics-core`
-and `physics-core` depend on `gac-compute` for batched transform work and
-on `compute-runtime` directly for non-GAC compute (e.g. GPU culling) —
-see [ADR 007](adr/007-batch-transforms-via-compute.md). `gac-core` never
+depending on `compute-driver` directly (still forbidden). Domain compute
+goes through a `meridian-<domain>-compute` adapter (`physics-compute` today), not
+through a `graphics-core`/`physics-core` edge to `gac-compute` or
+`compute-runtime` — see [ADR 007](adr/007-batch-transforms-via-compute.md). `gac-core` never
 depends on `compute-runtime`, and `compute-runtime` never depends on
 `gac-core`, in either direction. `compute-driver` and `graphics-driver`
 both depend on `gpu-driver`, the crate that owns the actual `wgpu`
