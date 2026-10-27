@@ -1,7 +1,7 @@
 //! The stored representation of a property value.
 
-use crate::Thickness;
 use crate::layout::value::{Alignment, Dock, GridLength, Length, Orientation, Visibility};
+use crate::{Color, Thickness};
 
 /// What a node stores for a property. Typed access goes through
 /// [`crate::PropertyType`]; this enum is also the tooling-facing form
@@ -14,6 +14,7 @@ pub enum PropertyValue {
     Text(String),
     Length(Length),
     GridLengths(Vec<GridLength>),
+    Color(Color),
     Thickness(Thickness),
     Alignment(Alignment),
     Orientation(Orientation),

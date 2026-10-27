@@ -7,7 +7,7 @@ use meridian_ui_core::properties::element::VISIBILITY;
 use meridian_ui_core::properties::interaction::{FOCUSABLE, IS_HIT_TEST_VISIBLE};
 use meridian_ui_core::{
     ElementKind, FocusDirection, InputEvent, InputOutcome, Key, Modifiers, NodeId, Point,
-    PointerButton, UiError, UiEvent, UiEventKind, UiTree,
+    PointerButton, UiError, UiEvent, UiEventKind, UiEventTag, UiTree,
 };
 use support::{block, layout};
 
@@ -281,4 +281,28 @@ fn modifiers_combine() {
     assert!(both.contains(Modifiers::SHIFT) && both.contains(Modifiers::CONTROL));
     assert!(!both.contains(Modifiers::ALT));
     assert!(Modifiers::NONE.contains(Modifiers::NONE));
+}
+
+#[test]
+fn event_tags_round_trip_through_their_attribute_names() {
+    for tag in UiEventTag::ALL {
+        assert_eq!(UiEventTag::from_attribute(tag.attribute()), Some(tag));
+    }
+    assert_eq!(UiEventTag::from_attribute("clik"), None);
+}
+
+#[test]
+fn only_targeted_events_stay_on_their_target() {
+    assert!(UiEventTag::Click.bubbles());
+    assert!(UiEventTag::KeyPressed.bubbles());
+    assert!(!UiEventTag::PointerEntered.bubbles());
+    assert!(!UiEventTag::FocusLost.bubbles());
+    assert_eq!(UiEventKind::Text(String::new()).tag(), UiEventTag::Text);
+    assert_eq!(
+        UiEventKind::Click {
+            button: PointerButton::Primary
+        }
+        .tag(),
+        UiEventTag::Click
+    );
 }

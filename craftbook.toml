@@ -156,6 +156,11 @@ layer = "infra"
 context = "ui"
 
 [[crate]]
+name = "meridian-ui-render"
+layer = "infra"
+context = "ui"
+
+[[crate]]
 name = "meridian-scene"
 layer = "infra"
 context = "data"
@@ -281,6 +286,13 @@ reason = "process logger: the one allowed global (ch. 4 §4.7); its tokio file I
 [[context_edge]]
 from = "editor"
 to = "data"
+relation = "customer-supplier"
+
+# ui-render reads the UI tree and writes graphics-core's Scene2d: ui is the
+# customer, rendering publishes the vocabulary (ADR 021).
+[[context_edge]]
+from = "ui"
+to = "rendering"
 relation = "customer-supplier"
 
 [[context_edge]]

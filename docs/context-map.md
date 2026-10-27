@@ -26,7 +26,7 @@ two layers today is listed under the one it is moving to; Craftbook's
 | rendering | domain + adapter | `graphics-core` (domain), `graphics-driver` (infra) | scenes, cameras, lights, materials, render graph, frame submission |
 | physics | domain + adapters | `physics-core` (domain, perf), `physics-compute` (infra), `physics-driver` (infra, to be deleted) | rigid bodies, colliders, contacts, solver, integrator, soft bodies |
 | audio | domain + adapter | `audio-core` (domain), `audio-driver` (infra) | listener, emitters, speakers, mixer, DSP graph |
-| ui | domain + adapter | `ui-core` (domain), `mel-build` (infra: build-time `.mel` generator) | element tree, typed properties, layout, hit testing, generated bindings |
+| ui | domain + adapter | `ui-core` (domain), `mel-build` (infra: build-time `.mel` generator), `ui-render` (infra: adapter from the UI tree to `graphics-core::Scene2d`) | element tree, typed properties, layout, hit testing, generated bindings |
 | data | infrastructure | `scene` (infra: Substrate Data scene documents) | scene document schema and migration |
 | editor | infrastructure | `editor-protocol`, `editor-host`, `editor-tcp` (infra) | host/editor wire messages, versions, ids; the host's session, ports and loopback TCP adapter |
 | runtime | application + interface | `engine-core` (app), `task-core` (infra), `sdk` (interface: composition root), `examples` (interface) | frame stages, scheduler, events, job graph |
@@ -52,6 +52,7 @@ dependencies need one of these:
 | audio → platform | customer–supplier | capability report |
 | physics → platform | customer–supplier | capability report (`physics-driver`) |
 | runtime → physics, audio, rendering, platform, assets, compute | customer–supplier | each context's published API, called by runtime use cases |
+| ui → rendering | customer–supplier | `ui-render` extracts the UI tree into `graphics-core::Scene2d` (ADR 021) |
 | editor → data | customer–supplier | the protocol carries scene documents and entity refs |
 | scene-markup → runtime | anticorruption layer | markup tags translated into runtime commands |
 
