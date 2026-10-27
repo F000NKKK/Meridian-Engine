@@ -1,10 +1,8 @@
 //! Tests of this module.
 
-use meridian_gac_core::mat4_mul;
-use meridian_gac_core::{Motor3, Projection, Vec3};
+use meridian_gac_core::{Aabb, Motor3, Projection, Sphere, Vec3, mat4_mul};
 
 use super::*;
-use meridian_gac_core::{Aabb, Sphere};
 
 fn transform_via_matrix(m: [[f32; 4]; 4], p: Vec3) -> Vec3 {
     Vec3::new(

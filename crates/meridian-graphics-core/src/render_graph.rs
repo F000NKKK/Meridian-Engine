@@ -1,9 +1,8 @@
 //! The pass graph and its execution order.
 
-use crate::GraphResourceId;
-use crate::RenderGraphError;
-use crate::RenderPass;
 use std::collections::{HashMap, VecDeque};
+
+use crate::{GraphResourceId, RenderGraphError, RenderPass};
 
 /// An automatically-ordered set of render passes for one frame. Passes
 /// declare resource reads/writes ([`RenderPass::reading`](crate::RenderPass::reading)/

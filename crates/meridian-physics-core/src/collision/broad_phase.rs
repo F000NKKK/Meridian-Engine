@@ -1,12 +1,10 @@
 //! Broad phase: candidate pairs from overlapping bounds.
 
-use super::ColliderShape;
-use super::axis_x;
-use super::axis_y;
-use super::axis_z;
-use crate::dynamics::RigidBody;
 use meridian_gac_core::volume::Aabb;
 use meridian_gac_core::{GaFlavor, Shape, VectorLike};
+
+use super::{ColliderShape, axis_x, axis_y, axis_z};
+use crate::dynamics::RigidBody;
 
 /// Computes `body`'s world-space AABB — a free function (rather than a
 /// method) purely because it's called through `.map(aabb_of)` below;

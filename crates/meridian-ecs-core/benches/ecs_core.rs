@@ -1,8 +1,9 @@
 //! Criterion benches for entity lifecycle, component migration and queries.
 
+use std::hint::black_box;
+
 use criterion::{Criterion, criterion_group, criterion_main};
 use meridian_ecs_core::{Component, World};
-use std::hint::black_box;
 
 struct Position(f32);
 impl Component for Position {}
@@ -32,5 +33,22 @@ fn query_positions(c: &mut Criterion) {
     });
 }
 
-criterion_group!(benches, spawn_with_components, query_positions);
+fn query_many_positions_velocities(c: &mut Criterion) {
+    let mut world = populated_world(10_000);
+    c.bench_function("query_many_mut_position_velocity_10000", |b| {
+        b.iter(|| {
+            world
+                .query_many_mut::<(&mut Position, &Velocity)>()
+                .map(|(_, (p, _))| p.0)
+                .sum::<f32>()
+        });
+    });
+}
+
+criterion_group!(
+    benches,
+    spawn_with_components,
+    query_positions,
+    query_many_positions_velocities
+);
 criterion_main!(benches);

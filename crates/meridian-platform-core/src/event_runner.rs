@@ -1,9 +1,10 @@
 //! The `winit` application handler behind [`run_windowed_app`](crate::run_windowed_app).
 
+use winit::event::{ElementState, WindowEvent};
+
 use crate::input::InputState;
 use crate::key_map::{keycode_from_winit, mouse_button_from_winit};
 use crate::window::{AppHandler, Window, WindowError};
-use winit::event::{ElementState, WindowEvent};
 
 /// Drives an [`AppHandler`] from `winit`'s callbacks, translating events
 /// into this crate's input vocabulary.

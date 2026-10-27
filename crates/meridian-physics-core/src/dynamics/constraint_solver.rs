@@ -1,8 +1,9 @@
 //! Sequential-impulse contact solver.
 
+use meridian_gac_core::{BivectorLike, GaFlavor, MotorLike, ScalarLike, VectorLike};
+
 use super::RigidBody;
 use crate::collision::Contact;
-use meridian_gac_core::{BivectorLike, GaFlavor, MotorLike, ScalarLike, VectorLike};
 
 /// Resolves contacts into corrective linear *and* angular impulses
 /// (conserving momentum) plus a small positional correction so resting

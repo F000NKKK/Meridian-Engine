@@ -4,8 +4,7 @@ use meridian_editor_protocol::{
     FrameError, HostMessage, Request, RequestEnvelope, RequestError, RequestId, Response,
     read_message, write_message,
 };
-use substrate_data::Value;
-use substrate_data::{Code, Problem};
+use substrate_data::{Code, Problem, Value};
 
 use crate::samples;
 

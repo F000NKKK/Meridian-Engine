@@ -1,8 +1,6 @@
 //! Wavefront OBJ text to a mesh.
 
-use crate::DecodeError;
-use crate::Decoder;
-use crate::MeshAsset;
+use crate::{DecodeError, Decoder, MeshAsset};
 
 /// Decodes a minimal Wavefront OBJ: `v x y z` vertex lines and `f a b c`
 /// triangle face lines (1-indexed; `a/b/c` texture/normal index suffixes

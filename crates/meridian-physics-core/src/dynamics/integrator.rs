@@ -1,7 +1,8 @@
 //! Semi-implicit Euler integration of rigid bodies.
 
-use super::RigidBody;
 use meridian_gac_core::{BivectorLike, GaFlavor, MotorLike, ScalarLike, VectorLike};
+
+use super::RigidBody;
 
 /// Advances rigid body velocity/angular velocity and position/orientation
 /// by one timestep (semi-implicit Euler: velocity is updated by gravity

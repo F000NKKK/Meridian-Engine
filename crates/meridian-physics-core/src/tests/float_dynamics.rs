@@ -1,10 +1,11 @@
 //! Float-flavor tests of the dynamics engine: solver, integrator, rigid-body inertia.
 
+use core::f32::consts::PI;
+
 use meridian_gac_core::{Bivector3, Motor3, Vec3};
 
 use super::float_fixtures::{cuboid, sphere};
 use crate::float::*;
-use core::f32::consts::PI;
 
 #[test]
 fn solver_separates_bodies_moving_toward_each_other() {

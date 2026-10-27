@@ -2,13 +2,12 @@
 
 use core::ops::{Add, Mul, Neg, Sub};
 
-use meridian_numeric_core::Scalar;
+use meridian_numeric_core::{Fixed, Scalar};
 
 use super::fixed::FixedVec3;
 use crate::flavor::VectorLike;
 use crate::flavor::float::FloatFlavor;
 use crate::volume::Shape;
-use meridian_numeric_core::Fixed;
 
 /// A plain 3D Euclidean vector — the ergonomic type most call sites use
 /// (points, directions, axes, translations); [`Multivector`]/[`Motor3`]

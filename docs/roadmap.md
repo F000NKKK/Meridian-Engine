@@ -47,9 +47,9 @@ Steps 4-6 are real and tested:
   lifetime, per rule 8).
 - `meridian-ecs-core` — a real archetype `World`: type-erased SoA columns
   (checked `downcast`, no `unsafe`), archetype migration on `insert`/
-  `remove`, single-component `Query`/`QueryMut` (multi-component queries
-  deferred — see the crate's module doc for why that's a harder,
-  `unsafe`-adjacent problem, not built speculatively).
+  `remove`, single-component `Query`/`QueryMut`, and two-to-four-component
+  `World::query_many`/`query_many_mut` (safe: `HashMap::get_disjoint_mut`
+  hands out the disjoint columns, see docs/ecs-design.md).
 - `meridian-compute-driver`/`meridian-compute-runtime`/`meridian-gac-compute`
   — a real CPU-parallel dispatch pipeline (`std::thread::scope`, no
   `unsafe`), with `MotorTransformKernel`/`MotorComposeKernel` batching
@@ -660,8 +660,8 @@ Everything above proves the engine works end-to-end for a small scene
 (a few dozen renderables, a handful of rigid bodies). A voxel-world game
 (Minecraft-like) or a large-factory simulation (Satisfactory-like) needs
 real capacity in several places that a small demo never exercises.
-Ordered roughly by "blocks everything else" first; item 4 is done, the
-rest are not started.
+Ordered roughly by "blocks everything else" first; items 2 and 4 are done,
+the rest are not started.
 
 1. **Per-instance vertex rebaking, every frame, is the sharpest wall.**
    `graphics-core::submission::draw_buffers` reuploads a fresh
@@ -681,15 +681,11 @@ rest are not started.
      of thousands. `graphics-driver`'s pipeline/bind-group primitives
      don't have an instance-buffer path today; this is real driver-layer
      work, not just a `graphics-core` change.
-2. **`ecs-core` has no multi-component query.** `World::query::<T>`
-   is single-component only (see that crate's own module doc: multi-
-   component queries were deferred as "a harder, `unsafe`-adjacent
-   problem, not built speculatively"). Both target games need it
-   immediately — "every entity with `Conveyor` *and* `ItemSlot` *and*
-   `Position`" (Satisfactory), "every entity with `Inventory` *and*
-   `Position` *and* `BlockType`" (Minecraft) — game logic without it
-   means bypassing the ECS entirely for anything non-trivial, which
-   defeats the point of having one.
+2. **Done: `ecs-core` multi-component queries.** `World::query_many`
+   and `query_many_mut` take tuples of two to four `&T`/`&mut T`
+   ("every entity with `Conveyor` *and* `ItemSlot` *and* `Position`").
+   Not built yet: `Option<&T>`/`Without<T>` filters, parallel iteration,
+   and change detection.
 3. **`physics-core::BroadPhase` is pairwise candidate generation**
    (`find_candidate_pairs`), fine for the dozens of dynamic bodies the
    examples exercise, not for thousands of mostly-static colliders (a

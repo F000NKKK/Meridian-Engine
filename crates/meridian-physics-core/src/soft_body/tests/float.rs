@@ -1,9 +1,7 @@
 //! Tests of the float-flavor soft body.
 
-use meridian_gac_core::Vec3;
 use meridian_gac_core::volume::Plane;
-
-use meridian_gac_core::FloatFlavor;
+use meridian_gac_core::{FloatFlavor, Vec3};
 
 use crate::soft_body::float::*;
 

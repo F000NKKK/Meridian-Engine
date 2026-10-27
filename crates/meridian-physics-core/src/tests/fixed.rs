@@ -1,9 +1,9 @@
 //! Fixed-point-flavor tests: parity with the float path and bit-reproducibility.
 
-use crate::fixed::*;
-use meridian_gac_core::FixedMotor3;
-use meridian_gac_core::FixedVec3;
+use meridian_gac_core::{FixedMotor3, FixedVec3};
 use meridian_numeric_core::Fixed;
+
+use crate::fixed::*;
 
 fn sphere(position: FixedVec3, velocity: FixedVec3, mass: f64, radius: f64) -> RigidBody {
     RigidBody {

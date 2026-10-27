@@ -46,17 +46,26 @@ pub mod volume;
 #[cfg(test)]
 mod tests;
 
-pub use bivector::{fixed::*, float::*};
+pub use bivector::fixed::*;
+pub use bivector::float::*;
 pub use blade::Blade;
 #[cfg(feature = "data")]
 pub use data::MotorForm;
 pub use flavor::fixed::FixedFlavor;
 pub use flavor::float::FloatFlavor;
 pub use flavor::{BivectorLike, GaFlavor, MotorLike, RotorLike, ScalarLike, VectorLike};
-pub use mesh::{Face, fixed::*, float::*};
-pub use motor::{fixed::*, float::*};
-pub use multivector::{fixed::*, float::*};
+pub use mesh::Face;
+pub use mesh::fixed::*;
+pub use mesh::float::*;
+pub use motor::fixed::*;
+pub use motor::float::*;
+pub use multivector::fixed::*;
+pub use multivector::float::*;
 pub use projection::float::*;
-pub use rotor::{fixed::*, float::*};
-pub use vector::{fixed::*, float::*};
-pub use volume::{Shape, fixed::*, float::*};
+pub use rotor::fixed::*;
+pub use rotor::float::*;
+pub use vector::fixed::*;
+pub use vector::float::*;
+pub use volume::Shape;
+pub use volume::fixed::*;
+pub use volume::float::*;

@@ -51,9 +51,10 @@ impl Clock {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::thread::sleep;
     use std::time::Duration;
+
+    use super::*;
     #[test]
     fn clock_delta_and_total_advance_monotonically() {
         let mut clock = Clock::new();

@@ -1,10 +1,11 @@
 //! Float-flavor tests of the collision engine: broad phase and narrow phase.
 
+use core::f32::consts::PI;
+
 use meridian_gac_core::{Motor3, Vec3};
 
 use super::float_fixtures::{assert_vec3_approx, cuboid, sphere};
 use crate::float::*;
-use core::f32::consts::PI;
 
 #[test]
 fn aabb_overlap_basic_cases() {

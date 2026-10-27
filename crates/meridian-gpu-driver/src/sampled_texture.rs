@@ -1,7 +1,6 @@
 //! A texture paired with the sampler that reads it.
 
-use crate::Sampler;
-use crate::Texture;
+use crate::{Sampler, Texture};
 
 /// A texture together with the sampler a shader reads it through.
 #[derive(Debug, Clone, Copy)]

@@ -1,8 +1,9 @@
 //! Composes motor pairs on the GPU.
 
+use std::sync::Mutex;
+
 use meridian_compute_runtime::{ComputeContext, ComputeKernel, DispatchSize};
 use meridian_gac_core::Motor3;
-use std::sync::Mutex;
 
 /// Batch-composes independent `(child, parent)` pairs — `results[i] =
 /// pairs[i].0.compose(pairs[i].1)` — as one dispatch. Unlike

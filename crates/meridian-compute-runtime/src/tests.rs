@@ -2,9 +2,9 @@
 
 use std::ops::Range;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use super::*;
-use std::sync::atomic::{AtomicUsize, Ordering};
 
 struct CountingKernel<'a> {
     counter: &'a AtomicUsize,

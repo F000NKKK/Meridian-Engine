@@ -110,11 +110,12 @@ pub fn build_adjacency<F: GaFlavor>(body: &SoftBody<F>) -> Adjacency<F> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use meridian_gac_core::FloatFlavor;
     use meridian_physics_core::soft_body::float::{
         SoftBodyMaterial, SpringTuning, icosphere_soft_body,
     };
+
+    use super::*;
 
     #[test]
     fn every_spring_produces_exactly_two_half_edges() {

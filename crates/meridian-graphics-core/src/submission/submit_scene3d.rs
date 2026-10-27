@@ -1,10 +1,9 @@
 //! Records and submits one 3-D scene.
 
-use super::PreparedScene;
-use super::SceneRenderer;
-use super::ViewUniforms;
-use crate::scene::Scene3d;
 use meridian_graphics_driver::{Device, RenderPass as DriverRenderPass};
+
+use super::{PreparedScene, SceneRenderer, ViewUniforms};
+use crate::scene::Scene3d;
 
 /// The main-pass half of a `Scene3d` view's per-frame path: writes the
 /// camera/shadow/lighting uniform and records the draws — call after

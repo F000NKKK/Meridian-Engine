@@ -3,9 +3,10 @@
 //! spring's current length) is exact and deterministic on the CPU, so this
 //! needed nothing beyond aliasing the generic engine.
 
-use super::ball::{self, SoftBodyMaterial as GenericMaterial};
 use meridian_gac_core::{FixedFlavor, FixedVec3};
 use meridian_numeric_core::Fixed;
+
+use super::ball::{self, SoftBodyMaterial as GenericMaterial};
 
 /// A spring of the soft body, in this flavor.
 pub type FixedSpring = super::spring::Spring<FixedFlavor>;

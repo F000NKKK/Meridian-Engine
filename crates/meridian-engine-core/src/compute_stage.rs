@@ -1,8 +1,8 @@
 //! A stage that dispatches one compute kernel.
 
-use crate::Stage;
-use crate::StageContext;
 use meridian_compute_runtime::{ComputeKernel, ComputeScheduler, DispatchSize};
+
+use crate::{Stage, StageContext};
 
 /// Built-in convenience stage wrapping an arbitrary
 /// `compute-runtime::ComputeKernel` — the concrete answer to "how does a

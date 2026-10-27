@@ -1,16 +1,14 @@
 //! The world: entities and their archetype storage.
 
-use crate::AnyColumn;
-use crate::Archetype;
-use crate::Column;
-use crate::Component;
-use crate::Entity;
-use crate::EntityLocation;
-use crate::Query;
-use crate::QueryMut;
-use meridian_memory_core::ResourcePool;
 use std::any::TypeId;
 use std::collections::HashMap;
+
+use meridian_memory_core::ResourcePool;
+
+use crate::{
+    AnyColumn, Archetype, Column, Component, Entity, EntityLocation, Query, QueryMany,
+    QueryManyMut, QueryMut, ReadSelection, Selection,
+};
 
 /// Owns entity allocation, every archetype, and their `SoA` storage. Not a
 /// global singleton — the application creates and owns a `World` like any
@@ -299,5 +297,24 @@ impl World {
         QueryMut {
             inner: Box::new(inner),
         }
+    }
+
+    /// Iterates `(Entity, (&A, &B, ..))` for every entity that has all the
+    /// components in the tuple `Q` (two to four `&T` elements).
+    #[must_use]
+    pub fn query_many<Q: ReadSelection>(&self) -> QueryMany<'_, Q> {
+        QueryMany::new(self.archetypes.iter())
+    }
+
+    /// Iterates `(Entity, (&A, &mut B, ..))` for every entity that has all
+    /// the components in the tuple `Q` (two to four `&T` / `&mut T`
+    /// elements).
+    ///
+    /// # Panics
+    ///
+    /// If `Q` names one component type twice, since `(&mut T, &T)` would
+    /// alias the same column.
+    pub fn query_many_mut<Q: Selection>(&mut self) -> QueryManyMut<'_, Q> {
+        QueryManyMut::new(self.archetypes.iter_mut())
     }
 }

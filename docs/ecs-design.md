@@ -26,14 +26,24 @@ rather than an array of `(Transform, Velocity)` structs. This is what makes
 a `Query<Transform>`/`QueryMut<Velocity>` a tight, SIMD-friendly,
 cache-friendly loop instead of a pointer-chasing walk.
 
-**`Query`/`QueryMut` iterate a single component type today, not a
-tuple.** A hypothetical `Query<(&Transform, &mut Velocity)>` needs to
-prove to the borrow checker that two different columns don't alias — a
-genuinely harder, `unsafe`-adjacent problem, deferred until a real
-system needs it rather than built speculatively (see the crate's own
-module doc). Existing consumers (e.g. `graphics-core::extract_scene3d`)
-join multiple single-component queries themselves — one `Query`/lookup
-per component type — rather than this crate offering a combined one.
+**Multi-component queries are `World::query_many` / `query_many_mut`.**
+They take a tuple of two to four `&T` / `&mut T` elements and yield
+`(Entity, (&A, &mut B, ..))` for every entity that has all of them:
+
+```rust
+for (_, (position, velocity)) in world.query_many_mut::<(&mut Position, &Velocity)>() {
+    position.0 += velocity.0;
+}
+```
+
+No `unsafe`. An archetype keeps its columns in a `HashMap`, and
+`HashMap::get_disjoint_mut` returns several `&mut` columns after checking
+their keys differ, so the borrow checker is satisfied by the standard
+library, not by the crate. A tuple that names one component twice
+(`(&mut T, &T)`) would alias a column, so `query_many_mut` panics on it
+before iterating; `query_many` (shared `&World`, `&T` elements only) allows
+it. `Query`/`QueryMut` stay for the single-component case. Not built yet:
+`Option<&T>` / `Without<T>` filters and parallel iteration.
 
 ## What this crate is not
 

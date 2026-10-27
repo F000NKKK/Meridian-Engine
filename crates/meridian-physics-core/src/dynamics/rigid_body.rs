@@ -1,9 +1,9 @@
 //! A rigid body: frame, motion state and collider.
 
-use crate::collision::ColliderShape;
-use crate::collision::aabb_of;
 use meridian_gac_core::volume::{Aabb, Obb};
 use meridian_gac_core::{BivectorLike, GaFlavor, MotorLike, ScalarLike, VectorLike};
+
+use crate::collision::{ColliderShape, aabb_of};
 
 /// A simulated rigid body: spatial frame (shared with every other
 /// subsystem via the GAC) + linear and angular state. `mass <= 0` means

@@ -1,7 +1,8 @@
 //! [`SceneEntity`]: one entity of a scene, as its document describes it.
 
-use crate::{DisplayName, EntityKey, KeptComponent, PrefabPath};
 use meridian_ecs_core::Entity;
+
+use crate::{DisplayName, EntityKey, KeptComponent, PrefabPath};
 
 /// One entity of a loaded (or to-be-saved) scene: its document key, its
 /// runtime handle, and what the document says of it besides components.

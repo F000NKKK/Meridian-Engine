@@ -4,13 +4,13 @@ use meridian_compute_runtime::ComputeContext;
 use meridian_gac_core::volume::Plane;
 use meridian_gac_core::{FixedFlavor, FixedVec3};
 use meridian_numeric_core::Fixed;
-use meridian_physics_core::soft_body::fixed::FixedSoftBody;
+use meridian_physics_core::soft_body::fixed::{
+    FixedSoftBody, FixedSoftBodyIntegrator, FixedSoftBodyMaterial, FixedSpringTuning,
+    fixed_icosphere_soft_body,
+};
 
 use crate::soft_body::csr::build_adjacency;
 use crate::soft_body::fixed::FixedSoftBodyGpuKernel;
-use meridian_physics_core::soft_body::fixed::{
-    FixedSoftBodyIntegrator, FixedSoftBodyMaterial, FixedSpringTuning, fixed_icosphere_soft_body,
-};
 
 fn fv3(x: f64, y: f64, z: f64) -> FixedVec3 {
     FixedVec3::new(Fixed::from_num(x), Fixed::from_num(y), Fixed::from_num(z))

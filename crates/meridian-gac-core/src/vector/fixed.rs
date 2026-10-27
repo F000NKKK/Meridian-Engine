@@ -6,8 +6,7 @@ use meridian_numeric_core::{Fixed, Scalar};
 
 use super::float::Vec3;
 use crate::flavor::VectorLike;
-use crate::flavor::fixed::FIXED_EPSILON;
-use crate::flavor::fixed::FixedFlavor;
+use crate::flavor::fixed::{FIXED_EPSILON, FixedFlavor};
 use crate::volume::Shape;
 
 #[derive(Debug, Clone, Copy, PartialEq, Default)]

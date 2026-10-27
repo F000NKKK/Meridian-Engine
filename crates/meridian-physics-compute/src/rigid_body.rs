@@ -105,10 +105,10 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use meridian_gac_core::FloatFlavor;
-    use meridian_gac_core::{Motor3, Vec3};
+    use meridian_gac_core::{FloatFlavor, Motor3, Vec3};
     use meridian_physics_core::collision::ColliderShape;
+
+    use super::*;
 
     fn falling_body(mass: f32) -> RigidBody<FloatFlavor> {
         RigidBody {

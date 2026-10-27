@@ -1,30 +1,18 @@
 //! Pipelines and state that render a 3-D scene.
 
-use super::DrawBuffers;
-use super::DrawKind;
-use super::DrawRequest;
-use super::MAX_LIGHTS;
-use super::PreparedScene;
-use super::SceneAssets;
-use super::ShadowDepthPass;
-use super::ShadowLight;
-use super::TEXTURED_SHADER_WGSL;
-use super::UNLIT_SHADER_WGSL;
-use super::ViewUniforms;
-use super::bake_draw_buffers;
-use super::colored_vertex_layout;
-use super::directional_shadow_camera;
-use super::lit_shader_wgsl;
-use super::lit_textured_shader_wgsl;
-use super::lit_uniform_bytes;
-use super::mat4_to_bytes;
-use super::textured_vertex_layout;
-use crate::scene::{Light, Renderable3d, Scene3d};
 use meridian_gac_core::Vec3;
 use meridian_graphics_driver::{
     BindGroup, Buffer, BufferUsage, CommandBuffer, Device, RenderPass as DriverRenderPass,
     RenderPipeline, Sampler, ShaderStages, Surface, Texture, VertexLayout,
 };
+
+use super::{
+    DrawBuffers, DrawKind, DrawRequest, MAX_LIGHTS, PreparedScene, SceneAssets, ShadowDepthPass,
+    ShadowLight, TEXTURED_SHADER_WGSL, UNLIT_SHADER_WGSL, ViewUniforms, bake_draw_buffers,
+    colored_vertex_layout, directional_shadow_camera, lit_shader_wgsl, lit_textured_shader_wgsl,
+    lit_uniform_bytes, mat4_to_bytes, textured_vertex_layout,
+};
+use crate::scene::{Light, Renderable3d, Scene3d};
 
 /// Owns all four main pipelines (colored/textured × lit/unlit) plus the
 /// the shared view/lighting uniform, and the sampler for rendering a

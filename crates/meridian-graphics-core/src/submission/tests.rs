@@ -1,9 +1,10 @@
 //! Tests of this module.
 
+use meridian_gac_core::{Motor3, Vec3};
+
 use super::*;
 use crate::Camera;
 use crate::scene::{Light, Material};
-use meridian_gac_core::{Motor3, Vec3};
 
 fn triangle() -> MeshSource {
     MeshSource {

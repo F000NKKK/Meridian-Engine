@@ -246,10 +246,10 @@ fn with_pair_as_slice<F: GaFlavor>(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use meridian_gac_core::FloatFlavor;
-    use meridian_gac_core::{Motor3, Vec3};
+    use meridian_gac_core::{FloatFlavor, Motor3, Vec3};
     use meridian_physics_core::collision::{BroadPhase, ColliderShape, NarrowPhase};
+
+    use super::*;
 
     fn cuboid_at(x: f32, y: f32, half: f32) -> RigidBody<FloatFlavor> {
         RigidBody {

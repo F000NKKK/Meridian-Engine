@@ -45,12 +45,6 @@ pub use color_format::ColorFormat;
 pub use command_buffer::CommandBuffer;
 pub use depth_texture::DepthTexture;
 pub use devices::*;
-pub use render_pass::RenderPass;
-pub use render_pipeline::RenderPipeline;
-pub use shader_stages::ShaderStages;
-pub use surface::Surface;
-pub use surface_frame::SurfaceFrame;
-pub use vertex::*;
 // `Buffer`/`BindGroup` are re-exported so callers that already reach
 // this crate's API (which returns/consumes them directly, e.g.
 // `create_buffer`/`create_uniform_bind_group`) never need their own
@@ -60,3 +54,9 @@ pub use vertex::*;
 pub use meridian_gpu_driver::{
     BindGroup, Buffer, BufferUsage, DeviceError, SampledTexture, Sampler, Texture,
 };
+pub use render_pass::RenderPass;
+pub use render_pipeline::RenderPipeline;
+pub use shader_stages::ShaderStages;
+pub use surface::Surface;
+pub use surface_frame::SurfaceFrame;
+pub use vertex::*;

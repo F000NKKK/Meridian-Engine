@@ -3,12 +3,11 @@
 use meridian_compute_runtime::ComputeContext;
 use meridian_gac_core::volume::Plane;
 use meridian_gac_core::{FloatFlavor, Vec3};
-use meridian_physics_core::soft_body::float::SoftBody;
+use meridian_physics_core::soft_body::float::{
+    SoftBody, SoftBodyIntegrator, SoftBodyMaterial, SpringTuning, icosphere_soft_body,
+};
 
 use crate::soft_body::float::SoftBodyGpuKernel;
-use meridian_physics_core::soft_body::float::{
-    SoftBodyIntegrator, SoftBodyMaterial, SpringTuning, icosphere_soft_body,
-};
 
 fn ground() -> Plane<FloatFlavor> {
     Plane {

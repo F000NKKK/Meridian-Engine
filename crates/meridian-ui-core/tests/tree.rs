@@ -1,7 +1,9 @@
 //! Tree structure, property storage and the change journal.
 
 use meridian_ui_core::layout::value::Length;
-use meridian_ui_core::properties::{self, element::WIDTH, grid::ROW};
+use meridian_ui_core::properties::element::WIDTH;
+use meridian_ui_core::properties::grid::ROW;
+use meridian_ui_core::properties::{self};
 use meridian_ui_core::{
     ChangeSource, ElementKind, FixedAdvanceText, PropertyValue, Size, UiError, UiTree,
     compute_layout,

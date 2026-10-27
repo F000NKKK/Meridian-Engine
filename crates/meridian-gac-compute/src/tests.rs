@@ -1,15 +1,12 @@
 //! Tests of this module.
 
-use meridian_compute_runtime::DispatchSize;
-use meridian_gac_core::FixedMotor3;
-use meridian_gac_core::Motor3;
+use std::f32::consts::PI;
+
+use meridian_compute_runtime::{ComputeScheduler, DispatchSize};
+use meridian_gac_core::{FixedMotor3, FixedRotor, FixedVec3, Motor3, Rotor, Vec3};
+use meridian_numeric_core::Fixed;
 
 use super::*;
-use meridian_compute_runtime::ComputeScheduler;
-use meridian_gac_core::{FixedRotor, FixedVec3};
-use meridian_gac_core::{Rotor, Vec3};
-use meridian_numeric_core::Fixed;
-use std::f32::consts::PI;
 
 fn approx_eq(a: Motor3, b: Motor3, p: Vec3) -> bool {
     (a.transform_point(p) - b.transform_point(p)).length() < 1e-4

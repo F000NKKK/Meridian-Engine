@@ -1,12 +1,6 @@
 //! Bind group creation on the device.
 
-use crate::BindGroup;
-use crate::Buffer;
-use crate::Device;
-use crate::RenderPipeline;
-use crate::SampledTexture;
-use crate::Sampler;
-use crate::Texture;
+use crate::{BindGroup, Buffer, Device, RenderPipeline, SampledTexture, Sampler, Texture};
 
 impl Device {
     /// Builds a bind group binding `buffer` (a uniform, as in

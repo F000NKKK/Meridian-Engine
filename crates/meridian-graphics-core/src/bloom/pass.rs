@@ -1,18 +1,15 @@
 //! Extract, blur and composite: the bloom post-process.
 
-use super::BloomConfig;
-use super::BloomInput;
-use super::BlurDirection;
-use super::blur_shader_wgsl;
-use super::composite_shader_wgsl;
+use meridian_graphics_driver::{
+    BindGroup, BufferUsage, ColorFormat, DepthTexture, Device, RenderPipeline, Sampler,
+    ShaderStages, Surface, SurfaceFrame, Texture,
+};
+
+use super::{BloomConfig, BloomInput, BlurDirection, blur_shader_wgsl, composite_shader_wgsl};
 use crate::SceneRenderer;
 use crate::submission::{
     DrawBuffers, DrawKind, EMISSIVE_EXTRACT_SHADER_WGSL, emissive_from_colored_layout,
     emissive_from_textured_layout,
-};
-use meridian_graphics_driver::{
-    BindGroup, BufferUsage, ColorFormat, DepthTexture, Device, RenderPipeline, Sampler,
-    ShaderStages, Surface, SurfaceFrame, Texture,
 };
 
 /// Every offscreen texture [`BloomPass`] creates uses this format — one

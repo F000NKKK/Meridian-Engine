@@ -344,8 +344,9 @@ pub fn cull_scene3d(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use meridian_gac_core::{Projection, Vec3};
+
+    use super::*;
 
     fn forward_frustum() -> Frustum {
         let camera = crate::Camera {

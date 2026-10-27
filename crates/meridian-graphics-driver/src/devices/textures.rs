@@ -1,10 +1,6 @@
 //! Texture and sampler creation on the device.
 
-use crate::ColorFormat;
-use crate::DepthTexture;
-use crate::Device;
-use crate::Sampler;
-use crate::Texture;
+use crate::{ColorFormat, DepthTexture, Device, Sampler, Texture};
 
 impl Device {
     /// A `Depth32Float` depth/stencil-comparable texture (full float

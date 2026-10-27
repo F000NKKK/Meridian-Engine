@@ -1,8 +1,9 @@
 //! Contact generation for spheres.
 
-use super::axis_x;
 use meridian_gac_core::volume::Obb;
 use meridian_gac_core::{GaFlavor, MotorLike, ScalarLike, VectorLike};
+
+use super::axis_x;
 
 /// Sphere-sphere exact test. `None` if not overlapping.
 pub(crate) fn sphere_vs_sphere<F: GaFlavor>(
