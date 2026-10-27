@@ -61,8 +61,9 @@ Not started; ordered by suggested priority. Items wait for an explicit task.
    depth-tested. Needs a sorted transparent pass and a no-depth overlay
    pass in the render graph.
 3. **`Scene2d` path — done (2026-10-27).** `sprites/` in
-   `graphics-core`; see graphics-design.md step 5. Follow-ups: bind-group
-   cache, scissor/clip rectangles for UI, atlas packing, glyph-atlas
+   `graphics-core`; see graphics-design.md step 5. Clip rectangles are done
+   too (`ClipSpan`/`ClipRect`, scissor per run). Follow-ups: bind-group
+   cache, atlas packing, glyph-atlas
    textures once team/ui-ux has text, composing `[Scene3d, Scene2d]` in
    `meridian-sdk`.
 4. **Per-instance data / instancing.** Vertices are baked to world space

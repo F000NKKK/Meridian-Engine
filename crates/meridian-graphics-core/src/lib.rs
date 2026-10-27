@@ -36,8 +36,8 @@ pub use scene::{
 };
 pub use shader_handle::{ShaderHandle, ShaderMarker};
 pub use sprites::{
-    PreparedSprites, SPRITE_SHADER_WGSL, SPRITE_VERTEX_BYTES, SpriteBatch, SpriteRenderer,
-    SpriteVertex, batch_scene2d,
+    ClipRect, ClipSpan, PreparedSprites, SPRITE_SHADER_WGSL, SPRITE_VERTEX_BYTES, ScissorRect,
+    SpriteBatch, SpriteRenderer, SpriteVertex, SpriteView, batch_scene2d, batch_scene2d_clipped,
 };
 pub use submission::{
     DEFAULT_SHADOW_MAP_SIZE, DrawBuffers, MAX_LIGHTS, MaterialRegistry, MeshRegistry,

@@ -5,8 +5,10 @@ use meridian_graphics_driver::{
     Surface, VertexLayout,
 };
 
-use super::prepared_sprites::SpriteRun;
-use super::{PreparedSprites, SPRITE_SHADER_WGSL, SpriteBatch, SpriteVertex};
+use super::sprite_run::SpriteRun;
+use super::{
+    PreparedSprites, SPRITE_SHADER_WGSL, ScissorRect, SpriteBatch, SpriteVertex, SpriteView,
+};
 use crate::scene::Camera2d;
 use crate::submission::TextureRegistry;
 
@@ -45,19 +47,19 @@ impl SpriteRenderer {
         }
     }
 
-    /// Uploads `batches` for drawing with `camera`. Call before opening
+    /// Uploads `batches` for drawing through `view`. Call before opening
     /// the render pass. A batch whose texture is not in `textures` (not
     /// loaded yet, or unregistered) is skipped.
     #[must_use]
     pub fn prepare(
         &self,
         device: &Device,
-        camera: Camera2d,
+        view: SpriteView,
         batches: &[SpriteBatch],
         textures: &TextureRegistry,
     ) -> PreparedSprites {
         let camera_buffer = device.create_buffer(16, BufferUsage::Uniform);
-        device.write_buffer(&camera_buffer, &camera_bytes(camera));
+        device.write_buffer(&camera_buffer, &camera_bytes(view.camera));
 
         let mut bytes = Vec::new();
         let mut runs = Vec::new();
@@ -65,6 +67,13 @@ impl SpriteRenderer {
         for batch in batches.iter().filter(|b| !b.vertices.is_empty()) {
             let Some(texture) = textures.get(batch.texture) else {
                 continue;
+            };
+            let scissor = match batch.clip {
+                Some(clip) => match clip.to_scissor(view.camera, view.viewport) {
+                    Some(rect) => Some(rect),
+                    None => continue,
+                },
+                None => None,
             };
             batch.vertices.iter().for_each(|v| v.write_to(&mut bytes));
             let count = u32::try_from(batch.vertices.len()).unwrap_or(u32::MAX);
@@ -77,12 +86,14 @@ impl SpriteRenderer {
             runs.push(SpriteRun {
                 bind_group,
                 vertices: first..first.saturating_add(count),
+                scissor,
             });
             first = first.saturating_add(count);
         }
         PreparedSprites {
             vertices: upload_vertices(device, &bytes),
             runs,
+            viewport: view.viewport,
         }
     }
 
@@ -93,10 +104,19 @@ impl SpriteRenderer {
         };
         pass.set_pipeline(&self.pipeline);
         pass.set_vertex_buffer(0, vertices);
+        let [width, height] = prepared.viewport;
         for run in &prepared.runs {
+            let scissor = run.scissor.unwrap_or(ScissorRect {
+                x: 0,
+                y: 0,
+                width,
+                height,
+            });
+            pass.set_scissor_rect(scissor.x, scissor.y, scissor.width, scissor.height);
             pass.set_bind_group(0, &run.bind_group);
             pass.draw(run.vertices.clone());
         }
+        pass.set_scissor_rect(0, 0, width, height);
     }
 }
 

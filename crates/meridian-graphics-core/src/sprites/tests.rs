@@ -8,13 +8,13 @@ use crate::scene::{Camera2d, Scene2d, Sprite};
 use crate::submission::TextureRegistry;
 
 /// The `index`th handle a fresh pool hands out: same index, same handle.
-fn texture(index: usize) -> TextureHandle {
+pub(super) fn texture(index: usize) -> TextureHandle {
     let mut pool = meridian_memory_core::ResourcePool::<()>::default();
     let handles: Vec<_> = (0..=index).map(|_| pool.insert(())).collect();
     TextureHandle::new(handles[index])
 }
 
-fn sprite(texture: TextureHandle, x: f32, y: f32, layer: i32) -> Sprite {
+pub(super) fn sprite(texture: TextureHandle, x: f32, y: f32, layer: i32) -> Sprite {
     Sprite {
         texture,
         source_rect: None,
@@ -25,7 +25,7 @@ fn sprite(texture: TextureHandle, x: f32, y: f32, layer: i32) -> Sprite {
     }
 }
 
-fn assert_close(actual: [f32; 2], expected: [f32; 2]) {
+pub(super) fn assert_close(actual: [f32; 2], expected: [f32; 2]) {
     let close = actual
         .iter()
         .zip(expected)
@@ -33,7 +33,7 @@ fn assert_close(actual: [f32; 2], expected: [f32; 2]) {
     assert!(close, "got {actual:?}, expected {expected:?}");
 }
 
-fn scene(sprites: Vec<Sprite>) -> Scene2d {
+pub(super) fn scene(sprites: Vec<Sprite>) -> Scene2d {
     Scene2d {
         camera: Camera2d::from_surface_size(100.0, 100.0),
         sprites,
@@ -192,7 +192,15 @@ async fn prepared_scene_draws_into_an_offscreen_target_without_validation_errors
         sprites: vec![tinted, sprite(white, 20.0, 20.0, 1)],
     };
     let batches = batch_scene2d(&scene);
-    let prepared = renderer.prepare(&device, scene.camera, &batches, &textures);
+    let prepared = renderer.prepare(
+        &device,
+        SpriteView {
+            camera: scene.camera,
+            viewport: [64, 64],
+        },
+        &batches,
+        &textures,
+    );
     assert_eq!(prepared.draw_calls(), 1);
 
     let mut commands = device.create_command_buffer();
