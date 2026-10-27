@@ -68,3 +68,29 @@ array, not a dynamically-sized storage buffer — keeping the uniform
 shape simple until a scene actually needs more): extra lights beyond
 the cap are dropped, logged once per [`SceneRenderer::prepare`] call
 via `meridian_foundation::log_warn!`, not silently ignored.
+
+## `sprites`
+
+The 2D path, split so the interesting half needs no GPU: `batch_scene2d`
+(cull to camera, stable sort by `layer`, merge consecutive same-texture
+sprites) is plain data in, plain data out; `SpriteRenderer` is the only
+part that touches `graphics-driver`.
+
+- **Why consecutive-only merging.** Painter's order is the contract
+  (`layer` = draw order), so batching may never move a sprite across a
+  differently-textured one. A UI that alternates textures pays one draw
+  per run; an atlas is the fix, not reordering.
+- **Why a non-indexed triangle list.** Six vertices per quad avoids the
+  `u16` index ceiling (`set_index_buffer_u16`) that a 16k-quad UI layer
+  would hit, at 50% more vertex bytes than an indexed quad.
+- **Why a per-prepare camera uniform.** `SceneRenderer` shares one
+  uniform across views (one renderer per view). The sprite renderer is
+  view-independent: each `PreparedSprites` owns its camera buffer, so two
+  `Scene2d` views in one frame cannot overwrite each other's camera.
+- **Two transforms per sprite.** The centre and the x half-axis; the y
+  half-axis is the x one turned a quarter turn, valid because a sprite
+  lives in the scene plane. `Motor3::transform_point` is the cost (see
+  `benches/sprite_batching.rs`).
+- **Premultiplied alpha.** Textures are straight RGBA8
+  (`asset-core::ImageAsset`); the fragment shader multiplies by `tint` and
+  then by alpha, and the pipeline blends `src + dst * (1 - src.a)`.

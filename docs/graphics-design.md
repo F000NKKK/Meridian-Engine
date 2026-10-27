@@ -298,7 +298,22 @@ driver.
    `Device`/`Surface` inside their own `winit` event loop today, rather
    than through `Runtime::tick` — see docs/roadmap.md's
    `Runtime`-adoption entry for the current state of that decision.
-5. `ui-core` (widgets/layout/input) and text rendering — separate,
+5. **Done.** The 2D sprite path (`sprites/`): `batch_scene2d` culls a
+   `Scene2d` to its camera, orders sprites by `layer` (stable) and merges
+   consecutive same-texture sprites into `SpriteBatch`es (CPU only, tested
+   without a GPU); `SpriteRenderer::prepare`/`draw` upload and record them
+   with a no-depth, premultiplied-alpha pipeline
+   (`Device::create_premultiplied_alpha_pipeline`). Contract: camera units
+   in, `Sprite::frame` is the quad centre (rotation about the plane normal
+   turns it), `source_rect` is normalized, `tint` is straight RGBA and the
+   shader premultiplies. Plain colored rectangles use a 1x1 white texture
+   (`TextureRegistry::upload_solid`) and carry the color in `tint`.
+   **Raw path:** `SpriteBatch`/`SpriteVertex` are public, so custom drawing
+   builds triangle lists in camera units and calls `prepare` directly,
+   never going through `Sprite`. Still open: one bind group per run per
+   frame (no cache), no scissor/clip rectangles, no sprite atlas packing,
+   and `Motor3::transform_point` (about 350 ns) dominates batching cost.
+6. `ui-core` (widgets/layout/input) and text rendering — separate,
    ADR-gated.
 
 ## GPU-driven rendering

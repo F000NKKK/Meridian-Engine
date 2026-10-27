@@ -179,7 +179,7 @@ impl Device {
 }
 
 /// The `wgpu` attributes of a vertex layout.
-fn wgpu_attributes(vertex_layout: &VertexLayout) -> Vec<wgpu::VertexAttribute> {
+pub(super) fn wgpu_attributes(vertex_layout: &VertexLayout) -> Vec<wgpu::VertexAttribute> {
     vertex_layout
         .attributes
         .iter()
