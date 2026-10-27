@@ -399,6 +399,7 @@ mod tests {
         assert_eq!(anti.process(Some(-0.321), 1), -0.321);
     }
 
+    #[cfg(feature = "hw-tests")]
     async fn device_or_skip() -> Option<AudioDevice> {
         match AudioDevice::new().await {
             Ok(device) => Some(device),
@@ -409,6 +410,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "hw-tests")]
     #[tokio::test]
     async fn device_reports_a_name() {
         let Some(device) = device_or_skip().await else {
@@ -419,6 +421,7 @@ mod tests {
         eprintln!("audio device: {name}");
     }
 
+    #[cfg(feature = "hw-tests")]
     #[tokio::test]
     async fn device_reports_supported_configs() {
         let Some(device) = device_or_skip().await else {
@@ -432,6 +435,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "hw-tests")]
     #[tokio::test]
     async fn open_and_close_stream() {
         let Some(device) = device_or_skip().await else {
@@ -443,6 +447,7 @@ mod tests {
         assert_eq!(stream.config().channels, 2);
     }
 
+    #[cfg(feature = "hw-tests")]
     #[tokio::test]
     async fn push_samples_does_not_panic() {
         let Some(device) = device_or_skip().await else {
@@ -455,6 +460,7 @@ mod tests {
         std::thread::sleep(std::time::Duration::from_millis(50));
     }
 
+    #[cfg(feature = "hw-tests")]
     #[tokio::test]
     async fn available_capacity_reflects_buffer_size() {
         let Some(device) = device_or_skip().await else {

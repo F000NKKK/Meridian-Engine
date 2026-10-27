@@ -20,12 +20,16 @@ coupling.
 Rust code here follows **Craftbook**, our engineering standard:
 https://github.com/F000NKKK/craftbook. Read its `README.md` and the relevant
 `rust/` chapter before writing or reviewing code; the short version is in
-[`.claude/rules/craftbook.md`](.claude/rules/craftbook.md). Known conflicts
-between Craftbook and this repository's docs (driver direction, the
-float/fixed file rule, `foundation`'s global log sink) are listed in
-Craftbook's `adoption/meridian-engine.md`: until the ADR that resolves one is
-accepted, keep the current rule here and do not make the gap wider. Anything
-not listed there follows Craftbook.
+[`.claude/rules/craftbook.md`](.claude/rules/craftbook.md). The conflicts
+between Craftbook and this repository's former rules are decided in
+[ADR 018](docs/adr/018-ports-in-domain-drivers-as-adapters.md) (driver
+direction) and [ADR 019](docs/adr/019-craftbook-adoption.md) (runtime hub,
+composition root, crate names, float/fixed layout, log sink, performance
+kernels); Craftbook's `adoption/meridian-engine.md` holds the migration plan.
+Code not yet migrated is tracked by baselines (`.craftcheck-baseline`,
+`.craftcheck-deps-baseline`, `.clippy-backlog`, `PENDING` in
+`scripts/check_dependency_rules.py`); a change may shrink them, never grow
+them.
 
 ## Read order
 
@@ -49,8 +53,10 @@ Markdown file.
 - Keep `gac-core` independent from `compute-runtime`.
 - Keep `compute-runtime` independent from `gac-core` and free of domain-shaped
   algorithms or buffers.
-- Keep driver crates below their domain cores; drivers do not know domain
-  objects.
+- Dependencies point inwards (ADR 018): domain and application crates own
+  the port traits they need; driver crates are adapters that implement them
+  and know only the port's types. A domain or application crate never takes
+  a new edge to a driver; the edges pending migration only shrink.
 - Keep asset loading separate from resource identity and lifetime.
 - Keep resource identity separate from resource lifetime policy.
 - Keep ECS generic and data-oriented; do not leak graphics/physics/audio domain
@@ -80,8 +86,9 @@ architecture decisions and `roadmap.md` for implementation status.
 Files: all `Cargo.toml`, new crates, public APIs that move responsibility across
 crates.
 
-Use it to reject forbidden edges, design adapter crates when needed, and run
-`./build.sh check-deps`. Never add a dependency merely to silence a compiler
+Use it to reject forbidden edges (anything pointing outwards per
+`craftbook.toml` layers), design ports and adapter crates when needed, and run
+`./build.sh check-deps` and `craftcheck deps`. Never add a dependency merely to silence a compiler
 error without checking the graph.
 
 ### GAC skill: `meridian-gac-math-keeper`
@@ -125,8 +132,9 @@ Files: `meridian-graphics-core`, `meridian-physics-core`, `meridian-audio-core`,
 corresponding drivers and design docs.
 
 Use it to keep domain algorithms in core crates and hardware/OS execution in
-driver crates. Each core may use its own driver, not another subsystem's driver.
-Compute work should go through `compute-runtime` or an adapter crate.
+driver crates. A core declares the ports it needs; its driver implements them
+(ADR 018). No core takes a new edge to any driver. Compute work goes through
+`compute-runtime` or an adapter crate.
 
 ### Engine/examples skill: `meridian-engine-integration-keeper`
 
@@ -143,8 +151,14 @@ architecture:
 
 ```sh
 ./build.sh check-deps
+./build.sh clippy-backlog
 cargo test --workspace
+python3 <craftbook>/tools/craftcheck check . --baseline .craftcheck-baseline
+python3 <craftbook>/tools/craftcheck deps . --baseline .craftcheck-deps-baseline
 ```
+
+Tests that need a real GPU or audio device are behind the `hw-tests` feature
+(`cargo test --workspace --all-features` on a machine that has them).
 
 Run package-specific tests during iteration, for example:
 
@@ -162,17 +176,18 @@ Keep changes coherent. If code and docs both need updates, commit them together.
 Use commit messages that name the affected boundary or subsystem. Do not leave
 workspace status dirty unless explicitly asked.
 
-## Float/Fixed branching: always 3 files
+## Float/Fixed branching: one directory per concept
 
-Whenever a crate's code branches for a float (`f32`/`Scalar`) flavor and a
-`Fixed` (deterministic) flavor, split it into exactly three files:
-`lib.rs` (shared/generic logic, or module wiring + re-exports), `float.rs`
-(or a domain-suffixed name like `float_ga.rs` for an existing convention),
-`fixed.rs`/`fixed_ga.rs`. Never leave float-flavored code loose in `lib.rs`
-next to a separate `fixed`/`deterministic.rs` module — the split must be
-symmetric on both sides. See `meridian-numeric-core` (`lib.rs`/`float.rs`/
-`fixed.rs`) and `meridian-gac-core` (`lib.rs`/`float_ga.rs`/`fixed_ga.rs`)
-for the pattern.
+Decided in [ADR 019](docs/adr/019-craftbook-adoption.md) D5, following
+Craftbook §1.3–1.4. When a concept has a float (`f32`/`Scalar`) flavor and a
+`Fixed` (deterministic) flavor, it is a module directory of its own:
+`rotor/mod.rs` (wiring only: `mod` and `pub use`), `rotor/float.rs`,
+`rotor/fixed.rs`, plus item-named files for logic shared by both flavors.
+The split is symmetric: never float code loose next to a `fixed` module.
+`lib.rs` is wiring only, and `generic.rs` is not a file name. Today's
+`gac-core` (`generic.rs`/`float_ga.rs`/`fixed_ga.rs`), `physics-core`,
+`physics-compute` and `soft_body` still use the old per-crate trio; wave 4
+of the Craftbook migration converts them — do not add to the old layout.
 
 **Default to generic (or thin wrappers over one generic implementation),
 not disclosed duplication.** Full duplication (writing the float and fixed

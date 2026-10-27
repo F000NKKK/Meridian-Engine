@@ -9,3 +9,6 @@ description = "Execution backend for physics: memory backend, SIMD/GPU dispatch 
 
 [dependencies]
 meridian-platform-core = { workspace = true }
+
+[lints]
+workspace = true

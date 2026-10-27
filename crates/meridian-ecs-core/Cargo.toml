@@ -10,3 +10,6 @@ description = "Archetype-based, data-oriented Entity Component System with SoA s
 [dependencies]
 meridian-memory-core = { workspace = true }
 meridian-gac-core = { workspace = true }
+
+[lints]
+workspace = true

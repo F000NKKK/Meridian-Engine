@@ -4,6 +4,24 @@ The workspace graph is a DAG on purpose. This document is the ruling
 reference when a PR (human or agent-authored) is unsure which direction a
 `use` or a `Cargo.toml` dependency is allowed to point.
 
+## Direction
+
+Dependencies point inwards ([ADR 018](adr/018-ports-in-domain-drivers-as-adapters.md),
+Craftbook ch. 7 §7.3): interface → application → domain ← infrastructure,
+and every layer may use the shared kernel. Domain and application crates own
+the port traits they need; driver and `*-compute` crates are adapters that
+depend on those crates and implement the ports. A domain or application
+crate never depends on a driver.
+
+Each crate's layer and bounded context is declared once, in
+[`craftbook.toml`](../craftbook.toml) (reading aid:
+[context-map.md](context-map.md)). `./build.sh check-deps` rejects any edge
+that points outwards unless it is listed in `PENDING` in
+`scripts/check_dependency_rules.py`, marked *migration pending* with the wave
+that inverts it. Those edges are the ADR 005 graph not yet migrated; the list
+only shrinks, and no new edge may be added to it. They are marked
+**(pending, wave N)** in ["All edges, exactly"](#all-edges-exactly).
+
 ## The graph
 
 This section is a *reading aid*, not the authoritative rule — the exact,
@@ -193,14 +211,14 @@ bottom-up.
 - `meridian-compute-driver` -> `meridian-gpu-driver`, `meridian-platform-core`
 - `meridian-audio-driver` -> `meridian-foundation`, `meridian-platform-core`
 - `meridian-physics-driver` -> `meridian-platform-core`
-- `meridian-compute-runtime` -> `meridian-compute-driver`, `meridian-memory-core`, `meridian-task-core`
+- `meridian-compute-runtime` -> `meridian-compute-driver` (pending, wave 5), `meridian-memory-core`, `meridian-task-core` (pending, wave 6)
 - `meridian-gac-compute` -> `meridian-compute-runtime`, `meridian-gac-core`, `meridian-gpu-driver`, `meridian-numeric-core`
-- `meridian-asset-core` -> `meridian-foundation`, `meridian-platform-core`
-- `meridian-graphics-core` -> `meridian-asset-core`, `meridian-compute-runtime`, `meridian-ecs-core`, `meridian-foundation`, `meridian-gac-compute`, `meridian-gac-core`, `meridian-graphics-driver`, `meridian-memory-core`, `meridian-resource-core`
-- `meridian-audio-core` -> `meridian-audio-driver`, `meridian-gac-core`, `meridian-resource-core`
-- `meridian-physics-core` -> `meridian-compute-runtime`, `meridian-ecs-core`, `meridian-gac-compute`, `meridian-gac-core`, `meridian-numeric-core`, `meridian-physics-driver`, `meridian-resource-core`
+- `meridian-asset-core` -> `meridian-foundation`, `meridian-platform-core` (pending, wave 5)
+- `meridian-graphics-core` -> `meridian-asset-core`, `meridian-compute-runtime` (pending, wave 5), `meridian-ecs-core`, `meridian-foundation`, `meridian-gac-compute` (pending, wave 5), `meridian-gac-core`, `meridian-graphics-driver` (pending, wave 5), `meridian-memory-core`, `meridian-resource-core`
+- `meridian-audio-core` -> `meridian-audio-driver` (pending, wave 5), `meridian-gac-core`, `meridian-resource-core`
+- `meridian-physics-core` -> `meridian-compute-runtime` (pending, wave 5), `meridian-ecs-core`, `meridian-gac-compute` (pending, wave 5), `meridian-gac-core`, `meridian-numeric-core`, `meridian-resource-core`
 - `meridian-physics-compute` -> `meridian-compute-runtime`, `meridian-foundation`, `meridian-gac-compute`, `meridian-gac-core`, `meridian-gpu-driver`, `meridian-numeric-core`, `meridian-physics-core`
-- `meridian-engine-core` -> `meridian-asset-core`, `meridian-audio-core`, `meridian-compute-runtime`, `meridian-ecs-core`, `meridian-foundation`, `meridian-gac-core`, `meridian-graphics-core`, `meridian-memory-core`, `meridian-physics-compute`, `meridian-physics-core`, `meridian-platform-core`, `meridian-task-core`
+- `meridian-engine-core` -> `meridian-asset-core`, `meridian-audio-core`, `meridian-compute-runtime`, `meridian-ecs-core`, `meridian-foundation`, `meridian-gac-core`, `meridian-graphics-core`, `meridian-memory-core`, `meridian-physics-compute` (pending, wave 6), `meridian-physics-core`, `meridian-platform-core` (pending, wave 6), `meridian-task-core` (pending, wave 6)
 - `meridian-dsl-core` -> `meridian-foundation`
 - `meridian-dsl-macros` -> (nothing; external `syn`/`quote`/`proc-macro-crate` only)
 - `meridian-sdk` -> `meridian-asset-core`, `meridian-audio-core`, `meridian-dsl-core`, `meridian-dsl-macros`, `meridian-engine-core`, `meridian-foundation`, `meridian-gac-core`, `meridian-graphics-core`, `meridian-graphics-driver`, `meridian-physics-core`, `meridian-platform-core`, `meridian-task-core`
@@ -210,28 +228,13 @@ bottom-up.
 frame; see that crate's own module doc for why, and docs/roadmap.md's
 `graphics-core`/`Runtime::tick` entry for the current state.
 
-**`meridian-sdk` is a second crate that depends on (nearly) every
-`*-core`, alongside `engine-core` — this is not a violation of rule 7,
-it's a deliberately different kind of edge.** Rule 7 is about *where
-cross-`*-core` coordination logic lives* (one place, so it doesn't
-accrete as ad hoc cross-dependencies between domain crates); `sdk` adds
-no coordination logic of its own — its `pipeline::PhysicsStepStage`,
-for instance, is a thin wrapper calling straight into
-`engine_core::PhysicsSubsystem::step`, not a reimplementation (CLAUDE.md's
-"don't drag another crate's logic into your own" rule). `sdk`'s reason
-for touching every `*-core` is different and additive: it's the single
-application-facing re-export surface (applications depend on `sdk`
-alone, never on the individual crates it composes — see that crate's
-own module doc) *and* the one place allowed to combine `engine-core`'s
-driver-independent orchestration with the `*-driver` crates
-`engine-core` itself can never depend on (`graphics-driver`, here, for
-windowed rendering). Both roles need the same broad reach `engine-core`
-has, for reasons rule 7 doesn't cover — this is a second, narrower
-"is allowed to know about a lot" exception, not a second unrestricted
-hub. `meridian-ecs-core`/`meridian-compute-runtime`/`meridian-memory-core`
-are conspicuously absent from `sdk`'s edge list — it doesn't reach for
-those because nothing it re-exports needs them (yet); this is not a
-blanket "sdk may depend on anything."
+**`meridian-sdk` is the composition root** (interface layer,
+[ADR 019](adr/019-craftbook-adoption.md) D3): the single application-facing
+re-export surface and the one library crate that names concrete adapters
+(`graphics-driver`, here, for windowed rendering). The interface layer may
+depend on every layer; what it may not hold is business logic. Its
+`scene`/`camera`/`render`/`dsl` logic is scheduled to move to the context
+crates it belongs to (wave 6). Applications depend on `sdk` alone.
 
 ## Rules
 
@@ -245,14 +248,23 @@ blanket "sdk may depend on anything."
    diagnostics (the unified `logging` sink and `crash_reporting` panic
    hook). Diagnostics are deliberately *not* a "global manager" in rule
    3's sense: the sink owns no engine objects and hands out no handles —
-   it appends lines, the same category as `std`'s own panic hook.
-1. **A `*-core` crate never depends on the `*-driver` crate of a *different*
-   subsystem.** `graphics-core` may depend on `graphics-driver`, never on
-   `audio-driver` or `physics-driver`.
-2. **A `*-driver` crate never depends on its own `*-core`.** Drivers are
-   hardware/OS abstractions; they know nothing about scenes, materials,
-   rigid bodies, or any other high-level concept their `*-core` builds on
-   top of them. `graphics-driver → graphics-core` is forbidden.
+   it appends lines, the same category as `std`'s own panic hook. It is
+   the one global exempted in `craftbook.toml`; its file sink and crash
+   report are I/O and move to an adapter crate, with the sink installed by
+   the composition root ([ADR 019](adr/019-craftbook-adoption.md) D7).
+1. **A domain or application crate never depends on a driver.** Drivers
+   are adapters: they depend on the crate that owns the port and implement
+   it ([ADR 018](adr/018-ports-in-domain-drivers-as-adapters.md)). Only the
+   composition root (`sdk`, examples) names a concrete driver. Today's
+   `graphics-core → graphics-driver`, `audio-core → audio-driver` and
+   `compute-runtime → compute-driver` edges are pending migration (wave 5).
+
+2. **A driver never depends on a different subsystem's driver or domain.**
+   An adapter depends on the port crate of its own context and on the
+   technology it wraps (`gpu-driver` for `wgpu`, `platform-core` for OS
+   services). It knows the port's types and nothing else of the domain:
+   scenes, materials and rigid bodies stay out of it.
+
 3. **`meridian-ecs-core` depends on nothing above `meridian-gac-core` and
    `meridian-memory-core`.** It must never depend on `engine-core`,
    `graphics-core`, `physics-core`, `audio-core`, or `asset-core`. ECS is a
@@ -287,22 +299,26 @@ blanket "sdk may depend on anything."
    (which itself sits on `meridian-foundation`), not in `gac-core`. If you
    find yourself adding a `#[cfg(target_feature = ...)]` block to
    `gac-core`, it belongs in `numeric-core` instead.
-7. **`meridian-engine-core` is the only crate allowed to depend on every
-   `*-core`.** No other crate is the "hub" — if two `*-core` crates need to
-   talk to each other outside the edges drawn above, that coordination
-   belongs in `engine-core`, not in a new cross-dependency between them.
+7. **`meridian-engine-core` is where cross-subsystem coordination lives.**
+   If two subsystems need to talk outside the edges drawn above, that
+   coordination is a use case in `engine-core`, not a new cross-dependency
+   between domain crates. It is the runtime context's application layer,
+   not a hub: per [ADR 019](adr/019-craftbook-adoption.md) D2 it stops
+   owning subsystem state (wave 6).
+
 8. **`meridian-resource-core` defines resource *identity*, not lifetime
    policy.** `Handle`, `ResourceId`, versioning, and dependency-tracking
    types live here; deciding when a resource is loaded, evicted, or
    reloaded does not. It must never define a manager type (same rule as
    asset-core, rule 4) and must depend on nothing but `memory-core`. See
    [ADR 006](adr/006-resource-core-separation.md).
-9. **`meridian-physics-driver` owns no collision algorithms.** BVH
-   construction, spatial hashing, and broad-phase structures are domain
-   logic and belong in `physics-core`, even though they sound "low-level."
-   `physics-driver` is execution only: memory backend, SIMD/GPU dispatch,
-   synchronization — the same role `compute-driver` plays for compute in
-   general. See [physics-design.md](physics-design.md).
+9. **`meridian-physics-driver` owns no collision algorithms and has no
+   dependents.** It only reports CPU capabilities; BVH construction, spatial
+   hashing and broad-phase structures are domain logic in `physics-core`
+   (see [physics-design.md](physics-design.md)). `physics-core` no longer
+   depends on it; the crate is deleted in wave 5 and its capability report
+   moves to the platform context (ADR 018).
+
 10. **`meridian-gac-core` and `meridian-compute-runtime` never depend on
     each other, in either direction.** `gac-core` stays pure geometric
     algebra (rule 6) and must never know a GPU exists; `compute-runtime`
@@ -336,9 +352,10 @@ blanket "sdk may depend on anything."
 12. **`meridian-gpu-driver` owns `wgpu` device/buffer/shader/compute-pipeline
     mechanics only — not rendering policy, not compute-dispatch
     scheduling.** It must never know what a render pass, a swapchain, a
-    `ComputeKernel`, or a scheduling threshold is; `graphics-driver` and
-    `compute-driver` (the only two crates allowed to depend on it) each
-    add their own domain-specific layer on top. See
+    `ComputeKernel`, or a scheduling threshold is. The adapters built on it
+    are the only crates allowed to depend on it: `graphics-driver`,
+    `compute-driver`, and the GPU kernel adapters `gac-compute` and
+    `physics-compute` (which name its buffer/shader/pipeline types). See
     [ADR 011](adr/011-shared-gpu-driver-crate.md).
 
 ## How to check locally
@@ -360,4 +377,5 @@ can never silently drift apart. If `cargo tree` shows an edge that
 `Cargo.toml`) or a legitimate new edge (add it to `ALLOWED` and to this
 document, in the same change).
 
-See also: [architecture.md](architecture.md), [ADR 005](adr/005-driver-core-separation.md).
+See also: [architecture.md](architecture.md), [context-map.md](context-map.md),
+[ADR 018](adr/018-ports-in-domain-drivers-as-adapters.md) (supersedes ADR 005).

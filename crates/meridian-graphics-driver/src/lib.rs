@@ -996,6 +996,7 @@ mod tests {
 
     /// Every test here needs a real adapter; some CI/sandboxed
     /// environments have none. Skip rather than fail in that case.
+    #[cfg(feature = "hw-tests")]
     async fn device_or_skip() -> Option<Device> {
         match Device::new().await {
             Ok(device) => Some(device),
@@ -1006,6 +1007,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "hw-tests")]
     #[tokio::test]
     async fn device_reports_a_nonempty_adapter_name() {
         let Some(device) = device_or_skip().await else {
@@ -1014,6 +1016,7 @@ mod tests {
         assert!(!device.adapter_name().is_empty());
     }
 
+    #[cfg(feature = "hw-tests")]
     #[tokio::test]
     async fn device_reports_gpu_capabilities_matching_adapter_name() {
         let Some(device) = device_or_skip().await else {
@@ -1026,6 +1029,7 @@ mod tests {
         assert!(device.gpu_available());
     }
 
+    #[cfg(feature = "hw-tests")]
     #[tokio::test]
     async fn buffer_write_then_read_round_trips() {
         let Some(device) = device_or_skip().await else {
@@ -1038,6 +1042,7 @@ mod tests {
         assert_eq!(read_back, data);
     }
 
+    #[cfg(feature = "hw-tests")]
     #[tokio::test]
     async fn texture_2d_upload_and_sampler_creation_do_not_panic() {
         let Some(device) = device_or_skip().await else {

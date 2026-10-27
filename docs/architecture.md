@@ -7,24 +7,32 @@ spatial model instead of each inventing its own transform representation.
 
 ## Layering
 
+The workspace follows Craftbook's domain-driven layering
+([ADR 018](adr/018-ports-in-domain-drivers-as-adapters.md),
+[ADR 019](adr/019-craftbook-adoption.md)): dependencies point inwards, and
+the domain and application crates own the ports their adapters implement.
+
 ```text
-                    Application Layer
-        (game / editor / simulation / CAD / UI framework)
-                            |
-                     meridian-engine-core
-                            |
-        +----------+-------+-------+----------+
-        |          |               |          |
-  graphics-core physics-core  audio-core  asset-core / ecs-core
-        |          |               |               |
-  graphics-driver  physics-driver  audio-driver     |
-        |          |               |               |
-        +----------+-------+-------+---------------+
-                            |
-                     platform-core
-                            |
-                     meridian-foundation
+  interface       sdk (composition root), examples
+      |
+  application     engine-core (runtime use cases), compute-runtime
+      |
+  domain          graphics-core, physics-core, audio-core, asset-core
+      ^
+  infrastructure  graphics-driver, audio-driver, compute-driver, gpu-driver,
+                  gac-compute, physics-compute, platform-core, task-core
+                  (adapters: implement the ports of the layers above)
+
+  shared kernel   foundation, numeric-core, gac-core, memory-core,
+                  resource-core, ecs-core, dsl-core  (used by every layer)
 ```
+
+That is the target. Today several domain and application crates still
+depend on their drivers (the ADR 005 direction); those edges are listed as
+*migration pending* in `scripts/check_dependency_rules.py` and in
+[dependency-rules.md](dependency-rules.md), and wave 5 of the Craftbook
+migration inverts them one subsystem at a time. Layers and contexts per
+crate: `craftbook.toml` and [context-map.md](context-map.md).
 
 `gac-core` (math) and `compute-runtime` (dispatch execution) are a second,
 parallel spine underneath `graphics-core`/`physics-core`, deliberately
@@ -101,13 +109,17 @@ There is deliberately no `AssetManager`, `ResourceManager`, or singleton
 application layer, on top of the core crates — see
 [ADR 003](adr/003-no-global-managers.md).
 
-## Driver / core split
+## Ports and adapters
 
-Every hardware-facing subsystem (graphics, audio, physics, compute) splits
-into a `*-driver` crate (hardware abstraction, no domain concepts) and a
-domain-logic crate built on top of the driver. This is what lets a
-`vulkan-driver` or `dx12-driver` be added later without touching
-`graphics-core` at all. See [ADR 005](adr/005-driver-core-separation.md).
+Every hardware-facing subsystem (graphics, audio, compute) keeps a domain
+crate and a driver crate, but the driver is an adapter: the domain (or its
+application crate) declares the port it needs — a mesh store, a frame
+recorder, an audio sink, a compute device — and the driver implements it.
+A second backend is one more adapter implementing the same ports, with no
+change to the domain. See
+[ADR 018](adr/018-ports-in-domain-drivers-as-adapters.md), which supersedes
+[ADR 005](adr/005-driver-core-separation.md)'s `*-core → *-driver`
+direction; until wave 5 the old edges remain as pending migration.
 `compute` is named `compute-runtime` rather than `compute-core`: unlike
 graphics/audio/physics, it has no domain concepts of its own (no algorithm
 lives in it) — it's dispatch infrastructure that domain crates

@@ -20,12 +20,16 @@ prefers stable boundaries over quick coupling.
 Rust code here follows **Craftbook**, our engineering standard:
 https://github.com/F000NKKK/craftbook. Read its `README.md` and the relevant
 `rust/` chapter before writing or reviewing code; the short version is in
-[`.claude/rules/craftbook.md`](.claude/rules/craftbook.md). Known conflicts
-between Craftbook and this repository's docs (driver direction, the
-float/fixed file rule, `foundation`'s global log sink) are listed in
-Craftbook's `adoption/meridian-engine.md`: until the ADR that resolves one is
-accepted, keep the current rule here and do not make the gap wider. Anything
-not listed there follows Craftbook.
+[`.claude/rules/craftbook.md`](.claude/rules/craftbook.md). The conflicts
+between Craftbook and this repository's former rules are decided in
+[ADR 018](docs/adr/018-ports-in-domain-drivers-as-adapters.md) (driver
+direction) and [ADR 019](docs/adr/019-craftbook-adoption.md) (runtime hub,
+composition root, crate names, float/fixed layout, log sink, performance
+kernels); Craftbook's `adoption/meridian-engine.md` holds the migration plan.
+Code not yet migrated is tracked by baselines (`.craftcheck-baseline`,
+`.craftcheck-deps-baseline`, `.clippy-backlog`, `PENDING` in
+`scripts/check_dependency_rules.py`); a change may shrink them, never grow
+them.
 
 ## Source of truth order
 
@@ -55,7 +59,8 @@ Before changing code, identify which documents govern it:
   read `docs/memory-model.md`, ADR 002, ADR 003 and ADR 006.
 - ECS world/archetypes/components/queries: read `docs/ecs-design.md` and ADR 004.
 - Drivers, GPU, audio device, physics backend, platform/hardware boundaries:
-  read ADR 005 and the relevant subsystem design doc.
+  read ADR 018 (ports and adapters; supersedes ADR 005) and the relevant
+  subsystem design doc.
 - Compute dispatch, CPU-SIMD/GPU kernels, batched transforms: read ADR 007,
   `docs/threading-model.md`, and `docs/dependency-rules.md` rules 5, 10 and 11.
 - Any `async fn`, blocking I/O, or a new `tokio` dependency: read ADR 009.
@@ -70,8 +75,11 @@ Documentation is not optional bookkeeping; it is part of the architecture.
 Treat `docs/dependency-rules.md` as enforceable. In particular:
 
 - Keep the workspace graph a DAG.
-- Do not make a `*-driver` depend on its matching `*-core`.
-- Do not make a `*-core` depend on another subsystem's `*-driver`.
+- Dependencies point inwards (ADR 018): a `*-core` (domain) or application
+  crate never takes a new edge to a `*-driver`; drivers are adapters that
+  depend on the crate owning the port and implement it. Edges listed as
+  pending migration in `scripts/check_dependency_rules.py` only shrink.
+- A driver never depends on another subsystem's driver or domain.
 - Keep `meridian-gac-core` pure math; no GPU knowledge or compute-runtime edge.
 - Keep `meridian-compute-runtime` generic; no `Motor3`, particles, rigid bodies
   or other domain-shaped algorithms/buffers in it.
@@ -121,7 +129,8 @@ Workflow:
 
 1. Inspect the dependency edge before adding it.
 2. Confirm the edge is permitted by `docs/dependency-rules.md`.
-3. Prefer adding a small adapter crate over reversing a dependency direction.
+3. Point the edge inwards: the inner crate declares a port trait, the outer
+   (adapter) crate implements it. Never add an outward edge.
 4. Never solve a compile error by adding a dependency that violates layering.
 5. Run `./build.sh check-deps` and `cargo test --workspace`.
 
@@ -194,7 +203,8 @@ Workflow:
 
 1. Read the matching `docs/*-design.md` plus dependency rules.
 2. Keep domain algorithms in `*-core`, not in `*-driver`.
-3. Use only the matching driver crate, never another subsystem's driver.
+3. Declare what the core needs from hardware as a port; its driver
+   implements it (ADR 018). Never add an edge from a core to a driver.
 4. Use `compute-runtime`/adapter crates for compute work.
 5. Add tests around domain invariants: collision pairs, render graph ordering,
    mixer spatial behavior, etc.
@@ -225,17 +235,18 @@ Do not add the AI agent as a co-author of a commit. Commit messages must not
 include a `Co-Authored-By` (or equivalent) line attributing the commit to
 Claude, Codex, or any other AI agent.
 
-## Float/Fixed branching: always 3 files
+## Float/Fixed branching: one directory per concept
 
-Whenever a crate's code branches for a float (`f32`/`Scalar`) flavor and a
-`Fixed` (deterministic) flavor, split it into exactly three files:
-`lib.rs` (shared/generic logic, or module wiring + re-exports), `float.rs`
-(or a domain-suffixed name like `float_ga.rs` for an existing convention),
-`fixed.rs`/`fixed_ga.rs`. Never leave float-flavored code loose in `lib.rs`
-next to a separate `fixed`/`deterministic.rs` module — the split must be
-symmetric on both sides. See `meridian-numeric-core` (`lib.rs`/`float.rs`/
-`fixed.rs`) and `meridian-gac-core` (`lib.rs`/`float_ga.rs`/`fixed_ga.rs`)
-for the pattern.
+Decided in [ADR 019](docs/adr/019-craftbook-adoption.md) D5, following
+Craftbook §1.3–1.4. When a concept has a float (`f32`/`Scalar`) flavor and a
+`Fixed` (deterministic) flavor, it is a module directory of its own:
+`rotor/mod.rs` (wiring only: `mod` and `pub use`), `rotor/float.rs`,
+`rotor/fixed.rs`, plus item-named files for logic shared by both flavors.
+The split is symmetric: never float code loose next to a `fixed` module.
+`lib.rs` is wiring only, and `generic.rs` is not a file name. Today's
+`gac-core` (`generic.rs`/`float_ga.rs`/`fixed_ga.rs`), `physics-core`,
+`physics-compute` and `soft_body` still use the old per-crate trio; wave 4
+of the Craftbook migration converts them — do not add to the old layout.
 
 **Default to generic (or thin wrappers over one generic implementation),
 not disclosed duplication.** Full duplication (writing the float and fixed
@@ -300,7 +311,9 @@ inline on the async task.
 - Add focused tests with each behavioral change.
 - For general verification, run:
   - `./build.sh check-deps`
-  - `cargo test --workspace`
+  - `./build.sh clippy-backlog`
+  - `cargo test --workspace` (device tests: `--features hw-tests` per crate)
+  - `craftcheck check`/`deps` against the committed baselines
 - For examples, use `./build.sh run <example> -- <args>`.
 
 ## Final response expectations for agents

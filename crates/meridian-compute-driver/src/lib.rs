@@ -312,6 +312,7 @@ mod tests {
     /// sandboxed environments have none. Skip rather than fail — this
     /// validates this crate's own GPU-dispatch API, not that a GPU is
     /// present.
+    #[cfg(feature = "hw-tests")]
     async fn gpu_device_or_skip() -> Option<GpuComputeDevice> {
         match GpuComputeDevice::new().await {
             Ok(device) => Some(device),
@@ -322,6 +323,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "hw-tests")]
     #[tokio::test]
     async fn gpu_capabilities_report_a_real_device_name() {
         let Some(device) = gpu_device_or_skip().await else {
@@ -338,6 +340,7 @@ mod tests {
     /// The actual end-to-end proof: write data to a GPU buffer, run a
     /// real compute shader over it, read the result back, and check it
     /// matches what the shader says it does.
+    #[cfg(feature = "hw-tests")]
     #[tokio::test]
     async fn gpu_dispatch_doubles_every_element() {
         let Some(device) = gpu_device_or_skip().await else {

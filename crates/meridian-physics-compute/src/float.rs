@@ -524,6 +524,7 @@ mod tests {
     /// Needs a real adapter; skip rather than fail where none is
     /// available, matching every other GPU-touching test in this
     /// workspace.
+    #[cfg(feature = "hw-tests")]
     async fn kernel_or_skip() -> Option<(ComputeContext, SoftBodyGpuKernel)> {
         let context = match ComputeContext::new().with_gpu().await {
             Ok(ctx) => ctx,
@@ -547,6 +548,7 @@ mod tests {
     /// for the pre-contact steps, then checks the post-contact tail
     /// stays physically plausible (bounded, no NaN/blow-up) rather than
     /// demanding it retrace the CPU path exactly.
+    #[cfg(feature = "hw-tests")]
     #[tokio::test]
     async fn gpu_step_matches_cpu_step_closely() {
         let Some((context, kernel)) = kernel_or_skip().await else {
@@ -612,6 +614,7 @@ mod tests {
     /// same contract [`crate::broad_phase::BroadPhasePairsKernel`]'s own
     /// CPU-batched test proves, just through a real GPU dispatch this
     /// time instead of `parallel_for`.
+    #[cfg(feature = "hw-tests")]
     #[tokio::test]
     async fn gpu_pairs_match_direct_find_candidate_pairs() {
         let context = match ComputeContext::new().with_gpu().await {
@@ -639,6 +642,7 @@ mod tests {
 
     /// Exercises a real, non-trivial overlap pattern above the 64-thread
     /// workgroup size, so more than one workgroup dispatches.
+    #[cfg(feature = "hw-tests")]
     #[tokio::test]
     async fn gpu_pairs_match_direct_find_candidate_pairs_large_batch() {
         let context = match ComputeContext::new().with_gpu().await {

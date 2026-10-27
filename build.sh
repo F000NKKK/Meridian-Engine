@@ -18,6 +18,7 @@ Commands:
   check                 cargo check --workspace
   check-deps            Verify the crate graph matches docs/dependency-rules.md
   clippy                cargo clippy --workspace --all-targets
+  clippy-backlog        Fail if a clippy warning count exceeds .clippy-backlog
   fmt                   cargo fmt --all
   run <example> [-- args...]
                         Build and run examples/examples/<example>.rs, forwarding args
@@ -65,6 +66,10 @@ cmd_check() {
 
 cmd_check_deps() {
     python3 "$ROOT/scripts/check_dependency_rules.py"
+}
+
+cmd_clippy_backlog() {
+    python3 "$ROOT/scripts/clippy_backlog.py"
 }
 
 cmd_clippy() {
@@ -116,6 +121,7 @@ case "$cmd" in
     check)          cmd_check ;;
     check-deps)     cmd_check_deps ;;
     clippy)         cmd_clippy ;;
+    clippy-backlog) cmd_clippy_backlog ;;
     fmt)            cmd_fmt ;;
     run)            cmd_run "${args[@]}" ;;
     list-examples)  cmd_list_examples ;;

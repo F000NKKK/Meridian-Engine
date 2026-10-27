@@ -9,3 +9,6 @@ description = "Geometric Algebra Core — vectors, bivectors, multivectors, roto
 
 [dependencies]
 meridian-numeric-core = { workspace = true }
+
+[lints]
+workspace = true

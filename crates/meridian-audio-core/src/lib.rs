@@ -554,6 +554,7 @@ mod render_and_output_tests {
         assert_eq!(&out[2..], &[0.0, 0.0, 0.0, 0.0]);
     }
 
+    #[cfg(feature = "hw-tests")]
     #[tokio::test]
     async fn audio_output_opens_for_every_layout_or_skips() {
         for layout in [SpeakerLayout::mono(), SpeakerLayout::stereo_headphones()] {

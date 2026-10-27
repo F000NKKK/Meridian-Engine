@@ -10,8 +10,11 @@ RHI (Render Hardware Interface); `graphics-driver` *is* that layer under a
 different name — not a separate crate to add later. Concrete backends
 (`vulkan-driver`, `dx12-driver`, `metal-driver`) are expected to become
 their own crates implementing `graphics-driver`'s abstraction, without
-`graphics-core` ever changing — see
-[ADR 005](adr/005-driver-core-separation.md). No backend crate exists yet;
+`graphics-core` ever changing. The dependency direction is being inverted
+([ADR 018](adr/018-ports-in-domain-drivers-as-adapters.md), wave 5):
+`graphics-core` will own the ports (mesh/texture stores, frame recording)
+and `graphics-driver` will implement them; until then the
+`graphics-core → graphics-driver` edge is pending migration. No backend crate exists yet;
 adding one is out of scope until there's a concrete backend to build (see
 [roadmap.md](roadmap.md)).
 

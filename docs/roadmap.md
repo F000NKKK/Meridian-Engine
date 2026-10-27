@@ -516,6 +516,22 @@ has a real, tested implementation; see each crate's own section above
 for specifics. This staged order is intentional — see "Why implementation
 is deliberately last" below.
 
+## Craftbook migration
+
+The workspace is moving to the Craftbook standard in waves (plan and
+measurements: Craftbook's `adoption/meridian-engine.md`; decisions:
+[ADR 018](adr/018-ports-in-domain-drivers-as-adapters.md),
+[ADR 019](adr/019-craftbook-adoption.md)). Progress is measured by the
+committed baselines, which only shrink: `.craftcheck-baseline`,
+`.craftcheck-deps-baseline`, `.clippy-backlog`, and `PENDING` in
+`scripts/check_dependency_rules.py`.
+
+- Wave 0 (gates): lint set, `craftbook.toml`, baselines, CI workflow,
+  `hw-tests` feature, glossary and context map — done.
+- Waves 1–3 (hygiene, wiring-only `lib.rs`, splitting the largest files)
+  inside the existing crates; waves 4–7 (float/fixed layout, inverting the
+  driver edges, runtime/composition root, crate renames) follow.
+
 ## Why implementation is deliberately last
 
 The riskiest failure mode at this project's current size isn't technical

@@ -9,3 +9,6 @@ description = "Scalar types, SIMD helpers, numeric traits and CPU feature dispat
 
 [dependencies]
 meridian-foundation = { workspace = true }
+
+[lints]
+workspace = true

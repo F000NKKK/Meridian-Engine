@@ -798,6 +798,7 @@ mod tests {
     /// environments have none (no GPU, no software rasterizer ICD
     /// installed). Skip rather than fail in that case — this validates
     /// this crate's own plumbing, not that a GPU is present.
+    #[cfg(feature = "hw-tests")]
     async fn device_or_skip() -> Option<Device> {
         match Device::new().await {
             Ok(device) => Some(device),
@@ -808,6 +809,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "hw-tests")]
     #[tokio::test]
     async fn device_reports_a_nonempty_adapter_name() {
         let Some(device) = device_or_skip().await else {
@@ -816,6 +818,7 @@ mod tests {
         assert!(!device.adapter_name().is_empty());
     }
 
+    #[cfg(feature = "hw-tests")]
     #[tokio::test]
     async fn device_reports_gpu_capabilities_matching_adapter_name() {
         let Some(device) = device_or_skip().await else {
@@ -828,6 +831,7 @@ mod tests {
         assert!(device.gpu_available());
     }
 
+    #[cfg(feature = "hw-tests")]
     #[tokio::test]
     async fn buffer_write_then_read_round_trips() {
         let Some(device) = device_or_skip().await else {
@@ -840,6 +844,7 @@ mod tests {
         assert_eq!(read_back, data);
     }
 
+    #[cfg(feature = "hw-tests")]
     #[tokio::test]
     async fn texture_reports_requested_dimensions() {
         let Some(device) = device_or_skip().await else {
@@ -861,6 +866,7 @@ mod tests {
     /// data to a buffer, run a real compute shader over it on the GPU,
     /// read the result back, and check it matches what the shader says
     /// it does — not just "didn't panic".
+    #[cfg(feature = "hw-tests")]
     #[tokio::test]
     async fn compute_dispatch_doubles_every_element() {
         let Some(device) = device_or_skip().await else {

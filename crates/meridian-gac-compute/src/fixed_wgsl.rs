@@ -840,6 +840,7 @@ mod tests {
     /// Needs a real adapter; some CI/sandboxed environments have none —
     /// skip rather than fail, matching every other GPU-touching test in
     /// this workspace.
+    #[cfg(feature = "hw-tests")]
     async fn kernels_or_skip() -> Option<(ComputeContext, FixedArithmeticKernels)> {
         let context = match ComputeContext::new().with_gpu().await {
             Ok(ctx) => ctx,
@@ -855,6 +856,7 @@ mod tests {
     /// The actual point of this whole module: every `Fixed` add computed
     /// on the GPU must be bit-for-bit identical to the CPU `Fixed::add`
     /// result — not just numerically close.
+    #[cfg(feature = "hw-tests")]
     #[tokio::test]
     async fn gpu_add_matches_cpu_bit_exact() {
         let Some((context, kernels)) = kernels_or_skip().await else {
@@ -872,6 +874,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "hw-tests")]
     #[tokio::test]
     async fn gpu_sub_matches_cpu_bit_exact() {
         let Some((context, kernels)) = kernels_or_skip().await else {
@@ -893,6 +896,7 @@ mod tests {
     /// limb splitting + carry propagation) has the most ways to be
     /// subtly wrong, so this is the test that actually validates the
     /// emulation's correctness, not just its existence.
+    #[cfg(feature = "hw-tests")]
     #[tokio::test]
     async fn gpu_mul_matches_cpu_bit_exact() {
         let Some((context, kernels)) = kernels_or_skip().await else {
@@ -910,6 +914,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "hw-tests")]
     #[tokio::test]
     async fn gpu_div_matches_cpu_bit_exact() {
         let Some((context, kernels)) = kernels_or_skip().await else {
@@ -935,6 +940,7 @@ mod tests {
     /// depending on `n`, so this is the test that actually validates the
     /// WGSL port converges to the same fixed point as the CPU version,
     /// not just that it terminates for a couple of easy inputs.
+    #[cfg(feature = "hw-tests")]
     #[tokio::test]
     async fn gpu_sqrt_matches_cpu_bit_exact() {
         let Some((context, kernels)) = kernels_or_skip().await else {
@@ -975,6 +981,7 @@ mod tests {
     /// the GPU must be bit-for-bit identical to the CPU
     /// `Fixed::sin_cos` result, across the full quadrant-reduction
     /// state machine, not just the `[-pi/2, pi/2]` core CORDIC loop.
+    #[cfg(feature = "hw-tests")]
     #[tokio::test]
     async fn gpu_sin_cos_matches_cpu_bit_exact() {
         let Some((context, kernels)) = kernels_or_skip().await else {
@@ -1000,6 +1007,7 @@ mod tests {
     /// includes to stress `fixed_mul` — a real limitation of the existing
     /// CPU `Fixed::atan2`, not something this GPU port needs to
     /// reproduce a bug-for-bug match for.
+    #[cfg(feature = "hw-tests")]
     #[tokio::test]
     async fn gpu_atan2_matches_cpu_bit_exact() {
         let Some((context, kernels)) = kernels_or_skip().await else {

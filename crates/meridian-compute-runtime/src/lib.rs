@@ -338,6 +338,7 @@ mod tests {
     /// Needs a real adapter; some CI/sandboxed environments have none —
     /// skip rather than fail, matching every other GPU-touching test in
     /// this workspace.
+    #[cfg(feature = "hw-tests")]
     #[tokio::test]
     async fn context_with_gpu_reports_a_real_device_name() {
         let ctx = match ComputeContext::new().with_gpu().await {
@@ -504,6 +505,7 @@ mod tests {
     /// Needs a real adapter; some CI/sandboxed environments have none —
     /// skip rather than fail, matching every other GPU-touching test in
     /// this workspace.
+    #[cfg(feature = "hw-tests")]
     #[tokio::test]
     async fn run_hybrid_splits_work_across_cpu_and_gpu_and_merges_results() {
         let context = match ComputeContext::new().with_gpu().await {

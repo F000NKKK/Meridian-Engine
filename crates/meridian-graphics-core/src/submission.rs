@@ -1714,6 +1714,7 @@ mod tests {
     /// windowed example instead, the same convention
     /// `meridian-graphics-driver`'s own module doc states for its
     /// windowed-only paths).
+    #[cfg(feature = "hw-tests")]
     #[tokio::test]
     async fn texture_registry_round_trips_a_real_upload() {
         let Ok(device) = Device::new().await else {

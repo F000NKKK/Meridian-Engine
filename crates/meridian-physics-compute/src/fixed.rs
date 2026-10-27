@@ -433,6 +433,7 @@ mod tests {
     /// Needs a real adapter; skip rather than fail where none is
     /// available, matching every other GPU-touching test in this
     /// workspace.
+    #[cfg(feature = "hw-tests")]
     async fn kernel_or_skip() -> Option<(ComputeContext, FixedSoftBodyGpuKernel)> {
         let context = match ComputeContext::new().with_gpu().await {
             Ok(ctx) => ctx,
@@ -452,6 +453,7 @@ mod tests {
     /// drop at a fine timestep, matching
     /// `fixed_softbody`'s own reproducibility test, to stay inside
     /// explicit-Euler's stable regime (see that test's own comment).
+    #[cfg(feature = "hw-tests")]
     #[tokio::test]
     async fn gpu_step_matches_cpu_step_bit_exact() {
         let Some((context, kernel)) = kernel_or_skip().await else {
