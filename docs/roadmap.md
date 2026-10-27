@@ -628,10 +628,11 @@ priority before writing implementations is keeping that document and the
     names and property elements, parsed markup extensions, typed
     `ParseErrorKind`), and the `meridian-mel-build` generator
     (`.mel` -> `.g.rs`, `mel_include!`; used by `magic_figures`), whose
-    `{x:Bind}` compiler parses and validates bindings and type-checks
-    them against the `x:ViewModel` at build time. Writing bound values
-    into elements waits for `team/ui-ux`'s binding target model; event
-    dispatch is next.
+    `{x:Bind}` compiler parses and validates bindings, resolves them to
+    `ui-core` properties and generates `Names`, `apply_bindings` and
+    `write_back_bindings` (type-checked against the `x:ViewModel`).
+    Building the `UiTree` from markup and event
+    dispatch are next.
 
 ## Scaling beyond a tech demo (Minecraft/Satisfactory-class scope)
 

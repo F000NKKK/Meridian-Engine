@@ -106,9 +106,9 @@ impl MelDocument {
         let Some(named) = named else {
             return fail(InvalidMarkup::BindingWithoutName(element.name.to_string()));
         };
-        let binding =
-            PropertyBinding::new(&named.variant, &attr.name.to_string(), extension, attr.span)
-                .map_err(|reason| BuildError::invalid(&self.path, attr.span, reason))?;
+        let tag = element.name.to_string();
+        let binding = PropertyBinding::new(named, &tag, &attr.name, extension, attr.span)
+            .map_err(|reason| BuildError::invalid(&self.path, attr.span, reason))?;
         self.bindings.push(binding);
         Ok(())
     }

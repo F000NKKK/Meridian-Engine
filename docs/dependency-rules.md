@@ -59,7 +59,8 @@ this diagram only tracks internal `meridian-*` edges). Neither knows
 about `Entity`/`Mesh`/`RigidBody` or any other specific tag — those are
 defined in `meridian-sdk::dsl` (built-ins) or in a game's own crate
 (custom tags), both just ordinary `#[dsl_tag]`-annotated structs.
-`meridian-mel-build` (tier 2, on `dsl-core` only) is the build-time
+`meridian-mel-build` (tier 2, on `dsl-core` and `ui-core`; the latter only
+to resolve a bound attribute to its UI property at build time) is the build-time
 `.mel` -> `.g.rs` generator of [ADR 017](adr/017-mel-markup-and-code-behind.md).
 An application takes it as a **build-dependency** for its `build.rs`,
 the one exception to "applications depend on `meridian-sdk` alone": a
@@ -217,9 +218,9 @@ bottom-up.
 - `meridian-engine-core` -> `meridian-asset-core`, `meridian-audio-core`, `meridian-compute-runtime`, `meridian-ecs-core`, `meridian-foundation`, `meridian-gac-core`, `meridian-graphics-core`, `meridian-memory-core`, `meridian-physics-compute`, `meridian-physics-core`, `meridian-platform-core`, `meridian-task-core`
 - `meridian-dsl-core` -> `meridian-foundation`
 - `meridian-dsl-macros` -> (nothing; external `syn`/`quote`/`proc-macro-crate` only)
-- `meridian-mel-build` -> `meridian-dsl-core`
+- `meridian-mel-build` -> `meridian-dsl-core`, `meridian-ui-core`
 - `meridian-ui-core` -> `meridian-foundation`, `meridian-memory-core`
-- `meridian-sdk` -> `meridian-asset-core`, `meridian-audio-core`, `meridian-dsl-core`, `meridian-dsl-macros`, `meridian-engine-core`, `meridian-foundation`, `meridian-gac-core`, `meridian-graphics-core`, `meridian-graphics-driver`, `meridian-physics-core`, `meridian-platform-core`, `meridian-task-core`
+- `meridian-sdk` -> `meridian-asset-core`, `meridian-audio-core`, `meridian-dsl-core`, `meridian-dsl-macros`, `meridian-engine-core`, `meridian-foundation`, `meridian-gac-core`, `meridian-graphics-core`, `meridian-graphics-driver`, `meridian-physics-core`, `meridian-platform-core`, `meridian-task-core`, `meridian-ui-core`
 
 `meridian-engine-core` lists `meridian-graphics-core` as an allowed edge
 (rule 7) but doesn't use it yet — `Runtime::tick` doesn't render a

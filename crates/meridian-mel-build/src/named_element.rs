@@ -11,6 +11,8 @@ pub struct NamedElement {
     pub name: String,
     /// The generated variant (`LeftArm`).
     pub variant: String,
+    /// The field of the generated `Names` struct (`left_arm`).
+    pub field: String,
     /// Where the element starts.
     pub span: Span,
 }
@@ -28,6 +30,7 @@ impl NamedElement {
         }
         Ok(Self {
             name: name.to_string(),
+            field: crate::snake_case(&variant),
             variant,
             span,
         })
@@ -60,6 +63,15 @@ mod tests {
         assert_eq!(variant("left_arm").as_deref(), Ok("LeftArm"));
         assert_eq!(variant("ok-button").as_deref(), Ok("OkButton"));
         assert_eq!(variant("Sun2").as_deref(), Ok("Sun2"));
+        let span = Span {
+            offset: 0,
+            line: 1,
+            column: 1,
+        };
+        assert_eq!(
+            NamedElement::new("ok-button", span).unwrap().field,
+            "ok_button"
+        );
     }
 
     #[test]
