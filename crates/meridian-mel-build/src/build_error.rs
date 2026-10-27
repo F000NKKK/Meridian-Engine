@@ -40,6 +40,13 @@ pub enum BuildError {
 }
 
 impl BuildError {
+    pub(crate) fn io(path: &Path, error: std::io::Error) -> Self {
+        Self::Io {
+            path: path.to_path_buf(),
+            error,
+        }
+    }
+
     pub(crate) fn invalid(path: &Path, span: Span, reason: InvalidMarkup) -> Self {
         Self::Invalid {
             path: path.to_path_buf(),

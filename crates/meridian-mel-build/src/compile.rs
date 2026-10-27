@@ -3,10 +3,8 @@
 
 use std::path::{Path, PathBuf};
 
-use crate::{
-    BuildError, GeneratedModule, GeneratedResources, MelDocument, ResourceError, ResourceProblem,
-    ResourceSet, ResourceSets,
-};
+use crate::source_dir::{SourceFiles, insert_set, read_set};
+use crate::{BuildError, GeneratedModule, GeneratedResources, MelDocument, ResourceSets};
 
 /// Compiles every `*.mres` and `*.mel` under `dir` (recursively) into
 /// `$OUT_DIR/mel/<path relative to dir>.g.rs`, so
@@ -24,10 +22,7 @@ pub fn compile_dir(dir: impl AsRef<Path>) -> Result<Vec<PathBuf>, BuildError> {
 
 /// [`compile_dir`] with the output directory given.
 fn compile_tree(dir: &Path, out_dir: &Path) -> Result<Vec<PathBuf>, BuildError> {
-    let mut files = Files::default();
-    find_files(dir, &mut files)?;
-    files.mel.sort();
-    files.mres.sort();
+    let files = SourceFiles::find(dir)?;
     let target = |source: &Path| -> Result<PathBuf, BuildError> {
         let relative = source
             .strip_prefix(dir)
@@ -47,15 +42,7 @@ fn compile_tree(dir: &Path, out_dir: &Path) -> Result<Vec<PathBuf>, BuildError> 
             &GeneratedResources::render(&set, &file).code,
             &mut generated,
         )?;
-        if !sets.insert(set.clone()) {
-            let error = ResourceError {
-                path: source.clone(),
-                line: 1,
-                column: 1,
-                problem: ResourceProblem::DuplicateSet(set.name),
-            };
-            return Err(error.into());
-        }
+        insert_set(&mut sets, set, source)?;
     }
     for source in &files.mel {
         generated.push(compile_file_with(source, &target(source)?, &sets)?);
@@ -74,59 +61,23 @@ pub fn compile_file_with(
     target: &Path,
     resources: &ResourceSets,
 ) -> Result<PathBuf, BuildError> {
-    let source = source.canonicalize().map_err(|error| io(source, error))?;
-    let text = std::fs::read_to_string(&source).map_err(|error| io(&source, error))?;
+    let source = source
+        .canonicalize()
+        .map_err(|error| BuildError::io(source, error))?;
+    let text = std::fs::read_to_string(&source).map_err(|error| BuildError::io(&source, error))?;
     let document = MelDocument::parse_with(&source, &text, resources)?;
     let module = GeneratedModule::render(&document);
     write(target, &module.code, &mut Vec::new())?;
     Ok(target.to_path_buf())
 }
 
-/// Reads `<Set>.mres`; the set is named after the file.
-fn read_set(source: &Path) -> Result<ResourceSet, BuildError> {
-    let text = std::fs::read_to_string(source).map_err(|error| io(source, error))?;
-    let name = source
-        .file_stem()
-        .map_or_else(String::new, |stem| stem.to_string_lossy().into_owned());
-    Ok(ResourceSet::parse(source, &name, &text)?)
-}
-
 fn write(target: &Path, code: &str, written: &mut Vec<PathBuf>) -> Result<(), BuildError> {
     if let Some(parent) = target.parent() {
-        std::fs::create_dir_all(parent).map_err(|error| io(parent, error))?;
+        std::fs::create_dir_all(parent).map_err(|error| BuildError::io(parent, error))?;
     }
-    std::fs::write(target, code).map_err(|error| io(target, error))?;
+    std::fs::write(target, code).map_err(|error| BuildError::io(target, error))?;
     written.push(target.to_path_buf());
     Ok(())
-}
-
-/// The sources found under a directory.
-#[derive(Default)]
-struct Files {
-    mel: Vec<PathBuf>,
-    mres: Vec<PathBuf>,
-}
-
-fn find_files(dir: &Path, found: &mut Files) -> Result<(), BuildError> {
-    let entries = std::fs::read_dir(dir).map_err(|error| io(dir, error))?;
-    for entry in entries {
-        let path = entry.map_err(|error| io(dir, error))?.path();
-        if path.is_dir() {
-            find_files(&path, found)?;
-        } else if path.extension().is_some_and(|ext| ext == "mel") {
-            found.mel.push(path);
-        } else if path.extension().is_some_and(|ext| ext == "mres") {
-            found.mres.push(path);
-        }
-    }
-    Ok(())
-}
-
-fn io(path: &Path, error: std::io::Error) -> BuildError {
-    BuildError::Io {
-        path: path.to_path_buf(),
-        error,
-    }
 }
 
 #[cfg(test)]

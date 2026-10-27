@@ -657,8 +657,9 @@ priority before writing implementations is keeping that document and the
     ([mel-resources.md](mel-resources.md)) generate typed constants and
     resolve `@res:Set.name` in attributes; `<Owner.Resources>` blocks and
     `{StaticResource}` resolve at build time, and `LiveUi` patches changed
-    attributes of a reparsed document into a live tree (hot reload, step
-    one). Event dispatch is next.
+    attributes of a reparsed document into a live tree, and `HotDocument`
+    watches the `.mel`/`.mres` files (debounced, non-blocking) and
+    patches or rebuilds the tree (hot reload). Event dispatch is next.
 
 ## Scaling beyond a tech demo (Minecraft/Satisfactory-class scope)
 

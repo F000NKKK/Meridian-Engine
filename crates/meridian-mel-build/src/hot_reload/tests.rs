@@ -14,16 +14,7 @@ fn node(source: &str) -> UiNode {
 
 /// What the generated `build_ui` does.
 fn build(tree: &mut UiTree, ui: &UiNode) -> NodeId {
-    let id = tree.create(ui.kind);
-    for literal in &ui.literals {
-        tree.set_literal(id, literal.path.id(), &literal.text)
-            .unwrap();
-    }
-    for child in &ui.children {
-        let child = build(tree, child);
-        tree.append_child(id, child).unwrap();
-    }
-    id
+    super::tree_builder::build(tree, ui, &mut Vec::new()).unwrap()
 }
 
 fn live(source: &str) -> (UiTree, NodeId, LiveUi) {
@@ -104,4 +95,113 @@ fn a_new_shape_leaves_the_tree_alone() {
         live.reload(&mut tree, node(BEFORE)).unwrap(),
         Reload::Patched { changed: 0 }
     );
+}
+
+mod files {
+    use std::path::{Path, PathBuf};
+    use std::time::{Duration, Instant};
+
+    use super::*;
+    use crate::{HotDocument, Refreshed, ReloadError, SourceWatcher};
+
+    const DEBOUNCE: Duration = Duration::from_millis(50);
+
+    fn scratch(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("mel-hot-{name}-{}", std::process::id()));
+        if dir.exists() {
+            std::fs::remove_dir_all(&dir).unwrap();
+        }
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    fn write(path: &Path, text: &str) {
+        std::fs::write(path, text).unwrap();
+    }
+
+    #[test]
+    fn a_change_is_reported_once_after_it_settles() {
+        let dir = scratch("watch");
+        let file = dir.join("a.mel");
+        write(&file, "one");
+        let mut watcher = SourceWatcher::new([file.clone()], DEBOUNCE);
+        let start = Instant::now();
+        assert!(watcher.poll(start).is_empty());
+        write(&file, "two, longer");
+        assert!(watcher.poll(start).is_empty(), "inside the debounce");
+        write(&file, "three, longer still");
+        let later = start + DEBOUNCE / 2;
+        assert!(watcher.poll(later).is_empty(), "a new write restarts it");
+        let settled = later + DEBOUNCE * 2;
+        assert_eq!(watcher.poll(settled), [file]);
+        assert!(watcher.poll(settled + DEBOUNCE).is_empty());
+    }
+
+    fn open(dir: &Path) -> (UiTree, NodeId, HotDocument) {
+        write(&dir.join("Strings.mres"), r#"{ title: "Yog" }"#);
+        let mel = dir.join("hud.mel");
+        write(
+            &mel,
+            r#"<StackPanel width="200"><TextBlock x:Name="label" text="@res:Strings.title" /></StackPanel>"#,
+        );
+        // The tree is built from the same files, as `build_ui` would.
+        let mut tree = UiTree::new();
+        let ui = crate::MelDocument::parse_with(
+            &mel,
+            &std::fs::read_to_string(&mel).unwrap(),
+            &crate::source_dir::read_sets(&[dir.join("Strings.mres")]).unwrap(),
+        )
+        .unwrap()
+        .ui
+        .unwrap();
+        let root = build(&mut tree, &ui);
+        let document = HotDocument::open(&mel, Some(dir), root, DEBOUNCE).unwrap();
+        (tree, root, document)
+    }
+
+    #[test]
+    fn a_changed_resource_patches_the_tree() {
+        let dir = scratch("patch");
+        let (mut tree, root, mut document) = open(&dir);
+        let label = tree.children(root).unwrap()[0];
+        let start = Instant::now();
+        assert!(document.refresh(&mut tree, start).unwrap().is_none());
+        write(&dir.join("Strings.mres"), r#"{ title: "Meridian" }"#);
+        document.refresh(&mut tree, start).unwrap();
+        let refreshed = document.refresh(&mut tree, start + DEBOUNCE * 2).unwrap();
+        assert_eq!(refreshed, Some(Refreshed::Patched { changed: 1 }));
+        let text = tree.get(label, properties::text_block::TEXT).unwrap();
+        assert_eq!(text, "Meridian");
+    }
+
+    #[test]
+    fn a_new_shape_rebuilds_and_a_bad_file_keeps_the_tree() {
+        let dir = scratch("rebuild");
+        let (mut tree, root, mut document) = open(&dir);
+        let start = Instant::now();
+        let mel = dir.join("hud.mel");
+        write(&mel, "<StackPanel><TextBlock");
+        document.refresh(&mut tree, start).unwrap();
+        let error = document
+            .refresh(&mut tree, start + DEBOUNCE * 2)
+            .unwrap_err();
+        assert!(matches!(error, ReloadError::Build(_)), "{error}");
+        assert!(tree.contains(root));
+        write(
+            &mel,
+            r#"<StackPanel><TextBlock x:Name="a" /><TextBlock x:Name="b" /></StackPanel>"#,
+        );
+        let later = start + DEBOUNCE * 4;
+        document.refresh(&mut tree, later).unwrap();
+        let refreshed = document.refresh(&mut tree, later + DEBOUNCE * 2).unwrap();
+        let Some(Refreshed::Rebuilt(rebuilt)) = refreshed else {
+            panic!("expected a rebuild, got {refreshed:?}");
+        };
+        assert!(!tree.contains(root));
+        assert_eq!(tree.children(rebuilt.root).unwrap().len(), 2);
+        assert_eq!(
+            rebuilt.node("b"),
+            Some(tree.children(rebuilt.root).unwrap()[1])
+        );
+    }
 }
