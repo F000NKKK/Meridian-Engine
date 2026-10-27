@@ -8,9 +8,10 @@ use crate::{EntityRef, ProtocolVersion, RequestError};
 /// What the host answers to one request. Variants are only ever appended.
 #[derive(Debug, Clone, PartialEq, Schema)]
 pub enum Response {
-    /// To `Hello`: the version the host speaks.
+    /// To `Hello`: the negotiated version (the lower of the host's and the
+    /// editor's), which both peers speak from now on.
     Welcome {
-        /// The host's version.
+        /// The negotiated version.
         version: ProtocolVersion,
     },
     /// To `Describe`: `ComponentRegistry::describe()`, as it is.
@@ -34,7 +35,7 @@ pub enum Response {
         entity: EntityRef,
     },
     /// To a request that has nothing to return and succeeded
-    /// (`PatchComponent`, `DespawnEntity`, `Play`, `Pause`, `Step`,
+    /// (`SetComponent`, `DespawnEntity`, `Play`, `Pause`, `Step`,
     /// `Subscribe`, `Unsubscribe`).
     Done,
     /// To any request that failed.

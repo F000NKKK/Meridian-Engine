@@ -27,14 +27,16 @@ impl ProtocolVersion {
         self.0
     }
 
-    /// Whether a host speaking `self` understands a client speaking `client`.
+    /// The version a host speaking `self` and a client speaking `client`
+    /// talk: the lower of the two. From then on each peer sends only what
+    /// that version knows.
     ///
     /// # Errors
     ///
     /// [`RequestError::VersionMismatch`] when the client is newer than the host.
-    pub fn accepts(self, client: ProtocolVersion) -> Result<(), RequestError> {
+    pub fn negotiate(self, client: ProtocolVersion) -> Result<ProtocolVersion, RequestError> {
         if client <= self {
-            Ok(())
+            Ok(client)
         } else {
             Err(RequestError::VersionMismatch { host: self, client })
         }

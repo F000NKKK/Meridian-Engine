@@ -17,7 +17,7 @@ fn round_trip<T: Schema + PartialEq + std::fmt::Debug>(message: &T) {
 #[test]
 fn every_request_round_trips() {
     for (i, request) in samples::requests().into_iter().enumerate() {
-        let id = RequestId::new(i as u64);
+        let id = RequestId::new(u64::try_from(i).expect("a small index"));
         round_trip(&RequestEnvelope { id, request });
     }
 }
@@ -54,15 +54,18 @@ fn messages_follow_each_other_and_the_stream_ends_cleanly() {
 }
 
 #[test]
-fn a_version_is_checked_in_hello() {
-    let host = ProtocolVersion::new(2);
-    assert!(host.accepts(ProtocolVersion::new(1)).is_ok());
-    assert!(host.accepts(ProtocolVersion::new(2)).is_ok());
+fn hello_negotiates_the_lower_version() {
+    let host = ProtocolVersion::new(3);
     assert_eq!(
-        host.accepts(ProtocolVersion::new(3)),
+        host.negotiate(ProtocolVersion::new(1)),
+        Ok(ProtocolVersion::new(1))
+    );
+    assert_eq!(host.negotiate(host), Ok(host));
+    assert_eq!(
+        host.negotiate(ProtocolVersion::new(4)),
         Err(meridian_editor_protocol::RequestError::VersionMismatch {
             host,
-            client: ProtocolVersion::new(3)
+            client: ProtocolVersion::new(4)
         })
     );
     assert_eq!(ProtocolVersion::CURRENT.number(), 1);
