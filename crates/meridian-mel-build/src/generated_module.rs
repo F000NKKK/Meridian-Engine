@@ -1,15 +1,12 @@
 //! [`GeneratedModule`]: the Rust source of one `<name>.g.rs`.
 
 use crate::MelDocument;
+use crate::code_writer::{ALLOW, CodeWriter};
+use crate::ui_bindings::UiBindings;
 
 /// Where everything the generated code names lives; applications reach
 /// the engine through `meridian-sdk` alone.
 const DSL: &str = "::meridian_sdk::dsl";
-
-/// On every generated item: a code-behind uses only part of the module,
-/// and an `expect` would fail for the parts it does use.
-const ALLOW: &str =
-    "#[allow(dead_code, reason = \"generated from markup; a code-behind uses only part of it\")]";
 
 /// The generated Rust source for one [`MelDocument`].
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -36,7 +33,7 @@ impl GeneratedModule {
         render_alias(&mut code, "Class", document.class.as_deref());
         render_alias(&mut code, "ViewModel", document.view_model.as_deref());
         render_functions(&mut code);
-        render_bindings(&mut code, document);
+        UiBindings::new(document).render(&mut code);
         Self { code: code.text }
     }
 }
@@ -108,46 +105,6 @@ fn render_functions(code: &mut CodeWriter) {
     code.line("}");
 }
 
-/// `type_check_bindings`: never called, it exists so that `rustc` checks
-/// every `{x:Bind}` against the view model, with errors pointing at the
-/// `// @mel` line of the binding.
-fn render_bindings(code: &mut CodeWriter, document: &MelDocument) {
-    if document.view_model.is_none() {
-        return;
-    }
-    code.line("\n/// Checks every `{x:Bind}` against [`ViewModel`] at compile time.");
-    code.line(ALLOW);
-    code.line("fn type_check_bindings(vm: &mut ViewModel) {");
-    for binding in &document.bindings {
-        code.line(format!(
-            "    // @mel {}:{} {}",
-            document.path.display(),
-            binding.span,
-            binding.property
-        ));
-        code.line("    {");
-        for statement in binding.type_check() {
-            code.line(format!("        {statement}"));
-        }
-        code.line("    }");
-    }
-    code.line("    let _ = vm;");
-    code.line("}");
-}
-
-/// Accumulates generated source line by line.
-#[derive(Default)]
-struct CodeWriter {
-    text: String,
-}
-
-impl CodeWriter {
-    fn line(&mut self, line: impl AsRef<str>) {
-        self.text.push_str(line.as_ref());
-        self.text.push('\n');
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use std::path::Path;
@@ -184,43 +141,74 @@ mod tests {
     }
 
     #[test]
-    fn bindings_are_type_checked_against_the_view_model() {
+    fn bindings_become_ui_glue() {
         let code = render(
-            r#"<Hud x:ViewModel="crate::HudVm">
-                <Label x:Name="title" text="{x:Bind player?.name, Fallback='-'}" />
-                <Input x:Name="query" text="{x:Bind search.text, Mode=TwoWay}" />
-                <Toggle x:Name="mute" checked="{x:Bind is_muted(), Mode=TwoWay, BindBack=set_muted}" />
-            </Hud>"#,
+            r#"<StackPanel x:ViewModel="crate::HudVm">
+                <TextBlock x:Name="title" text="{x:Bind player?.name, Fallback='-'}" font_size="{x:Bind size, Mode=OneTime}" />
+                <TextBlock x:Name="query_box" text="{x:Bind search.text, Mode=TwoWay}" />
+                <Border x:Name="mute" width="{x:Bind width(), Mode=TwoWay, BindBack=set_width}" />
+            </StackPanel>"#,
         );
+        let ui = "::meridian_sdk::ui_core";
         assert!(
-            code.contains("fn type_check_bindings(vm: &mut ViewModel) {"),
+            code.contains(&format!("pub title: {ui}::NodeId,")),
             "{code}"
         );
         assert!(
-            code.contains("// @mel /scenes/demo.mel:2:39 text"),
+            code.contains(&format!("pub query_box: {ui}::NodeId,")),
+            "{code}"
+        );
+        assert!(
+            code.contains("pub fn apply_one_time_bindings(vm: &ViewModel, tree: &mut"),
+            "{code}"
+        );
+        assert!(
+            code.contains(&format!(
+                "tree.set(names.title, {ui}::properties::text_block::FONT_SIZE, ::core::convert::Into::into(::core::clone::Clone::clone(&(vm.size))))?;"
+            )),
             "{code}"
         );
         assert!(
             code.contains(
-                "(|vm: &ViewModel| -> Option<()> { let _value = &(vm.player.as_ref()?.name); Some(()) })(vm);"
+                "match (|| Some(::core::clone::Clone::clone(&(vm.player.as_ref()?.name))))() {"
             ),
             "{code}"
         );
-        assert!(code.contains(r#"let _fallback = &("-");"#), "{code}");
+        assert!(code.contains("None => tree.set(names.title,"), "{code}");
         assert!(
-            code.contains("let _target = &mut (vm.search.text);"),
+            code.contains("pub fn write_back_bindings(vm: &mut ViewModel"),
             "{code}"
         );
-        assert!(code.contains("let _value = &(vm.is_muted());"), "{code}");
         assert!(
-            code.contains("let _bind_back = ViewModel::set_muted;"),
+            code.contains("vm.search.text = ::core::convert::Into::into(value);"),
             "{code}"
         );
+        assert!(
+            code.contains("vm.set_width(::core::convert::Into::into(value));"),
+            "{code}"
+        );
+        assert!(
+            code.contains(&format!(
+                "change.node == names.mute && change.property == {ui}::properties::element::WIDTH.meta().id"
+            )),
+            "{code}"
+        );
+        assert!(code.contains("// @mel /scenes/demo.mel:2:"), "{code}");
         assert_eq!(
             code.matches('{').count(),
             code.matches('}').count(),
             "{code}"
         );
+    }
+
+    #[test]
+    fn one_way_only_documents_have_no_write_back() {
+        let code = render(
+            r#"<StackPanel x:ViewModel="V"><TextBlock x:Name="t" text="{x:Bind s}" /></StackPanel>"#,
+        );
+        assert!(code.contains("pub fn apply_bindings("), "{code}");
+        assert!(!code.contains("apply_one_time_bindings"), "{code}");
+        assert!(!code.contains("write_back_bindings"), "{code}");
     }
 
     #[test]
@@ -237,7 +225,7 @@ mod tests {
             "{code}"
         );
         assert_eq!(code.matches("#[allow(dead_code").count(), 5, "{code}");
-        assert!(!code.contains("type_check_bindings"), "{code}");
+        assert!(!code.contains("Names"), "{code}");
         assert!(code.contains("pub const ALL: [Self; 0] = [];"), "{code}");
     }
 }

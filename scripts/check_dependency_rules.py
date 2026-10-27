@@ -95,7 +95,7 @@ ALLOWED = {
     "meridian-scene": {"meridian-ecs-core", "meridian-gac-core"},
     "meridian-dsl-core": {"meridian-foundation"},
     "meridian-dsl-macros": set(),
-    "meridian-mel-build": {"meridian-dsl-core"},
+    "meridian-mel-build": {"meridian-dsl-core", "meridian-ui-core"},
     "meridian-ui-core": {"meridian-foundation", "meridian-memory-core"},
     "meridian-sdk": {
         "meridian-foundation",
@@ -110,6 +110,7 @@ ALLOWED = {
         "meridian-engine-core",
         "meridian-dsl-core",
         "meridian-dsl-macros",
+        "meridian-ui-core",
     },
 }
 
