@@ -2,7 +2,7 @@
 
 use core::marker::PhantomData;
 
-use super::{PropertyId, PropertyType, PropertyValue};
+use super::{LiteralError, PropertyId, PropertyType, PropertyValue};
 
 /// What changing a property invalidates.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -21,6 +21,8 @@ pub struct PropertyMeta {
     pub name: &'static str,
     pub invalidates: Invalidates,
     pub default: fn() -> PropertyValue,
+    /// Parses markup text as this property's type.
+    pub parse: fn(&str) -> Result<PropertyValue, LiteralError>,
 }
 
 /// A typed handle to a registered property. Reading and writing through it
@@ -53,6 +55,7 @@ impl<T: PropertyType> Property<T> {
                 name,
                 invalidates,
                 default,
+                parse: parse_value::<T>,
             },
             marker: PhantomData,
         }
@@ -61,4 +64,8 @@ impl<T: PropertyType> Property<T> {
     pub const fn meta(self) -> PropertyMeta {
         self.meta
     }
+}
+
+fn parse_value<T: PropertyType>(text: &str) -> Result<PropertyValue, LiteralError> {
+    T::parse(text).map(PropertyType::into_value)
 }
