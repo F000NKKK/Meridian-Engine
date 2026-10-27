@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Architectural test: enforce docs/dependency-rules.md and ADR 018.
+"""Architectural test: enforce docs/dependency-rules.md and ADR 019.
 
 Two checks, both exact:
 
@@ -7,7 +7,7 @@ Two checks, both exact:
    in PENDING below, and every edge listed there exists. Adding an edge, even
    a legitimate one, updates this file and docs/dependency-rules.md in the
    same change.
-2. Dependencies point inwards (ADR 018, Craftbook ch. 7 §7.3). Each crate's
+2. Dependencies point inwards (ADR 019, Craftbook ch. 7 §7.3). Each crate's
    layer comes from craftbook.toml, the one source of layers. An edge that
    points outwards (domain -> infra, app -> infra, ...) is allowed only while
    it is listed in PENDING with the wave that removes it; an edge in ALLOWED
@@ -94,8 +94,12 @@ ALLOWED = {
         "meridian-asset-core",
         "meridian-compute-runtime",
     },
+    "meridian-scene": {"meridian-ecs-core", "meridian-gac-core"},
+    "meridian-editor-protocol": {"meridian-ecs-core", "meridian-scene"},
     "meridian-dsl-core": {"meridian-foundation"},
     "meridian-dsl-macros": set(),
+    "meridian-mel-build": {"meridian-dsl-core", "meridian-ui-core"},
+    "meridian-ui-core": {"meridian-foundation", "meridian-memory-core"},
     "meridian-sdk": {
         "meridian-foundation",
         "meridian-gac-core",
@@ -109,11 +113,12 @@ ALLOWED = {
         "meridian-engine-core",
         "meridian-dsl-core",
         "meridian-dsl-macros",
+        "meridian-ui-core",
     },
 }
 
 # (crate, dependency) -> the migration wave that removes the edge.
-# These edges point outwards and contradict ADR 018; they stay until that
+# These edges point outwards and contradict ADR 019; they stay until that
 # wave inverts them. Never add to this table.
 PENDING = {
     ("meridian-graphics-core", "meridian-graphics-driver"): "migration pending (wave 5)",
@@ -193,7 +198,7 @@ def direction_errors(layer_of):
         elif (src, dep) not in PENDING and not inward:
             errors.append(
                 f"{src} -> {dep}: {src_layer} crate depends on {dep_layer} crate; "
-                f"dependencies point inwards (ADR 018)"
+                f"dependencies point inwards (ADR 019)"
             )
     return errors
 
@@ -209,7 +214,7 @@ def main():
 
     print(
         f"OK: {len(ALLOWED)} crates match docs/dependency-rules.md; "
-        f"{len(PENDING)} outward edge(s) pending migration (ADR 018)."
+        f"{len(PENDING)} outward edge(s) pending migration (ADR 019)."
     )
     return 0
 

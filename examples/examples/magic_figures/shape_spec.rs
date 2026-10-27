@@ -2,7 +2,7 @@
 
 use crate::Glow;
 use crate::OrbitTag;
-use meridian_examples::scene_loader::load_dsl_scene;
+use crate::scene;
 use meridian_sdk::dsl::dsl_core::BuiltNode;
 use meridian_sdk::dsl::dsl_tag;
 use meridian_sdk::{cube_mesh_source, dsl, icosphere_mesh_source, pyramid_mesh_source};
@@ -31,21 +31,31 @@ pub(crate) struct ShapeSpec {
     pub(crate) spin_speed: f32,
 }
 
-/// Parses `assets/scenes/magic_figures.mel` against the SDK's built-in
-/// tags plus this example's own [`Glow`](crate::Glow)/[`OrbitTag`](crate::OrbitTag)/[`AudioTag`] and
-/// flattens every `<Entity>` into a [`ShapeSpec`]. The read/parse/
-/// error-logging sequence itself is
-/// `meridian_examples::scene_loader::load_dsl_scene` — see
-/// `physic_figures::load_scene`'s identical use of it.
+/// Builds `assets/scenes/magic_figures.mel` (embedded and checked at
+/// compile time through the generated [`scene`] module, ADR 017) against
+/// the SDK's built-in tags plus this example's own
+/// [`Glow`](crate::Glow)/[`OrbitTag`](crate::OrbitTag)/[`AudioTag`], and
+/// flattens each named `<Entity>` into a [`ShapeSpec`], looked up by its
+/// typed `x:Name`.
 pub(crate) fn load_scene() -> Vec<ShapeSpec> {
     let mut registry = dsl::default_registry();
     registry.register::<Glow>();
     registry.register::<OrbitTag>();
     registry.register::<AudioTag>();
 
-    let root = load_dsl_scene("assets/scenes/magic_figures.mel", &registry);
+    let root = scene::build(&registry).unwrap_or_else(|e| {
+        meridian_sdk::log_error!("failed to build magic_figures.mel: {e}");
+        panic!("failed to build magic_figures.mel: {e}");
+    });
 
-    root.children.iter().map(shape_from_node).collect()
+    scene::Name::ALL
+        .into_iter()
+        .map(|name| {
+            let entity_node = scene::find(&root, name)
+                .unwrap_or_else(|| panic!("x:Name '{}' missing from the scene", name.as_str()));
+            shape_from_node(entity_node)
+        })
+        .collect()
 }
 
 /// Flattens one `<Entity>` node into a [`ShapeSpec`].

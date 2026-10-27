@@ -15,7 +15,7 @@ tokio = { workspace = true }
 wgpu = { workspace = true }
 
 [features]
-# Tests that need a real GPU or audio device; CI has neither (docs/adr/019).
+# Tests that need a real GPU or audio device; CI has neither (docs/adr/020).
 hw-tests = []
 
 [lints]

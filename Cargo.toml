@@ -37,6 +37,10 @@ meridian-engine-core = { path = "crates/meridian-engine-core", version = "0.31" 
 meridian-sdk = { path = "crates/meridian-sdk", version = "0.5" }
 meridian-dsl-core = { path = "crates/meridian-dsl-core", version = "0.1" }
 meridian-dsl-macros = { path = "crates/meridian-dsl-macros", version = "0.1" }
+meridian-scene = { path = "crates/meridian-scene", version = "0.1" }
+meridian-editor-protocol = { path = "crates/meridian-editor-protocol", version = "0.1" }
+meridian-ui-core = { path = "crates/meridian-ui-core", version = "0.1" }
+meridian-mel-build = { path = "crates/meridian-mel-build", version = "0.1" }
 
 # External dependencies shared by more than one crate go here too, same
 # reasoning: one place to bump a version instead of drifting per-crate
@@ -67,6 +71,11 @@ winit = "0.30.13"
 cpal = "0.18"
 crossbeam-channel = "0.5"
 
+# `thiserror` derives `std::error::Error`/`Display` for the typed error
+# enums Craftbook requires of libraries (see `.claude/rules/craftbook.md`);
+# adopted crate by crate, starting with `meridian-mel-build`.
+thiserror = "2"
+
 # Compressed-audio decoding for `asset-core` — the same class of decision
 # as `cpal`/`winit`/`wgpu` (see docs/adr/013-compressed-audio-codecs.md):
 # hand-rolling an MP3/Vorbis/FLAC/Opus decoder is a multi-month DSP
@@ -88,6 +97,16 @@ symphonia-adapter-libopus = "0.3"
 # pulling in `image`'s much larger multi-format surface for a
 # single-format need.
 png = "0.18"
+
+# Every Meridian-owned data format (scenes, prefabs, saves, editor
+# messages) is Substrate Data — see docs/adr/016-data-formats-on-substrate-data.md.
+# `substrate-data` re-exports its `#[derive(Schema)]` (`substrate-data-derive`),
+# so this one entry is all a crate needs. Pinned by git revision because it
+# isn't on crates.io yet: an exact `rev` keeps every build reproducible while
+# the library moves in its own repository; switch to a crates.io version
+# requirement once it's published. Used optionally (`data` feature) by
+# `numeric-core`/`gac-core`, and directly by `meridian-scene`.
+substrate-data = { git = "https://github.com/F000NKKK/substrate-data", rev = "30e62fbcb5cc95cf97f38a1289a8195593f9790d" }
 
 [profile.release]
 lto = true

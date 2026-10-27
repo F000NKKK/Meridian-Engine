@@ -10,8 +10,8 @@ Rust 1.92+ (edition 2024). Licensed under [MPL-2.0](LICENSE).
 
 ```text
 meridian-foundation      zero-dependency shared primitives (errors, feature detection)
-meridian-numeric-core    scalar types (float + deterministic Fixed), SIMD helpers, numeric traits
-meridian-gac-core        geometric algebra: vectors, rotors, motors, transforms — float and Fixed flavors
+meridian-numeric-core    scalar types (float + deterministic Fixed), SIMD helpers, numeric traits; optional `data` feature (Substrate Data schemas)
+meridian-gac-core        geometric algebra: vectors, rotors, motors, transforms — float and Fixed flavors; optional `data` feature
 meridian-memory-core     arenas, resource pools, generational handles
 meridian-resource-core   typed resource handles, versioning, dependency tracking
 meridian-task-core       job graph scheduler
@@ -32,6 +32,9 @@ meridian-audio-core      spatial mixer, DSP graph, listener/emitter
 meridian-engine-core     Runtime: the single JobGraph-based frame-work entry point (physics/audio/compute stages, fine-grained locking)
 meridian-dsl-core        domain-blind tag/attribute markup parser + typed-tag registry (the mechanics under the scene DSL)
 meridian-dsl-macros      #[dsl_tag(name = "...")] — the code-gen half of the DSL, lets a game register its own tags
+meridian-scene           .mscene load/save on Substrate Data: application-built ComponentRegistry, diagnostics with line/column/path (not re-exported by sdk yet)
+meridian-editor-protocol typed, append-only editor <-> game messages on Substrate Data frames (Meridian IDLE; no host yet)
+meridian-mel-build       build.rs generator: each .mel becomes a <name>.g.rs (typed x:Name ids, builder) pulled in with mel_include! (ADR 017)
 meridian-sdk             application entry point: re-exports every type above, plus resource loading, the extensible scene DSL, and windowed-app/render-stage scaffolding
 ```
 

@@ -520,8 +520,8 @@ is deliberately last" below.
 
 The workspace is moving to the Craftbook standard in waves (plan and
 measurements: Craftbook's `adoption/meridian-engine.md`; decisions:
-[ADR 018](adr/018-ports-in-domain-drivers-as-adapters.md),
-[ADR 019](adr/019-craftbook-adoption.md)). Progress is measured by the
+[ADR 019](adr/019-ports-in-domain-drivers-as-adapters.md),
+[ADR 020](adr/020-craftbook-adoption.md)). Progress is measured by the
 committed baselines, which only shrink: `.craftcheck-baseline`,
 `.craftcheck-deps-baseline`, `.clippy-backlog`, and `PENDING` in
 `scripts/check_dependency_rules.py`.
@@ -643,7 +643,16 @@ priority before writing implementations is keeping that document and the
     deliberately deferred; `.mel` behavior (WPF-style code-behind,
     generated `.g.rs` glue, compiled `{x:Bind}` bindings, later an own
     script language) — decided in
-    [ADR 017](adr/017-mel-markup-and-code-behind.md), not started.
+    [ADR 017](adr/017-mel-markup-and-code-behind.md). Started: the
+    `dsl-core` side is done (line/column spans, the `x:` prefix, dotted
+    names and property elements, parsed markup extensions, typed
+    `ParseErrorKind`), and the `meridian-mel-build` generator
+    (`.mel` -> `.g.rs`, `mel_include!`; used by `magic_figures`), whose
+    `{x:Bind}` compiler parses and validates bindings, resolves them to
+    `ui-core` properties and generates `Names`, `apply_bindings` and
+    `write_back_bindings` (type-checked against the `x:ViewModel`).
+    A document with a UI root also gets `build_ui`, which creates the
+    `UiTree` from the markup. Event dispatch and resources are next.
 
 ## Scaling beyond a tech demo (Minecraft/Satisfactory-class scope)
 
@@ -722,15 +731,34 @@ rest are not started.
    has no `Gpu` variant yet for exactly this reason: adding one before
    all four stages have a real GPU path would silently mix GPU and CPU
    work under one name.
-5. **No persistence at all.** Nothing in the workspace derives
-   `serde::Serialize`/`Deserialize` or has any save/load story — every
-   `*-core` type is designed for one running process's lifetime. Both
-   target games need world state (voxel/chunk data, entity state,
-   inventories, factory layouts) to survive a process restart. This
-   likely wants its own crate (`meridian-persistence-core`?) rather than
-   scattering `#[derive(Serialize)]` across every existing type —
-   consistent with this workspace's "narrow, single-responsibility
-   crates" philosophy (see architecture.md).
+5. **Persistence: started, on Substrate Data.** Every Meridian-owned
+   format is [Substrate Data](https://github.com/F000NKKK/Substrate-Data)
+   (see [ADR 016](adr/016-data-formats-on-substrate-data.md) and
+   [data-formats.md](data-formats.md)) — not `serde` derives scattered
+   across every `*-core` type. **Done:** the optional `data` feature on
+   `numeric-core`/`gac-core` (`Fixed` as raw Q16.16 bits; `Vec3`/
+   `Bivector3`/`Rotor`/`Motor3` and their `Fixed*` counterparts as
+   `Shape::Named` values, bit-exact through text, binary and frames), and
+   the `meridian-scene` crate: an application-built `ComponentRegistry`
+   (by name and `TypeId`; `register`/`register_with` a codec —
+   `Transform` goes through the `TransformForm` newtype so `ecs-core`
+   stays file-blind), `.mscene` load into a
+   `World` (all-or-nothing, every problem with line/column/path, unknown
+   component names with a "did you mean" or kept as written for editors),
+   save, and `describe()` for an IDE. **Editor protocol:** the
+   `meridian-editor-protocol` crate ([editor-protocol.md](editor-protocol.md))
+   defines the typed, append-only `Request`/`Response`/`Event` messages
+   between a game and Meridian IDLE (golden-byte pinned, version
+   handshake). Parent links load as
+   `meridian-scene::Parent`, a stand-in until `ecs-core` gets a
+   hierarchy (it moves there then). **Not yet done:** transform
+   propagation along parents; `World::component_types(entity)` in
+   `ecs-core` (saving walks registered types until then); `.mprefab`
+   instancing, `.meta`, `.msave` (voxel/chunk data via
+   `substrate_data::Stream`), `.mpak`, the editor *host* in `engine-core`
+   that answers the protocol, and wiring scene loading into
+   `engine-core`/`sdk`. The substrate-data dependency
+   is a git revision pin (its `main`) until it is published to crates.io.
 6. **No networking.** Multiplayer (both games have it) is a subsystem
    that doesn't exist in any form — no netcode, no client/server
    split, no replication. The deterministic `Fixed` numeric mode (see
@@ -738,11 +766,14 @@ rest are not started.
    lockstep-style sync, but the actual transport/replication layer is
    unstarted. This is its own multi-month subsystem, not an add-on to
    an existing crate.
-7. **No UI framework.** Inventory, crafting, HUD, building-placement
-   previews — `graphics-core::Scene2d`/`Sprite` exist (a layer-sorted
-   2D plane) but there's no widget/layout/input-routing system built on
-   top. Every UI element today would be hand-assembled sprites with
-   hand-rolled input handling.
+7. **UI framework: runtime started, rendering not.**
+   `meridian-ui-core` ([ADR 018](adr/018-ui-architecture.md)) has the
+   WPF-style element tree, typed properties, measure/arrange layout
+   (`Border`, `StackPanel`, `DockPanel`, `Grid`, `TextBlock`) and hit
+   testing, tested without a GPU. Still missing: extraction to
+   `Scene2d`, text rendering, input routing and controls, styles and
+   templates. Markup literals (`"Auto"`, `"2*"`, `"4,2"`) parse through
+   `PropertyType::parse`.
 8. **Asset pipeline stops at static meshes.** `asset-core::ObjDecoder`
    has no skeletal/skinning support and there's no animation system at
    all — a blocker for any animated creature (Minecraft mobs) or
@@ -755,8 +786,9 @@ dispatch) is done. (1) and (2) next — they're the two things that make
 *any* further content-heavy work (chunks/factories, gameplay systems)
 viable at all, not nice-to-haves. (3) (spatial broad-phase) after that,
 once there's actually a large scene to profile against. (5)
-(persistence) before (6) (networking) — replication design usually
-wants a serialization format to already exist. (7)/(8) (UI, animation)
+(persistence — the format and scene load/save exist now, see above)
+before (6) (networking) — replication design usually wants a
+serialization format to already exist. (7)/(8) (UI, animation)
 can start in parallel with the above once a concrete game loop exists
 to build them against — see "Why implementation is deliberately last"
 below for why this workspace prefers building against a real,

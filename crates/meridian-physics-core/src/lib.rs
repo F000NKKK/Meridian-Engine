@@ -3,7 +3,7 @@
 //! Layer: domain; bounded context: physics (`craftbook.toml`,
 //! docs/context-map.md). A performance kernel (Craftbook §7.8): its
 //! data-oriented layout is provisional until a benchmark justifies it
-//! (ADR 019 D8).
+//! (ADR 020 D8).
 //!
 //! Real, tested physics pipeline: `BroadPhase` (naive O(n²) AABB sweep —
 //! a spatial hash/BVH is a later optimization once profiling calls for

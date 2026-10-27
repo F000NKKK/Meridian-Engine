@@ -9,6 +9,13 @@ description = "Scalar types, SIMD helpers, numeric traits and CPU feature dispat
 
 [dependencies]
 meridian-foundation = { workspace = true }
+# The Substrate Data schema of `Fixed` (raw Q16.16 bits) — off by default so
+# no math crate pulls the data library unless an application asks for it.
+# See docs/data-formats.md.
+substrate-data = { workspace = true, optional = true }
+
+[features]
+data = ["dep:substrate-data"]
 
 [lints]
 workspace = true

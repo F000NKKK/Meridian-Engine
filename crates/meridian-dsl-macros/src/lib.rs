@@ -79,7 +79,7 @@ fn expand(
             const TAG_NAME: &'static str = #tag_name;
 
             fn from_attrs(
-                attrs: &[(String, String)],
+                attrs: &[#sdk::dsl_core::Attribute],
             ) -> Result<Self, #sdk::dsl_core::TagParseError> {
                 Ok(Self {
                     #(#field_inits),*
@@ -138,8 +138,8 @@ fn field_init(
     let field_name_str = field_name.to_string();
     if let Some(inner_ty) = is_option_type(&field.ty) {
         quote! {
-            #field_name: match attrs.iter().find(|(k, _)| k == #field_name_str) {
-                Some((_, v)) => Some(v.parse::<#inner_ty>().map_err(|e| {
+            #field_name: match #sdk::dsl_core::text_attr(attrs, #tag_name, #field_name_str)? {
+                Some(v) => Some(v.parse::<#inner_ty>().map_err(|e| {
                     #sdk::dsl_core::TagParseError {
                         message: format!(
                             concat!(#tag_name, ".", #field_name_str, ": {}"),
@@ -153,13 +153,10 @@ fn field_init(
     } else {
         let field_ty = &field.ty;
         quote! {
-            #field_name: attrs
-                .iter()
-                .find(|(k, _)| k == #field_name_str)
+            #field_name: #sdk::dsl_core::text_attr(attrs, #tag_name, #field_name_str)?
                 .ok_or_else(|| #sdk::dsl_core::TagParseError {
                     message: concat!(#tag_name, ": missing attribute '", #field_name_str, "'").to_string(),
                 })?
-                .1
                 .parse::<#field_ty>()
                 .map_err(|e| #sdk::dsl_core::TagParseError {
                     message: format!(concat!(#tag_name, ".", #field_name_str, ": {}"), e),

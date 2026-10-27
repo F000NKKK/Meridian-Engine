@@ -3,7 +3,7 @@
 //! Layer: shared kernel; bounded context: geometry (`craftbook.toml`,
 //! docs/context-map.md). A performance kernel (Craftbook §7.8): its
 //! data-oriented layout is provisional until a benchmark justifies it
-//! (ADR 019 D8).
+//! (ADR 020 D8).
 //!
 //! Two flavors, in their own modules: [`float_ga`] (`f32`, the default —
 //! re-exported at the crate root, so `meridian_gac_core::Vec3`/`Motor3`/
@@ -25,10 +25,14 @@
 
 #![forbid(unsafe_code)]
 
+#[cfg(feature = "data")]
+mod data;
 pub mod fixed_ga;
 pub mod float_ga;
 pub mod generic;
 
+#[cfg(feature = "data")]
+pub use data::MotorForm;
 pub use float_ga::*;
 
 /// Named blade indices into a `Multivector`'s 16 components, encoded as a

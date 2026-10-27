@@ -22,8 +22,8 @@ https://github.com/F000NKKK/craftbook. Read its `README.md` and the relevant
 `rust/` chapter before writing or reviewing code; the short version is in
 [`.claude/rules/craftbook.md`](.claude/rules/craftbook.md). The conflicts
 between Craftbook and this repository's former rules are decided in
-[ADR 018](docs/adr/018-ports-in-domain-drivers-as-adapters.md) (driver
-direction) and [ADR 019](docs/adr/019-craftbook-adoption.md) (runtime hub,
+[ADR 019](docs/adr/019-ports-in-domain-drivers-as-adapters.md) (driver
+direction) and [ADR 020](docs/adr/020-craftbook-adoption.md) (runtime hub,
 composition root, crate names, float/fixed layout, log sink, performance
 kernels); Craftbook's `adoption/meridian-engine.md` holds the migration plan.
 Code not yet migrated is tracked by baselines (`.craftcheck-baseline`,
@@ -59,7 +59,7 @@ Before changing code, identify which documents govern it:
   read `docs/memory-model.md`, ADR 002, ADR 003 and ADR 006.
 - ECS world/archetypes/components/queries: read `docs/ecs-design.md` and ADR 004.
 - Drivers, GPU, audio device, physics backend, platform/hardware boundaries:
-  read ADR 018 (ports and adapters; supersedes ADR 005) and the relevant
+  read ADR 019 (ports and adapters; supersedes ADR 005) and the relevant
   subsystem design doc.
 - Compute dispatch, CPU-SIMD/GPU kernels, batched transforms: read ADR 007,
   `docs/threading-model.md`, and `docs/dependency-rules.md` rules 5, 10 and 11.
@@ -75,7 +75,7 @@ Documentation is not optional bookkeeping; it is part of the architecture.
 Treat `docs/dependency-rules.md` as enforceable. In particular:
 
 - Keep the workspace graph a DAG.
-- Dependencies point inwards (ADR 018): a `*-core` (domain) or application
+- Dependencies point inwards (ADR 019): a `*-core` (domain) or application
   crate never takes a new edge to a `*-driver`; drivers are adapters that
   depend on the crate owning the port and implement it. Edges listed as
   pending migration in `scripts/check_dependency_rules.py` only shrink.
@@ -204,7 +204,7 @@ Workflow:
 1. Read the matching `docs/*-design.md` plus dependency rules.
 2. Keep domain algorithms in `*-core`, not in `*-driver`.
 3. Declare what the core needs from hardware as a port; its driver
-   implements it (ADR 018). Never add an edge from a core to a driver.
+   implements it (ADR 019). Never add an edge from a core to a driver.
 4. Use `compute-runtime`/adapter crates for compute work.
 5. Add tests around domain invariants: collision pairs, render graph ordering,
    mixer spatial behavior, etc.
@@ -237,7 +237,7 @@ Claude, Codex, or any other AI agent.
 
 ## Float/Fixed branching: one directory per concept
 
-Decided in [ADR 019](docs/adr/019-craftbook-adoption.md) D5, following
+Decided in [ADR 020](docs/adr/020-craftbook-adoption.md) D5, following
 Craftbook §1.3–1.4. When a concept has a float (`f32`/`Scalar`) flavor and a
 `Fixed` (deterministic) flavor, it is a module directory of its own:
 `rotor/mod.rs` (wiring only: `mod` and `pub use`), `rotor/float.rs`,

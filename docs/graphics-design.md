@@ -11,7 +11,7 @@ different name — not a separate crate to add later. Concrete backends
 (`vulkan-driver`, `dx12-driver`, `metal-driver`) are expected to become
 their own crates implementing `graphics-driver`'s abstraction, without
 `graphics-core` ever changing. The dependency direction is being inverted
-([ADR 018](adr/018-ports-in-domain-drivers-as-adapters.md), wave 5):
+([ADR 019](adr/019-ports-in-domain-drivers-as-adapters.md), wave 5):
 `graphics-core` will own the ports (mesh/texture stores, frame recording)
 and `graphics-driver` will implement them; until then the
 `graphics-core → graphics-driver` edge is pending migration. No backend crate exists yet;
@@ -159,7 +159,7 @@ UI does not get its own rendering vocabulary. A UI is either:
 
 What UI adds over plain scenes is *content*, not rendering: widgets,
 layout, text, input routing. All of that is deliberately out of
-`graphics-core` — a future `ui-core` consumes this vocabulary (it emits
+`graphics-core` — `ui-core` ([ADR 018](adr/018-ui-architecture.md)) consumes this vocabulary (it emits
 `Scene2d`/`Scene3d` renderables) the same way `physics-core` consumes
 `gac-core` shapes. Text/font rendering (glyph atlases, shaping) is its
 own future decision with its own ADR; nothing in this vocabulary blocks

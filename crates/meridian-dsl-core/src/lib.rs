@@ -1,38 +1,37 @@
-//! Generic tag-markup parser: text in, a tag/attribute/children tree
+//! Generic tag-markup parser: `.mel` text in, an element/attribute tree
 //! out. This crate is deliberately domain-blind — it has never heard of
 //! `Mesh`, `RigidBody`, or any other scene concept. That knowledge lives
 //! one layer up, in `meridian-sdk::dsl` (typed tag registration via
 //! `#[dsl_tag]`) and further still in whatever custom tags a game
 //! developer registers there. Splitting it this way is what makes the
-//! DSL *extensible* rather than a fixed schema (see
-//! `docs/adr/*dsl*.md` for the decision this crate implements): the
-//! parser never needs to change when a new tag is added, because it
-//! never knew about tags in the first place, only about `<Name attr="value">`
-//! syntax.
+//! DSL *extensible* rather than a fixed schema (ADR 015): the parser
+//! never needs to change when a new tag is added, because it never knew
+//! about tags in the first place, only about the syntax.
 //!
-//! Layer: shared kernel; bounded context: scene-markup (`craftbook.toml`,
-//! docs/context-map.md).
+//! Syntax (XAML-flavored, not a XAML implementation; ADR 017):
+//! `<Tag attr="value"> ...children... </Tag>` or the self-closing
+//! `<Tag attr="value" />`, one root element per document. On top of
+//! that, as in XAML:
 //!
-//! Syntax, deliberately small (XAML-flavored, not a XAML implementation):
-//! `<Tag attr="value" other="123"> ...children... </Tag>` or the
-//! self-closing `<Tag attr="value" />`. One root element per document.
-//! No namespaces, no CDATA, no processing instructions, no text nodes
-//! between elements (a DSL document describes structure, not prose) —
-//! anything beyond that is deliberately out of scope until a real
-//! caller needs it.
+//! - the `x:` directive prefix on attributes (`x:Class`, `x:Name`, ...);
+//!   no other prefix exists, and elements never take one;
+//! - dotted names: attached properties (`Grid.Row="1"`) and property
+//!   elements (`<Entity.Components>` directly inside `<Entity>`, without
+//!   attributes);
+//! - markup-extension values (`{x:Bind count, Mode=TwoWay}`), parsed
+//!   into [`MarkupValue::Extension`]; `{}` escapes a literal leading `{`.
+//!
+//! No CDATA, no processing instructions, no text nodes between elements.
+//! Every element, attribute and error carries a [`Span`] (line/column)
+//! for diagnostics and the editor.
 
-#![forbid(unsafe_code)]
-
-mod element;
 mod parse;
-mod parse_error;
-mod parser;
+mod syntax;
 mod tag;
-#[cfg(test)]
-mod tests;
 
-pub use element::Element;
-pub use parse::parse;
-pub use parse_error::ParseError;
-use parser::Parser;
-pub use tag::{BuiltNode, DslRegistry, DslTag, TagParseError};
+pub use parse::{ParseError, ParseErrorKind, Span, parse};
+pub use syntax::{
+    Attribute, Element, MarkupExtension, MarkupValue, MarkupValueError, MarkupValueErrorKind,
+    Prefix, QualifiedName, QualifiedNameError,
+};
+pub use tag::{BuiltNode, DslRegistry, DslTag, TagParseError, text_attr};

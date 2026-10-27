@@ -3,7 +3,7 @@
 //! Layer: shared kernel; bounded context: entity (`craftbook.toml`,
 //! docs/context-map.md). A performance kernel (Craftbook §7.8): its
 //! data-oriented layout is provisional until a benchmark justifies it
-//! (ADR 019 D8).
+//! (ADR 020 D8).
 //!
 //! `World` owns everything: entity allocation, archetypes, and per-
 //! archetype Structure-of-Arrays component storage. Entities move between

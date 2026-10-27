@@ -54,24 +54,49 @@ the prior art to copy from is Yog-Mod-Loader's `.yui` -> `.g.rs` pipeline
 (`yog-ui`, `yog-kit`) and Yog-IDLE's `docs/yui.md`/`mvvm.md`/`yres.md`.
 
 1. ~~ADR 017: `.mel` behavior model~~ — done.
-2. **Source spans in `dsl-core`.** Line/column spans on `Element`,
-   attributes and `ParseError`. Needed by `// @mel file:line` markers and
-   by `team/ide`'s LSP.
-3. **Grammar growth in `dsl-core`.** The `x:` prefix (`x:Class`,
-   `x:ViewModel`, `x:Name`, `x:Key`), dotted property elements and
-   attached properties (`Grid.Row`, `Entity.Components`), and parsing of
-   markup-extension values (`{x:Bind ...}`, `{StaticResource ...}`) into
-   a typed form. Malformed-input tests for each.
+2. ~~Source spans in `dsl-core`~~ — done: `Span` (offset, line,
+   column) on every `Element`, `Attribute` and `ParseError`.
+3. ~~Grammar growth in `dsl-core`~~ — done: `x:` prefix, dotted names
+   and property elements, markup extensions parsed into `MarkupValue`,
+   typed `ParseErrorKind`; a tag built straight from markup rejects an
+   extension value with a clear error (`text_attr`).
 4. **Literal grammar.** Validate plain attribute values against
    Substrate-Data string rules (`@kind:id`, `@@`, error on other `@`),
    reusing `substrate-data`'s classifier (`typed::classify`, in progress
    on `team/data`'s side) rather than re-implementing the grammar.
-5. **Generator crate + `mel_include!`.** Build-time `foo.mel` ->
-   `OUT_DIR/foo.g.rs` (ids, typed element accessors, builder, event
-   dispatch), driven from `build.rs`. Port `magic_figures` to a
-   code-behind as the first real user.
-6. **`{x:Bind}` expression compiler.** The Yog `x:Bind` subset compiled to
-   Rust, `Mode`/`BindBack`/`Fallback`, type errors mapped to `.mel` lines.
+5. ~~Generator crate + `mel_include!`~~ — done: `meridian-mel-build`
+   (`compile_dir` from `build.rs`) writes `OUT_DIR/mel/<name>.g.rs` with
+   `SOURCE`, a `Name` enum per `x:Name`, `Class`/`ViewModel` aliases,
+   `build` and `find`, and rejects bad directives and names at build
+   time; `magic_figures` uses it. Still open: **event dispatch**
+   (`on_*` attributes -> code-behind methods), waiting for an engine
+   event source to raise them, and porting `physic_figures` once markup
+   hot reload (item 8) keeps run-time editing.
+6. **`{x:Bind}` expression compiler.** Done. The Yog `x:Bind` subset
+   (members, calls, `Type::path`s, literals, `!`, `==`, `!=`, `?.`) is
+   parsed into `Expr` and rendered as Rust over `vm`;
+   `Mode`/`BindBack`/`Fallback` are validated (an `x:ViewModel` and an
+   `x:Name` are required, `TwoWay` needs a member path or `BindBack`,
+   `Fallback` needs a `?.` and may not contain one). A bound attribute is
+   resolved against `meridian-ui-core`'s registry at build time
+   ([ADR 018](../adr/018-ui-architecture.md) section 5), so an unknown
+   property is an error at its `.mel` line. The generated module gets a
+   `Names` struct (a `NodeId` per `x:Name`), `apply_one_time_bindings`,
+   `apply_bindings` (view model -> `tree.set`) and `write_back_bindings`
+   (user edits from `tree.drain_changes()` -> view model or `BindBack`),
+   each statement under a `// @mel file:line:column` marker, so `rustc`
+   checks every binding against the view model. The view-model dirty
+   flag that decides *when* `apply_bindings` runs is the caller's for now.
+   A document whose root is a `ui-core` element (`Border`, `StackPanel`,
+   `DockPanel`, `Grid`, `TextBlock`) also gets `build_ui(tree)`, which
+   creates the elements in markup order, sets plain attributes through
+   `tree.set_literal` (parsed by `PropertyType::parse`, `@@` escapes `@`)
+   and returns the root with `Names`. Unknown tags, unknown properties,
+   property elements and non-`{x:Bind}` extensions are build errors with
+   their `.mel` line. Still open: references (`@kind:id`, `@res:`) in
+   attributes, property elements (`<Grid.RowDefinitions>`), and accepting
+   `{x:Bind}` in tags built by `build_scene` (today `text_attr` rejects
+   them).
 7. **Resources.** `Resources` + `x:Key` in markup and an external
    resource file (Yog's `.yres` analogue, in Substrate-Data text) with
    generated typed accessors, referenced as `@res:Set.name`.

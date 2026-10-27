@@ -11,6 +11,9 @@ publish = false
 meridian-sdk = { workspace = true, features = ["file-logging"] }
 tokio = { workspace = true }
 
+[build-dependencies]
+meridian-mel-build = { workspace = true }
+
 [[example]]
 name = "magic_figures"
 path = "examples/magic_figures/magic_figures.rs"

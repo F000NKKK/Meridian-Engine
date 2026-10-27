@@ -131,6 +131,26 @@ pub fn build_scene(source: &str, registry: &DslRegistry) -> Result<dsl_core::Bui
     registry.build(&element).map_err(DslError::Tag)
 }
 
+/// Pulls in the module `meridian-mel-build` generated for a `.mel`
+/// document (ADR 017): `mel_include!("magic_figures")` includes
+/// `$OUT_DIR/mel/magic_figures.g.rs`, written by
+/// `meridian_mel_build::compile_dir` in the crate's `build.rs`. Use it
+/// inside the code-behind module:
+///
+/// ```ignore
+/// mod scene {
+///     meridian_sdk::mel_include!("magic_figures");
+/// }
+/// let root = scene::build(&registry)?;
+/// let cube = scene::find(&root, scene::Name::Cube);
+/// ```
+#[macro_export]
+macro_rules! mel_include {
+    ($name:literal) => {
+        include!(concat!(env!("OUT_DIR"), "/mel/", $name, ".g.rs"));
+    };
+}
+
 /// Either half of what can go wrong turning DSL text into a built tree
 /// — kept as one type so a caller doesn't need two separate `match`
 /// arms for what is, to it, one "the document was bad" outcome.

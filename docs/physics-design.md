@@ -12,7 +12,7 @@ BVH/spatial-hashing are how physics *reasons about space*, not how it
 "low-level" in the algorithmic sense. See
 [dependency-rules.md](dependency-rules.md) rule 9. `physics-core` does not
 depend on `physics-driver` (the edge was never used and is removed); the
-driver is deleted in wave 5 ([ADR 018](adr/018-ports-in-domain-drivers-as-adapters.md)).
+driver is deleted in wave 5 ([ADR 019](adr/019-ports-in-domain-drivers-as-adapters.md)).
 
 `physics-core`'s whole engine — `RigidBody`, `ColliderShape`, `Contact`,
 `BroadPhase`, `NarrowPhase`, `ConstraintSolver`, `Integrator` — is written

@@ -6,7 +6,7 @@ reference when a PR (human or agent-authored) is unsure which direction a
 
 ## Direction
 
-Dependencies point inwards ([ADR 018](adr/018-ports-in-domain-drivers-as-adapters.md),
+Dependencies point inwards ([ADR 019](adr/019-ports-in-domain-drivers-as-adapters.md),
 Craftbook ch. 7 §7.3): interface → application → domain ← infrastructure,
 and every layer may use the shared kernel. Domain and application crates own
 the port traits they need; driver and `*-compute` crates are adapters that
@@ -53,11 +53,11 @@ depend on crates in tiers `0..N`, never a same-tier or higher-tier one
 
 ```text
 tier 0  foundation, memory-core, task-core, dsl-macros
-tier 1  numeric-core, platform-core, resource-core, dsl-core
-tier 2  asset-core, audio-driver, gac-core, gpu-driver, physics-driver
+tier 1  numeric-core, platform-core, resource-core, dsl-core, ui-core
+tier 2  asset-core, audio-driver, gac-core, gpu-driver, mel-build, physics-driver
 tier 3  audio-core, compute-driver, ecs-core, graphics-driver
-tier 4  compute-runtime
-tier 5  gac-compute
+tier 4  compute-runtime, scene
+tier 5  gac-compute, editor-protocol
 tier 6  graphics-core, physics-core
 tier 7  physics-compute
 tier 8  engine-core
@@ -77,6 +77,45 @@ this diagram only tracks internal `meridian-*` edges). Neither knows
 about `Entity`/`Mesh`/`RigidBody` or any other specific tag — those are
 defined in `meridian-sdk::dsl` (built-ins) or in a game's own crate
 (custom tags), both just ordinary `#[dsl_tag]`-annotated structs.
+`meridian-mel-build` (tier 2, on `dsl-core` and `ui-core`; the latter only
+to resolve a bound attribute to its UI property at build time) is the build-time
+`.mel` -> `.g.rs` generator of [ADR 017](adr/017-mel-markup-and-code-behind.md).
+An application takes it as a **build-dependency** for its `build.rs`,
+the one exception to "applications depend on `meridian-sdk` alone": a
+build script cannot use the SDK without compiling the whole engine for
+the host, and the generated code itself names only `meridian_sdk`.
+
+`meridian-scene` is scene serialization on Substrate Data (see
+[ADR 016](adr/016-data-formats-on-substrate-data.md) and
+[data-formats.md](data-formats.md)): an application-built
+`ComponentRegistry` and `.mscene` load/save into an `ecs-core::World`. It
+depends on `ecs-core` (the `World` it fills) and on `gac-core` with its
+optional `data` feature (`Motor3`'s schema, for `Transform`), plus the
+external `substrate-data`. It sits *above* `ecs-core` on purpose, so
+`ecs-core` stays file-blind (rule 3): `Transform` is stored through a
+`TransformForm` newtype in `meridian-scene` rather than `ecs-core` growing a
+format dependency, and the scene's `Parent` component lives there too
+until `ecs-core` has a hierarchy of its own. Nothing depends on it yet; `engine-core`/`sdk` will when the
+editor host and scene loading are wired up (docs/roadmap.md). The
+`data` features of `numeric-core`/`gac-core` add no internal edge — only
+the optional external `substrate-data` dependency.
+
+`meridian-editor-protocol` is the wire protocol between a running game and
+its editor (Meridian IDLE): typed `Request`/`Response`/`Event` messages as
+Substrate Data frames (see [editor-protocol.md](editor-protocol.md)). It
+sits *above* `meridian-scene` because it reuses its `ComponentName` and
+carries `ComponentRegistry::describe()` unchanged, and takes `ecs-core` only
+for `Entity`'s shape (`EntityRef`). Pure protocol: no `async`, no sockets,
+no I/O beyond a generic `Read`/`Write`; the host that answers requests is
+`engine-core`'s (or an adapter's) job, so nothing depends on it yet.
+
+`meridian-ui-core` (tier 1, on `foundation` and `memory-core` only) is the
+WPF-style UI runtime of [ADR 018](adr/018-ui-architecture.md): element
+tree, typed properties, layout and hit testing. It deliberately has no
+edge to `graphics-core`, `platform-core` or `ecs-core`: turning a laid-out
+tree into `Scene2D` renderables and feeding it `InputState` are the job of
+a later adapter above both (rule 7: orchestration lives at the top), not of
+this crate.
 
 This shows *depth*, not *which crate depends on which* — two crates in
 the same tier aren't necessarily related at all (`audio-core` and
@@ -219,9 +258,13 @@ bottom-up.
 - `meridian-physics-core` -> `meridian-compute-runtime` (pending, wave 5), `meridian-ecs-core`, `meridian-gac-compute` (pending, wave 5), `meridian-gac-core`, `meridian-numeric-core`, `meridian-resource-core`
 - `meridian-physics-compute` -> `meridian-compute-runtime`, `meridian-foundation`, `meridian-gac-compute`, `meridian-gac-core`, `meridian-gpu-driver`, `meridian-numeric-core`, `meridian-physics-core`
 - `meridian-engine-core` -> `meridian-asset-core`, `meridian-audio-core`, `meridian-compute-runtime`, `meridian-ecs-core`, `meridian-foundation`, `meridian-gac-core`, `meridian-graphics-core`, `meridian-memory-core`, `meridian-physics-compute` (pending, wave 6), `meridian-physics-core`, `meridian-platform-core` (pending, wave 6), `meridian-task-core` (pending, wave 6)
+- `meridian-scene` -> `meridian-ecs-core`, `meridian-gac-core`
+- `meridian-editor-protocol` -> `meridian-ecs-core`, `meridian-scene`
 - `meridian-dsl-core` -> `meridian-foundation`
 - `meridian-dsl-macros` -> (nothing; external `syn`/`quote`/`proc-macro-crate` only)
-- `meridian-sdk` -> `meridian-asset-core`, `meridian-audio-core`, `meridian-dsl-core`, `meridian-dsl-macros`, `meridian-engine-core`, `meridian-foundation`, `meridian-gac-core`, `meridian-graphics-core`, `meridian-graphics-driver`, `meridian-physics-core`, `meridian-platform-core`, `meridian-task-core`
+- `meridian-mel-build` -> `meridian-dsl-core`, `meridian-ui-core`
+- `meridian-ui-core` -> `meridian-foundation`, `meridian-memory-core`
+- `meridian-sdk` -> `meridian-asset-core`, `meridian-audio-core`, `meridian-dsl-core`, `meridian-dsl-macros`, `meridian-engine-core`, `meridian-foundation`, `meridian-gac-core`, `meridian-graphics-core`, `meridian-graphics-driver`, `meridian-physics-core`, `meridian-platform-core`, `meridian-task-core`, `meridian-ui-core`
 
 `meridian-engine-core` lists `meridian-graphics-core` as an allowed edge
 (rule 7) but doesn't use it yet — `Runtime::tick` doesn't render a
@@ -229,7 +272,7 @@ frame; see that crate's own module doc for why, and docs/roadmap.md's
 `graphics-core`/`Runtime::tick` entry for the current state.
 
 **`meridian-sdk` is the composition root** (interface layer,
-[ADR 019](adr/019-craftbook-adoption.md) D3): the single application-facing
+[ADR 020](adr/020-craftbook-adoption.md) D3): the single application-facing
 re-export surface and the one library crate that names concrete adapters
 (`graphics-driver`, here, for windowed rendering). The interface layer may
 depend on every layer; what it may not hold is business logic. Its
@@ -251,10 +294,10 @@ crates it belongs to (wave 6). Applications depend on `sdk` alone.
    it appends lines, the same category as `std`'s own panic hook. It is
    the one global exempted in `craftbook.toml`; its file sink and crash
    report are I/O and move to an adapter crate, with the sink installed by
-   the composition root ([ADR 019](adr/019-craftbook-adoption.md) D7).
+   the composition root ([ADR 020](adr/020-craftbook-adoption.md) D7).
 1. **A domain or application crate never depends on a driver.** Drivers
    are adapters: they depend on the crate that owns the port and implement
-   it ([ADR 018](adr/018-ports-in-domain-drivers-as-adapters.md)). Only the
+   it ([ADR 019](adr/019-ports-in-domain-drivers-as-adapters.md)). Only the
    composition root (`sdk`, examples) names a concrete driver. Today's
    `graphics-core → graphics-driver`, `audio-core → audio-driver` and
    `compute-runtime → compute-driver` edges are pending migration (wave 5).
@@ -303,7 +346,7 @@ crates it belongs to (wave 6). Applications depend on `sdk` alone.
    If two subsystems need to talk outside the edges drawn above, that
    coordination is a use case in `engine-core`, not a new cross-dependency
    between domain crates. It is the runtime context's application layer,
-   not a hub: per [ADR 019](adr/019-craftbook-adoption.md) D2 it stops
+   not a hub: per [ADR 020](adr/020-craftbook-adoption.md) D2 it stops
    owning subsystem state (wave 6).
 
 8. **`meridian-resource-core` defines resource *identity*, not lifetime
@@ -317,7 +360,7 @@ crates it belongs to (wave 6). Applications depend on `sdk` alone.
    hashing and broad-phase structures are domain logic in `physics-core`
    (see [physics-design.md](physics-design.md)). `physics-core` no longer
    depends on it; the crate is deleted in wave 5 and its capability report
-   moves to the platform context (ADR 018).
+   moves to the platform context (ADR 019).
 
 10. **`meridian-gac-core` and `meridian-compute-runtime` never depend on
     each other, in either direction.** `gac-core` stays pure geometric
@@ -378,4 +421,4 @@ can never silently drift apart. If `cargo tree` shows an edge that
 document, in the same change).
 
 See also: [architecture.md](architecture.md), [context-map.md](context-map.md),
-[ADR 018](adr/018-ports-in-domain-drivers-as-adapters.md) (supersedes ADR 005).
+[ADR 019](adr/019-ports-in-domain-drivers-as-adapters.md) (supersedes ADR 005).

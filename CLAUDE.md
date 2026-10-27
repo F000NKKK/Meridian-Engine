@@ -22,8 +22,8 @@ https://github.com/F000NKKK/craftbook. Read its `README.md` and the relevant
 `rust/` chapter before writing or reviewing code; the short version is in
 [`.claude/rules/craftbook.md`](.claude/rules/craftbook.md). The conflicts
 between Craftbook and this repository's former rules are decided in
-[ADR 018](docs/adr/018-ports-in-domain-drivers-as-adapters.md) (driver
-direction) and [ADR 019](docs/adr/019-craftbook-adoption.md) (runtime hub,
+[ADR 019](docs/adr/019-ports-in-domain-drivers-as-adapters.md) (driver
+direction) and [ADR 020](docs/adr/020-craftbook-adoption.md) (runtime hub,
 composition root, crate names, float/fixed layout, log sink, performance
 kernels); Craftbook's `adoption/meridian-engine.md` holds the migration plan.
 Code not yet migrated is tracked by baselines (`.craftcheck-baseline`,
@@ -53,7 +53,7 @@ Markdown file.
 - Keep `gac-core` independent from `compute-runtime`.
 - Keep `compute-runtime` independent from `gac-core` and free of domain-shaped
   algorithms or buffers.
-- Dependencies point inwards (ADR 018): domain and application crates own
+- Dependencies point inwards (ADR 019): domain and application crates own
   the port traits they need; driver crates are adapters that implement them
   and know only the port's types. A domain or application crate never takes
   a new edge to a driver; the edges pending migration only shrink.
@@ -133,7 +133,7 @@ corresponding drivers and design docs.
 
 Use it to keep domain algorithms in core crates and hardware/OS execution in
 driver crates. A core declares the ports it needs; its driver implements them
-(ADR 018). No core takes a new edge to any driver. Compute work goes through
+(ADR 019). No core takes a new edge to any driver. Compute work goes through
 `compute-runtime` or an adapter crate.
 
 ### Engine/examples skill: `meridian-engine-integration-keeper`
@@ -178,7 +178,7 @@ workspace status dirty unless explicitly asked.
 
 ## Float/Fixed branching: one directory per concept
 
-Decided in [ADR 019](docs/adr/019-craftbook-adoption.md) D5, following
+Decided in [ADR 020](docs/adr/020-craftbook-adoption.md) D5, following
 Craftbook §1.3–1.4. When a concept has a float (`f32`/`Scalar`) flavor and a
 `Fixed` (deterministic) flavor, it is a module directory of its own:
 `rotor/mod.rs` (wiring only: `mod` and `pub use`), `rotor/float.rs`,

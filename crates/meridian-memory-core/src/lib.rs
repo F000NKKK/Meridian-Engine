@@ -3,7 +3,7 @@
 //! Layer: shared kernel; bounded context: identity (`craftbook.toml`,
 //! docs/context-map.md). A performance kernel (Craftbook §7.8): its
 //! data-oriented layout is provisional until a benchmark justifies it
-//! (ADR 019 D8).
+//! (ADR 020 D8).
 //!
 //! See docs/memory-model.md for the three allocation strategies this crate
 //! covers and why handles replace `Arc<T>` for resource lifetime.

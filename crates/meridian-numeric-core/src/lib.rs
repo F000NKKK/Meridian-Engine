@@ -14,6 +14,8 @@
 pub mod fixed;
 pub mod float;
 mod numeric_backend;
+#[cfg(feature = "data")]
+mod schema;
 
 pub use fixed::Fixed;
 pub use float::{EPSILON, Scalar, approx_eq};

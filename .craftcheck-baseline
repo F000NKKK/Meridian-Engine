@@ -22,13 +22,13 @@ crates/meridian-audio-driver/src/lib.rs	C101		1
 crates/meridian-compute-driver/Cargo.toml	R801	meridian-compute-driver	1
 crates/meridian-compute-runtime/Cargo.toml	R801	meridian-compute-runtime	1
 crates/meridian-dsl-core/Cargo.toml	R801	meridian-dsl-core	1
-crates/meridian-dsl-core/src/tag.rs	C108	BuiltNode	1
-crates/meridian-dsl-core/src/tag.rs	C108	DslRegistry	1
-crates/meridian-dsl-core/src/tag.rs	C108	DslTag	1
-crates/meridian-dsl-core/src/tag.rs	C108	TagParseError	1
+crates/meridian-dsl-core/src/parse/parser/mod.rs	C101		1
+crates/meridian-dsl-core/src/tag/dsl_registry/mod.rs	S701		1
 crates/meridian-dsl-macros/Cargo.toml	R801	meridian-dsl-macros	1
 crates/meridian-ecs-core/Cargo.toml	R801	meridian-ecs-core	1
 crates/meridian-ecs-core/src/world.rs	C101		1
+crates/meridian-editor-protocol/Cargo.toml	R801	meridian-editor-protocol	1
+crates/meridian-editor-protocol/src/version.rs	C108	ProtocolVersion	1
 crates/meridian-engine-core/Cargo.toml	R801	meridian-engine-core	1
 crates/meridian-foundation/Cargo.toml	R801	meridian-foundation	1
 crates/meridian-foundation/src/crash_reporting.rs	C108	CrashReportConfig	1
@@ -66,6 +66,11 @@ crates/meridian-graphics-core/src/submission/scene_renderer.rs	C101		1
 crates/meridian-graphics-core/src/submission/tests.rs	C101		1
 crates/meridian-graphics-core/src/texture_handle.rs	C108	TextureMarker	1
 crates/meridian-graphics-driver/Cargo.toml	R801	meridian-graphics-driver	1
+crates/meridian-mel-build/Cargo.toml	R801	meridian-mel-build	1
+crates/meridian-mel-build/src/binding/property_path.rs	S701		1
+crates/meridian-mel-build/src/generated_module.rs	S701		1
+crates/meridian-mel-build/src/ui_bindings.rs	S701		1
+crates/meridian-mel-build/src/ui_build.rs	S701		1
 crates/meridian-memory-core/Cargo.toml	R801	meridian-memory-core	1
 crates/meridian-numeric-core/Cargo.toml	R801	meridian-numeric-core	1
 crates/meridian-numeric-core/src/fixed.rs	C101		1
@@ -95,6 +100,9 @@ crates/meridian-platform-core/src/input.rs	C108	MouseButton	1
 crates/meridian-platform-core/src/time.rs	C108	Clock	1
 crates/meridian-platform-core/src/window.rs	C108	AppHandler	1
 crates/meridian-resource-core/Cargo.toml	R801	meridian-resource-core	1
+crates/meridian-scene/Cargo.toml	R801	meridian-scene	1
+crates/meridian-scene/src/load/pending_entity.rs	C108	ComponentsDraft	1
+crates/meridian-scene/src/transform_form.rs	C108	TransformCodec	1
 crates/meridian-sdk/Cargo.toml	R801	meridian-sdk	1
 crates/meridian-sdk/src/assets.rs	C101		1
 crates/meridian-sdk/src/assets.rs	C108	AssetCache	1
@@ -112,6 +120,27 @@ crates/meridian-sdk/src/render.rs	C108	RenderStage	1
 crates/meridian-sdk/src/scene.rs	C101		1
 crates/meridian-sdk/src/scene.rs	C108	GraphicsSession	1
 crates/meridian-task-core/Cargo.toml	R801	meridian-task-core	1
+crates/meridian-ui-core/Cargo.toml	R801	meridian-ui-core	1
+crates/meridian-ui-core/src/error.rs	C108	UiError	1
+crates/meridian-ui-core/src/layout/fixed_advance.rs	C108	FixedAdvanceText	1
+crates/meridian-ui-core/src/layout/grid/cells.rs	C108	Cell	1
+crates/meridian-ui-core/src/layout/grid/mod.rs	C103	fn arrange	1
+crates/meridian-ui-core/src/layout/grid/mod.rs	C103	fn definitions	1
+crates/meridian-ui-core/src/layout/grid/mod.rs	C103	fn measure	1
+crates/meridian-ui-core/src/layout/grid/mod.rs	C103	fn offered	1
+crates/meridian-ui-core/src/layout/grid/mod.rs	C103	fn placed_children	1
+crates/meridian-ui-core/src/node.rs	C108	ElementKind	1
+crates/meridian-ui-core/src/node.rs	C108	NodeId	1
+crates/meridian-ui-core/src/properties/mod.rs	C103	const ALL	1
+crates/meridian-ui-core/src/properties/mod.rs	C103	fn by_name	1
+crates/meridian-ui-core/src/properties/mod.rs	C103	fn meta	1
+crates/meridian-ui-core/src/property/definition.rs	C108	Invalidates	1
+crates/meridian-ui-core/src/property/definition.rs	C108	Property	1
+crates/meridian-ui-core/src/property/definition.rs	C108	PropertyMeta	1
+crates/meridian-ui-core/src/property/kind.rs	C108	PropertyType	1
+crates/meridian-ui-core/src/property/literal/number.rs	S702		2
+crates/meridian-ui-core/src/tree/change.rs	C108	ChangeSource	1
+crates/meridian-ui-core/src/tree/values.rs	N203	get_or_default	1
 examples/Cargo.toml	R801	meridian-examples	1
 examples/examples/magic_figures/shape_spec.rs	S702		3
 examples/examples/physic_figures/render_entity.rs	S702		2

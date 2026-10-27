@@ -8,8 +8,8 @@ spatial model instead of each inventing its own transform representation.
 ## Layering
 
 The workspace follows Craftbook's domain-driven layering
-([ADR 018](adr/018-ports-in-domain-drivers-as-adapters.md),
-[ADR 019](adr/019-craftbook-adoption.md)): dependencies point inwards, and
+([ADR 019](adr/019-ports-in-domain-drivers-as-adapters.md),
+[ADR 020](adr/020-craftbook-adoption.md)): dependencies point inwards, and
 the domain and application crates own the ports their adapters implement.
 
 ```text
@@ -117,7 +117,7 @@ application crate) declares the port it needs — a mesh store, a frame
 recorder, an audio sink, a compute device — and the driver implements it.
 A second backend is one more adapter implementing the same ports, with no
 change to the domain. See
-[ADR 018](adr/018-ports-in-domain-drivers-as-adapters.md), which supersedes
+[ADR 019](adr/019-ports-in-domain-drivers-as-adapters.md), which supersedes
 [ADR 005](adr/005-driver-core-separation.md)'s `*-core → *-driver`
 direction; until wave 5 the old edges remain as pending migration.
 `compute` is named `compute-runtime` rather than `compute-core`: unlike

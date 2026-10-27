@@ -12,7 +12,7 @@ description: Preserve Meridian compute dispatch boundaries. Use when editing mer
 3. Do not put domain-shaped algorithms or buffers in `compute-runtime`; no `Motor3`, rigid bodies, particles, or domain buffer wrappers there.
 4. Put GAC batch kernels in `meridian-gac-compute`; add future domain adapter crates only for concrete needs.
 5. Do not reimplement general engine task scheduling inside compute runtime. Respect `task-core` boundaries.
-6. Keep low-level CPU/GPU execution in `compute-driver`, as an adapter of the compute device port `compute-runtime` owns (ADR 018); do not add new `compute-runtime → compute-driver` reach.
+6. Keep low-level CPU/GPU execution in `compute-driver`, as an adapter of the compute device port `compute-runtime` owns (ADR 019); do not add new `compute-runtime → compute-driver` reach.
 
 ## Validation
 

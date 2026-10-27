@@ -4,8 +4,8 @@ The bounded contexts of Meridian-Engine and how they relate (Craftbook
 ch. 7 §7.2). Machine-readable form: `craftbook.toml` (layers per crate,
 `[[context_edge]]` per relation), checked by `craftcheck deps`. Words of each
 context: [glossary.md](glossary.md). Decisions:
-[ADR 018](adr/018-ports-in-domain-drivers-as-adapters.md) (ports and
-adapters) and [ADR 019](adr/019-craftbook-adoption.md).
+[ADR 019](adr/019-ports-in-domain-drivers-as-adapters.md) (ports and
+adapters) and [ADR 020](adr/020-craftbook-adoption.md).
 
 The table maps today's crates to their intended layer. A crate that holds
 two layers today is listed under the one it is moving to; Craftbook's
@@ -18,7 +18,7 @@ two layers today is listed under the one it is moving to; Craftbook's
 | geometry | shared kernel | `numeric-core` (kernel), `gac-core` (kernel, perf), `gac-compute` (infra) | scalars, `Fixed`, vectors, bivectors, rotors, motors, shapes |
 | identity | shared kernel | `memory-core` (kernel, perf), `resource-core` (kernel) | generational handles, pools, arenas, resource ids, versions, dependency graph |
 | entity | shared kernel | `ecs-core` (kernel, perf) | entities, components, archetypes, queries, `Transform` |
-| diagnostics | shared kernel | `foundation` (kernel; file sink and crash report move to an adapter, ADR 019 D7) | `EngineError`, log levels, the process log sink |
+| diagnostics | shared kernel | `foundation` (kernel; file sink and crash report move to an adapter, ADR 020 D7) | `EngineError`, log levels, the process log sink |
 | scene-markup | shared kernel / published language | `dsl-core` (kernel), `dsl-macros` (interface) | markup elements, tags, the tag registry |
 | platform | infrastructure | `platform-core` (infra) | window, input state, clock, CPU/GPU capabilities, dynamic libraries |
 | compute | application + adapters | `compute-runtime` (app), `compute-driver` (infra), `gpu-driver` (infra) | compute context, kernels, dispatch size, untyped buffers, GPU device |
@@ -26,6 +26,9 @@ two layers today is listed under the one it is moving to; Craftbook's
 | rendering | domain + adapter | `graphics-core` (domain), `graphics-driver` (infra) | scenes, cameras, lights, materials, render graph, frame submission |
 | physics | domain + adapters | `physics-core` (domain, perf), `physics-compute` (infra), `physics-driver` (infra, to be deleted) | rigid bodies, colliders, contacts, solver, integrator, soft bodies |
 | audio | domain + adapter | `audio-core` (domain), `audio-driver` (infra) | listener, emitters, speakers, mixer, DSP graph |
+| ui | domain + adapter | `ui-core` (domain), `mel-build` (infra: build-time `.mel` generator) | element tree, typed properties, layout, hit testing, generated bindings |
+| data | infrastructure | `scene` (infra: Substrate Data scene documents) | scene document schema and migration |
+| editor | infrastructure | `editor-protocol` (infra) | host/editor wire messages, versions, ids |
 | runtime | application + interface | `engine-core` (app), `task-core` (infra), `sdk` (interface: composition root), `examples` (interface) | frame stages, scheduler, events, job graph |
 
 ## Relations
@@ -49,6 +52,7 @@ dependencies need one of these:
 | audio → platform | customer–supplier | capability report |
 | physics → platform | customer–supplier | capability report (`physics-driver`) |
 | runtime → physics, audio, rendering, platform, assets, compute | customer–supplier | each context's published API, called by runtime use cases |
+| editor → data | customer–supplier | the protocol carries scene documents and entity refs |
 | scene-markup → runtime | anticorruption layer | markup tags translated into runtime commands |
 
 ## Known gaps
@@ -58,13 +62,13 @@ may only shrink.
 
 - Domain and application crates that still depend on adapters
   (`graphics-core → graphics-driver`, `audio-core → audio-driver`,
-  `compute-runtime → compute-driver`, …): ADR 018, wave 5.
+  `compute-runtime → compute-driver`, …): ADR 019, wave 5.
 - `graphics-core → asset-core` is a domain-to-domain edge declared as a
   published language; Craftbook requires customer–supplier between two domain
   crates. Resolved when the decoded CPU types move to a published-language
   crate in the assets split (wave 5).
 - `sdk → dsl-macros` (runtime → scene-markup interface crate) has no edge;
-  resolved when the DSL tags leave `sdk` (ADR 019 D3, wave 6).
+  resolved when the DSL tags leave `sdk` (ADR 020 D3, wave 6).
 - I/O in the diagnostics kernel (`foundation`'s tokio file sink, crash
-  report) and `audio-core::AudioOutput::open` being `async`: ADR 019 D7 and
-  ADR 018, waves 5–6.
+  report) and `audio-core::AudioOutput::open` being `async`: ADR 020 D7 and
+  ADR 019, waves 5–6.

@@ -2,8 +2,8 @@
 # Each crate is mapped to the layer it is meant to be in, so `craftcheck deps`
 # reports where today's code breaks it (baseline: .craftcheck-deps-baseline).
 # Target crate names and the migration waves: Craftbook adoption/meridian-engine.md,
-# decisions: docs/adr/018-ports-in-domain-drivers-as-adapters.md and
-# docs/adr/019-craftbook-adoption.md. Contexts and edges: docs/context-map.md.
+# decisions: docs/adr/019-ports-in-domain-drivers-as-adapters.md and
+# docs/adr/020-craftbook-adoption.md. Contexts and edges: docs/context-map.md.
 # scripts/check_dependency_rules.py reads the layers below (one source).
 
 [[crate]]
@@ -145,6 +145,26 @@ name = "physic_figures"
 layer = "interface"
 context = "runtime"
 
+[[crate]]
+name = "meridian-ui-core"
+layer = "domain"
+context = "ui"
+
+[[crate]]
+name = "meridian-mel-build"
+layer = "infra"
+context = "ui"
+
+[[crate]]
+name = "meridian-scene"
+layer = "infra"
+context = "data"
+
+[[crate]]
+name = "meridian-editor-protocol"
+layer = "infra"
+context = "editor"
+
 [[context_edge]]
 from = "physics"
 to = "geometry"
@@ -245,3 +265,18 @@ relation = "customer-supplier"
 [[exempt]]
 path = "crates/meridian-foundation/src/logging.rs"
 reason = "process logger: the one allowed global (ch. 4 §4.7); its tokio file I/O still moves to an adapter (D7)"
+
+[[context_edge]]
+from = "editor"
+to = "data"
+relation = "customer-supplier"
+
+[[context_edge]]
+from = "runtime"
+to = "ui"
+relation = "customer-supplier"
+
+[[context_edge]]
+from = "runtime"
+to = "scene-markup"
+relation = "customer-supplier"
