@@ -1,6 +1,6 @@
 # meridian-compute-runtime
 
-Compute dispatch runtime: device/context, buffers, and the ComputeKernel interface domain crates (gac-compute, future particle-compute/physics-compute/...) implement against. Owns no algorithms of its own.
+Compute dispatch runtime: device/context, buffers, and the `ComputeKernel` interface domain crates (gac-compute, future particle-compute/physics-compute/...) implement against. Owns no algorithms of its own.
 
 **Layer and context:** application · compute
 
