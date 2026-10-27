@@ -29,11 +29,11 @@ use core::ops::{Add, Div, Mul, Neg, Sub};
 /// platform-dependence `Fixed` exists to remove.
 ///
 /// This is opt-in, not a replacement for [`crate::float::Scalar`]:
-/// `gac-core` exposes both a `float_ga` (the everyday, GPU-dispatchable
+/// `gac` exposes both a `float_ga` (the everyday, GPU-dispatchable
 /// path — see `meridian-gac-wgpu`) and a `fixed_ga` module (this
-/// type's geometric algebra, used by `physics-core`'s deterministic
+/// type's geometric algebra, used by `physics-domain`'s deterministic
 /// simulation path only) built on top of it. See
-/// `physics-core::fixed::RigidBody` and docs/roadmap.md.
+/// `physics-domain::fixed::RigidBody` and docs/roadmap.md.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub struct Fixed(i32);
 

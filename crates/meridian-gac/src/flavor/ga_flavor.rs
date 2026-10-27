@@ -4,7 +4,7 @@ use super::{BivectorLike, MotorLike, RotorLike, ScalarLike, VectorLike};
 
 /// One complete "flavor" of the algebra — the associated-type bundle
 /// that lets generic code (this crate's own primitives below,
-/// `physics-core`'s engine, ...) be written once against `F: GaFlavor`
+/// `physics-domain`'s engine, ...) be written once against `F: GaFlavor`
 /// instead of once per scalar type. [`crate::FloatFlavor`] and
 /// [`crate::FixedFlavor`] are the two flavors that exist today; a
 /// third is exactly as easy to add as implementing this trait (plus the

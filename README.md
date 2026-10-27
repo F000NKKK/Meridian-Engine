@@ -144,7 +144,7 @@ flowchart LR
     I[interface<br/>sdk, markup-macros, examples] --> A[application<br/>runtime-app, compute-app, audio-app, physics-app, rendering-app]
     A --> D[domain<br/>graphics, physics, audio, assets, ui]
     X[infrastructure<br/>drivers, adapters, scene, editor-domain, editor-app, editor-tcp] --> D
-    K[shared kernel<br/>foundation, numeric, gac, memory, resource, ecs, markup]
+    K[shared kernel<br/>diagnostics, numeric, gac, memory, resource, ecs, markup]
     I -.-> K
     A -.-> K
     D -.-> K

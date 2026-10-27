@@ -11,7 +11,7 @@ readme = "README.md"
 [dependencies]
 meridian-ecs = { workspace = true }
 # `Motor3`'s schema, for `Transform` (registered through a codec here, so
-# ecs-core itself never learns about files).
+# ecs itself never learns about files).
 meridian-gac = { workspace = true, features = ["data"] }
 substrate-data = { workspace = true }
 thiserror = { workspace = true }

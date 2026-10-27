@@ -1,6 +1,6 @@
 //! A free-fly camera.
 //!
-//! The camera uses `gac-core`'s local-forward `+X` convention (see
+//! The camera uses `gac`'s local-forward `+X` convention (see
 //! [`look_at_rotor`](crate::look_at_rotor) and [`FlyCamera::yaw`]'s own doc) and composes its
 //! view rotor as yaw-then-pitch around the yawed local-right axis,
 //! avoiding the roll problem [`look_at_rotor`](crate::look_at_rotor) has when pitch changes.
@@ -23,7 +23,7 @@ use crate::Camera;
 pub struct FlyCamera {
     pub position: Vec3,
     /// Radians, measured from `+X` toward `+Z` (matches `Vec3::X` being
-    /// `gac-core`'s local-forward convention — see [`look_at_rotor`](crate::look_at_rotor)).
+    /// `gac`'s local-forward convention — see [`look_at_rotor`](crate::look_at_rotor)).
     pub yaw: f32,
     /// Radians, clamped just short of &plusmn;90&deg; to avoid a gimbal
     /// flip at the poles.
@@ -109,7 +109,7 @@ impl FlyCamera {
     /// at every pitch).
     ///
     /// Note: `Rotor::from_axis_angle(Vec3::Y, yaw)` produces a
-    /// **left-handed** rotation (a known asymmetry in `gac-core`'s
+    /// **left-handed** rotation (a known asymmetry in `gac`'s
     /// `from_axis_angle` for the Y axis), so the yaw is negated here to
     /// keep the rotor consistent with the ad‑hoc `forward_horiz` basis
     /// used in [`Self::update`] (which follows a conventional right-handed

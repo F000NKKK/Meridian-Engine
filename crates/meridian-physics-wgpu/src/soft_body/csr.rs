@@ -4,7 +4,7 @@
 //! its own, so no GPU-dispatch constraint forces it to be flavor-split —
 //! see [`crate`]'s own doc comment).
 //!
-//! `SoftBodyIntegrator::step` (`physics-core::soft_body::time_step`)
+//! `SoftBodyIntegrator::step` (`physics-domain::soft_body::time_step`)
 //! computes forces by iterating `springs` once and scattering the result
 //! into both endpoints (`forces[a] += total; forces[b] -= total`) — fine
 //! sequentially on the CPU, but a data race on the GPU if parallelized

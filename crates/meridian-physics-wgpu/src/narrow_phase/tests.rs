@@ -17,7 +17,7 @@ fn sphere_at(x: f32) -> RigidBody<FloatFlavor> {
 }
 
 /// The kernel's batched `test_pair` results, run through
-/// `compute-runtime`'s CPU `parallel_for`, must match calling
+/// `compute-app`'s CPU `parallel_for`, must match calling
 /// `NarrowPhase::test_pair` directly for every pair — including
 /// which pairs come back `None` (not overlapping), not just the
 /// overlapping ones.
@@ -101,7 +101,7 @@ fn cuboid_at(x: f32, y: f32, half: f32) -> RigidBody<FloatFlavor> {
 }
 
 /// A wide, flat floor and a small box resting flush on top — the
-/// same shape `physics-core::float`'s own
+/// same shape `physics-domain::float`'s own
 /// `full_step_cuboid_settles_on_static_cuboid_floor_without_sinking_through`
 /// test uses, chosen specifically because the box's face sits well
 /// inside the floor's much larger face, guaranteeing `face_manifold`

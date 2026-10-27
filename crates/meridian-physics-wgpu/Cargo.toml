@@ -5,7 +5,7 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Compute adapter for physics-core: WGSL soft-body (mass-spring) GPU kernels (float and Fixed flavors), plus compute-runtime-batched rigid-body Integrator and NarrowPhase::test_pair kernels (generic over GaFlavor, CPU dispatch today). The adapter between physics-core's domain model and compute-runtime's dispatch interface — mirrors meridian-gac-wgpu's role for GAC batch ops (see docs/dependency-rules.md rule 11)."
+description = "Compute adapter for physics-domain: WGSL soft-body (mass-spring) GPU kernels (float and Fixed flavors), plus compute-runtime-batched rigid-body Integrator and NarrowPhase::test_pair kernels (generic over GaFlavor, CPU dispatch today). The adapter between physics-domain's domain model and compute-app's dispatch interface — mirrors meridian-gac-wgpu's role for GAC batch ops (see docs/dependency-rules.md rule 11)."
 readme = "README.md"
 
 [dependencies]

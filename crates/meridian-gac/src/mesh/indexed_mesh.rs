@@ -5,12 +5,12 @@ use crate::flavor::GaFlavor;
 
 /// An indexed polygon mesh: vertex positions (in some [`GaFlavor`]) plus
 /// face topology (flavor-independent). Shared by any subsystem that
-/// needs mesh data as *geometry* — `physics-core`'s soft-body particle/
-/// spring setup ([`icosphere`](crate::icosphere) specifically), a future `graphics-core`
+/// needs mesh data as *geometry* — `physics-domain`'s soft-body particle/
+/// spring setup ([`icosphere`](crate::icosphere) specifically), a future `rendering-domain`
 /// procedural-mesh path, ... — the same "one primitive, reused, not
 /// duplicated per consumer" reasoning as [`Aabb`](crate::Aabb)/[`Sphere`](crate::Sphere)/[`Shape`](crate::Shape)
 /// above. This is deliberately *not* the same type as
-/// `asset-core::MeshAsset`: that type is always `f32`, always
+/// `asset-domain::MeshAsset`: that type is always `f32`, always
 /// pre-triangulated, decoded-from-file-bytes data already shaped for GPU
 /// upload (see that crate's own module doc and
 /// [dependency-rules.md](../../../docs/dependency-rules.md) rule 4);

@@ -6,16 +6,16 @@
 //! [`ComputeContext::parallel_for`] is the one place the CPU backend gets
 //! reached (rule 5): below `parallel_threshold` it runs sequentially on
 //! the calling thread, at or above it delegates to the
-//! [`ComputeDevice`] port (implemented by `compute-driver`). That threshold is
+//! [`ComputeDevice`] port (implemented by `compute-wgpu`). That threshold is
 //! configurable state (via [`ComputeScheduler`]), not a hardcoded
 //! constant domain crates read — the point being that "how many items
 //! justify parallelizing" is a policy call, tunable per workload, not a
 //! fact about the algorithm.
 //!
-//! `task-core` is a declared dependency (see docs/threading-model.md) but
+//! `runtime-threads` is a declared dependency (see docs/threading-model.md) but
 //! not yet used here: `JobGraph::add_job` requires `'static` closures,
 //! and `parallel_for`'s `work` is borrowed from the caller's stack frame
-//! — a real signature mismatch, not an oversight. Reusing `task-core` for
+//! — a real signature mismatch, not an oversight. Reusing `runtime-threads` for
 //! this needs a scoped/borrowing job API that doesn't exist yet, so this
 //! uses the device's own `std::thread::scope`-based dispatch
 //! instead of forcing an awkward fit.

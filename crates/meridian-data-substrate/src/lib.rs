@@ -2,8 +2,8 @@
 //! [`ComponentRegistry`], the `.mscene` document, and `World` load/save
 //! with every problem typed and placed (line, column, path).
 //!
-//! Tier: above `ecs-core` and `gac-core` (whose `data` feature gives
-//! `Motor3` its schema), below `engine-core`. It knows no subsystem's
+//! Tier: above `ecs` and `gac` (whose `data` feature gives
+//! `Motor3` its schema), below `runtime-app`. It knows no subsystem's
 //! components; an application registers the ones its scenes hold. Format,
 //! decisions and status: docs/data-formats.md and
 //! [ADR 016](../../../docs/adr/016-data-formats-on-substrate-data.md).

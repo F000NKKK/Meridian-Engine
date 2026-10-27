@@ -3,7 +3,7 @@
 use crate::{DecodeError, Decoder, ShaderSource};
 
 /// Loads shader source as-is (UTF-8 text). Compiling it is
-/// `graphics-driver`'s job.
+/// `rendering-wgpu`'s job.
 #[derive(Debug, Default)]
 pub struct ShaderSourceDecoder;
 

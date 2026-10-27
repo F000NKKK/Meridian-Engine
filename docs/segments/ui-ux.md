@@ -18,7 +18,7 @@ backlog; architecture decisions still go to `docs/adr/`, status to
 
 ## Boundaries
 
-- `ui-domain` (tier 1) depends on `foundation` and `memory` only. A
+- `ui-domain` (tier 1) depends on `diagnostics` and `memory` only. A
   later adapter above `rendering-domain` and `platform-winit` turns the
   laid-out tree into `Scene2D`/`Scene3D` renderables and feeds it
   `InputState`. Nobody calls `rendering-wgpu` from UI code and nothing

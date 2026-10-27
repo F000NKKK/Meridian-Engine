@@ -9,7 +9,7 @@ use meridian_physics_domain::{BroadPhase, ConstraintSolver, Integrator, NarrowPh
 /// uses the same count, so they stay comparable.
 pub const RELAXATION_ITERATIONS: u32 = 4;
 
-/// `physics-core`'s body list plus its broad/narrow-phase and
+/// `physics-domain`'s body list plus its broad/narrow-phase and
 /// solver/integrator: everything a [`PhysicsStepper`](crate::PhysicsStepper) advances by one
 /// timestep. The state is plain data owned by whoever composes the
 /// application; no lock lives here.

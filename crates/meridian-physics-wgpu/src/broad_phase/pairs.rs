@@ -1,5 +1,5 @@
 //! Batch [`BroadPhase::find_candidate_pairs`](meridian_physics_domain::collision::BroadPhase::find_candidate_pairs)'s
-//! AABB overlap sweep through `compute-runtime` — the last of the three
+//! AABB overlap sweep through `compute-app` — the last of the three
 //! "aren't batched yet" items [`crate::narrow_phase`]'s own module doc
 //! left open (`Integrator`/`NarrowPhase::test_pair`/`generate_contacts`
 //! are covered by [`crate::rigid_body`]/[`crate::narrow_phase`]; this
@@ -8,8 +8,8 @@
 //! **Reuses [`RigidBody::aabb`] and `gac_core::Aabb::overlaps`
 //! directly — does not reimplement the bounding-box math.** Per
 //! CLAUDE.md's "don't drag another crate's logic into your own" rule,
-//! bounding-box geometry belongs to `gac-core`, and which AABB a body
-//! has belongs to `physics-core`; this module's only job is running the
+//! bounding-box geometry belongs to `gac`, and which AABB a body
+//! has belongs to `physics-domain`; this module's only job is running the
 //! same pairwise overlap test many candidate pairs at once instead of a
 //! nested loop.
 //!
@@ -141,7 +141,7 @@ mod tests {
         }
     }
 
-    /// The kernel's batched pairs, run through `compute-runtime`'s CPU
+    /// The kernel's batched pairs, run through `compute-app`'s CPU
     /// `parallel_for`, must be bit-for-bit identical (same pairs, same
     /// order) to calling `BroadPhase::find_candidate_pairs` directly —
     /// this is a drop-in replacement, not an approximation.

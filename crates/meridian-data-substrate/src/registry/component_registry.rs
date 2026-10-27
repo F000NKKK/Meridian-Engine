@@ -111,7 +111,7 @@ impl ComponentRegistry {
 
     /// Registers `T` under `name`, read and written through codec `W` — for
     /// a component whose crate doesn't implement [`Schema`], such as
-    /// `ecs-core`'s `Transform` ([`crate::TransformCodec`]).
+    /// `ecs`'s `Transform` ([`crate::TransformCodec`]).
     ///
     /// # Errors
     ///

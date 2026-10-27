@@ -5,7 +5,7 @@ use crate::{Device, Sampler, Texture};
 impl Device {
     /// A 2D texture in `format`, with `usage` flags the caller picks
     /// (depth/stencil formats support a narrower usage set than color
-    /// formats on some backends, so this doesn't guess). `graphics-driver`'s
+    /// formats on some backends, so this doesn't guess). `rendering-wgpu`'s
     /// `DepthTexture` is a thin wrapper calling this with `Depth32Float` +
     /// `RENDER_ATTACHMENT`; a color texture at `Rgba8Unorm` +
     /// `TEXTURE_BINDING | COPY_DST | COPY_SRC` is the other common case.
@@ -126,7 +126,7 @@ impl Device {
     /// the mismatch at bind-group-creation time). `LessEqual`: a
     /// fragment is lit when its light-space depth is less than or equal
     /// to the shadow map's stored depth at that texel — the standard
-    /// shadow-mapping comparison (see `graphics-core::submission`'s
+    /// shadow-mapping comparison (see `rendering-domain::submission`'s
     /// shadow-lookup WGSL for the bias that keeps this from
     /// self-shadowing every lit surface, "shadow acne").
     pub fn create_comparison_sampler(&self) -> Sampler {

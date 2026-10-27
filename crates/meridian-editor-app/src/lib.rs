@@ -8,8 +8,8 @@
 //! [`meridian_editor_domain::HostMessage`]s to send: the response, then
 //! the events the request caused that the editor subscribed to.
 //!
-//! Tier: above `meridian-editor-domain`, `meridian-data-substrate` and `ecs-core`,
-//! below whoever serves a stream (`meridian-editor-tcp`) and `engine-core`.
+//! Tier: above `meridian-editor-domain`, `meridian-data-substrate` and `ecs`,
+//! below whoever serves a stream (`meridian-editor-tcp`) and `runtime-app`.
 //! Synchronous: nothing here waits on anything outside the process.
 //! Lifecycle, what is and is not implemented: docs/editor-protocol.md.
 

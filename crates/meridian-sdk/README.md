@@ -1,6 +1,6 @@
 # meridian-sdk
 
-Single application-facing entry point: re-exports everything an app needs (gac/physics-core/audio-core/graphics-core/graphics-driver/platform-core/asset-core/engine-core types) plus its own composable job-graph pipeline and windowed-app scaffolding (scene/camera helpers). Applications depend on this crate alone, never on the individual crates it composes.
+Single application-facing entry point: re-exports everything an app needs (gac/physics-domain/audio-domain/rendering-domain/rendering-wgpu/platform-winit/asset-domain/runtime-app types) plus its own composable job-graph pipeline and windowed-app scaffolding (scene/camera helpers). Applications depend on this crate alone, never on the individual crates it composes.
 
 **Layer and context:** interface · runtime
 

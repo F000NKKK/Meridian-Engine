@@ -1,12 +1,12 @@
-//! GPU compute adapter for `physics-core`'s mass-spring soft-body model
-//! (`physics-core::soft_body`) — the same role `meridian-gac-wgpu`
+//! GPU compute adapter for `physics-domain`'s mass-spring soft-body model
+//! (`physics-domain::soft_body`) — the same role `meridian-gac-wgpu`
 //! plays for GAC batch transforms, per
 //! [dependency-rules.md rule 11](../../../docs/dependency-rules.md): a
 //! new domain adopting GPU compute gets its own `meridian-<domain>-compute`
-//! adapter crate (`physics-core` + `compute-runtime`, plus `gpu-driver`
-//! directly for the same resource-type-naming reason `gac-compute` needs
+//! adapter crate (`physics-domain` + `compute-app`, plus `gpu-wgpu`
+//! directly for the same resource-type-naming reason `gac-wgpu` needs
 //! it — see that crate's own doc comment) rather than growing
-//! `compute-runtime` itself or reaching into `compute-driver` directly.
+//! `compute-app` itself or reaching into `compute-wgpu` directly.
 //!
 //! Layer: infrastructure (adapter); bounded context: physics
 //! (`craftbook.toml`, docs/context-map.md).
@@ -18,7 +18,7 @@
 //! GPU kernels themselves are *not* thin aliases over one generic
 //! implementation, unlike most float/fixed splits in this workspace
 //! (CLAUDE.md's "Float/Fixed branching" rule): this is a genuine
-//! GPU-dispatch constraint, the same one that keeps `gac-core::Motor3`
+//! GPU-dispatch constraint, the same one that keeps `gac::Motor3`
 //! concretely `f32` — [`soft_body::float`]'s WGSL kernel uses native `f32` GPU
 //! arithmetic directly, while [`soft_body::fixed`]'s kernel emulates Q16.16 (via
 //! `meridian_gac_wgpu::fixed_wgsl::FIXED_ARITHMETIC_LIB_WGSL`) since
@@ -31,20 +31,20 @@
 
 //! [`rigid_body`], [`broad_phase`], [`narrow_phase`] and
 //! [`constraint_solver`] are a third, independent kind of work this
-//! crate hosts: batching `physics-core`'s *entire* rigid-body pipeline
+//! crate hosts: batching `physics-domain`'s *entire* rigid-body pipeline
 //! (`Integrator`, `BroadPhase::find_candidate_pairs`,
 //! `NarrowPhase::test_pair`/`generate_contacts`, `ConstraintSolver`)
-//! through `compute-runtime` instead of a plain `for` loop — every step
+//! through `compute-app` instead of a plain `for` loop — every step
 //! docs/roadmap.md's "batching is additive later" note named is done.
 //! All five are generic over `GaFlavor` rather than float/fixed-split,
-//! since (like `physics-core`'s own engine) none of them has a
+//! since (like `physics-domain`'s own engine) none of them has a
 //! GPU-dispatch constraint of its own — see each module's doc comment.
 //! `NarrowPhase::generate_contacts` (unlike `test_pair`'s fixed 1:1
 //! shape) produces a *variable* number of manifold points per pair;
 //! [`narrow_phase::GenerateContactsKernel`] handles that with a
 //! fixed-size-per-pair output slot capped at
 //! [`narrow_phase::MAX_CONTACTS_PER_PAIR`] (matching
-//! `physics-core::collision::face_manifold`'s own point cap) rather than
+//! `physics-domain::collision::face_manifold`'s own point cap) rather than
 //! a true dynamic prefix-sum — see that module's own doc comment.
 //! [`constraint_solver`] is the hardest of the five (each contact
 //! mutates two bodies, so naive parallelism races) — see that module's
@@ -54,7 +54,7 @@
 //!
 //! **[`broad_phase::float::BroadPhaseGpuKernel`] is the first of these five with a
 //! real WGSL shader behind it** — the concrete start of turning "batched
-//! through `compute-runtime`'s CPU backend" into "literally
+//! through `compute-app`'s CPU backend" into "literally
 //! GPU-executing." It only takes on the broad-phase overlap test itself
 //! (six floats per body compared pairwise, pure arithmetic); each
 //! body's [`meridian_physics_domain::dynamics::RigidBody::aabb`] is still

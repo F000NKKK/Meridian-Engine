@@ -10,10 +10,10 @@
 //! `meridian_gac::Vec3`/`Motor3`/`Aabb`/etc. resolve to it) and a
 //! `fixed` module (`Fixed`, deterministic, re-exported with a `Fixed`
 //! prefix — usable by *any* crate that needs CPU-deterministic geometry,
-//! not just `physics-core`). Only `Multivector`/`Vec3`/`Bivector3`/
+//! not just `physics-domain`). Only `Multivector`/`Vec3`/`Bivector3`/
 //! `Rotor`/`Motor3` themselves are concretely duplicated between the two
 //! (`meridian-gac-wgpu`'s GPU dispatch needs the `f32` ones, ADR 008:
-//! `meridian-gac-wgpu` dispatches them, and `compute-runtime` has no
+//! `meridian-gac-wgpu` dispatches them, and `compute-app` has no
 //! GPU backend to dispatch to at all yet — CPU vs. GPU is a dispatch
 //! *setting* a caller picks once one exists, not a type-level
 //! restriction this crate imposes; a future GPU backend could in

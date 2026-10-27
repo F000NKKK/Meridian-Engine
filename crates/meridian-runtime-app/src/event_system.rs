@@ -8,9 +8,9 @@ use std::collections::HashMap;
 /// [`drain`](Self::drain) removes and returns every event of that type
 /// published since the last drain. This is what lets subsystems
 /// communicate without depending on each other directly — e.g. a future
-/// `physics-core` contact could be published here and consumed by
-/// `audio-core` for an impact sound, without either crate knowing the
-/// other exists (see docs/dependency-rules.md rule 7: only `engine-core`
+/// `physics-domain` contact could be published here and consumed by
+/// `audio-domain` for an impact sound, without either crate knowing the
+/// other exists (see docs/dependency-rules.md rule 7: only `runtime-app`
 /// is allowed to know about both).
 #[derive(Default)]
 pub struct EventSystem {

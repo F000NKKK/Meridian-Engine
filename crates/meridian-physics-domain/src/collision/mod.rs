@@ -3,7 +3,7 @@
 //! generators. `float` and `fixed` bind it to the two flavors.
 //!
 //! Nothing here has a GPU-dispatch constraint of its own, so unlike
-//! `gac-core`'s `Motor3`/`Vec3`, the engine is not duplicated per flavor; the
+//! `gac`'s `Motor3`/`Vec3`, the engine is not duplicated per flavor; the
 //! flavor modules are thin aliases (see CLAUDE.md, "Float/Fixed branching").
 
 mod axes;

@@ -8,7 +8,7 @@ pub struct Buffer {
 }
 
 impl Buffer {
-    /// The raw `wgpu::Buffer` — an escape hatch for `graphics-driver`'s
+    /// The raw `wgpu::Buffer` — an escape hatch for `rendering-wgpu`'s
     /// own additional buffer operations (setting it as a vertex/index
     /// buffer on a render pass) this crate doesn't know about.
     pub fn wgpu_buffer(&self) -> &wgpu::Buffer {

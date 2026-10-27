@@ -4,8 +4,8 @@ use super::Shape;
 use crate::flavor::{GaFlavor, ScalarLike, VectorLike};
 
 /// A sphere: center + radius. The simplest curved primitive, and the one
-/// most subsystems reach for first — `physics-core`'s only default
-/// collider shape, a natural bounding volume for `graphics-core` culling
+/// most subsystems reach for first — `physics-domain`'s only default
+/// collider shape, a natural bounding volume for `rendering-domain` culling
 /// later.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Sphere<F: GaFlavor> {

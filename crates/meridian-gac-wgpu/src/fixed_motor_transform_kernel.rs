@@ -6,7 +6,7 @@ use meridian_compute_app::{ComputeContext, ComputeKernel, DispatchSize};
 use meridian_gac::FixedMotor3;
 
 /// Mirrors [`MotorTransformKernel`](crate::MotorTransformKernel), built on
-/// `gac-core::FixedMotor3`. See the module doc for why this
+/// `gac::FixedMotor3`. See the module doc for why this
 /// (and [`FixedMotorComposeKernel`](crate::FixedMotorComposeKernel)) are CPU-dispatch only.
 #[derive(Debug)]
 pub struct FixedMotorTransformKernel {

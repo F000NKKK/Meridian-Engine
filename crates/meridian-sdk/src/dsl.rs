@@ -74,7 +74,7 @@ pub struct Material {
 /// axis — a floor slab and a cube prop need different aspect ratios, so
 /// this doesn't collapse to a single uniform `size` the way procedural
 /// `Mesh` shapes mostly do), `mass` of `0.0` meaning static/immovable,
-/// matching `physics-core::RigidBody`'s own convention.
+/// matching `physics-domain::RigidBody`'s own convention.
 #[dsl_tag(name = "RigidBody")]
 #[derive(Debug, Clone, PartialEq)]
 pub struct RigidBody {

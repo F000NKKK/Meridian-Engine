@@ -1,5 +1,5 @@
 //! Batched broad phase: [`BroadPhasePairsKernel`] runs the AABB overlap
-//! sweep through `compute-runtime` for any flavor, and [`float`] holds the
+//! sweep through `compute-app` for any flavor, and [`float`] holds the
 //! WGSL-backed GPU counterpart.
 
 pub mod float;

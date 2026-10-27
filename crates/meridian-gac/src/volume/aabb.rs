@@ -5,7 +5,7 @@ use crate::flavor::{GaFlavor, ScalarLike, VectorLike};
 
 /// An axis-aligned bounding box: plain spatial-extent math with no domain
 /// meaning of its own, shared by every subsystem that needs a cheap
-/// overlap/culling test (`physics-core`'s broad phase, `graphics-core`'s
+/// overlap/culling test (`physics-domain`'s broad phase, `rendering-domain`'s
 /// frustum culling, ...). The axis-aligned of the two box variants — see
 /// [`Obb`](crate::Obb) for the oriented one; a cube is either with equal extents on
 /// every axis, not a separate type.

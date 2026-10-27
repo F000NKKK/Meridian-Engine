@@ -1,7 +1,7 @@
 //! WGSL for the bloom blur and composite passes.
 
 /// A full-screen-triangle vertex shader shared by both blur directions
-/// and the composite pass — see `graphics-driver`'s
+/// and the composite pass — see `rendering-wgpu`'s
 /// `Device::create_fullscreen_pipeline` doc comment for why no vertex
 /// buffer is needed.
 const FULLSCREEN_VERTEX_WGSL: &str = r#"

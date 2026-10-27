@@ -3,12 +3,12 @@
 //! Layer: infrastructure (adapter); bounded context: compute
 //! (`craftbook.toml`, docs/context-map.md).
 //!
-//! The adapter for `compute-runtime`'s ports (ADR 019). Two independent
+//! The adapter for `compute-app`'s ports (ADR 019). Two independent
 //! backends. [`CpuComputeDevice`] implements `ComputeDevice` and runs work
 //! across real OS threads via `std::thread::scope`, safe, no `unsafe`.
 //! [`GpuComputeDevice`] implements `GpuBackend` and is
 //! real too now, built on [`meridian_gpu_wgpu`] — the crate shared with
-//! `graphics-driver` that owns the actual `wgpu` device/buffer/shader
+//! `rendering-wgpu` that owns the actual `wgpu` device/buffer/shader
 //! mechanics (see that crate's module doc and
 //! [ADR 011](../../../docs/adr/011-shared-gpu-driver-crate.md)); this
 //! crate adds nothing on top but the compute-dispatch-shaped API
@@ -29,9 +29,9 @@ use meridian_compute_app::{ComputeContext, ComputeDevice, ComputeSupport, GpuBac
 use meridian_platform_winit::{BackendCapabilities, CpuCapabilities, GpuCapabilities};
 
 /// Backend capability flags (the platform's report shape; the port's is
-/// [`ComputeSupport`]). Embeds `platform-core`'s [`CpuCapabilities`]
+/// [`ComputeSupport`]). Embeds `platform-winit`'s [`CpuCapabilities`]
 /// (the shape shared with future
-/// `graphics-driver`/`audio-driver` equivalents) rather than redeclaring
+/// `rendering-wgpu`/`audio-cpal` equivalents) rather than redeclaring
 /// `threads`; `gpu` is `None` for [`ComputeDevice`] (the CPU backend has
 /// no GPU to report) and `Some(GpuCapabilities { .. })` for
 /// [`GpuComputeDevice`] (real detected fields, via
@@ -119,7 +119,7 @@ impl ComputeDevice for CpuComputeDevice {
 /// The GPU compute backend: a real headless `wgpu` device (via
 /// `meridian_gpu_wgpu::Device`), independent of [`ComputeDevice`]'s CPU
 /// path — a caller constructs whichever backend(s) it needs (see
-/// `compute-runtime::ComputeContext::with_gpu`, the intended caller).
+/// `compute-app::ComputeContext::with_gpu`, the intended caller).
 /// `Clone` is cheap — see `meridian_gpu_wgpu::Device`'s own doc comment.
 #[derive(Debug, Clone)]
 pub struct GpuComputeDevice {
@@ -128,9 +128,9 @@ pub struct GpuComputeDevice {
 
 /// Why [`GpuComputeDevice::new`] failed — a re-export of
 /// `meridian_gpu_wgpu::DeviceError` under this crate's own name, so
-/// callers one layer up (`compute-runtime::ComputeContext::with_gpu`)
+/// callers one layer up (`compute-app::ComputeContext::with_gpu`)
 /// only ever need to know this crate's error surface, not reach past it
-/// into `gpu-driver` directly for a type name.
+/// into `gpu-wgpu` directly for a type name.
 pub type GpuComputeError = meridian_gpu_wgpu::DeviceError;
 
 impl GpuComputeDevice {
@@ -187,7 +187,7 @@ impl GpuComputeDevice {
     /// submission can still reach `meridian_gpu_wgpu::Device` directly
     /// for that (not exposed through this crate, since batching multiple
     /// dispatches together is dispatch *scheduling* policy —
-    /// `compute-runtime`'s job per rule 11 in docs/dependency-rules.md,
+    /// `compute-app`'s job per rule 11 in docs/dependency-rules.md,
     /// not this crate's).
     pub fn dispatch(
         &self,
@@ -201,7 +201,7 @@ impl GpuComputeDevice {
     }
 
     /// The raw `meridian_gpu_wgpu::Device` — an escape hatch for a
-    /// kernel author (e.g. `gac-compute`'s `Fixed` arithmetic kernels)
+    /// kernel author (e.g. `gac-wgpu`'s `Fixed` arithmetic kernels)
     /// that needs a bind group/dispatch shape beyond
     /// [`GpuComputeDevice::dispatch`]'s single-buffer convenience (a
     /// kernel reading from one buffer and writing to another, for

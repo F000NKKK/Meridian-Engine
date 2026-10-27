@@ -1,4 +1,4 @@
-//! Scalar types, SIMD helpers, numeric traits and CPU feature dispatch underlying the GAC — kept separate so gac-core stays pure geometric algebra.
+//! Scalar types, SIMD helpers, numeric traits and CPU feature dispatch underlying the GAC — kept separate so gac stays pure geometric algebra.
 //!
 //! Layer: shared kernel; bounded context: geometry (`craftbook.toml`,
 //! docs/context-map.md).

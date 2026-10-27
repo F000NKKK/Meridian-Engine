@@ -4,7 +4,7 @@
 //! (`craftbook.toml`, docs/context-map.md).
 //!
 //! Real, backed by `wgpu` via [`meridian_gpu_wgpu`] — the crate shared
-//! with `compute-driver` that owns the actual wgpu device/buffer/shader
+//! with `compute-wgpu` that owns the actual wgpu device/buffer/shader
 //! mechanics (see that crate's module doc and
 //! [ADR 011](../../../docs/adr/011-shared-gpu-driver-crate.md)); this
 //! crate adds only what's graphics-specific on top: [`Surface`]
@@ -12,14 +12,14 @@
 //! (vertex+fragment, with an optional [`DepthTexture`]), and
 //! [`RenderPass`] recording. General GPU *compute* dispatch (a compute
 //! pipeline bound to a buffer, unrelated to rendering) is
-//! `compute-driver`'s job now, not this crate's — see that crate for it.
+//! `compute-wgpu`'s job now, not this crate's — see that crate for it.
 //!
 //! Both headless ([`Device::new`], no `compatible_surface`) and windowed
 //! ([`Device::new_windowed`], a real swapchain [`Surface`]) construction
 //! exist. This crate stays `winit`-agnostic even for the windowed path —
 //! [`Device::new_windowed`] takes `impl Into<wgpu::SurfaceTarget<'static>>`,
 //! a `wgpu`-defined bound `Arc<winit::window::Window>` already satisfies
-//! — see `platform-core::Window::surface_target` and
+//! — see `platform-winit::Window::surface_target` and
 //! [ADR 010](../../../docs/adr/010-windowing-via-winit.md).
 //!
 //! Design notes: docs/notes/meridian-rendering-wgpu.md (`lib`).
@@ -56,8 +56,8 @@ pub use gpu_texture_store::GpuTextureStore;
 // `Buffer`/`BindGroup` are re-exported so callers that already reach
 // this crate's API (which returns/consumes them directly, e.g.
 // `create_buffer`/`create_uniform_bind_group`) never need their own
-// edge to `gpu-driver` just to name the type — the same
-// resource-type-naming precedent as `gac-compute`'s direct `gpu-driver`
+// edge to `gpu-wgpu` just to name the type — the same
+// resource-type-naming precedent as `gac-wgpu`'s direct `gpu-wgpu`
 // dependency (ADR 011), applied by re-export instead of a second edge.
 pub use meridian_gpu_wgpu::{
     BindGroup, Buffer, BufferUsage, DeviceError, SampledTexture, Sampler, Texture,

@@ -8,9 +8,9 @@ use meridian_gac::Motor3;
 /// Batch-composes a shared `parent` motor with many `locals` — the
 /// `world[i] = locals[i].compose(parent)` step of parent/child transform
 /// propagation, done as one dispatch instead of once per entity. This is
-/// the entry point `ecs-core`'s transform propagation, `physics-core`, and
-/// `graphics-core` use for large batches; single-transform math (`motor *
-/// local`) stays a direct `gac-core` call and never goes through this
+/// the entry point `ecs`'s transform propagation, `physics-domain`, and
+/// `rendering-domain` use for large batches; single-transform math (`motor *
+/// local`) stays a direct `gac` call and never goes through this
 /// crate.
 #[derive(Debug)]
 pub struct MotorTransformKernel {

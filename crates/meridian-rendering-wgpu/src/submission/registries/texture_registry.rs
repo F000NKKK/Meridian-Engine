@@ -8,9 +8,9 @@ use crate::{Device, Texture};
 /// GPU-resident textures, handle-addressed by [`TextureHandle`] — the
 /// registry a `Material::albedo` resolves against. Upload happens once
 /// via [`upload`](Self::upload), from an already-decoded
-/// `asset-core::ImageAsset` (RGBA8) — this bridge does not decode image
+/// `asset-domain::ImageAsset` (RGBA8) — this bridge does not decode image
 /// bytes itself, matching the crate's existing "decoding belongs to
-/// `asset-core`" boundary.
+/// `asset-domain`" boundary.
 #[derive(Debug, Default)]
 pub struct TextureRegistry {
     textures: ResourcePool<Texture>,

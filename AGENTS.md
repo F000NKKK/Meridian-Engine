@@ -75,8 +75,8 @@ Documentation is not optional bookkeeping; it is part of the architecture.
 Treat `docs/dependency-rules.md` as enforceable. In particular:
 
 - Keep the workspace graph a DAG.
-- Dependencies point inwards (ADR 019): a `*-core` (domain) or application
-  crate never takes a new edge to a `*-driver`; drivers are adapters that
+- Dependencies point inwards (ADR 019): a `*-domain` (domain) or application
+  crate never takes a new edge to a `*-wgpu`/`*-cpal` adapter; drivers are adapters that
   depend on the crate owning the port and implement it. Edges listed as
   pending migration in `scripts/check_dependency_rules.py` only shrink.
 - A driver never depends on another subsystem's driver or domain.
@@ -202,7 +202,7 @@ Use for: `rendering-domain`, `physics-domain`, `audio-domain`, and their design 
 Workflow:
 
 1. Read the matching `docs/*-design.md` plus dependency rules.
-2. Keep domain algorithms in `*-core`, not in `*-driver`.
+2. Keep domain algorithms in `*-domain`, not in `*-wgpu`/`*-cpal` adapter.
 3. Declare what the core needs from hardware as a port; its driver
    implements it (ADR 019). Never add an edge from a core to a driver.
 4. Use `compute-app`/adapter crates for compute work.

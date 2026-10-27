@@ -5,12 +5,12 @@ use meridian_compute_app::{ComputeKernel, ComputeScheduler, DispatchSize};
 use crate::Stage;
 
 /// Built-in convenience stage wrapping an arbitrary
-/// `compute-runtime::ComputeKernel` — the concrete answer to "how does a
+/// `compute-app::ComputeKernel` — the concrete answer to "how does a
 /// game hand the runtime its own GPU/CPU compute work," registered the
 /// exact same way as any other [`Stage`](crate::Stage): dependency-ordered against
 /// physics, audio, or other compute stages (a kernel that needs shared
 /// state holds its own [`Shared`](crate::Shared) handle). Not
-/// specific to any domain — `gac-compute`/`physics-compute`'s own
+/// specific to any domain — `gac-wgpu`/`physics-wgpu`'s own
 /// kernels work here exactly as well as a game-specific one; this crate
 /// still doesn't know what any given kernel actually computes.
 #[derive(Debug)]

@@ -14,7 +14,7 @@ use crate::{
 
 /// Every offscreen texture [`BloomPass`] creates uses this format — one
 /// value threaded through both texture and pipeline creation (see
-/// `graphics-driver::ColorFormat`'s own doc comment for why that
+/// `rendering-wgpu::ColorFormat`'s own doc comment for why that
 /// matters: a mismatch between the two is a `wgpu` validation error,
 /// which one shared value makes impossible).
 const OFFSCREEN_FORMAT: ColorFormat = ColorFormat::SrgbRgba8;
@@ -49,7 +49,7 @@ struct BlurStep<'a> {
 /// against has to be `BloomPass`'s own `OFFSCREEN_FORMAT` — building
 /// them on `SceneRenderer` against the surface's format instead is the
 /// class of bug
-/// `graphics-driver::ColorFormat` exists to make structurally
+/// `rendering-wgpu::ColorFormat` exists to make structurally
 /// impossible: a mesh pipeline built for the wrong render pass's format.
 #[derive(Debug)]
 pub struct BloomPass {

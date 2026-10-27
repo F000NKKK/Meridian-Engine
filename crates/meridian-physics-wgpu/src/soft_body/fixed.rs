@@ -1,6 +1,6 @@
 //! GPU soft-body integration, `Fixed` flavor — the deterministic
 //! counterpart to [`super::float`]: bit-exact against
-//! `physics-core::soft_body::fixed::FixedSoftBodyIntegrator::step`,
+//! `physics-domain::soft_body::fixed::FixedSoftBodyIntegrator::step`,
 //! not merely numerically close, the same guarantee
 //! `meridian_gac_wgpu::fixed_wgsl::FixedArithmeticKernels` proves for
 //! plain scalar arithmetic. This module reuses that same WGSL arithmetic

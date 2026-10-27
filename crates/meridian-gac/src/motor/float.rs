@@ -134,10 +134,10 @@ impl Motor3 {
     /// affine map (rotation then translation), so evaluating it at the
     /// origin and at each basis vector is an exact reconstruction of that
     /// map's matrix, not a numerical approximation. This is the one place
-    /// `gac-core` produces a classical matrix — graphics APIs need one, but
+    /// `gac` produces a classical matrix — graphics APIs need one, but
     /// the conversion stays generic bridging math, not a graphics concept
     /// (see docs/gac-design.md), so it belongs here rather than being
-    /// re-derived independently in `graphics-core`.
+    /// re-derived independently in `rendering-domain`.
     pub fn to_mat4(self) -> [[Scalar; 4]; 4] {
         let [r0, r1, r2] = self.linear_part().0;
         let origin = self.origin();

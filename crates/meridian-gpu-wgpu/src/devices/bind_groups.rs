@@ -6,7 +6,7 @@ impl Device {
     /// Builds a bind group binding `buffer` at `@group(0) @binding(0)` of
     /// `pipeline`'s auto-derived layout (see
     /// [`Device::create_compute_pipeline`](crate::Device::create_compute_pipeline)'s doc comment). Shared by the
-    /// compute-dispatch path here and by `graphics-driver`'s uniform bind
+    /// compute-dispatch path here and by `rendering-wgpu`'s uniform bind
     /// group for its render pipelines — same single-binding shape either
     /// way.
     pub fn create_single_buffer_bind_group(

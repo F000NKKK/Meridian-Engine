@@ -1,4 +1,4 @@
-//! Batch [`ConstraintSolver`] through `compute-runtime` — the last of
+//! Batch [`ConstraintSolver`] through `compute-app` — the last of
 //! the three "aren't batched yet" items, and the hardest, which is
 //! exactly why it was left for last (see [`crate::broad_phase`]/
 //! [`crate::narrow_phase`] for the other two).
@@ -12,7 +12,7 @@
 //! (`contact.a`/`contact.b`), and two contacts sharing a body (the
 //! common case — every point of a box's 4-point floor manifold touches
 //! the same two bodies) would race if resolved concurrently against a
-//! shared body array. `physics-core`'s own sequential loop is
+//! shared body array. `physics-domain`'s own sequential loop is
 //! deliberately Gauss-Seidel: contact *N* resolves against whatever
 //! contacts `1..N` already wrote to `bodies` this pass — see
 //! `PhysicsSubsystem::step`'s own doc comment for why that ordering is
@@ -223,7 +223,7 @@ fn apply_positional_correction_pair<F: GaFlavor>(
 /// `0`/`1` to match that slice, runs `f` against `ConstraintSolver`'s
 /// real slice-taking methods (`resolve_velocity`/
 /// `apply_positional_correction` — the actual physics logic stays in
-/// `physics-core`, this only reshapes the indices), then writes the
+/// `physics-domain`, this only reshapes the indices), then writes the
 /// (possibly mutated) results back through the original `&mut`
 /// references. This is the one place index bookkeeping happens, kept
 /// separate from the impulse math itself.
@@ -351,7 +351,7 @@ mod tests {
 
     /// A settling scenario across many ticks (not just one call to
     /// `step`) must remain stable -- no bounce, no sinking -- the same
-    /// end-to-end property `engine-core`'s own box-settling regression
+    /// end-to-end property `runtime-app`'s own box-settling regression
     /// test checks for the sequential solver.
     #[test]
     fn repeated_batched_steps_settle_without_bouncing_or_sinking() {

@@ -55,7 +55,7 @@ impl CommandBuffer<'_> {
         pass.dispatch_workgroups(workgroups, 1, 1);
     }
 
-    /// Escape hatch for `graphics-driver`'s render-pass recording, which
+    /// Escape hatch for `rendering-wgpu`'s render-pass recording, which
     /// this crate deliberately doesn't know about (render
     /// passes/swapchains are a graphics-specific concept — see the module
     /// doc). Prefer [`CommandBuffer::dispatch_compute`] where it covers
@@ -65,7 +65,7 @@ impl CommandBuffer<'_> {
     }
 
     /// The [`Device`](crate::Device) this buffer was opened from — needed by
-    /// `graphics-driver`'s render-pass recording alongside
+    /// `rendering-wgpu`'s render-pass recording alongside
     /// [`CommandBuffer::encoder_mut`].
     pub fn device(&self) -> &Device {
         self.device

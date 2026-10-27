@@ -7,7 +7,7 @@ use meridian_rendering_domain::TextureHandle;
 /// [`TextureHandle`](meridian_rendering_domain::TextureHandle).
 ///
 /// Uploading is the adapter's work (it owns the device); callers hold only
-/// handles (ADR 002). `graphics-driver` implements it with GPU textures;
+/// handles (ADR 002). `rendering-wgpu` implements it with GPU textures;
 /// [`testing::FakeTextureStore`](crate::testing::FakeTextureStore) is the
 /// in-memory fake and
 /// [`testing::run_texture_store_contract`](crate::testing::run_texture_store_contract)

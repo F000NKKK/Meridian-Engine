@@ -1,4 +1,4 @@
-//! The batched physics step on compute-runtime kernels.
+//! The batched physics step on compute-app kernels.
 
 use meridian_compute_app::{ComputeContext, ComputeKernel, DispatchSize};
 use meridian_physics_app::{PhysicsStepper, PhysicsSubsystem, RELAXATION_ITERATIONS};

@@ -1,4 +1,4 @@
-//! The UI's own input vocabulary. A later adapter above `platform-core`
+//! The UI's own input vocabulary. A later adapter above `platform-winit`
 //! translates OS events into [`InputEvent`]s; this crate never sees a
 //! window or a backend.
 

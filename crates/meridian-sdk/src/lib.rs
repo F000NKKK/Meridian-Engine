@@ -5,15 +5,15 @@
 //!
 //! **Applications depend on this crate alone.** Everything an app needs
 //! — spatial math, physics bodies, graphics scene/material types, the
-//! windowed-app loop, audio types, asset decoding, and `engine-core`'s
+//! windowed-app loop, audio types, asset decoding, and `runtime-app`'s
 //! own [`Runtime`] — is re-exported from here; nothing in `examples/`
 //! reaches into `meridian-gac`/`meridian-physics-domain`/
 //! `meridian-rendering-domain`/etc. directly. This is deliberately
-//! different from `engine-core`'s own boundary (rule 7:
+//! different from `runtime-app`'s own boundary (rule 7:
 //! `meridian-runtime-app` is the only crate allowed to depend on every
 //! `*-core`, because it's where cross-`*-core` *coordination logic*
 //! lives): this crate depends on the same set of crates for a different
-//! reason — application ergonomics and driver access `engine-core`
+//! reason — application ergonomics and driver access `runtime-app`
 //! itself is forbidden from having.
 //!
 //! Design notes: docs/notes/meridian-sdk.md (`lib`).

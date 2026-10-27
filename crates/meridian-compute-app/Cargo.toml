@@ -5,7 +5,7 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Compute dispatch runtime: device/context, buffers, and the ComputeKernel interface domain crates (gac-compute, future particle-compute/physics-compute/...) implement against. Owns no algorithms of its own."
+description = "Compute dispatch runtime: device/context, buffers, and the ComputeKernel interface domain crates (gac-wgpu, future particle-compute/physics-compute/...) implement against. Owns no algorithms of its own."
 readme = "README.md"
 
 [dependencies]

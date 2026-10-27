@@ -52,7 +52,7 @@ meridian-ui-mel = { path = "crates/meridian-ui-mel", version = "0.1" }
 
 # External dependencies shared by more than one crate go here too, same
 # reasoning: one place to bump a version instead of drifting per-crate
-# copies. `wgpu` is `graphics-driver`'s GPU backend — see docs/roadmap.md's
+# copies. `wgpu` is `rendering-wgpu`'s GPU backend — see docs/roadmap.md's
 # "Not yet decided" wgpu entry. `tokio` is this workspace's async runtime:
 # used wherever a crate has a genuine I/O operation (unbounded/externally-
 # determined completion time — an OS/driver handshake, waiting on
@@ -63,15 +63,15 @@ meridian-ui-mel = { path = "crates/meridian-ui-mel", version = "0.1" }
 wgpu = "30.0.0"
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros", "sync"] }
 
-# `winit` is `platform-core::Window`'s windowing backend — see
+# `winit` is `platform-winit::Window`'s windowing backend — see
 # docs/adr/010-windowing-via-winit.md. Pinned to the latest version whose
 # `raw-window-handle` matches `wgpu`'s own (both currently 0.6.x), since
 # that's what lets `Arc<winit::window::Window>` satisfy
-# `wgpu::Surface` creation without `graphics-driver` depending on `winit`
-# itself — see that ADR's "graphics-driver stays winit-agnostic" section.
+# `wgpu::Surface` creation without `rendering-wgpu` depending on `winit`
+# itself — see that ADR's "rendering-wgpu stays winit-agnostic" section.
 winit = "0.30.13"
 
-# `cpal` is `audio-driver`'s cross-platform audio output backend — the
+# `cpal` is `audio-cpal`'s cross-platform audio output backend — the
 # same class of decision as `wgpu` for GPU and `winit` for windowing:
 # hand-writing FFI to ALSA/PulseAudio/WASAPI/CoreAudio would be a
 # multi-month undertaking with three or more independent classes of
@@ -84,7 +84,7 @@ crossbeam-channel = "0.5"
 # adopted crate by crate, starting with `meridian-ui-mel`.
 thiserror = "2"
 
-# Compressed-audio decoding for `asset-core` — the same class of decision
+# Compressed-audio decoding for `asset-domain` — the same class of decision
 # as `cpal`/`winit`/`wgpu` (see docs/adr/013-compressed-audio-codecs.md):
 # hand-rolling an MP3/Vorbis/FLAC/Opus decoder is a multi-month DSP
 # undertaking per codec. `symphonia` is the pure-Rust ecosystem standard
@@ -96,7 +96,7 @@ thiserror = "2"
 symphonia = { version = "0.6", default-features = false, features = ["mp3", "ogg", "vorbis", "flac"] }
 symphonia-adapter-libopus = "0.3"
 
-# PNG decoding for `asset-core` — the same class of decision as the audio
+# PNG decoding for `asset-domain` — the same class of decision as the audio
 # codecs above: PNG's compressed data is DEFLATE (zlib), and hand-rolling
 # a correct DEFLATE decompressor is squarely a "multi-month, several
 # independent bug classes" undertaking, not the "small enough to own"
@@ -111,7 +111,7 @@ png = "0.18"
 # `substrate-data` re-exports its `#[derive(Schema)]` (`substrate-data-derive`),
 # so this one entry is all a crate needs. Taken from crates.io; `0.2` takes
 # every compatible patch release. Used optionally (`data` feature) by
-# `numeric-core`/`gac-core`, and directly by `meridian-data-substrate`.
+# `numeric`/`gac`, and directly by `meridian-data-substrate`.
 substrate-data = "0.2"
 
 [profile.release]

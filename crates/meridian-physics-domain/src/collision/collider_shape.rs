@@ -2,7 +2,7 @@
 
 use meridian_gac::{GaFlavor, ScalarLike};
 
-/// A collision shape. `Sphere` and `Cuboid` (`gac-core::Obb`'s
+/// A collision shape. `Sphere` and `Cuboid` (`gac::Obb`'s
 /// half-extents, oriented by the owning `RigidBody`'s own `frame` — no
 /// separate orientation to keep in sync) so far; capsule/mesh (via
 /// [`ColliderMeshHandle`](crate::collision::ColliderMeshHandle)) are additive later.

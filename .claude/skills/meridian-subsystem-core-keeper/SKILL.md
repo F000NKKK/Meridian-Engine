@@ -8,7 +8,7 @@ description: Maintain Meridian graphics, physics, audio core/driver separation. 
 ## Workflow
 
 1. Read `AGENTS.md`, `docs/dependency-rules.md`, ADR 019 (supersedes ADR 005), and the matching subsystem design doc.
-2. Keep domain algorithms in `*-core`; keep hardware/OS execution abstraction in `*-driver`.
+2. Keep domain algorithms in `*-domain`; keep hardware/OS execution abstraction in `*-wgpu`/`*-cpal` adapter.
 3. A core declares the ports it needs from hardware (I/O ports are traits in the context's `-app` crate, e.g. `audio-app`, `rendering-app`); its driver depends on that crate and implements them. Never add an edge from a core to any driver (ADR 019, ADR 024).
 4. A driver knows only the port's types: no scenes, materials, rigid bodies or mixers.
 5. Use `compute-app` or an adapter crate for compute work; do not depend directly on `compute-wgpu` from subsystem cores.

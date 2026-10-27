@@ -5,7 +5,7 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Compressed-audio adapter for asset-core: MP3, OGG/Vorbis, FLAC and OGG/Opus decoding, whole-track or streaming, on symphonia and libopus."
+description = "Compressed-audio adapter for asset-domain: MP3, OGG/Vorbis, FLAC and OGG/Opus decoding, whole-track or streaming, on symphonia and libopus."
 readme = "README.md"
 
 [dependencies]

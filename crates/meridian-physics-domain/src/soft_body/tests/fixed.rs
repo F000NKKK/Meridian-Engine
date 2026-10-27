@@ -54,7 +54,7 @@ fn ball_falls_under_gravity() {
     );
 }
 
-/// The same bit-exact reproducibility proof `physics-core::fixed`'s
+/// The same bit-exact reproducibility proof `physics-domain::fixed`'s
 /// rigid-body path already has, applied to the soft-body path: two
 /// independent runs of the identical scenario (gravity, spring
 /// forces, ground-plane collision — every piece of the pipeline)

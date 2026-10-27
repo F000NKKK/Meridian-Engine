@@ -5,7 +5,7 @@ use crate::flavor::{GaFlavor, ScalarLike, VectorLike};
 
 /// A half-space `normal . p + d >= 0` — a point satisfying this is on the
 /// plane's "inside". Another plain geometric primitive with no domain
-/// meaning of its own (`graphics-core`'s `Frustum`/[`ConvexVolume`](crate::ConvexVolume) is a
+/// meaning of its own (`rendering-domain`'s `Frustum`/[`ConvexVolume`](crate::ConvexVolume) is a
 /// handful of these; a future physics ground plane or clipping pass would
 /// be another consumer), so it lives here rather than being redefined per
 /// subsystem — see [`Aabb`](crate::Aabb)'s doc comment for the same reasoning.

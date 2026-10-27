@@ -1,19 +1,19 @@
 //! Batch [`Integrator::step`](meridian_physics_domain::dynamics::Integrator)
-//! for many independent [`RigidBody`]s through `compute-runtime`, the
-//! rigid-body half of docs/roadmap.md's "batching through compute-runtime
+//! for many independent [`RigidBody`]s through `compute-app`, the
+//! rigid-body half of docs/roadmap.md's "batching through compute-app
 //! is additive later" follow-up (`Integrator`/`BroadPhase`/`NarrowPhase`/
 //! `ConstraintSolver` were, until now, only ever called in a plain CPU
 //! loop). [`RigidBodyIntegratorKernel`] is [`meridian_gac_wgpu::MotorTransformKernel`]'s
 //! shape applied to `Integrator::step`: one dispatch instead of a
 //! `for` loop, correct today via [`ComputeContext::parallel_for`]'s CPU
 //! backend — see that kernel's own doc comment for why a `Mutex<Vec<_>>`
-//! output, and `compute-runtime`'s module doc for the CPU/GPU dispatch
+//! output, and `compute-app`'s module doc for the CPU/GPU dispatch
 //! split this crate's `float`/`fixed` soft-body kernels already exercise.
 //!
 //! **Generic over `F: GaFlavor`, not float/fixed-split**, unlike
 //! [`crate::soft_body::float`]/[`crate::soft_body::fixed`]: `Integrator::step` has no
 //! GPU-dispatch constraint of its own — it's a per-body loop of GA
-//! composition/exponential-map calls, the same reason `physics-core`'s
+//! composition/exponential-map calls, the same reason `physics-domain`'s
 //! own `Integrator` is written once and generic (see that crate's module
 //! doc and CLAUDE.md's "Float/Fixed branching" rule). Splitting this
 //! kernel into two copies to match `float.rs`/`fixed.rs`'s naming
@@ -91,7 +91,7 @@ where
             // A one-body slice reuses `Integrator::step`'s exact logic
             // (including its own `inverse_mass() <= ZERO` static-body
             // skip) rather than restating it here — same reason
-            // `MotorTransformKernel` calls straight into `gac-core`'s
+            // `MotorTransformKernel` calls straight into `gac`'s
             // `compose` instead of reimplementing it.
             let mut body = self.bodies[i];
             self.integrator
@@ -121,7 +121,7 @@ mod tests {
         }
     }
 
-    /// The kernel's dispatch, run through `compute-runtime`'s CPU
+    /// The kernel's dispatch, run through `compute-app`'s CPU
     /// `parallel_for`, must match calling `Integrator::step` directly on
     /// the same bodies — the whole point of this kernel is "same
     /// algorithm, different dispatch mechanism," not a reimplementation.

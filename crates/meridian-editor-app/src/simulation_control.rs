@@ -3,7 +3,7 @@
 use meridian_editor_domain::PlayState;
 
 /// What a [`crate::Session`] needs from the thing that steps the simulation
-/// (`engine-core`'s frame loop, a test double). The session decides when the
+/// (`runtime-app`'s frame loop, a test double). The session decides when the
 /// editor's `Play`, `Pause` and `Step` apply; this does the stepping.
 pub trait SimulationControl: std::fmt::Debug {
     /// Whether the simulation runs by itself.

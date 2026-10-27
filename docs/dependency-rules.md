@@ -35,12 +35,12 @@ diagram for the shape of the graph, that section for the ground truth
 of any one crate's dependencies.
 
 `meridian-diagnostics` and `meridian-memory` are the graph's
-independent leaves — each depends on nothing (rule 0 covers `foundation`
+independent leaves — each depends on nothing (rule 0 covers `diagnostics`
 specifically: *any* other crate may take an edge to it, so it isn't drawn
 as a dependency of anything below).
 
 The real graph has too many crisscrossing edges (many crates each
-depend directly on `foundation`, `gac`, `resource`, ... —
+depend directly on `diagnostics`, `gac`, `resource`, ... —
 see ["All edges, exactly"](#all-edges-exactly)) to draw as a single
 arrow-accurate ASCII diagram without either lying by omission or
 becoming unreadable clutter — the previous version of this section
@@ -52,11 +52,11 @@ depend on crates in tiers `0..N`, never a same-tier or higher-tier one
 (that's what makes the graph a DAG):
 
 ```text
-tier 0  compute-app, markup-macros, foundation, memory
+tier 0  compute-app, diagnostics, markup-macros, memory
 tier 1  asset-domain, diagnostics-fs, markup, numeric, platform-winit, resource, ui-domain
-tier 2  asset-png, asset-symphonia, gac, gpu-wgpu, mel-build
+tier 2  asset-png, asset-symphonia, gac, gpu-wgpu, ui-mel
 tier 3  audio-domain, compute-wgpu, ecs, physics-domain
-tier 4  audio-app, gac-wgpu, rendering-domain, physics-app, scene
+tier 4  audio-app, gac-wgpu, rendering-domain, physics-app, data-substrate
 tier 5  audio-cpal, editor-domain, runtime-app, physics-wgpu, rendering-app, ui-scene2d
 tier 6  editor-app, rendering-wgpu, runtime-threads
 tier 7  editor-tcp, sdk
@@ -66,7 +66,7 @@ tier 7  editor-tcp, sdk
 SDK's extensible scene DSL (see [ADR 015](adr/015-extensible-scene-dsl.md)
 and `meridian-sdk::dsl`'s own module doc): `markup` is a domain-blind
 tag/attribute-markup parser plus the generic `DslTag`/`DslRegistry`
-machinery (tier 1: it depends only on `foundation`, for its
+machinery (tier 1: it depends only on `diagnostics`, for its
 `EngineError` impls); `markup-macros` is the `#[dsl_tag(name = "...")]`
 proc-macro that implements `DslTag` for a plain struct (tier 0: a
 proc-macro crate, no meridian-* runtime dependency at all — it depends
@@ -118,7 +118,7 @@ serving one editor over loopback TCP with `substrate_data::io` frames.
 Neither depends on `runtime-app`, and `runtime-app` does not depend on
 them yet: the wiring is a follow-up ([editor-domain.md](editor-domain.md#host)).
 
-`meridian-ui-domain` (tier 1, on `foundation` and `memory` only) is the
+`meridian-ui-domain` (tier 1, on `diagnostics` and `memory` only) is the
 WPF-style UI runtime of [ADR 018](adr/018-ui-architecture.md): element
 tree, typed properties, layout and hit testing. It deliberately has no
 edge to `rendering-domain`, `platform-winit` or `ecs`: turning a laid-out

@@ -7,7 +7,7 @@ pub struct Shader {
 }
 
 impl Shader {
-    /// The raw `wgpu::ShaderModule` — needed by `graphics-driver`'s
+    /// The raw `wgpu::ShaderModule` — needed by `rendering-wgpu`'s
     /// render pipeline creation (vertex + fragment stages from the same
     /// module), which this crate's own [`Device::create_compute_pipeline`](crate::Device::create_compute_pipeline)
     /// doesn't cover.

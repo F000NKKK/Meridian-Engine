@@ -344,7 +344,7 @@ fn ring_capacity(config: AudioStreamConfig, resolved: &cpal::SupportedStreamConf
 /// This lives in the driver deliberately: it's a property of the stream
 /// transport ("the device never emits a discontinuity"), not a domain
 /// effect — domain-side de-clicking (e.g. between DSP stages) is
-/// `audio-core`'s business.
+/// `audio-domain`'s business.
 struct AntiClick {
     /// Last emitted sample per channel — the fade-out source.
     last: Vec<f32>,

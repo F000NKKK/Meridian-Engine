@@ -1,6 +1,6 @@
 //! Substrate Data schemas for the GA value types (`data` feature): each is
 //! a `NamedType` (`vec3`, `bivector3`, `rotor`, `motor`, `fixed_*`) stored
-//! in `gac-core`'s own component order, bit-exactly in every form. Formats
+//! in `gac`'s own component order, bit-exactly in every form. Formats
 //! and rationale: docs/data-formats.md ("Math values").
 //!
 //! The logic is written once, generic over the component scalar

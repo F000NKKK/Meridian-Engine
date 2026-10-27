@@ -59,7 +59,7 @@ const CUBE_FACES: [CubeFace; 6] = [
 /// so each face gets its own flat normal and a full `[0,1]` UV. Winding
 /// verified per-face (not just assumed from a formula) — every face's
 /// `cross(edge1, edge2)` must point along its own outward normal for
-/// `graphics-driver`'s `FrontFace::Ccw` + back-face culling to actually
+/// `rendering-wgpu`'s `FrontFace::Ccw` + back-face culling to actually
 /// draw it, and a mirrored-looking cube (some faces visible only from
 /// inside) is exactly what one flipped face produces.
 #[must_use]

@@ -6,10 +6,10 @@ use meridian_gac::{ConvexVolume, FloatFlavor, Plane, Shape, Vec3};
 /// a view-projection matrix via the Gribb/Hartmann method: each plane's
 /// coefficients are a linear combination of the matrix's rows, chosen so
 /// that "inside" matches the clip-space bounds `Projection` documents
-/// (`-w <= x,y <= w`, `0 <= z <= w`). A thin wrapper around `gac-core`'s
+/// (`-w <= x,y <= w`, `0 <= z <= w`). A thin wrapper around `gac`'s
 /// [`ConvexVolume`]: extracting exactly six planes from a `Projection` is
 /// what's camera-specific and belongs here; the underlying "is this shape
-/// inside every plane" test is generic and lives once in `gac-core` (see
+/// inside every plane" test is generic and lives once in `gac` (see
 /// docs/graphics-design.md) — [`Frustum::intersects`] works for *any*
 /// [`Shape`], not just an AABB.
 #[derive(Debug, Clone)]

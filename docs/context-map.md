@@ -18,7 +18,7 @@ two layers today is listed under the one it is moving to; Craftbook's
 | geometry | shared kernel | `numeric` (kernel), `gac` (kernel, perf), `gac-wgpu` (infra) | scalars, `Fixed`, vectors, bivectors, rotors, motors, shapes |
 | identity | shared kernel | `memory` (kernel, perf), `resource` (kernel) | generational handles, pools, arenas, resource ids, versions, dependency graph |
 | entity | shared kernel | `ecs` (kernel, perf) | entities, components, archetypes, queries, `Transform` |
-| diagnostics | shared kernel | `foundation` (kernel: `EngineError`, the log kernel and `LogSink` port), `diagnostics-fs` (infra: log file and crash report, implements `LogSink`) | `EngineError`, log levels, the process log sink |
+| diagnostics | shared kernel | `diagnostics` (kernel: `EngineError`, the log kernel and `LogSink` port), `diagnostics-fs` (infra: log file and crash report, implements `LogSink`) | `EngineError`, log levels, the process log sink |
 | scene-markup | shared kernel / published language | `markup` (kernel), `markup-macros` (interface) | markup elements, tags, the tag registry |
 | platform | infrastructure | `platform-winit` (infra) | window, input state, clock, CPU/GPU capabilities, dynamic libraries |
 | compute | application + adapters | `compute-app` (app), `compute-wgpu` (infra), `gpu-wgpu` (infra) | compute context, kernels, dispatch size, untyped buffers, GPU device |
@@ -63,6 +63,6 @@ may only shrink.
 
 - `sdk → markup-macros` (runtime → scene-markup interface crate) has no edge;
   resolved when the DSL tags leave `sdk` (ADR 020 D3, wave 6).
-- I/O in the diagnostics kernel (`foundation`'s tokio file sink, crash
+- I/O in the diagnostics kernel (`diagnostics`'s tokio file sink, crash
   report): ADR 020 D7, wave 6. (`audio-domain::AudioOutput::open` left the
   domain in wave 5.)

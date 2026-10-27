@@ -1,4 +1,4 @@
-//! [`TransformForm`]: `ecs-core::Transform` as files hold it.
+//! [`TransformForm`]: `ecs::Transform` as files hold it.
 
 use meridian_ecs::Transform;
 use meridian_gac::Motor3;
@@ -7,7 +7,7 @@ use substrate_data::{Reader, Schema, Shape, Value, ValueRef};
 
 /// Where an entity is: rotation, then translation, as one motor — stored
 /// as `{ motor }`, identity when left out. A newtype of this crate because
-/// `ecs-core` stays file-blind and the orphan rule keeps `Schema` off
+/// `ecs` stays file-blind and the orphan rule keeps `Schema` off
 /// `Transform` anywhere else.
 #[derive(Debug, Clone, Copy, PartialEq, Default, Schema)]
 pub struct TransformForm {

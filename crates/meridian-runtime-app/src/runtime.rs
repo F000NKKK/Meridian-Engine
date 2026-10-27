@@ -26,7 +26,7 @@ impl Runtime {
     /// runs them on `executor`.
     #[must_use]
     pub fn new(executor: Arc<dyn JobExecutor>) -> Self {
-        meridian_diagnostics::log_info!("engine-core Runtime initialized");
+        meridian_diagnostics::log_info!("runtime-app Runtime initialized");
         Self {
             executor,
             stages: Vec::new(),

@@ -1,9 +1,9 @@
 //! Hardware capability detection and the reporting contract every
-//! `*-driver` backend implements (the "devices" view of the platform).
+//! `*-wgpu`/`*-cpal` adapter backend implements (the "devices" view of the platform).
 
-/// Backend capability reporting shared by every `*-driver` crate's own
-/// capability type (`compute-driver::ComputeCapabilities` and future
-/// `graphics-driver`/`audio-driver` equivalents). CPU and GPU are deliberately separate
+/// Backend capability reporting shared by every `*-wgpu`/`*-cpal` adapter crate's own
+/// capability type (`compute-wgpu::ComputeCapabilities` and future
+/// `rendering-wgpu`/`audio-cpal` equivalents). CPU and GPU are deliberately separate
 /// capability shapes, not one bag of fields with a `gpu: bool` flag: CPU
 /// capability is "how many threads" (a number, always present); GPU
 /// capability is a completely different shape (device name, VRAM,
@@ -23,7 +23,7 @@ pub trait BackendCapabilities {
     }
 }
 
-/// CPU-side capability info every `*-driver` backend reports. Each
+/// CPU-side capability info every `*-wgpu`/`*-cpal` adapter backend reports. Each
 /// driver's own capability type embeds this (`pub cpu: CpuCapabilities`)
 /// instead of redeclaring `threads` itself, and adds its own
 /// domain-specific fields (SIMD width, audio latency, ...) alongside it.
@@ -41,9 +41,9 @@ impl CpuCapabilities {
 }
 
 /// GPU-side capability info. `device_name` is real, populated by
-/// `graphics-driver::Device` (the first `*-driver` crate with an actual
+/// `rendering-wgpu::Device` (the first `*-wgpu`/`*-cpal` adapter crate with an actual
 /// GPU backend — see that crate's module doc for the `wgpu` details);
-/// `compute-driver`/`audio-driver` still report `gpu:
+/// `compute-wgpu`/`audio-cpal` still report `gpu:
 /// None` since none of them dispatch to a GPU yet. More fields (VRAM, max
 /// workgroup size, ...) land here once a backend needs to report them —
 /// additive, not a redesign of the `Option`-based shape in

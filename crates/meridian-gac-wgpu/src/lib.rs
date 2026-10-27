@@ -1,4 +1,4 @@
-//! Batch execution kernels for `gac-core`'s `Motor3` transforms — the adapter between pure geometric algebra and `compute-runtime`'s dispatch interface. See docs/adr/007-batch-transforms-via-compute.md.
+//! Batch execution kernels for `gac`'s `Motor3` transforms — the adapter between pure geometric algebra and `compute-app`'s dispatch interface. See docs/adr/007-batch-transforms-via-compute.md.
 //!
 //! Layer: infrastructure (adapter); bounded context: geometry
 //! (`craftbook.toml`, docs/context-map.md).
@@ -25,18 +25,18 @@
 #![forbid(unsafe_code)]
 
 //! [`FixedMotorTransformKernel`]/[`FixedMotorComposeKernel`] are the same
-//! two kernels built on `gac-core::FixedMotor3` instead —
-//! deterministic, for `physics-core::fixed`-style consumers that need a
+//! two kernels built on `gac::FixedMotor3` instead —
+//! deterministic, for `physics-domain::fixed`-style consumers that need a
 //! batch path too. CPU vs. GPU dispatch is a *setting* a caller picks,
 //! not a type-level restriction this crate imposes (see
-//! `gac-core`'s crate-root doc comment): `compute-runtime` has no GPU
+//! `gac`'s crate-root doc comment): `compute-app` has no GPU
 //! backend implemented yet (see docs/roadmap.md), so both kernels here
 //! only exercise the CPU dispatch path today. A future GPU backend could
 //! in principle run `Fixed` kernels too, at the cost of `i64` emulation
 //! and losing the bit-exact determinism guarantee to GPU execution-order
 //! nondeterminism (see docs/adr/008-fixed-point-determinism.md) — a
 //! tradeoff for that caller to accept knowingly when it configures a GPU
-//! `compute-driver` backend, not something forbidden by these kernels.
+//! `compute-wgpu` backend, not something forbidden by these kernels.
 
 mod fixed_motor_compose_kernel;
 mod fixed_motor_transform_kernel;

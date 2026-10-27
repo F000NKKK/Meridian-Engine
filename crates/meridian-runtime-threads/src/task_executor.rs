@@ -4,7 +4,7 @@ use meridian_runtime_app::{Job, JobExecutor};
 
 use crate::{JobGraph, JobId, Scheduler};
 
-/// Implements `engine-core`'s [`JobExecutor`] port with a [`Scheduler`]: the
+/// Implements `runtime-app`'s [`JobExecutor`] port with a [`Scheduler`]: the
 /// jobs become a [`JobGraph`] and run across the worker threads, independent
 /// branches in parallel.
 #[derive(Debug)]

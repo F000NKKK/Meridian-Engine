@@ -9,7 +9,7 @@ use crate::{GraphResourceId, RenderGraphError, RenderPass};
 /// [`RenderPass::writing`](crate::RenderPass::writing)); [`execution_order`](Self::execution_order)
 /// derives a valid pass order from those declarations — a producer always
 /// runs before every pass that reads what it wrote — the same
-/// dependency-declared-not-hand-sequenced idea as `task-core`'s `JobGraph`
+/// dependency-declared-not-hand-sequenced idea as `runtime-threads`'s `JobGraph`
 /// (Kahn's algorithm), applied to resource conflicts instead of explicit
 /// job dependencies. A resource nobody writes (e.g. an externally-supplied
 /// swapchain texture) constrains nothing; it's available from the start.

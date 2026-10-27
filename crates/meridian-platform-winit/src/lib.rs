@@ -4,7 +4,7 @@
 //! (`craftbook.toml`, docs/context-map.md).
 //!
 //! One module per concern, re-exported flat from here: [`capabilities`]
-//! (hardware/device detection and the `*-driver` reporting contract),
+//! (hardware/device detection and the `*-wgpu`/`*-cpal` adapter reporting contract),
 //! [`window`] (OS window + event loop), [`input`] (engine-owned
 //! keyboard/mouse vocabulary), [`time`] (frame clock),
 //! [`dynamic_library`] (plugin/hot-reload loading).

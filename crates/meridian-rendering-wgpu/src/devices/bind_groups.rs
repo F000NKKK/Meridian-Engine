@@ -27,7 +27,7 @@ impl Device {
     /// Like [`create_textured_bind_group`](Self::create_textured_bind_group)
     /// plus a shadow map and its comparison sampler — the bind group a
     /// textured, shadow-receiving lit pipeline needs (see
-    /// `graphics-core::submission`'s `lit_textured_shadow_shader_wgsl`
+    /// `rendering-domain::submission`'s `lit_textured_shadow_shader_wgsl`
     /// for the binding declarations this must match).
     pub fn create_textured_shadow_bind_group(
         &self,

@@ -2,7 +2,7 @@
 //! (Meridian IDLE) say to each other, as typed Substrate Data messages.
 //!
 //! Tier: above `meridian-data-substrate` (whose component names and
-//! `ComponentRegistry::describe()` it reuses) and below `engine-core`
+//! `ComponentRegistry::describe()` it reuses) and below `runtime-app`
 //! (which will wire in the other end, `meridian-editor-app`). Pure protocol: no async, no sockets,
 //! no I/O beyond a generic [`std::io::Read`]/[`std::io::Write`] through
 //! `substrate_data::io`. The editor sends a [`RequestEnvelope`]; the host

@@ -1,6 +1,6 @@
 //! The shadow-pass/acquire-frame/submit/present sequence a windowed
 //! application needs every redraw ([`render_frame`]), and [`RenderStage`]
-//! — the concrete answer to `engine-core::Runtime`'s "a render-presenting
+//! — the concrete answer to `runtime-app::Runtime`'s "a render-presenting
 //! `Stage` is exactly what an application implements and registers
 //! itself" (see that crate's own module doc): a real [`Stage`] impl
 //! wrapping [`GraphicsSession`], so presenting a frame is registered on the

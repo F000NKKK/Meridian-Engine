@@ -6,9 +6,9 @@ use crate::flavor::{GaFlavor, ScalarLike};
 /// `-Z`, `+X` right, `+Y` up) to clip space. Column-major, column-vector
 /// convention (`M * v`), depth range `[0, 1]` — matches wgpu/DX12/Metal,
 /// not classic OpenGL's `[-1, 1]`. This is the one hardcoded convention
-/// choice here: `graphics-core`'s `Camera` is responsible for turning a
+/// choice here: `rendering-domain`'s `Camera` is responsible for turning a
 /// `Motor3`/`FixedMotor3` world frame (whose local-forward axis is a
-/// per-subsystem convention, not a `gac-core` one) into this view space
+/// per-subsystem convention, not a `gac` one) into this view space
 /// before applying a `Projection` — see docs/graphics-design.md. Generic
 /// like every other primitive here — most consumers will only ever build
 /// one with `F = FloatFlavor` (a GPU pipeline needs `f32` uniforms

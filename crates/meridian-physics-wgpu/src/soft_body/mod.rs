@@ -1,4 +1,4 @@
-//! GPU soft-body integration for `physics-core`'s mass-spring model: the
+//! GPU soft-body integration for `physics-domain`'s mass-spring model: the
 //! per-particle spring adjacency ([`csr`]) both flavors dispatch from, the `f32`
 //! kernel in [`float`] and the bit-exact `Fixed` kernel in [`fixed`]. The
 //! two WGSL programs are structurally different (native `f32` arithmetic

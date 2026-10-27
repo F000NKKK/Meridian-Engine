@@ -12,7 +12,7 @@ use crate::input::InputState;
 /// constructible by [`run_windowed_app`] (`winit` only creates windows
 /// inside its own event-loop callback, not on demand — see the module
 /// doc), and always `Arc`-wrapped: the same handle is what
-/// `graphics-driver::Device::new_windowed` needs as its surface target
+/// `rendering-wgpu::Device::new_windowed` needs as its surface target
 /// (see [`Window::surface_target`]), so cloning a `Window` to keep
 /// alongside a `Device`/`Surface` pair is cheap and correct, not a
 /// separate ownership story.
@@ -40,15 +40,15 @@ impl Window {
         self.inner.request_redraw();
     }
 
-    /// The handle `graphics-driver::Device::new_windowed` consumes to
+    /// The handle `rendering-wgpu::Device::new_windowed` consumes to
     /// build a real `wgpu::Surface`. Returns `Arc<winit::window::Window>`
-    /// directly rather than a `platform-core`-specific wrapper: `wgpu`
+    /// directly rather than a `platform-winit`-specific wrapper: `wgpu`
     /// already accepts `Arc<T>` for any `T` implementing the
     /// `raw-window-handle` traits (which `winit::window::Window` does),
-    /// so `graphics-driver` never needs to depend on `winit` itself or
+    /// so `rendering-wgpu` never needs to depend on `winit` itself or
     /// learn about this crate's own `Window` type — see
     /// [ADR 010](../../../docs/adr/010-windowing-via-winit.md)'s
-    /// "graphics-driver stays winit-agnostic" section.
+    /// "rendering-wgpu stays winit-agnostic" section.
     pub fn surface_target(&self) -> Arc<winit::window::Window> {
         self.inner.clone()
     }
@@ -93,7 +93,7 @@ pub trait AppHandler {
     /// Called once, right after the OS window is created and before the
     /// first [`on_redraw`](Self::on_redraw) — the natural place to build
     /// GPU resources that need the window (a
-    /// `graphics-driver::Device::new_windowed` surface, for instance).
+    /// `rendering-wgpu::Device::new_windowed` surface, for instance).
     fn on_ready(&mut self, window: &Window) {
         let _ = window;
     }
@@ -108,7 +108,7 @@ pub trait AppHandler {
 
     /// Called when the window's client-area size changed (new size in
     /// physical pixels) — the point at which a caller should reconfigure
-    /// its `graphics-driver::Surface`.
+    /// its `rendering-wgpu::Surface`.
     fn on_resized(&mut self, _width: u32, _height: u32) {}
 
     /// Called when the OS asked the window to close (close button,

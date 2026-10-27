@@ -1,5 +1,5 @@
 //! Batch [`NarrowPhase::test_pair`](meridian_physics_domain::collision::NarrowPhase)
-//! across many candidate pairs through `compute-runtime` — the
+//! across many candidate pairs through `compute-app` — the
 //! `NarrowPhase` half of the rigid-body-pipeline batching this crate's
 //! own module doc describes (see [`crate::broad_phase`] for the broad
 //! phase half, [`crate::constraint_solver`] for the solver half).
@@ -108,9 +108,9 @@ where
 /// the "per-pair count prefix-sum into a flattened output buffer"
 /// technique [`crate`]'s and docs/roadmap.md's own notes about batching
 /// `generate_contacts` describe, specialized to a fixed cap instead of a
-/// true dynamic prefix-sum, since `physics-core::collision::face_manifold`
+/// true dynamic prefix-sum, since `physics-domain::collision::face_manifold`
 /// itself already hard-caps a box-box manifold at 4 points (`.take(4)`)
-/// — the same fixed-capacity-array approach `graphics-core::submission`'s
+/// — the same fixed-capacity-array approach `rendering-domain::submission`'s
 /// `MAX_LIGHTS` uses for its own per-frame uniform array. A pair
 /// producing more than this many contacts (impossible with today's
 /// `face_manifold`, but not guaranteed forever) is truncated with a
@@ -130,7 +130,7 @@ pub const MAX_CONTACTS_PER_PAIR: usize = 4;
 /// one-pair slice per dispatched item — it does not reimplement SAT or
 /// face-clipping.** Per CLAUDE.md's "don't drag another crate's logic
 /// into your own" rule, contact-manifold geometry belongs to
-/// `physics-core`; this kernel's only job is *how many threads run it
+/// `physics-domain`; this kernel's only job is *how many threads run it
 /// and in what shape the output lands*, not the geometry itself. A
 /// single-pair `generate_contacts` call produces the exact same
 /// `Contact`s (same order, same values) that pair would contribute

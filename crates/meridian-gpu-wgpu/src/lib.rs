@@ -1,9 +1,9 @@
-//! Shared low-level `wgpu` device/buffer/shader/compute-pipeline mechanics underneath `graphics-driver` and `compute-driver`. Knows nothing about scenes, materials, render passes/swapchains, or compute-dispatch scheduling policy — see docs/adr/011-shared-gpu-driver-crate.md.
+//! Shared low-level `wgpu` device/buffer/shader/compute-pipeline mechanics underneath `rendering-wgpu` and `compute-wgpu`. Knows nothing about scenes, materials, render passes/swapchains, or compute-dispatch scheduling policy — see docs/adr/011-shared-gpu-driver-crate.md.
 //!
 //! Layer: infrastructure (adapter); bounded context: compute
 //! (`craftbook.toml`, docs/context-map.md).
 //!
-//! Both `graphics-driver` (rendering) and `compute-driver` (general GPU
+//! Both `rendering-wgpu` (rendering) and `compute-wgpu` (general GPU
 //! compute) need the same underlying primitives: acquire an adapter/
 //! device, allocate/read/write buffers, compile a shader, build a compute
 //! pipeline and dispatch it. Duplicating that wgpu-wrapping code in both
@@ -19,8 +19,8 @@
 //! only does the adapter/device *handshake* with `compatible_surface`
 //! set, and hands back the raw `wgpu::Surface` — it does not own
 //! `SurfaceConfiguration`/swapchain lifecycle/present, which is a
-//! graphics-specific concern `graphics-driver` builds on top (its own
-//! `Surface` type). `compute-driver` never touches this constructor at
+//! graphics-specific concern `rendering-wgpu` builds on top (its own
+//! `Surface` type). `compute-wgpu` never touches this constructor at
 //! all — it only ever needs [`Device::new`] (headless).
 //!
 //! Design notes: docs/notes/meridian-gpu-wgpu.md (`lib`).

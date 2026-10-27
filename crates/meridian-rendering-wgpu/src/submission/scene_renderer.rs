@@ -37,7 +37,7 @@ pub struct SceneRenderer {
     /// A `Depth32Float` texture, both a render target (the shadow depth
     /// pass writes into it) and sampleable (the lit shaders' shadow
     /// lookup reads it) — see
-    /// `graphics-driver::Device::create_shadow_map_texture`'s own doc
+    /// `rendering-wgpu::Device::create_shadow_map_texture`'s own doc
     /// comment for why [`Texture`] rather than the plain
     /// render-target-only `DepthTexture`.
     pub(crate) shadow_map: Texture,

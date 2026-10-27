@@ -13,7 +13,7 @@ use crate::ShapeSpec;
 const CHUNK_SECONDS: f32 = 0.01;
 
 /// ~80 ms ring: generous headroom so a dropped render frame never
-/// drains it (see `audio-driver`'s anti-click fade for the fallback if
+/// drains it (see `audio-cpal`'s anti-click fade for the fallback if
 /// it ever does) — see the former `music_sphere` example's identical
 /// note, now superseded by this one.
 const RING_SECONDS: f32 = 0.08;

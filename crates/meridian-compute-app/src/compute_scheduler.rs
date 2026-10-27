@@ -22,7 +22,7 @@ impl ComputeScheduler {
     }
 
     /// Below `threshold` work items, a dispatch runs sequentially on the
-    /// calling thread rather than fanning out across `compute-driver`'s
+    /// calling thread rather than fanning out across `compute-wgpu`'s
     /// worker threads.
     #[must_use]
     pub fn with_parallel_threshold(device: Arc<dyn ComputeDevice>, threshold: usize) -> Self {

@@ -2,14 +2,14 @@
 
 use meridian_gac::{Motor3, Projection, Rotor, Vec3, mat4_mul};
 
-/// Remaps `gac-core`'s local camera axes (forward `+X`, up `+Y`, right
-/// `+Z` — the same listener-local convention `audio-core` already commits
+/// Remaps `gac`'s local camera axes (forward `+X`, up `+Y`, right
+/// `+Z` — the same listener-local convention `audio-domain` already commits
 /// to, reused here so a character's camera and ears agree on "forward"
 /// without either subsystem inventing its own axis convention) onto
 /// `Projection`'s documented view space (forward `-Z`, up `+Y`, right
-/// `+X`). `gac-core` itself has no "forward" concept (see
+/// `+X`). `gac` itself has no "forward" concept (see
 /// docs/gac-design.md); this remap is a graphics-specific convention
-/// choice and stays in `graphics-core`, not `gac-core`.
+/// choice and stays in `rendering-domain`, not `gac`.
 const LOCAL_TO_VIEW_REMAP: [[f32; 4]; 4] = [
     [0.0, 0.0, -1.0, 0.0],
     [0.0, 1.0, 0.0, 0.0],
@@ -17,7 +17,7 @@ const LOCAL_TO_VIEW_REMAP: [[f32; 4]; 4] = [
     [0.0, 0.0, 0.0, 1.0],
 ];
 
-/// The `Rotor` whose local-forward `+X` axis (`gac-core`'s convention,
+/// The `Rotor` whose local-forward `+X` axis (`gac`'s convention,
 /// see `LOCAL_TO_VIEW_REMAP`'s doc comment) points from `eye` toward
 /// `target` — the shared "aim this frame at that point" building block
 /// [`Camera::frame`]/a directional light's frame both need. Falls back
@@ -50,7 +50,7 @@ pub struct Camera {
 
 impl Camera {
     /// World-space to view-space matrix: the camera's world frame
-    /// inverted (world-to-camera-local), then remapped from `gac-core`'s
+    /// inverted (world-to-camera-local), then remapped from `gac`'s
     /// local forward-`+X` convention to `Projection`'s forward-`-Z` view
     /// space.
     pub fn view_matrix(&self) -> [[f32; 4]; 4] {

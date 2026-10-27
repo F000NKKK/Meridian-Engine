@@ -7,7 +7,7 @@ use std::fmt;
 /// value a registered [`crate::DslTag`] impl produced from its attributes (as
 /// `Box<dyn Any>` — the registry itself has no compile-time knowledge
 /// of which concrete type a given tag name maps to; a caller downcasts
-/// by tag name, the same pattern `ecs-core`'s type-erased component
+/// by tag name, the same pattern `ecs`'s type-erased component
 /// storage uses for the same reason), and its children, recursively
 /// built the same way.
 pub struct BuiltNode {

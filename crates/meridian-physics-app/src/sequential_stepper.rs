@@ -2,7 +2,7 @@
 
 use crate::{PhysicsStepper, PhysicsSubsystem, RELAXATION_ITERATIONS};
 
-/// Steps physics with a plain single-threaded loop over `physics-core`.
+/// Steps physics with a plain single-threaded loop over `physics-domain`.
 ///
 /// Integrates, then relaxes contacts over `RELAXATION_ITERATIONS`
 /// velocity-only passes before a single final positional correction.

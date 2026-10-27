@@ -3,7 +3,7 @@
 //! (`Motor3`) shared by [`Scene3d`] (the world) and [`Scene2d`] (a
 //! layer-sorted plane; UI is a role played by either, not a third kind).
 //!
-//! Everything a renderable references is a typed `resource-core` handle
+//! Everything a renderable references is a typed `resource` handle
 //! ([`MeshHandle`], [`TextureHandle`], [`MaterialHandle`]) per
 //! [ADR 002](../../../docs/adr/002-handle-based-resources.md) — never a
 //! driver object or a raw index. [`Mesh`] and [`Material`] here are the
@@ -250,8 +250,8 @@ impl FrameScene {
 
 /// Extracts a [`Scene3d`] from `world`: every entity with both a
 /// [`Transform`] and a [`MeshRenderer`] becomes a [`Renderable3d`] at
-/// its transform's frame. `ecs-core` never learns about any of this —
-/// the join happens here, in `graphics-core`, per dependency-rules
+/// its transform's frame. `ecs` never learns about any of this —
+/// the join happens here, in `rendering-domain`, per dependency-rules
 /// rule 6 (ECS stays generic and data-oriented).
 ///
 /// Lights aren't extracted yet (no light component exists); callers add

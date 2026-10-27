@@ -26,7 +26,7 @@ const SOLVER_FRICTION: f32 = 0.6;
 /// one registered [`PhysicsStepStage`] driving a `BatchedStepper`
 /// — the physics stepping
 /// itself (integrate/relax-contacts/resolve, batched through
-/// `physics-compute`'s kernels rather than a plain sequential loop) is
+/// `physics-wgpu`'s kernels rather than a plain sequential loop) is
 /// the stage's job, not this file's; see that stage's own doc comment for
 /// the multi-point-manifold relaxation semantics it preserves exactly.
 /// What's left at this layer is

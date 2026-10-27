@@ -1,4 +1,4 @@
-//! The stored components of even multivectors, in `gac-core`'s conventions:
+//! The stored components of even multivectors, in `gac`'s conventions:
 //! a rotor as `[s, e23, e31, e12]` (the multivector keeps `e13`, so `e31`
 //! is its exact negation), a motor as the rotor's four then
 //! `[e01, e02, e03, e0123]`. The other blades are zero by construction and

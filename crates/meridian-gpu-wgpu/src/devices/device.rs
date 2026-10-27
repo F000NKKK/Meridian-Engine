@@ -8,7 +8,7 @@ use crate::{CommandBuffer, DeviceError};
 /// type here is created through or submitted against. `Clone` is cheap
 /// (`wgpu::Device`/`Queue` are `Arc`-backed internally) — useful for
 /// callers that want to hand the same logical device to more than one
-/// consumer (e.g. `compute-runtime::ComputeContext` holding one
+/// consumer (e.g. `compute-app::ComputeContext` holding one
 /// alongside its CPU backend).
 #[derive(Debug, Clone)]
 pub struct Device {
@@ -39,7 +39,7 @@ impl Device {
     /// chosen against alongside it. The adapter is returned (unlike
     /// [`Device::new`], which discards it) because `wgpu` ties a
     /// surface's format/present-mode capabilities to the adapter, not the
-    /// device — `graphics-driver`'s own surface configuration needs it
+    /// device — `rendering-wgpu`'s own surface configuration needs it
     /// for `Surface::get_capabilities`, and this is the only place that
     /// adapter is ever available; see the module doc for why surface
     /// *configuration*/lifecycle isn't otherwise this crate's job.
@@ -104,7 +104,7 @@ impl Device {
         &self.adapter_info.name
     }
 
-    /// The raw `wgpu::Device` — an escape hatch for `graphics-driver`'s
+    /// The raw `wgpu::Device` — an escape hatch for `rendering-wgpu`'s
     /// own additional operations this crate doesn't know about (surface
     /// configuration, render pipeline creation). Prefer this crate's own
     /// methods (`create_buffer`, `create_shader`, ...) where they cover
@@ -114,7 +114,7 @@ impl Device {
     }
 
     /// The raw `wgpu::Queue` — see [`Device::wgpu_device`]'s doc comment
-    /// for why this is exposed (`graphics-driver` needs it for
+    /// for why this is exposed (`rendering-wgpu` needs it for
     /// `Queue::present`, which isn't a concept this crate knows about).
     pub fn wgpu_queue(&self) -> &wgpu::Queue {
         &self.queue
@@ -134,10 +134,10 @@ impl Device {
 }
 
 impl BackendCapabilities for Device {
-    /// Neither `graphics-driver` nor `compute-driver`'s GPU path has a
+    /// Neither `rendering-wgpu` nor `compute-wgpu`'s GPU path has a
     /// CPU-dispatch mechanism of its own — this reports the machine's CPU
-    /// thread count for consistency with every other `*-driver`'s
-    /// `BackendCapabilities` impl (`compute-driver`'s own CPU backend
+    /// thread count for consistency with every other `*-wgpu`/`*-cpal` adapter's
+    /// `BackendCapabilities` impl (`compute-wgpu`'s own CPU backend
     /// reports this too, independently of this GPU device).
     fn cpu(&self) -> CpuCapabilities {
         CpuCapabilities::detect()

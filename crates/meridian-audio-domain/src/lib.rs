@@ -4,9 +4,9 @@
 //! docs/context-map.md).
 //!
 //! Listener-local convention (deliberately chosen, not inherited from
-//! anywhere else — `gac-core`'s `Vec3` has no built-in "forward"): facing
+//! anywhere else — `gac`'s `Vec3` has no built-in "forward"): facing
 //! direction is local `+X`, up is local `+Y`, and `+X × +Y = +Z` (see
-//! `gac-core::Vec3::cross`), so right is local `+Z`. A listener at
+//! `gac::Vec3::cross`), so right is local `+Z`. A listener at
 //! `Motor3::identity()` therefore faces world `+X` with world `+Z` to its
 //! right — this is what every azimuth/panning calculation below is
 //! defined against.

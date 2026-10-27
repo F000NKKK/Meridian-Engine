@@ -105,7 +105,7 @@ impl FixedMotor3 {
     /// Deliberate precision-changing cast to the default flavor —
     /// component-wise across the underlying multivector, not a
     /// re-derivation through rotation/translation. The way a
-    /// `physics-core::fixed::RigidBody`'s pose reaches rendering/ECS/audio,
+    /// `physics-domain::fixed::RigidBody`'s pose reaches rendering/ECS/audio,
     /// which stay `f32` regardless of which physics path produced the pose.
     pub fn to_float_lossy(self) -> Motor3 {
         let mut out = [0.0f32; 16];

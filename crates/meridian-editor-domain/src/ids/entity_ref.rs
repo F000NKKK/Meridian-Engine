@@ -3,7 +3,7 @@
 use meridian_ecs::Entity;
 use substrate_data::Schema;
 
-/// An entity of the running game: its `ecs-core` index and generation. Valid
+/// An entity of the running game: its `ecs` index and generation. Valid
 /// for one run of the host — a restart or a scene reload may hand the same
 /// numbers to other entities — so an editor re-lists entities after
 /// reconnecting. A despawned entity's generation never matches again.

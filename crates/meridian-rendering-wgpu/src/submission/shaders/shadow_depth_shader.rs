@@ -3,7 +3,7 @@
 /// The shadow map's own depth-only pass: transforms each vertex by the
 /// shadow-casting light's own view-projection matrix (not the camera's)
 /// and writes nothing but depth — no fragment stage at all (see
-/// `graphics-driver::Device::create_shadow_pipeline`, which builds this
+/// `rendering-wgpu::Device::create_shadow_pipeline`, which builds this
 /// shader with `fragment: None`). Reused unmodified for both colored and
 /// textured draws via `shadow_from_colored_layout`/
 /// `shadow_from_textured_layout` — this shader only ever reads

@@ -27,7 +27,7 @@ pub struct SoftBodyMaterial<F: GaFlavor> {
     pub spoke: SpringTuning<F>,
 }
 
-/// Builds a spherical [`SoftBody`] from `gac-core`'s [`icosphere`] mesh
+/// Builds a spherical [`SoftBody`] from `gac`'s [`icosphere`] mesh
 /// (`subdivisions`: `0` = the base 12-vertex icosahedron, each further
 /// level roughly quadruples the triangle count), centered at `center`
 /// with `radius`, plus one center particle spoked to every surface

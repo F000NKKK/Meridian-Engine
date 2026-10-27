@@ -1,7 +1,7 @@
 //! The submission bridge: turns a culled `Scene3d` into real GPU draws —
 //! step 2 of docs/graphics-design.md's scene vocabulary implementation order
 //! (texture-sampled materials), plus step 3 (Blinn-Phong lighting). It is the
-//! recording half of the rendering context: the domain (`graphics-core`) owns
+//! recording half of the rendering context: the domain (`rendering-domain`) owns
 //! the scene, materials, meshes and handles; this module bakes them into GPU
 //! buffers and records the passes.
 //!

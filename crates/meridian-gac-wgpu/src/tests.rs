@@ -45,7 +45,7 @@ fn motor_transform_kernel_matches_gac_core_compose_directly() {
         assert!(approx_eq(world, expected, p), "mismatch at index {i}");
         // Cross-check against the same "rotate/translate child, then
         // parent" property the roadmap's parent/child hierarchy
-        // milestone validated directly in gac-core.
+        // milestone validated directly in gac.
         let via_steps = parent.transform_point(local.transform_point(p));
         assert!(
             (world.transform_point(p) - via_steps).length() < 1e-4,

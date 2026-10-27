@@ -1,5 +1,5 @@
 //! GPU soft-body integration, `float` flavor — mirrors
-//! `physics-core::soft_body::float::SoftBodyIntegrator::step`'s
+//! `physics-domain::soft_body::float::SoftBodyIntegrator::step`'s
 //! per-particle result, run as one WGSL compute invocation per particle
 //! instead of a sequential CPU loop.
 //!

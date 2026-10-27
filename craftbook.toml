@@ -313,7 +313,7 @@ from = "editor"
 to = "data"
 relation = "customer-supplier"
 
-# ui-render reads the UI tree and writes graphics-core's Scene2d: ui is the
+# ui-scene2d reads the UI tree and writes rendering-domain's Scene2d: ui is the
 # customer, rendering publishes the vocabulary (ADR 021).
 [[context_edge]]
 from = "ui"

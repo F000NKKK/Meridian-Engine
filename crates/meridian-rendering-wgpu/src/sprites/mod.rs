@@ -1,5 +1,5 @@
 //! The sprite recording path: uploads a domain `SpriteBatch` list and draws it
-//! with premultiplied-alpha blending (the batching itself is `graphics-core`).
+//! with premultiplied-alpha blending (the batching itself is `rendering-domain`).
 //!
 //! [`SpriteRenderer::prepare`] uploads the batches before any render pass is
 //! open; [`SpriteRenderer::draw`] records them into the caller's pass, turning

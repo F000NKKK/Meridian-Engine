@@ -16,7 +16,7 @@ pub enum ColorFormat {
     /// 8-bit sRGB RGBA — what [`Device::create_texture_2d`](crate::Device::create_texture_2d) and every
     /// offscreen target in this workspace uses today. An HDR variant
     /// (`Rgba16Float`) is real future work (see `bloom.rs`'s module doc
-    /// in `graphics-core`), additive here when something needs it.
+    /// in `rendering-domain`), additive here when something needs it.
     SrgbRgba8,
 }
 

@@ -7,7 +7,7 @@ use super::{CORDIC_LIB_WGSL, FIXED_ARITHMETIC_LIB_WGSL};
 /// into `results`, both `array<i32>` (a `Fixed`'s raw Q16.16 bits) —
 /// `operands[2*id]`/`operands[2*id+1]` are `a`/`b` for invocation `id`,
 /// `results[id]` is that invocation's output. Two buffers (not the
-/// single-binding shape `gpu-driver`'s own `dispatch_compute` supports)
+/// single-binding shape `gpu-wgpu`'s own `dispatch_compute` supports)
 /// means this crate records its own compute pass rather than reusing
 /// that convenience method — see [`FixedArithmeticKernels::dispatch`](super::FixedArithmeticKernels::dispatch).
 pub(crate) fn dispatch_entry_points_wgsl() -> String {

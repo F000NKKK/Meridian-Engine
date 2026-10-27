@@ -12,11 +12,11 @@
 //! `ColliderShape` variants that exist so far), `ConstraintSolver`
 //! (impulse-based, linear *and* angular, with positional correction
 //! against sinking), and `Integrator` (semi-implicit Euler, using
-//! `gac-core`'s bivector exponential map for rotation — not a naive "add
+//! `gac`'s bivector exponential map for rotation — not a naive "add
 //! angle" or a separately-tracked quaternion). These are
 //! correct sequential CPU implementations; batched and GPU dispatch lives
 //! in `meridian-physics-wgpu`, which calls the same per-pair logic
-//! through `compute-runtime`.
+//! through `compute-app`.
 //!
 //! Design notes: docs/notes/meridian-physics-domain.md (`lib`).
 #![doc = include_str!("../README.md")]
