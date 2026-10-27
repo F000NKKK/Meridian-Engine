@@ -122,7 +122,7 @@ mod files {
     #[test]
     fn a_change_is_reported_once_after_it_settles() {
         let dir = scratch("watch");
-        let file = dir.join("a.mel");
+        let file = dir.join("a.meui");
         write(&file, "one");
         let mut watcher = SourceWatcher::new([file.clone()], DEBOUNCE);
         let start = Instant::now();
@@ -139,23 +139,23 @@ mod files {
 
     fn open(dir: &Path) -> (UiTree, NodeId, HotDocument) {
         write(&dir.join("Strings.mres"), r#"{ title: "Yog" }"#);
-        let mel = dir.join("hud.mel");
+        let meui = dir.join("hud.meui");
         write(
-            &mel,
+            &meui,
             r#"<StackPanel width="200"><TextBlock x:Name="label" text="@res:Strings.title" /></StackPanel>"#,
         );
         // The tree is built from the same files, as `build_ui` would.
         let mut tree = UiTree::new();
         let ui = crate::MelDocument::parse_with(
-            &mel,
-            &std::fs::read_to_string(&mel).unwrap(),
+            &meui,
+            &std::fs::read_to_string(&meui).unwrap(),
             &crate::source_dir::read_sets(&[dir.join("Strings.mres")]).unwrap(),
         )
         .unwrap()
         .ui
         .unwrap();
         let root = build(&mut tree, &ui);
-        let document = HotDocument::open(&mel, Some(dir), root, DEBOUNCE).unwrap();
+        let document = HotDocument::open(&meui, Some(dir), root, DEBOUNCE).unwrap();
         (tree, root, document)
     }
 
@@ -179,8 +179,8 @@ mod files {
         let dir = scratch("rebuild");
         let (mut tree, root, mut document) = open(&dir);
         let start = Instant::now();
-        let mel = dir.join("hud.mel");
-        write(&mel, "<StackPanel><TextBlock");
+        let meui = dir.join("hud.meui");
+        write(&meui, "<StackPanel><TextBlock");
         document.refresh(&mut tree, start).unwrap();
         let error = document
             .refresh(&mut tree, start + DEBOUNCE * 2)
@@ -188,7 +188,7 @@ mod files {
         assert!(matches!(error, ReloadError::Build(_)), "{error}");
         assert!(tree.contains(root));
         write(
-            &mel,
+            &meui,
             r#"<StackPanel><TextBlock x:Name="a" /><TextBlock x:Name="b" /></StackPanel>"#,
         );
         let later = start + DEBOUNCE * 4;
@@ -202,6 +202,31 @@ mod files {
         assert_eq!(
             rebuilt.node("b"),
             Some(tree.children(rebuilt.root).unwrap()[1])
+        );
+    }
+
+    #[test]
+    fn switching_the_culture_patches_without_a_file_change() {
+        let dir = scratch("culture");
+        let (mut tree, root, mut document) = open(&dir);
+        write(&dir.join("Strings.ru.mres"), r#"{ title: "Йог" }"#);
+        let label = tree.children(root).unwrap()[0];
+        let start = Instant::now();
+        let ru = crate::Culture::parse("ru");
+        document.set_culture(ru.clone());
+        let refreshed = document.refresh(&mut tree, start).unwrap();
+        assert_eq!(refreshed, Some(Refreshed::Patched { changed: 1 }));
+        assert_eq!(
+            tree.get(label, properties::text_block::TEXT).unwrap(),
+            "Йог"
+        );
+        document.set_culture(ru);
+        assert_eq!(document.refresh(&mut tree, start).unwrap(), None);
+        document.set_culture(None);
+        document.refresh(&mut tree, start).unwrap();
+        assert_eq!(
+            tree.get(label, properties::text_block::TEXT).unwrap(),
+            "Yog"
         );
     }
 }

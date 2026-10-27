@@ -5,7 +5,7 @@ use std::path::Path;
 use super::*;
 
 fn render(source: &str) -> String {
-    let document = MelDocument::parse(Path::new("/scenes/demo.mel"), source).unwrap();
+    let document = MelDocument::parse(Path::new("/scenes/demo.meui"), source).unwrap();
     GeneratedModule::render(&document).code
 }
 
@@ -13,11 +13,11 @@ fn render(source: &str) -> String {
 fn names_class_and_functions_are_generated() {
     let code = render(r#"<Scene x:Class="crate::Demo"><Entity x:Name="left_arm" /></Scene>"#);
     assert!(
-        code.contains(r#"include_str!("/scenes/demo.mel")"#),
+        code.contains(r#"include_str!("/scenes/demo.meui")"#),
         "{code}"
     );
     assert!(
-        code.contains("    // @mel /scenes/demo.mel:1:30\n    LeftArm,"),
+        code.contains("    // @mel /scenes/demo.meui:1:30\n    LeftArm,"),
         "{code}"
     );
     assert!(
@@ -86,7 +86,7 @@ fn bindings_become_ui_glue() {
         )),
         "{code}"
     );
-    assert!(code.contains("// @mel /scenes/demo.mel:2:"), "{code}");
+    assert!(code.contains("// @mel /scenes/demo.meui:2:"), "{code}");
     assert_eq!(
         code.matches('{').count(),
         code.matches('}').count(),
@@ -124,7 +124,7 @@ fn ui_documents_build_their_tree() {
         assert!(code.contains(&line), "missing {line}\n{code}");
     }
     assert!(code.contains(r#""@@x")?;"#), "{code}");
-    assert!(code.contains("// @mel /scenes/demo.mel:2:"), "{code}");
+    assert!(code.contains("// @mel /scenes/demo.meui:2:"), "{code}");
     assert!(!code.contains("pub fn build("), "{code}");
     assert_eq!(
         code.matches('{').count(),

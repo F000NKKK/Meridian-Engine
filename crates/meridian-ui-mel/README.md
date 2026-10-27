@@ -1,10 +1,10 @@
 # meridian-ui-mel
 
-Build-time .mel generator: turns each .mel document into a generated <name>.g.rs (x:Name ids, typed builder, code-behind aliases) that a code-behind pulls in with meridian_sdk::mel_include!. Used from build.rs; see ADR 017.
+Build-time .meui generator: turns each .meui document into a generated <name>.g.rs (x:Name ids, typed builder, code-behind aliases) that a code-behind pulls in with meridian_sdk::mel_include!. Used from build.rs; see ADR 017.
 
 **Layer and context:** infrastructure (adapter) · ui
 
-- **For:** `compile_dir`/`compile_file` for a `build.rs`: each `.mel` becomes a generated `<name>.g.rs`.
+- **For:** `compile_dir`/`compile_file` for a `build.rs`: each `.meui` becomes a generated `<name>.g.rs`.
 - **Not for:** parsing at run time: use `meridian-markup` or `meridian_sdk::dsl`.
 
 ## Usage

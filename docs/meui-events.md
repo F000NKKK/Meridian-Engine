@@ -1,4 +1,4 @@
-# `.mel` events and commands
+# `.meui` events and commands
 
 Contract between the markup side (`meridian-ui-mel`, team/scripting)
 and the event source (`meridian-ui-domain`, team/ui-ux). It follows the
@@ -78,5 +78,5 @@ on `click`. Deferred until ui-domain has `enabled` and a `Button`.
 ## What markup provides
 
 Parsing and checking of the event attributes (`InvalidMarkup` at the
-`.mel` line), `Handlers` in the generated module, `dispatch`, tests
+`.meui` line), `Handlers` in the generated module, `dispatch`, tests
 against the real `UiTree`, and the `Handled` return type.

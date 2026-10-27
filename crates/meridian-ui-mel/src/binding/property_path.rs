@@ -10,7 +10,7 @@ use crate::InvalidMarkup;
 const PROPERTIES: &str = "::meridian_sdk::ui_core::properties";
 
 /// `properties::<owner>::<NAME>`, resolved at build time against the
-/// registry, so a typo in the markup is an error at its `.mel` line.
+/// registry, so a typo in the markup is an error at its `.meui` line.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PropertyPath {
     module: String,

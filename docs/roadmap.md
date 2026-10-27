@@ -620,10 +620,10 @@ priority before writing implementations is keeping that document and the
     own tags rather than picking from a fixed schema; see
     [ADR 015](adr/015-extensible-scene-dsl.md) and `meridian_sdk::dsl`'s
     own module doc). **Both examples now build their scenes from a real
-    `.mel` file** (`examples/assets/scenes/{physic_figures,magic_figures}.mel`,
+    `.meui` file** (`examples/assets/scenes/{physic_figures,magic_figures}.meui`,
     Meridian Engine Language — today just the tag/attribute DSL; the
     planned direction is WPF-style code-behind with compiled bindings,
-    see [ADR 017](adr/017-mel-markup-and-code-behind.md)),
+    see [ADR 017](adr/017-meui-markup-and-code-behind.md)),
     parsed via `dsl::build_scene` — `physic_figures` uses only the
     SDK's built-in tags (`Entity`/`Transform`/`Mesh`/`Material`/
     `RigidBody`); `magic_figures` additionally defines its own
@@ -640,24 +640,24 @@ priority before writing implementations is keeping that document and the
     (see the "shadow mapping and hemisphere ambient" entry above) — no
     longer an open item either. **Not yet done:** an app-shell schema
     (window title, logging, crash-report config) was considered and
-    deliberately deferred; `.mel` behavior (WPF-style code-behind,
+    deliberately deferred; `.meui` behavior (WPF-style code-behind,
     generated `.g.rs` glue, compiled `{x:Bind}` bindings, later an own
     script language) — decided in
-    [ADR 017](adr/017-mel-markup-and-code-behind.md). Started: the
+    [ADR 017](adr/017-meui-markup-and-code-behind.md). Started: the
     `markup` side is done (line/column spans, the `x:` prefix, dotted
     names and property elements, parsed markup extensions, typed
     `ParseErrorKind`), and the `meridian-ui-mel` generator
-    (`.mel` -> `.g.rs`, `mel_include!`; used by `magic_figures`), whose
+    (`.meui` -> `.g.rs`, `mel_include!`; used by `magic_figures`), whose
     `{x:Bind}` compiler parses and validates bindings, resolves them to
     `ui-domain` properties and generates `Names`, `apply_bindings` and
     `write_back_bindings` (type-checked against the `x:ViewModel`).
     A document with a UI root also gets `build_ui`, which creates the
     `UiTree` from the markup, and `.mres` resource sets
-    ([mel-resources.md](mel-resources.md)) generate typed constants and
+    ([meui-resources.md](meui-resources.md)) generate typed constants and
     resolve `@res:Set.name` in attributes; `<Owner.Resources>` blocks and
     `{StaticResource}` resolve at build time, and `LiveUi` patches changed
     attributes of a reparsed document into a live tree, and `HotDocument`
-    watches the `.mel`/`.mres` files (debounced, non-blocking) and
+    watches the `.meui`/`.mres` files (debounced, non-blocking) and
     patches or rebuilds the tree (hot reload). Event dispatch is next.
 
 ## Scaling beyond a tech demo (Minecraft/Satisfactory-class scope)

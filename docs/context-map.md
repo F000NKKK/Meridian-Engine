@@ -27,7 +27,7 @@ two layers today is listed under the one it is moving to; Craftbook's
 | physics | domain + adapters | `physics-domain` (domain, perf), `physics-app` (app: `PhysicsSubsystem`, the `PhysicsStepper` port), `physics-wgpu` (infra: batched stepper) | rigid bodies, colliders, contacts, solver, integrator, soft bodies |
 | audio | domain + adapter | `audio-domain` (domain), `audio-app` (app: `AudioSubsystem`, the `AudioSink` port), `audio-cpal` (infra: cpal, implements it) | listener, emitters, speakers, mixer, DSP graph |
 | text | domain | `text-domain` (domain: TrueType parsing, outlines, rasterizer, glyph atlas, shaper) | faces, outlines, coverage bitmaps, glyph atlas |
-| ui | domain + adapter | `ui-domain` (domain), `mel-build` (infra: build-time `.mel` generator), `ui-scene2d` (infra: adapter from the UI tree to `rendering-domain::Scene2d`) | element tree, typed properties, layout, hit testing, generated bindings |
+| ui | domain + adapter | `ui-domain` (domain), `ui-mel` (infra: build-time `.meui` generator), `ui-scene2d` (infra: adapter from the UI tree to `rendering-domain::Scene2d`) | element tree, typed properties, layout, hit testing, generated bindings |
 | data | infrastructure | `scene` (infra: Substrate Data scene documents) | scene document schema and migration |
 | editor | infrastructure | `editor-domain`, `editor-app`, `editor-tcp` (infra) | host/editor wire messages, versions, ids; the host's session, ports and loopback TCP adapter |
 | runtime | application + interface | `runtime-app` (app: stages, `JobExecutor` port, events; owns no state), `runtime-threads` (infra: implements `JobExecutor`), `sdk` (interface: composition root), `examples` (interface) | frame stages, job executor, events, job graph |

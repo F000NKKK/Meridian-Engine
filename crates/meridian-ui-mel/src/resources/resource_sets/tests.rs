@@ -58,3 +58,67 @@ fn a_set_name_is_taken_once() {
     let again = ResourceSet::parse(Path::new("x/Strings.mres"), "Strings", "{}").unwrap();
     assert!(!sets.insert(again));
 }
+
+fn variant(tag: &str, text: &str) -> (Culture, ResourceSet) {
+    let culture = Culture::parse(tag).unwrap();
+    let path = format!("Strings.{tag}.mres");
+    let set = ResourceSet::parse_variant(Path::new(&path), "Strings", culture.clone(), text);
+    (culture, set.unwrap())
+}
+
+#[test]
+fn variants_override_by_specificity_and_fall_back_to_the_default() {
+    let mut sets = sets();
+    for (tag, text) in [
+        ("ru", r#"{ title: "Йог", "screen.name": "Главный" }"#),
+        ("ru-ru", r#"{ title: "Йог (РФ)" }"#),
+    ] {
+        let (culture, set) = variant(tag, text);
+        sets.insert_variant(culture, set).unwrap();
+    }
+    let at = |tag: &str| sets.for_culture(&Culture::parse(tag).unwrap());
+    assert_eq!(
+        at("ru-ru").resolve("@res:Strings.title").unwrap(),
+        "Йог (РФ)"
+    );
+    assert_eq!(
+        at("ru-ru").resolve("@res:Strings.screen.name").unwrap(),
+        "Главный"
+    );
+    assert_eq!(at("ru").resolve("@res:Strings.title").unwrap(), "Йог");
+    assert_eq!(at("ru-ua").resolve("@res:Strings.title").unwrap(), "Йог");
+    assert_eq!(at("de").resolve("@res:Strings.title").unwrap(), "Yog");
+    assert_eq!(at("ru").resolve("@res:Strings.rows").unwrap(), "20");
+}
+
+#[test]
+fn variants_are_checked_against_the_default() {
+    let mut sets = sets();
+    let mut insert = |tag: &str, text: &str| {
+        let (culture, set) = variant(tag, text);
+        sets.insert_variant(culture, set)
+    };
+    assert_eq!(
+        insert("ru", r#"{ extra: "x" }"#),
+        Err(ResourceProblem::VariantUnknownEntry {
+            set: "Strings".to_string(),
+            entry: "extra".to_string()
+        })
+    );
+    assert_eq!(
+        insert("ru", r#"{ rows: "many" }"#),
+        Err(ResourceProblem::VariantTypeMismatch {
+            entry: "rows".to_string()
+        })
+    );
+    assert_eq!(insert("ru", r#"{ title: "Йог" }"#), Ok(()));
+    assert_eq!(
+        insert("ru", r#"{ title: "again" }"#),
+        Err(ResourceProblem::DuplicateSet("Strings.ru".to_string()))
+    );
+    let orphan = ResourceSet::parse(Path::new("Other.ru.mres"), "Other", "{}").unwrap();
+    assert_eq!(
+        ResourceSets::default().insert_variant(Culture::parse("ru").unwrap(), orphan),
+        Err(ResourceProblem::VariantWithoutDefault("Other".to_string()))
+    );
+}

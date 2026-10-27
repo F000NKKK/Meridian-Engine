@@ -1,4 +1,4 @@
-//! The build-time half of `.mel` code-behind (ADR 017): every `.mel`
+//! The build-time half of `.meui` code-behind (ADR 017): every `.meui`
 //! document becomes a generated `<name>.g.rs` in the build output, the
 //! counterpart of WPF's `MainWindow.g.cs`. A code-behind module pulls it
 //! in with `meridian_sdk::mel_include!("<name>")` and gets:
@@ -16,11 +16,11 @@
 //!   against a `meridian-ui-domain` tree (ADR 018); `rustc` checks every
 //!   binding against the view model.
 //!
-//! `.mres` resource sets (`docs/mel-resources.md`) found next to the markup
+//! `.mres` resource sets (`docs/meui-resources.md`) found next to the markup
 //! become `Set` structs of typed constants, and `@res:Set.name` attribute
 //! values are replaced by their values.
 //!
-//! The document is validated while generating, so a malformed `.mel`
+//! The document is validated while generating, so a malformed `.meui`
 //! fails `cargo build` with `file:line:column`, not the program at run
 //! time. Called from a `build.rs` through [`compile_dir`]; nothing here
 //! runs in the game.
@@ -56,8 +56,8 @@ pub use invalid_markup::InvalidMarkup;
 pub use mel_document::MelDocument;
 pub use named_element::NamedElement;
 pub use resources::{
-    GeneratedResources, LocalResources, ResourceEntry, ResourceError, ResourceProblem, ResourceSet,
-    ResourceSets, ResourceValue,
+    Culture, GeneratedResources, LocalResources, ResourceEntry, ResourceError, ResourceProblem,
+    ResourceSet, ResourceSets, ResourceValue,
 };
 pub(crate) use resources::{ResourceTag, read_markup_value};
 pub use ui_literal::UiLiteral;

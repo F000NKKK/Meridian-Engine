@@ -130,7 +130,7 @@ pub fn build_scene(source: &str, registry: &DslRegistry) -> Result<dsl_core::Bui
     registry.build(&element).map_err(DslError::Tag)
 }
 
-/// Pulls in the module `meridian-ui-mel` generated for a `.mel`
+/// Pulls in the module `meridian-ui-mel` generated for a `.meui`
 /// document (ADR 017): `mel_include!("magic_figures")` includes
 /// `$OUT_DIR/mel/magic_figures.g.rs`, written by
 /// `meridian_ui_mel::compile_dir` in the crate's `build.rs`. Use it

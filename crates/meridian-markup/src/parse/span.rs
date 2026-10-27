@@ -1,4 +1,4 @@
-//! Source positions: where in a `.mel` document an element, attribute or
+//! Source positions: where in a `.meui` document an element, attribute or
 //! error starts, as a byte offset plus the 1-based line and column a
 //! person (or an editor) reads.
 

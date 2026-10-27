@@ -3,9 +3,9 @@
 A `.mres` file is a set of named values a game keeps out of its markup and
 code: texts, numbers, flags and colors, each with an optional comment. It
 is the Meridian counterpart of Yog's `.yres` and of a .NET `.resx`: a build
-step turns it into typed constants, and `.mel` attributes refer to entries
+step turns it into typed constants, and `.meui` attributes refer to entries
 as `@res:Set.name`. Decided in
-[ADR 017](adr/017-mel-markup-and-code-behind.md); built by
+[ADR 017](adr/017-meui-markup-and-code-behind.md); built by
 `meridian-ui-mel`.
 
 ## Where they go
@@ -66,7 +66,7 @@ impl Strings {
 }
 ```
 
-## In `.mel`
+## In `.meui`
 
 A UI attribute whose value is `@res:Set.name` takes the resource's value
 when the document is compiled; an unknown set or name is a build error at
@@ -74,7 +74,7 @@ the attribute's line. A text starting with `@` stays escaped, so it reads
 as the same text. Other references (`@mesh:hero.mesh`) pass through for the
 program to resolve; any other leading `@` is an error.
 
-## Resources inside a `.mel` file
+## Resources inside a `.meui` file
 
 An element of a UI document may carry a `Resources` block, as in XAML:
 
@@ -99,10 +99,28 @@ key written `Set.name` is the `.mres` entry, so `{StaticResource
 Strings.title}` and `@res:Strings.title` are the same. An unknown key, a
 bad block or a second block on one element is a build error at its line.
 
+## Culture variants
+
+`Strings.ru.mres` is the Russian variant of `Strings.mres`: the part after
+the set name is a culture tag (letters and digits, `-` between parts, any
+case; stored lowercase: `ru`, `en-gb`). A variant may define only entries
+the default set has, with the same type (a number stays a number); what it
+leaves out falls back to the default, and `en-gb` falls back to `en` and
+then to the default. A variant without a default set, an unknown entry, a
+type mismatch, a bad tag or two files for one culture is a build error at
+its file. Variants generate no constants: `Strings::TITLE` is the default
+value, and `@res:Strings.title` in a `.meui` compiled by the build script is
+the default too.
+
+The language switch is a run-time reload: `HotDocument::set_culture(Some(
+Culture::parse("ru")))` makes the next `refresh` read `@res:` references
+through `ResourceSets::for_culture` and patch the tree, with no file
+change needed; `set_culture(None)` goes back to the default.
+
 ## Reloading
 
 `HotDocument::open(mel, Some(resources_dir), root, debounce)` watches the
-`.mel` and every `.mres` under the directory; the host calls
+`.meui` and every `.mres` under the directory; the host calls
 `refresh(tree, Instant::now())` each frame. A changed file is parsed
 again with the new `ResourceSets` (resource values are resolved while
 parsing, so a changed entry reaches the attributes that use it), and the
@@ -112,8 +130,8 @@ is an error and leaves the tree as it was; the next change tries again.
 
 ## Not yet
 
-Culture variants (`Strings.ru_ru.mres`) and run-time language switching,
-placeholders (`{count}`), file/image/sound entries that bundle assets,
+Culture-aware lookup from code (generated constants are the default
+value), placeholders (`{count}`), file/image/sound entries that bundle assets,
 styles and templates (`{StaticResource}` of a whole `Style`), run-time
 lookup (`{DynamicResource}`), and resources in tags built by
 `build_scene`.

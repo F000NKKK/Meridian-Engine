@@ -5,7 +5,7 @@
 //! (`"{}{not an extension}"` is the text `{not an extension}`).
 //!
 //! The extension's meaning is not interpreted here: an `x:Bind`
-//! expression stays the positional text `count`; the `.mel` generator
+//! expression stays the positional text `count`; the `.meui` generator
 //! compiles it (ADR 017).
 
 use std::fmt;

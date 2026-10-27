@@ -92,7 +92,7 @@ pub use meridian_runtime_app::{
 };
 // -- meridian-runtime-threads: the threaded job executor --
 pub use meridian_runtime_threads::TaskExecutor;
-/// The retained UI runtime (ADR 018), named by generated `.mel` glue.
+/// The retained UI runtime (ADR 018), named by generated `.meui` glue.
 pub use meridian_ui_domain as ui_core;
 pub use render::{RenderStage, compose_frame, render_frame};
 pub use runtime::parallel_runtime;

@@ -1,4 +1,4 @@
-//! Generic tag-markup parser: `.mel` text in, an element/attribute tree
+//! Generic tag-markup parser: `.meui` text in, an element/attribute tree
 //! out. This crate is deliberately domain-blind — it has never heard of
 //! `Mesh`, `RigidBody`, or any other scene concept. That knowledge lives
 //! one layer up, in `meridian-sdk::dsl` (typed tag registration via
