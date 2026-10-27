@@ -1,12 +1,12 @@
 //! The behaviour every [`FrameRecorder`](crate::FrameRecorder) must have.
 
 use meridian_rendering_domain::scene::Scene3d;
-use meridian_rendering_domain::{MaterialRegistry, MeshRegistry};
+use meridian_rendering_domain::{MaterialRegistry, MeshRegistry, Overlay2d};
 
 use crate::{FrameOutcome, FrameRecorder, FrameRequest};
 
 /// Asserts the frame recorder contract against fresh recorders from `make`: an
-/// empty scene is presented; a frame after a resize is presented; and a
+/// empty scene with an empty overlay is presented; a frame after a resize is presented; and a
 /// recorder whose target `lose_target` took away reports
 /// [`FrameOutcome::TargetUnavailable`] until it is resized.
 ///
@@ -20,10 +20,12 @@ pub fn run_frame_recorder_contract<R: FrameRecorder>(
     let scene = Scene3d::default();
     let meshes = MeshRegistry::new();
     let materials = MaterialRegistry::new();
+    let overlays = [Overlay2d::default()];
     let request = FrameRequest {
         scene: &scene,
         meshes: &meshes,
         materials: &materials,
+        overlays: &overlays,
         clear_color: [0.1, 0.2, 0.3, 1.0],
     };
 

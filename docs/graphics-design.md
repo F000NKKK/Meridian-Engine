@@ -319,7 +319,16 @@ driver.
    clips. Still open: one bind group per run per
    frame (no cache), no sprite atlas packing,
    and `Motor3::transform_point` (about 350 ns) dominates batching cost.
-6. `ui-domain` (widgets/layout/input) and text rendering — separate,
+6. **Done.** Composing `[Scene3d, Scene2d]`: `FrameRequest` carries
+   `overlays: &[Overlay2d]` (a `Scene2d` plus its `ClipSpan`s, a
+   `rendering-domain` type); `RenderSession::render_with_overlays` hands them to
+   the `FrameRecorder`, and `GpuFrameRecorder` draws the 3D scene, applies
+   bloom, then draws each overlay unblurred and without depth over the result
+   (`OverlayPass`), in slice order. `meridian_sdk::compose_frame` and
+   `RenderStage::with_overlays` are the application entry points. Verified
+   headless under Xvfb + lavapipe with `magic_figures` (a translucent clipped
+   HUD over the bloomed scene, no `wgpu` validation errors).
+7. `ui-domain` (widgets/layout/input) and text rendering — separate,
    ADR-gated.
 
 ## GPU-driven rendering

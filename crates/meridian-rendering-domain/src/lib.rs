@@ -43,8 +43,8 @@ pub use shapes::{
     smooth_normals,
 };
 pub use sprites::{
-    ClipRect, ClipSpan, ScissorRect, SpriteBatch, SpriteVertex, SpriteView, batch_scene2d,
-    batch_scene2d_clipped,
+    ClipRect, ClipSpan, Overlay2d, ScissorRect, SpriteBatch, SpriteVertex, SpriteView,
+    batch_scene2d, batch_scene2d_clipped,
 };
 pub use submission::{
     MaterialRegistry, MeshRegistry, MeshRegistryError, MeshSource, SHADOW_VOLUME_HALF_EXTENT,

@@ -12,9 +12,10 @@
 
 use meridian_platform_winit::Window;
 use meridian_rendering_app::FrameOutcome;
-use meridian_rendering_domain::Scene3d;
+use meridian_rendering_domain::{Overlay2d, Scene3d};
 use meridian_runtime_app::Stage;
 
+use crate::overlay_builder::OverlayBuilder;
 use crate::scene::GraphicsSession;
 
 /// Renders one frame of `scene` into `base`'s surface through its
@@ -31,8 +32,24 @@ pub fn render_frame(
     clear_color: [f64; 4],
     window: &Window,
 ) {
+    compose_frame(base, scene, &[], clear_color, window);
+}
+
+/// [`render_frame`] with `overlays` (UI, HUD) drawn over the 3D frame: the 3D
+/// scene gets shadows and bloom first, then each [`Overlay2d`] is drawn
+/// unblurred and without depth, in slice order, over the result.
+pub fn compose_frame(
+    base: &mut GraphicsSession,
+    scene: &Scene3d,
+    overlays: &[Overlay2d],
+    clear_color: [f64; 4],
+    window: &Window,
+) {
     let size = (window.width(), window.height());
-    if base.render.render(scene, clear_color, size) == FrameOutcome::Presented {
+    let outcome = base
+        .render
+        .render_with_overlays(scene, overlays, clear_color, size);
+    if outcome == FrameOutcome::Presented {
         window.request_redraw();
     }
 }
@@ -56,6 +73,7 @@ pub struct RenderStage<F> {
     window: Window,
     clear_color: [f64; 4],
     build_scene: F,
+    overlays: Option<OverlayBuilder>,
 }
 
 impl<F> RenderStage<F>
@@ -73,7 +91,16 @@ where
             window,
             clear_color,
             build_scene,
+            overlays: None,
         }
+    }
+
+    /// Also draws what `build` returns over the 3D scene each tick (UI,
+    /// HUD); see [`compose_frame`].
+    #[must_use]
+    pub fn with_overlays(mut self, build: impl FnMut() -> Vec<Overlay2d> + Send + 'static) -> Self {
+        self.overlays = Some(OverlayBuilder::new(build));
+        self
     }
 }
 
@@ -83,7 +110,17 @@ where
 {
     fn run(&mut self) {
         let scene = (self.build_scene)();
-        render_frame(&mut self.base, &scene, self.clear_color, &self.window);
+        let overlays = self
+            .overlays
+            .as_mut()
+            .map_or_else(Vec::new, OverlayBuilder::build);
+        compose_frame(
+            &mut self.base,
+            &scene,
+            &overlays,
+            self.clear_color,
+            &self.window,
+        );
     }
 
     fn resize(&mut self, width: u32, height: u32) {

@@ -24,6 +24,7 @@ mod clip_rect;
 mod clip_span;
 #[cfg(test)]
 mod clip_tests;
+mod overlay2d;
 mod sprite_batch;
 mod sprite_quad;
 mod sprite_vertex;
@@ -34,6 +35,7 @@ mod tests;
 pub use batch_scene2d::{batch_scene2d, batch_scene2d_clipped};
 pub use clip_rect::{ClipRect, ScissorRect};
 pub use clip_span::ClipSpan;
+pub use overlay2d::Overlay2d;
 pub use sprite_batch::SpriteBatch;
 pub use sprite_vertex::SpriteVertex;
 pub use sprite_view::SpriteView;
