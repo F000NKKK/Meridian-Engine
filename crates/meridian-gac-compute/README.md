@@ -19,7 +19,7 @@ The entry points are documented on [docs.rs](https://docs.rs/meridian-gac-comput
 
 ## Depends on / used by
 
-- Depends on: [`meridian-compute-runtime`](../meridian-compute-runtime), [`meridian-gac-core`](../meridian-gac-core), [`meridian-gpu-driver`](../meridian-gpu-driver), [`meridian-numeric-core`](../meridian-numeric-core)
+- Depends on: [`meridian-compute-driver`](../meridian-compute-driver), [`meridian-compute-runtime`](../meridian-compute-runtime), [`meridian-gac-core`](../meridian-gac-core), [`meridian-gpu-driver`](../meridian-gpu-driver), [`meridian-numeric-core`](../meridian-numeric-core)
 - Used by: [`meridian-physics-compute`](../meridian-physics-compute)
 
 ## License

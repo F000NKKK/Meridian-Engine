@@ -62,8 +62,7 @@ dependencies need one of these:
 may only shrink.
 
 - Domain and application crates that still depend on adapters
-  (`graphics-core → graphics-driver`,
-  `compute-runtime → compute-driver`, …): ADR 019, wave 5.
+  (`graphics-core → graphics-driver`, …): ADR 019, wave 5.
 - `graphics-core → asset-core` is a domain-to-domain edge declared as a
   published language; Craftbook requires customer–supplier between two domain
   crates. Resolved when the decoded CPU types move to a published-language

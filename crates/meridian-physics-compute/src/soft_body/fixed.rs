@@ -17,6 +17,7 @@
 //! second, structurally distinct shader program rather than a thin alias
 //! over `float`'s.
 
+use meridian_compute_driver::GpuComputeDevice;
 use meridian_compute_runtime::ComputeContext;
 use meridian_gac_core::{FixedFlavor, FixedVec3};
 use meridian_gpu_driver::ComputePipeline;
@@ -59,7 +60,7 @@ impl FixedSoftBodyGpuKernel {
     /// `context` must already have a GPU backend
     /// ([`ComputeContext::with_gpu`]) — panics otherwise.
     pub fn new(context: &ComputeContext) -> Self {
-        let gpu = context.gpu().expect(GPU_MISSING_NEW);
+        let gpu = context.gpu::<GpuComputeDevice>().expect(GPU_MISSING_NEW);
         let shader = gpu.create_shader("soft_body_step_fixed", &source());
         let pipeline = gpu.create_compute_pipeline(&shader, "soft_body_step");
         Self { pipeline }

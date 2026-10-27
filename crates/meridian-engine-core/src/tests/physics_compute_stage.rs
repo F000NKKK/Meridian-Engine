@@ -4,7 +4,7 @@ use meridian_audio_core::{Mixer, SpeakerLayout};
 use meridian_gac_core::{Motor3, Vec3};
 use meridian_physics_core::{ColliderShape, ConstraintSolver, RigidBody};
 
-use super::{falling_body, subsystem_pair};
+use super::{falling_body, sequential_context, subsystem_pair};
 use crate::*;
 
 /// `PhysicsStepStage` in `PhysicsDispatchMode::Batched` must settle a
@@ -42,7 +42,11 @@ fn physics_compute_step_stage_settles_a_box_without_bouncing_or_sinking() {
     let physics_id = runtime.add_stage(
         "physics",
         &[],
-        PhysicsStepStage::new(1.0 / 60.0, PhysicsDispatchMode::Batched),
+        PhysicsStepStage::new(
+            1.0 / 60.0,
+            PhysicsDispatchMode::Batched,
+            sequential_context(),
+        ),
     );
 
     let mut min_height_after_landing = f32::MAX;
@@ -81,7 +85,11 @@ fn physics_compute_step_stage_matches_physics_step_stage_for_one_tick() {
     let stage_a = runtime_a.add_stage(
         "physics",
         &[],
-        PhysicsStepStage::new(1.0 / 60.0, PhysicsDispatchMode::Sequential),
+        PhysicsStepStage::new(
+            1.0 / 60.0,
+            PhysicsDispatchMode::Sequential,
+            sequential_context(),
+        ),
     );
     runtime_a.tick_only(&[stage_a]);
 
@@ -92,7 +100,11 @@ fn physics_compute_step_stage_matches_physics_step_stage_for_one_tick() {
     let stage_b = runtime_b.add_stage(
         "physics",
         &[],
-        PhysicsStepStage::new(1.0 / 60.0, PhysicsDispatchMode::Batched),
+        PhysicsStepStage::new(
+            1.0 / 60.0,
+            PhysicsDispatchMode::Batched,
+            sequential_context(),
+        ),
     );
     runtime_b.tick_only(&[stage_b]);
 

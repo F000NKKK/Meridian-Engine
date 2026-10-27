@@ -5,6 +5,7 @@ Low-level compute dispatch abstraction (CPU SIMD backends, GPU compute queues/bu
 **Layer and context:** infrastructure (adapter) · compute
 
 - **For:** CPU-SIMD and GPU-compute dispatch mechanics, with a capability report.
+- **For:** implementing `compute-runtime`'s `ComputeDevice` (`CpuComputeDevice`, OS threads) and `GpuBackend` (`GpuComputeDevice`, wgpu) ports; `cpu_context`/`gpu_context` build a `ComputeContext` from them.
 - **Not for:** physics, animation or rendering algorithms; dispatch scheduling policy is `meridian-compute-runtime`.
 
 ## Usage
@@ -19,8 +20,8 @@ The entry points are documented on [docs.rs](https://docs.rs/meridian-compute-dr
 
 ## Depends on / used by
 
-- Depends on: [`meridian-gpu-driver`](../meridian-gpu-driver), [`meridian-platform-core`](../meridian-platform-core)
-- Used by: [`meridian-compute-runtime`](../meridian-compute-runtime)
+- Depends on: [`meridian-compute-runtime`](../meridian-compute-runtime), [`meridian-gpu-driver`](../meridian-gpu-driver), [`meridian-platform-core`](../meridian-platform-core)
+- Used by: [`meridian-gac-compute`](../meridian-gac-compute), [`meridian-physics-compute`](../meridian-physics-compute), [`meridian-sdk`](../meridian-sdk)
 
 ## License
 

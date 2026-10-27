@@ -1155,6 +1155,7 @@ dependencies = [
 name = "meridian-compute-driver"
 version = "0.18.0"
 dependencies = [
+ "meridian-compute-runtime",
  "meridian-gpu-driver",
  "meridian-platform-core",
  "tokio",
@@ -1164,8 +1165,6 @@ dependencies = [
 name = "meridian-compute-runtime"
 version = "0.20.0"
 dependencies = [
- "meridian-compute-driver",
- "meridian-gpu-driver",
  "tokio",
 ]
 
@@ -1263,6 +1262,7 @@ dependencies = [
 name = "meridian-gac-compute"
 version = "0.23.0"
 dependencies = [
+ "meridian-compute-driver",
  "meridian-compute-runtime",
  "meridian-gac-core",
  "meridian-gpu-driver",
@@ -1346,6 +1346,7 @@ dependencies = [
 name = "meridian-physics-compute"
 version = "0.6.0"
 dependencies = [
+ "meridian-compute-driver",
  "meridian-compute-runtime",
  "meridian-foundation",
  "meridian-gac-compute",
@@ -1398,6 +1399,8 @@ dependencies = [
  "meridian-asset-core",
  "meridian-audio-core",
  "meridian-audio-driver",
+ "meridian-compute-driver",
+ "meridian-compute-runtime",
  "meridian-dsl-core",
  "meridian-dsl-macros",
  "meridian-engine-core",

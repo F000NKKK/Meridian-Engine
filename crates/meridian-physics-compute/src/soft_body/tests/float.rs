@@ -1,5 +1,6 @@
 //! Tests of the `f32` soft-body GPU kernel.
 
+use meridian_compute_driver::gpu_context;
 use meridian_compute_runtime::ComputeContext;
 use meridian_gac_core::volume::Plane;
 use meridian_gac_core::{FloatFlavor, Vec3};
@@ -41,7 +42,7 @@ fn ball(center: Vec3, radius: f32) -> SoftBody {
 /// workspace.
 #[cfg(feature = "hw-tests")]
 async fn kernel_or_skip() -> Option<(ComputeContext, SoftBodyGpuKernel)> {
-    let context = match ComputeContext::new().with_gpu().await {
+    let context = match gpu_context().await {
         Ok(ctx) => ctx,
         Err(err) => {
             eprintln!("skipping: no GPU device available ({err})");

@@ -49,12 +49,11 @@ pub struct PhysicsStepStage {
 }
 
 impl PhysicsStepStage {
-    pub fn new(dt: f32, mode: PhysicsDispatchMode) -> Self {
-        Self {
-            dt,
-            mode,
-            context: ComputeContext::new(),
-        }
+    /// A stage stepping by `dt`; batched dispatch runs on `context`, which the
+    /// composition root builds from its compute adapters.
+    #[must_use]
+    pub fn new(dt: f32, mode: PhysicsDispatchMode, context: ComputeContext) -> Self {
+        Self { dt, mode, context }
     }
 
     fn run_batched(&self, ctx: &StageContext) {

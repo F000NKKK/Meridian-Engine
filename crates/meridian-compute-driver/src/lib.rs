@@ -3,29 +3,33 @@
 //! Layer: infrastructure (adapter); bounded context: compute
 //! (`craftbook.toml`, docs/context-map.md).
 //!
-//! Two independent backends. [`ComputeDevice`] (CPU) is real, not a stub:
-//! [`ComputeDevice::dispatch_parallel`] runs work across real OS threads
-//! via `std::thread::scope`, safe, no `unsafe`. [`GpuComputeDevice`] is
+//! The adapter for `compute-runtime`'s ports (ADR 019). Two independent
+//! backends. [`CpuComputeDevice`] implements `ComputeDevice` and runs work
+//! across real OS threads via `std::thread::scope`, safe, no `unsafe`.
+//! [`GpuComputeDevice`] implements `GpuBackend` and is
 //! real too now, built on [`meridian_gpu_driver`] — the crate shared with
 //! `graphics-driver` that owns the actual `wgpu` device/buffer/shader
 //! mechanics (see that crate's module doc and
 //! [ADR 011](../../../docs/adr/011-shared-gpu-driver-crate.md)); this
 //! crate adds nothing on top but the compute-dispatch-shaped API
-//! (`allocate_buffer`/`dispatch`) `compute-runtime::ComputeContext` uses
-//! to reach it (see rule 5 in docs/dependency-rules.md: `compute-runtime`
-//! is the sanctioned path to CPU-SIMD/GPU-compute for domain crates, not
-//! this crate directly). A caller picks a backend explicitly
-//! (`ComputeContext::new` for CPU-only, `ComputeContext::with_gpu` to add
-//! the GPU path alongside it) — there's no automatic fallback between
-//! them.
+//! (`allocate_buffer`/`dispatch`) kernel adapters use. The composition
+//! root builds the devices and hands them to a `ComputeContext`
+//! (`ComputeContext::new` for CPU-only, `with_gpu` to add the GPU path
+//! alongside it) — there is no automatic fallback between them.
 //!
 //! Design notes: docs/notes/meridian-compute-driver.md (`lib`).
 
 #![forbid(unsafe_code)]
 
+use std::any::Any;
+use std::ops::Range;
+use std::sync::Arc;
+
+use meridian_compute_runtime::{ComputeContext, ComputeDevice, ComputeSupport, GpuBackend};
 use meridian_platform_core::{BackendCapabilities, CpuCapabilities, GpuCapabilities};
 
-/// Backend capability flags. Embeds `platform-core`'s [`CpuCapabilities`]
+/// Backend capability flags (the platform's report shape; the port's is
+/// [`ComputeSupport`]). Embeds `platform-core`'s [`CpuCapabilities`]
 /// (the shape shared with future
 /// `graphics-driver`/`audio-driver` equivalents) rather than redeclaring
 /// `threads`; `gpu` is `None` for [`ComputeDevice`] (the CPU backend has
@@ -48,58 +52,22 @@ impl BackendCapabilities for ComputeCapabilities {
     }
 }
 
-/// A CPU-backend compute buffer: owned bytes. [`GpuComputeDevice`] uses
-/// `meridian_gpu_driver::Buffer` instead (a real device-memory handle) —
-/// genuinely different representations for genuinely different backends,
-/// not something worth unifying into one buffer type that would have to
-/// paper over "sometimes owned bytes, sometimes a GPU handle."
-#[derive(Debug, Clone, Default)]
-pub struct ComputeBuffer {
-    data: Vec<u8>,
-}
-
-impl ComputeBuffer {
-    pub fn zeroed(byte_len: usize) -> Self {
-        Self {
-            data: vec![0u8; byte_len],
-        }
-    }
-
-    pub fn from_bytes(data: Vec<u8>) -> Self {
-        Self { data }
-    }
-
-    pub fn len(&self) -> usize {
-        self.data.len()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.data.is_empty()
-    }
-
-    pub fn as_slice(&self) -> &[u8] {
-        &self.data
-    }
-
-    pub fn as_mut_slice(&mut self) -> &mut [u8] {
-        &mut self.data
-    }
-}
-
-/// The active compute backend. Only ever the CPU backend right now — see
-/// the module doc.
+/// The CPU compute backend: implements the [`ComputeDevice`] port with real OS
+/// threads.
 #[derive(Debug, Clone)]
-pub struct ComputeDevice {
+pub struct CpuComputeDevice {
     capabilities: ComputeCapabilities,
 }
 
-impl Default for ComputeDevice {
+impl Default for CpuComputeDevice {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl ComputeDevice {
+impl CpuComputeDevice {
+    /// A device sized to this machine's CPU ([`CpuCapabilities::detect`]).
+    #[must_use]
     pub fn new() -> Self {
         Self {
             capabilities: ComputeCapabilities {
@@ -109,36 +77,42 @@ impl ComputeDevice {
         }
     }
 
+    /// What this backend reports through the platform's capability shape.
+    #[must_use]
     pub fn capabilities(&self) -> ComputeCapabilities {
         self.capabilities.clone()
     }
+}
 
-    pub fn allocate_buffer(&self, byte_len: usize) -> ComputeBuffer {
-        ComputeBuffer::zeroed(byte_len)
+impl ComputeDevice for CpuComputeDevice {
+    fn support(&self) -> ComputeSupport {
+        ComputeSupport {
+            threads: self.capabilities.cpu.threads.max(1),
+            gpu_device_name: None,
+        }
     }
 
-    /// Runs `work(i)` exactly once for every `i` in `0..count`, splitting
-    /// the range into `capabilities().cpu.threads` contiguous chunks
-    /// executed on real worker threads via `std::thread::scope` (borrowed
-    /// `work`, no `'static`/`Box` needed). Always parallel — callers that
-    /// want a small-batch/sequential cutoff apply that policy themselves
-    /// (see `meridian-compute-runtime`'s `ComputeContext`, which is the
-    /// intended caller); this is mechanism, not policy.
-    pub fn dispatch_parallel(&self, count: usize, work: impl Fn(usize) + Sync) {
+    /// Splits the range into `threads` contiguous chunks executed on real
+    /// worker threads via `std::thread::scope` (borrowed `work`, no `'static`).
+    /// Always parallel: the cutoff for small batches is the context's policy.
+    fn dispatch_ranges(&self, count: usize, work: &(dyn Fn(Range<usize>) + Sync)) {
         if count == 0 {
             return;
         }
         let threads = self.capabilities.cpu.threads.max(1).min(count);
         let chunk = count.div_ceil(threads);
-        let work = &work;
         let ranges = (0..threads)
             .map(|t| (t * chunk)..((t + 1) * chunk).min(count))
             .filter(|range| range.start < range.end);
         std::thread::scope(|scope| {
             for range in ranges {
-                scope.spawn(move || range.for_each(work));
+                scope.spawn(move || work(range));
             }
         });
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }
 
@@ -238,134 +212,35 @@ impl GpuComputeDevice {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use std::sync::Mutex;
-    use std::sync::atomic::{AtomicUsize, Ordering};
+/// A CPU-only [`ComputeContext`] over a [`CpuComputeDevice`]: the composition
+/// root's one-liner for the default backend.
+#[must_use]
+pub fn cpu_context() -> ComputeContext {
+    ComputeContext::new(Arc::new(CpuComputeDevice::new()))
+}
 
-    use super::*;
+/// [`cpu_context`] plus a GPU backend. A real `async fn` (acquiring the device
+/// is genuine I/O).
+///
+/// # Errors
+///
+/// [`GpuComputeError`] when there is no adapter: there is no silent fallback
+/// to CPU-only, so a caller that wants the GPU finds out here.
+pub async fn gpu_context() -> Result<ComputeContext, GpuComputeError> {
+    Ok(cpu_context().with_gpu(Arc::new(GpuComputeDevice::new().await?)))
+}
 
-    #[test]
-    fn capabilities_report_at_least_one_cpu_thread_and_no_gpu() {
-        let device = ComputeDevice::new();
-        let caps = device.capabilities();
-        assert!(caps.cpu.threads >= 1);
-        assert!(caps.gpu.is_none());
-    }
-
-    #[test]
-    fn buffer_zeroed_has_requested_length_and_zero_bytes() {
-        let buf = ComputeBuffer::zeroed(16);
-        assert_eq!(buf.len(), 16);
-        assert!(buf.as_slice().iter().all(|&b| b == 0));
-    }
-
-    #[test]
-    fn buffer_mut_slice_writes_are_visible() {
-        let mut buf = ComputeBuffer::zeroed(4);
-        buf.as_mut_slice()[2] = 42;
-        assert_eq!(buf.as_slice(), &[0, 0, 42, 0]);
-    }
-
-    #[test]
-    fn dispatch_parallel_zero_count_calls_work_zero_times() {
-        let calls = AtomicUsize::new(0);
-        ComputeDevice::new().dispatch_parallel(0, |_| {
-            calls.fetch_add(1, Ordering::SeqCst);
-        });
-        assert_eq!(calls.load(Ordering::SeqCst), 0);
-    }
-
-    #[test]
-    fn dispatch_parallel_calls_every_index_exactly_once() {
-        let n = 10_000;
-        let seen: Mutex<Vec<bool>> = Mutex::new(vec![false; n]);
-        ComputeDevice::new().dispatch_parallel(n, |i| {
-            let mut seen = seen.lock().unwrap();
-            assert!(!seen[i], "index {i} visited twice");
-            seen[i] = true;
-        });
-        assert!(
-            seen.lock().unwrap().iter().all(|&v| v),
-            "every index must have been visited"
-        );
-    }
-
-    #[test]
-    fn dispatch_parallel_matches_sequential_sum() {
-        let n = 50_000usize;
-        let total = AtomicUsize::new(0);
-        ComputeDevice::new().dispatch_parallel(n, |i| {
-            total.fetch_add(i, Ordering::Relaxed);
-        });
-        let expected: usize = (0..n).sum();
-        assert_eq!(total.load(Ordering::Relaxed), expected);
-    }
-
-    /// Every `GpuComputeDevice` test needs a real adapter; some CI/
-    /// sandboxed environments have none. Skip rather than fail — this
-    /// validates this crate's own GPU-dispatch API, not that a GPU is
-    /// present.
-    #[cfg(feature = "hw-tests")]
-    async fn gpu_device_or_skip() -> Option<GpuComputeDevice> {
-        match GpuComputeDevice::new().await {
-            Ok(device) => Some(device),
-            Err(err) => {
-                eprintln!("skipping: no GPU device available ({err})");
-                None
-            }
-        }
-    }
-
-    #[cfg(feature = "hw-tests")]
-    #[tokio::test]
-    async fn gpu_capabilities_report_a_real_device_name() {
-        let Some(device) = gpu_device_or_skip().await else {
-            return;
-        };
-        let caps = device.capabilities();
-        assert!(caps.cpu.threads >= 1);
-        let gpu = caps
+impl GpuBackend for GpuComputeDevice {
+    fn device_name(&self) -> String {
+        self.capabilities()
             .gpu
-            .expect("a constructed GpuComputeDevice always has a real adapter");
-        assert!(!gpu.device_name.is_empty());
+            .map_or_else(|| "unknown GPU".to_owned(), |gpu| gpu.device_name)
     }
 
-    /// The actual end-to-end proof: write data to a GPU buffer, run a
-    /// real compute shader over it, read the result back, and check it
-    /// matches what the shader says it does.
-    #[cfg(feature = "hw-tests")]
-    #[tokio::test]
-    async fn gpu_dispatch_doubles_every_element() {
-        let Some(device) = gpu_device_or_skip().await else {
-            return;
-        };
-
-        const SHADER: &str = r#"
-            @group(0) @binding(0)
-            var<storage, read_write> data: array<u32>;
-
-            @compute @workgroup_size(4)
-            fn double_elements(@builtin(global_invocation_id) id: vec3<u32>) {
-                data[id.x] = data[id.x] * 2u;
-            }
-        "#;
-
-        let input: [u32; 4] = [1, 2, 3, 4];
-        let bytes: Vec<u8> = input.iter().flat_map(|v| v.to_le_bytes()).collect();
-
-        let buffer = device.allocate_buffer(bytes.len(), meridian_gpu_driver::BufferUsage::Storage);
-        device.write_buffer(&buffer, &bytes);
-
-        let shader = device.create_shader("double_elements", SHADER);
-        let pipeline = device.create_compute_pipeline(&shader, "double_elements");
-        device.dispatch(&pipeline, &buffer, 1);
-
-        let result_bytes = device.read_buffer(&buffer).await;
-        let result: Vec<u32> = result_bytes
-            .chunks_exact(4)
-            .map(|c| u32::from_le_bytes(c.try_into().unwrap()))
-            .collect();
-        assert_eq!(result, vec![2, 4, 6, 8]);
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }
+
+#[cfg(test)]
+mod tests;

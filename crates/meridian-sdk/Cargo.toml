@@ -19,6 +19,8 @@ meridian-physics-core = { workspace = true }
 meridian-audio-core = { workspace = true }
 meridian-audio-driver = { workspace = true }
 meridian-engine-core = { workspace = true }
+meridian-compute-driver = { workspace = true }
+meridian-compute-runtime = { workspace = true }
 meridian-dsl-core = { workspace = true }
 meridian-dsl-macros = { workspace = true }
 meridian-ui-core = { workspace = true }

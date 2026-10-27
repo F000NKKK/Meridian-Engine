@@ -2,33 +2,25 @@
 
 use std::sync::Arc;
 
-use meridian_compute_driver::{
-    ComputeBuffer, ComputeCapabilities, ComputeDevice, GpuComputeDevice, GpuComputeError,
-};
+use crate::{BackendSplit, ComputeBuffer, ComputeDevice, ComputeSupport, GpuBackend, HybridKernel};
 
-use crate::{BackendSplit, HybridKernel};
-
-/// Everything a `ComputeKernel` dispatch needs: bound buffers, the active
-/// `compute-driver` backend, synchronization state. Consumers reach
-/// `compute-driver` only through this type — see
-/// docs/dependency-rules.md rule 5.
+/// Everything a `ComputeKernel` dispatch needs: the CPU [`ComputeDevice`], an
+/// optional [`GpuBackend`], and the sequential/parallel cutoff. The devices are
+/// ports; the composition root supplies the adapters (rule 5 of
+/// docs/dependency-rules.md: consumers reach compute only through this type).
 #[derive(Debug, Clone)]
 pub struct ComputeContext {
-    device: ComputeDevice,
-    gpu: Option<GpuComputeDevice>,
+    device: Arc<dyn ComputeDevice>,
+    gpu: Option<Arc<dyn GpuBackend>>,
     parallel_threshold: usize,
 }
 
-impl Default for ComputeContext {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl ComputeContext {
-    pub fn new() -> Self {
+    /// A CPU-only context over `device`.
+    #[must_use]
+    pub fn new(device: Arc<dyn ComputeDevice>) -> Self {
         Self {
-            device: ComputeDevice::new(),
+            device,
             gpu: None,
             parallel_threshold: 1024,
         }
@@ -39,30 +31,40 @@ impl ComputeContext {
         self
     }
 
-    /// Adds `compute-driver`'s real GPU backend to this context — see the
-    /// module doc. A real `async fn` (GPU device acquisition is genuine
-    /// I/O); returns the `wgpu`/driver error as-is if no adapter is
-    /// available rather than silently falling back to CPU-only, so a
-    /// caller that specifically wants GPU dispatch finds out immediately.
-    pub async fn with_gpu(mut self) -> Result<Self, GpuComputeError> {
-        self.gpu = Some(GpuComputeDevice::new().await?);
-        Ok(self)
+    /// Adds a GPU backend to this context. Acquiring the device is the
+    /// adapter's I/O (`async`); the context only holds the result. A caller
+    /// that wants GPU dispatch and has no adapter finds out when it acquires one,
+    /// not through a silent CPU fallback here.
+    #[must_use]
+    pub fn with_gpu(mut self, gpu: Arc<dyn GpuBackend>) -> Self {
+        self.gpu = Some(gpu);
+        self
     }
 
-    /// The GPU backend, if [`ComputeContext::with_gpu`] added one — what
-    /// a [`ComputeKernel`](crate::ComputeKernel) reaches for to dispatch on the GPU specifically
-    /// (see the module doc).
-    pub fn gpu(&self) -> Option<&GpuComputeDevice> {
-        self.gpu.as_ref()
+    /// Whether a GPU backend was added.
+    #[must_use]
+    pub fn has_gpu(&self) -> bool {
+        self.gpu.is_some()
     }
 
-    pub fn capabilities(&self) -> ComputeCapabilities {
-        match &self.gpu {
-            Some(gpu) => gpu.capabilities(),
-            None => self.device.capabilities(),
+    /// The GPU backend as its concrete adapter type `T`, if one was added and
+    /// it is a `T`: what a kernel adapter reaches for to dispatch on the GPU.
+    #[must_use]
+    pub fn gpu<T: GpuBackend>(&self) -> Option<&T> {
+        self.gpu.as_deref()?.as_any().downcast_ref()
+    }
+
+    /// What the backends report: the CPU side's threads and the GPU's name.
+    #[must_use]
+    pub fn support(&self) -> ComputeSupport {
+        ComputeSupport {
+            gpu_device_name: self.gpu.as_ref().map(|gpu| gpu.device_name()),
+            ..self.device.support()
         }
     }
 
+    /// A zero-filled CPU buffer from the device.
+    #[must_use]
     pub fn allocate_buffer(&self, byte_len: usize) -> ComputeBuffer {
         self.device.allocate_buffer(byte_len)
     }
@@ -79,7 +81,8 @@ impl ComputeContext {
             }
             return;
         }
-        self.device.dispatch_parallel(count, work);
+        self.device
+            .dispatch_ranges(count, &|range| range.for_each(&work));
     }
 
     /// Splits `count` work items between `kernel`'s CPU and GPU
@@ -99,7 +102,7 @@ impl ComputeContext {
         if count == 0 {
             return;
         }
-        let gpu_count = split.gpu_item_count(count, self.gpu.is_some());
+        let gpu_count = split.gpu_item_count(count, self.has_gpu());
         let cpu_count = count - gpu_count;
 
         if gpu_count == 0 {

@@ -11,6 +11,7 @@ readme = "README.md"
 [dependencies]
 meridian-gac-core = { workspace = true }
 meridian-compute-runtime = { workspace = true }
+meridian-compute-driver = { workspace = true }
 meridian-numeric-core = { workspace = true }
 meridian-gpu-driver = { workspace = true }
 

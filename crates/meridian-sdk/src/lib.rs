@@ -41,6 +41,10 @@ pub use meridian_audio_core::{
 };
 // -- meridian-audio-driver: the platform audio adapter (composition root) --
 pub use meridian_audio_driver::{AudioStream, open_output};
+// -- meridian-compute-driver: the platform compute adapter (composition root) --
+pub use meridian_compute_driver::{CpuComputeDevice, GpuComputeDevice, cpu_context, gpu_context};
+// -- meridian-compute-runtime: dispatch ports --
+pub use meridian_compute_runtime::{ComputeContext, ComputeDevice, GpuBackend};
 // -- meridian-engine-core: Runtime — the single frame-work entry point
 // (see this crate's own module doc's "Runtime is the single frame-work
 // entry point" section) --

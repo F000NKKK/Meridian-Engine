@@ -2,7 +2,7 @@
 
 use meridian_sdk::{
     AudioSubsystem, ConstraintSolver, Mixer, Motor3, PhysicsDispatchMode, PhysicsStepStage,
-    PhysicsSubsystem, RigidBody, Runtime, SpeakerLayout, StageId,
+    PhysicsSubsystem, RigidBody, Runtime, SpeakerLayout, StageId, cpu_context,
 };
 
 use crate::SceneEntity;
@@ -77,7 +77,7 @@ impl PhysicsRig {
         let physics_stage = runtime.add_stage(
             "physics",
             &[],
-            PhysicsStepStage::new(PHYSICS_DT, PhysicsDispatchMode::Batched),
+            PhysicsStepStage::new(PHYSICS_DT, PhysicsDispatchMode::Batched, cpu_context()),
         );
 
         Self {

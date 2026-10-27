@@ -21,7 +21,7 @@ way.
 
 [`FixedArithmeticKernels`] compiles the four binary-op compute
 pipelines once against a [`meridian_compute_runtime::ComputeContext`]'s
-GPU backend (see that crate's module doc for `ComputeContext::with_gpu`)
+GPU backend (see `compute-driver::gpu_context`)
 and [`FixedArithmeticKernels::dispatch`] runs one operation over a
 batch of operand pairs, returning one [`Fixed`] result per pair — the
 real, reusable API this phase's work is for, not just a

@@ -246,6 +246,7 @@ fn with_pair_as_slice<F: GaFlavor>(
 
 #[cfg(test)]
 mod tests {
+    use meridian_compute_driver::cpu_context;
     use meridian_gac_core::{FloatFlavor, Motor3, Vec3};
     use meridian_physics_core::collision::{BroadPhase, ColliderShape, NarrowPhase};
 
@@ -333,7 +334,7 @@ mod tests {
         }
 
         // Batched version, same solver/contacts/iteration count.
-        let context = ComputeContext::new();
+        let context = cpu_context();
         let kernel = ConstraintSolverBatchKernel::new(solver, bodies, contacts);
         kernel.step(&context, RELAXATION_ITERATIONS);
         let got = kernel.bodies();
@@ -358,7 +359,7 @@ mod tests {
         let solver = ConstraintSolver::<FloatFlavor>::new(0.0).with_friction(0.6);
         let mut broad_phase = BroadPhase::<FloatFlavor>::new();
         let narrow_phase = NarrowPhase::<FloatFlavor>::new();
-        let context = ComputeContext::new();
+        let context = cpu_context();
 
         let mut min_height = f32::MAX;
         let mut max_height = f32::MIN;

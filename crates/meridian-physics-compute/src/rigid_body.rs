@@ -105,6 +105,7 @@ where
 
 #[cfg(test)]
 mod tests {
+    use meridian_compute_driver::cpu_context;
     use meridian_gac_core::{FloatFlavor, Motor3, Vec3};
     use meridian_physics_core::collision::ColliderShape;
 
@@ -133,7 +134,7 @@ mod tests {
         let mut expected = bodies.clone();
         integrator.step(&mut expected, dt);
 
-        let context = ComputeContext::new();
+        let context = cpu_context();
         let kernel = RigidBodyIntegratorKernel::new(integrator, bodies, dt);
         kernel.dispatch(&context, DispatchSize::linear(kernel.bodies.len() as u32));
 
@@ -156,7 +157,7 @@ mod tests {
         static_body.velocity = Vec3::new(1.0, 2.0, 3.0);
         let before = static_body;
 
-        let context = ComputeContext::new();
+        let context = cpu_context();
         let kernel = RigidBodyIntegratorKernel::new(integrator, vec![static_body], 1.0 / 60.0);
         kernel.dispatch(&context, DispatchSize::linear(1));
 
@@ -179,7 +180,7 @@ mod tests {
         let mut expected = bodies.clone();
         integrator.step(&mut expected, dt);
 
-        let context = ComputeContext::new();
+        let context = cpu_context();
         let kernel = RigidBodyIntegratorKernel::new(integrator, bodies, dt);
         kernel.dispatch(&context, DispatchSize::linear(kernel.bodies.len() as u32));
 

@@ -1,5 +1,6 @@
 //! Compute pipelines for the fixed-point operations.
 
+use meridian_compute_driver::GpuComputeDevice;
 use meridian_compute_runtime::ComputeContext;
 use meridian_gpu_driver::{BufferUsage, ComputePipeline};
 use meridian_numeric_core::Fixed;
@@ -29,7 +30,7 @@ impl FixedArithmeticKernels {
     /// `meridian-graphics-driver`'s own headless-device tests use.
     pub fn new(context: &ComputeContext) -> Self {
         let gpu = context
-            .gpu()
+            .gpu::<GpuComputeDevice>()
             .expect("FixedArithmeticKernels::new requires a ComputeContext with a GPU backend (see ComputeContext::with_gpu)");
         let source = dispatch_entry_points_wgsl();
         let shader = gpu.create_shader("fixed_arithmetic", &source);
@@ -72,7 +73,7 @@ impl FixedArithmeticKernels {
         op: FixedBinaryOp,
         pairs: &[(Fixed, Fixed)],
     ) -> Vec<Fixed> {
-        let gpu = context.gpu().expect(
+        let gpu = context.gpu::<GpuComputeDevice>().expect(
             "FixedArithmeticKernels::dispatch requires a ComputeContext with a GPU backend",
         );
 
@@ -119,7 +120,7 @@ impl FixedArithmeticKernels {
     /// produces a nonsensical (not merely wrong-sign) result rather than
     /// erroring, and callers are responsible for upholding it themselves.
     pub async fn dispatch_sqrt(&self, context: &ComputeContext, values: &[Fixed]) -> Vec<Fixed> {
-        let gpu = context.gpu().expect(
+        let gpu = context.gpu::<GpuComputeDevice>().expect(
             "FixedArithmeticKernels::dispatch_sqrt requires a ComputeContext with a GPU backend",
         );
 
@@ -161,7 +162,7 @@ impl FixedArithmeticKernels {
         context: &ComputeContext,
         thetas: &[Fixed],
     ) -> Vec<(Fixed, Fixed)> {
-        let gpu = context.gpu().expect(
+        let gpu = context.gpu::<GpuComputeDevice>().expect(
             "FixedArithmeticKernels::dispatch_sin_cos requires a ComputeContext with a GPU backend",
         );
 

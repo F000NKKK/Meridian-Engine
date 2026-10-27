@@ -1,5 +1,6 @@
 //! Tests of the `Fixed` soft-body GPU kernel.
 
+use meridian_compute_driver::gpu_context;
 use meridian_compute_runtime::ComputeContext;
 use meridian_gac_core::volume::Plane;
 use meridian_gac_core::{FixedFlavor, FixedVec3};
@@ -48,7 +49,7 @@ fn ball(center: FixedVec3, radius: f64) -> FixedSoftBody {
 /// workspace.
 #[cfg(feature = "hw-tests")]
 async fn kernel_or_skip() -> Option<(ComputeContext, FixedSoftBodyGpuKernel)> {
-    let context = match ComputeContext::new().with_gpu().await {
+    let context = match gpu_context().await {
         Ok(ctx) => ctx,
         Err(err) => {
             eprintln!("skipping: no GPU device available ({err})");

@@ -9,9 +9,13 @@ description = "Low-level compute dispatch abstraction (CPU SIMD backends, GPU co
 readme = "README.md"
 
 [dependencies]
+meridian-compute-runtime = { workspace = true }
 meridian-platform-core = { workspace = true }
 meridian-gpu-driver = { workspace = true }
 tokio = { workspace = true }
+
+[dev-dependencies]
+meridian-compute-runtime = { workspace = true, features = ["testing"] }
 
 [features]
 # Tests that need a real GPU or audio device; CI has neither (docs/adr/020).

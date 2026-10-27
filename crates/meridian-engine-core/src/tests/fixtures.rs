@@ -6,6 +6,13 @@ use meridian_physics_core::{ColliderShape, RigidBody};
 
 use crate::*;
 
+/// A compute context on the deterministic single-threaded fake device.
+pub(crate) fn sequential_context() -> meridian_compute_runtime::ComputeContext {
+    meridian_compute_runtime::ComputeContext::new(std::sync::Arc::new(
+        meridian_compute_runtime::testing::SequentialDevice,
+    ))
+}
+
 pub(crate) fn falling_body() -> RigidBody {
     RigidBody {
         frame: Motor3::translation(Vec3::new(0.0, 10.0, 0.0)),
