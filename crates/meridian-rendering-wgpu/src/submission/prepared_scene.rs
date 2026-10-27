@@ -11,6 +11,9 @@ use super::DrawBuffers;
 pub struct PreparedScene {
     /// One baked entry per drawable renderable.
     pub buffers: Vec<DrawBuffers>,
+    /// Indices into `buffers` in drawing order: opaque, translucent far to
+    /// near, then on-top draws.
+    pub order: Vec<usize>,
     /// The shadow-casting light of this view.
     pub shadow: ShadowLight,
 }

@@ -75,8 +75,8 @@ pub use meridian_rendering_app::{
 };
 // -- meridian-rendering-domain: scene/material/lighting/submission --
 pub use meridian_rendering_domain::{
-    Camera, Camera2d, ClipRect, ClipSpan, FlyCamera, FlyControls, Frustum, Light, Material,
-    MaterialHandle, MaterialRegistry, MeshHandle, MeshRegistry, MeshSource, Overlay2d,
+    BlendMode, Camera, Camera2d, ClipRect, ClipSpan, FlyCamera, FlyControls, Frustum, Light,
+    Material, MaterialHandle, MaterialRegistry, MeshHandle, MeshRegistry, MeshSource, Overlay2d,
     Renderable3d, Scene2d, Scene3d, Sprite, TextureHandle, cube_mesh_source, ground_mesh_source,
     icosphere_mesh_source, look_at_rotor, pyramid_mesh_source, smooth_normals,
 };
