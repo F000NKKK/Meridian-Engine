@@ -773,8 +773,9 @@ the rest are not started.
    `meridian-ui-core` ([ADR 018](adr/018-ui-architecture.md)) has the
    WPF-style element tree, typed properties, measure/arrange layout
    (`Border`, `StackPanel`, `DockPanel`, `Grid`, `TextBlock`) and hit
-   testing, tested without a GPU. Still missing: extraction to
-   `Scene2d`, text rendering, input routing and controls, styles and
+   testing, focus and input routing (`handle_input`, `UiEvent`s, a
+   consumed/ignored outcome), tested without a GPU. Still missing:
+   extraction to `Scene2D`, text rendering, controls, styles and
    templates. Markup literals (`"Auto"`, `"2*"`, `"4,2"`) parse through
    `PropertyType::parse`.
 8. **Asset pipeline stops at static meshes.** `asset-core::ObjDecoder`

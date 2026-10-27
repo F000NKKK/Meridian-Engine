@@ -13,11 +13,10 @@
 //! (impulse-based, linear *and* angular, with positional correction
 //! against sinking), and `Integrator` (semi-implicit Euler, using
 //! `gac-core`'s bivector exponential map for rotation — not a naive "add
-//! angle" or a separately-tracked quaternion). No GPU/SIMD dispatch
-//! through `compute-runtime` wired in yet — these are correct sequential
-//! CPU implementations first; batching them through `compute-runtime` is
-//! additive later, not a rewrite (the same kernel logic, called per-pair
-//! instead of once).
+//! angle" or a separately-tracked quaternion). These are
+//! correct sequential CPU implementations; batched and GPU dispatch lives
+//! in `meridian-physics-compute`, which calls the same per-pair logic
+//! through `compute-runtime`.
 //!
 //! Design notes: docs/notes/meridian-physics-core.md (`lib`).
 #![doc = include_str!("../README.md")]

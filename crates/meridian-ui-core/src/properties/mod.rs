@@ -6,6 +6,7 @@ pub mod border;
 pub mod dock_panel;
 pub mod element;
 pub mod grid;
+pub mod interaction;
 pub mod stack_panel;
 pub mod text_block;
 
@@ -29,6 +30,8 @@ pub const ALL: &[PropertyMeta] = &[
     grid::COLUMN_DEFINITIONS.meta(),
     text_block::TEXT.meta(),
     text_block::FONT_SIZE.meta(),
+    interaction::FOCUSABLE.meta(),
+    interaction::IS_HIT_TEST_VISIBLE.meta(),
 ];
 
 /// Looks a property up by id.

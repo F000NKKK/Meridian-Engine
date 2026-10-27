@@ -173,10 +173,11 @@ meridian-gac-core   meridian-compute-runtime
 
 `meridian-gac-compute` depends on both and implements `compute-runtime`'s
 `ComputeKernel` trait for GAC batch operations (`MotorTransformKernel`,
-`MotorComposeKernel`, ...). `graphics-core` and `physics-core` depend on
+`MotorComposeKernel`, ...). `graphics-core` depends on
 `gac-compute` for batched transform work and on `compute-runtime` directly
 for non-GAC compute (e.g. GPU culling) — both edges omitted from the main
-diagram above for readability, along with `meridian-audio-core`'s
+diagram above for readability. `physics-core` has neither edge: its batching
+lives in `physics-compute`. Also omitted: `meridian-audio-core`'s
 dependency on `meridian-gac-core`/`meridian-audio-driver`/
 `meridian-resource-core` and `meridian-graphics-core`'s/
 `meridian-physics-core`'s own direct dependency on `meridian-resource-core`
@@ -266,7 +267,7 @@ bottom-up.
 - `meridian-asset-core` -> `meridian-foundation`, `meridian-platform-core` (pending, wave 5)
 - `meridian-graphics-core` -> `meridian-asset-core`, `meridian-compute-runtime` (pending, wave 5), `meridian-ecs-core`, `meridian-foundation`, `meridian-gac-compute` (pending, wave 5), `meridian-gac-core`, `meridian-graphics-driver` (pending, wave 5), `meridian-memory-core`, `meridian-resource-core`
 - `meridian-audio-core` -> `meridian-audio-driver` (pending, wave 5), `meridian-gac-core`, `meridian-resource-core`
-- `meridian-physics-core` -> `meridian-compute-runtime` (pending, wave 5), `meridian-ecs-core`, `meridian-gac-compute` (pending, wave 5), `meridian-gac-core`, `meridian-numeric-core`, `meridian-resource-core`
+- `meridian-physics-core` -> `meridian-gac-core`, `meridian-numeric-core`, `meridian-resource-core`
 - `meridian-physics-compute` -> `meridian-compute-runtime`, `meridian-foundation`, `meridian-gac-compute`, `meridian-gac-core`, `meridian-gpu-driver`, `meridian-numeric-core`, `meridian-physics-core`
 - `meridian-engine-core` -> `meridian-asset-core`, `meridian-audio-core`, `meridian-compute-runtime`, `meridian-ecs-core`, `meridian-foundation`, `meridian-gac-core`, `meridian-graphics-core`, `meridian-memory-core`, `meridian-physics-compute` (pending, wave 6), `meridian-physics-core`, `meridian-platform-core` (pending, wave 6), `meridian-task-core` (pending, wave 6)
 - `meridian-scene` -> `meridian-ecs-core`, `meridian-gac-core`

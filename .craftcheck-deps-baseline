@@ -17,7 +17,5 @@ crates/meridian-graphics-core/Cargo.toml	L602	meridian-gac-compute	1
 crates/meridian-graphics-core/Cargo.toml	L602	meridian-graphics-driver	1
 crates/meridian-graphics-core/Cargo.toml	L603	meridian-asset-core	1
 crates/meridian-mel-build/Cargo.toml	L606		1
-crates/meridian-physics-core/Cargo.toml	L602	meridian-compute-runtime	1
-crates/meridian-physics-core/Cargo.toml	L602	meridian-gac-compute	1
 crates/meridian-scene/Cargo.toml	L606		1
 crates/meridian-ui-core/Cargo.toml	L606		1

@@ -12,7 +12,7 @@ backlog; architecture decisions still go to `docs/adr/`, status to
 | UI rendering vocabulary (screen-space = `Scene2D` with pixel `Camera2D`, world-space = `Renderable3D` with `billboard`/`always_on_top`) | `meridian-graphics-core` (`scene.rs`), [graphics-design.md](../graphics-design.md) "UI is a role, not a third scene kind" | Design accepted; `Scene2D`/`Sprite`/`Camera2D` exist; `always_on_top` and blend modes not acted on by the submission bridge yet |
 | Widgets, layout, focus, input routing | `meridian-ui-core`, [ADR 018](../adr/018-ui-architecture.md) | Element tree, typed properties, layout and hit testing done; no controls, styles, input routing or rendering yet |
 | Text: fonts, shaping, glyph atlas | future crate, own ADR | Not started |
-| Pointer/keyboard input feeding UI | `meridian-platform-core::InputState` (consumer, not owner) | Key/mouse state exists; no text input (IME/char events), no gamepad, no event stream for UI routing |
+| Pointer/keyboard input feeding UI | `meridian-platform-core::InputState` (consumer, not owner) | Key/mouse state exists; UI has its own `InputEvent`; the `platform-core` adapter that fills it is not written; no IME composition, no gamepad |
 | Editor / IDLE UX (inspector, scene tree, viewport gizmos) | Meridian IDLE app (owned by **team/ide**); engine side through the editor protocol in `docs/data-formats.md` / substrate-data | We own UX requirements and engine-side hooks, team/ide owns the app |
 
 ## Boundaries
@@ -83,7 +83,8 @@ In order; nothing here starts without a task from the owner.
    UI" flag for gameplay.
 5. **`meridian-ui-core` next steps** — skeleton is done (tree, layout,
    hit testing). Markup literal parsing is done
-   (`PropertyType::parse`). Left: focus, `Scene2D` extraction adapter.
+   (`PropertyType::parse`). Focus and input routing are done too. Left: `Scene2D`
+   extraction adapter, text rendering, controls.
 6. **Base widgets** — panel, label, button, image, scroll view, text
    box; theme/style tokens.
 7. **Example** — HUD overlay over `magic_figures` or `physic_figures`

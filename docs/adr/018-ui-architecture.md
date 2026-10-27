@@ -6,8 +6,8 @@ Proposed (2026-10-27). The owner's direction ("do it like WPF", looking at
 how Yog-IDLE and Yog-Mod-Loader's `yog-ui` do it) is settled; the
 mechanics below are the first implementation of it and are open to
 review. The element tree, properties, layout and hit testing are
-implemented in `meridian-ui-core`; styles, templates, input routing and
-rendering are not.
+implemented in `meridian-ui-core`, as are focus and input routing; styles,
+templates, controls and rendering are not.
 
 ## Context
 
@@ -91,7 +91,28 @@ rely on:
   literal `@`, any other leading `@` comes back as
   `LiteralError::Reference` for the caller to resolve.
 
-**6. Boundaries.** `ui-core` depends on `foundation` and `memory-core`
+**6. Input and focus.** The UI has its own input vocabulary
+(`InputEvent`: pointer moved/pressed/released, `KeyPressed` with
+`Modifiers`, `Text`), independent of any windowing backend; the adapter
+above `platform-core` translates into it. `UiTree::handle_input(root,
+event)` routes the event with the last layout and returns
+`InputOutcome::Consumed` or `Ignored`, which gameplay reads to leave
+UI-used input alone. Pointer events target `hit_test`'s result; elements
+with `IsHitTestVisible = false` are transparent to the pointer. Keyboard
+focus is the `Focusable` property plus `focus`, `clear_focus` and
+`move_focus` (document order, wrapping; `Tab`/`Shift+Tab` do it); only an
+element that is `Focusable` and `Visible` along its whole ancestor chain
+takes focus, and a click focuses the nearest focusable ancestor-or-self.
+Key and text events go to the focused element. The result is a queue of
+`UiEvent { target, kind }` (`PointerPressed`/`Released`, `Click`,
+`PointerEntered`/`Left`, `KeyPressed`, `Text`, `FocusGained`/`Lost`)
+drained with `drain_events`; the code-behind (or generated glue) handles
+them, and bubbling is the ancestor path (`UiTree::ancestors`) rather than
+a handler registry in this crate. Removing a node clears any focus, hover
+or press state pointing at it. No pointer capture, drag, gesture or
+gamepad navigation yet.
+
+**7. Boundaries.** `ui-core` depends on `foundation` and `memory-core`
 only (see [dependency-rules.md](../dependency-rules.md)). It does not
 depend on `graphics-core` or `platform-core`: a later adapter above both
 walks the laid-out tree into `Scene2D` sprites and quads and feeds it
@@ -103,8 +124,9 @@ domain-neutral; game widgets are defined by the game.
 
 - Styles, resource dictionaries, control templates, triggers and
   inheritance of property values down the tree.
-- Routed events (tunnel/bubble), focus, keyboard navigation, text input
-  and IME; the "consumed by UI" flag for gameplay.
+- Tunnelling events, pointer capture and drag, directional (gamepad)
+  focus navigation, `TabIndex`, IME composition (only finished text
+  arrives as `Text`), `Enter`/`Space` activation (a control's job).
 - Controls (`Button`, `TextBox`, `ScrollViewer`) and content model
   (`ContentControl`); more panels (`Canvas`, `WrapPanel`); `Min`/`Max`
   sizes; `Grid` row/column spans.
