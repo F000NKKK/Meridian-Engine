@@ -14,9 +14,9 @@ execution anywhere in the workspace yet.
 
 | Piece | Where | Role |
 |---|---|---|
-| Markup parser | `crates/meridian-dsl-core` (`parse`, `Element`, `ParseError`) | Domain-blind `<Tag attr="v">` tree; no text nodes, byte-offset errors only |
-| Typed tags | `crates/meridian-dsl-core/src/tag.rs` (`DslTag`, `DslRegistry`, `BuiltNode`) | Name -> builder registry, fails closed on unknown tags |
-| Tag macro | `crates/meridian-dsl-macros` (`#[dsl_tag(name = "...")]`) | Implements `DslTag` for a plain struct; used only via `meridian_sdk::dsl_tag` |
+| Markup parser | `crates/meridian-markup` (`parse`, `Element`, `ParseError`) | Domain-blind `<Tag attr="v">` tree; no text nodes, byte-offset errors only |
+| Typed tags | `crates/meridian-markup/src/tag.rs` (`DslTag`, `DslRegistry`, `BuiltNode`) | Name -> builder registry, fails closed on unknown tags |
+| Tag macro | `crates/meridian-markup-macros` (`#[dsl_tag(name = "...")]`) | Implements `DslTag` for a plain struct; used only via `meridian_sdk::dsl_tag` |
 | Built-ins | `crates/meridian-sdk/src/dsl.rs` (`Scene`/`Entity`/`Mesh`/`Material`/`RigidBody`/`Transform`, `default_registry`, `build_scene`) | Ordinary `#[dsl_tag]` structs, no privilege over game tags |
 | Samples | `examples/assets/scenes/{physic_figures,magic_figures}.meui` | `magic_figures` shows game-defined tags (`Glow`/`Orbit`/`Audio`) |
 
@@ -25,15 +25,15 @@ in the examples; the DSL describes composition only.
 
 ## Ownership and boundaries
 
-The segment owns `meridian-dsl-core`, `meridian-dsl-macros`,
+The segment owns `meridian-markup`, `meridian-markup-macros`,
 `meridian_sdk::dsl`, the `.meui` samples, and every future language crate.
 It follows the workspace rules in [dependency-rules.md](../dependency-rules.md):
 
 - The language core (lexer, parser, checker, IR; backends sit beside
-  it) stays domain-blind, like `dsl-core`: it never names ECS, physics or graphics
+  it) stays domain-blind, like `markup`: it never names ECS, physics or graphics
   types. Engine bindings live in an adapter crate above it.
 - No global script manager or singleton VM ([ADR 003](../adr/003-no-global-managers.md));
-  a script runtime is a value owned by whoever composes it (`engine-core`
+  a script runtime is a value owned by whoever composes it (`runtime-app`
   or the application).
 - Script logic touching fixed-step simulation must be deterministic
   ([ADR 008](../adr/008-fixed-point-determinism.md)): the language needs a
@@ -54,9 +54,9 @@ the prior art to copy from is Yog-Mod-Loader's `.yui` -> `.g.rs` pipeline
 (`yog-ui`, `yog-kit`) and Yog-IDLE's `docs/yui.md`/`mvvm.md`/`yres.md`.
 
 1. ~~ADR 017: `.meui` behavior model~~ — done.
-2. ~~Source spans in `dsl-core`~~ — done: `Span` (offset, line,
+2. ~~Source spans in `markup`~~ — done: `Span` (offset, line,
    column) on every `Element`, `Attribute` and `ParseError`.
-3. ~~Grammar growth in `dsl-core`~~ — done: `x:` prefix, dotted names
+3. ~~Grammar growth in `markup`~~ — done: `x:` prefix, dotted names
    and property elements, markup extensions parsed into `MarkupValue`,
    typed `ParseErrorKind`; a tag built straight from markup rejects an
    extension value with a clear error (`text_attr`).
@@ -64,7 +64,7 @@ the prior art to copy from is Yog-Mod-Loader's `.yui` -> `.g.rs` pipeline
    Substrate-Data string rules (`@kind:id`, `@@`, error on other `@`),
    reusing `substrate-data`'s classifier (`typed::classify`, in progress
    on `team/data`'s side) rather than re-implementing the grammar.
-5. ~~Generator crate + `mel_include!`~~ — done: `meridian-mel-build`
+5. ~~Generator crate + `mel_include!`~~ — done: `meridian-ui-mel`
    (`compile_dir` from `build.rs`) writes `OUT_DIR/mel/<name>.g.rs` with
    `SOURCE`, a `Name` enum per `x:Name`, `Class`/`ViewModel` aliases,
    `build` and `find`, and rejects bad directives and names at build
@@ -80,7 +80,7 @@ the prior art to copy from is Yog-Mod-Loader's `.yui` -> `.g.rs` pipeline
    `Mode`/`BindBack`/`Fallback` are validated (an `x:ViewModel` and an
    `x:Name` are required, `TwoWay` needs a member path or `BindBack`,
    `Fallback` needs a `?.` and may not contain one). A bound attribute is
-   resolved against `meridian-ui-core`'s registry at build time
+   resolved against `meridian-ui-domain`'s registry at build time
    ([ADR 018](../adr/018-ui-architecture.md) section 5), so an unknown
    property is an error at its `.meui` line. The generated module gets a
    `Names` struct (a `NodeId` per `x:Name`), `apply_one_time_bindings`,
@@ -89,7 +89,7 @@ the prior art to copy from is Yog-Mod-Loader's `.yui` -> `.g.rs` pipeline
    each statement under a `// @mel file:line:column` marker, so `rustc`
    checks every binding against the view model. The view-model dirty
    flag that decides *when* `apply_bindings` runs is the caller's for now.
-   A document whose root is a `ui-core` element (`Border`, `StackPanel`,
+   A document whose root is a `ui-domain` element (`Border`, `StackPanel`,
    `DockPanel`, `Grid`, `TextBlock`) also gets `build_ui(tree)`, which
    creates the elements in markup order, sets plain attributes through
    `tree.set_literal` (parsed by `PropertyType::parse`, `@@` escapes `@`)
@@ -122,12 +122,12 @@ the prior art to copy from is Yog-Mod-Loader's `.yui` -> `.g.rs` pipeline
    tokio); an OS-notification source can replace it behind the same
    `poll`. Still open: a changed `x:Bind` expression is compiled
    code-behind and needs a rebuild of the program, rebuilds that keep
-   unchanged `NodeId`s, and the engine-core wiring that calls `refresh`.
+   unchanged `NodeId`s, and the runtime-app wiring that calls `refresh`.
 9. **Host API and the Meridian language** (compiled, not a scripting
    language: [ADR 022](../adr/022-meridian-language.md), compared against
    Yog's `.ys`). One trait-based host API for all code-behind backends;
    then the language: a domain-blind front end and typed IR, a Rust
-   source backend first (like `mel-build`), a WASM backend second, a
+   source backend first (like `ui-mel`), a WASM backend second, a
    small compile-time evaluator for constants and tests, a `Fixed` path
    for fixed-step logic.
 10. **Tooling (with `team/ide`).** Diagnostics/symbols for a `.meui`
@@ -138,7 +138,7 @@ the prior art to copy from is Yog-Mod-Loader's `.yui` -> `.g.rs` pipeline
 ## Split with other segments
 
 - `team/ui-ux` owns the UI element, layout and binding runtime (future
-  `meridian-ui-core`); this segment owns the `.meui` syntax, parser and
+  `meridian-ui-domain`); this segment owns the `.meui` syntax, parser and
   generator that UI screens use too.
 - `team/data` owns `.mscene` and the Substrate-Data adapter (ADR 016);
   `.meui` shares its literal grammar and is not compiled into `.mscene`.

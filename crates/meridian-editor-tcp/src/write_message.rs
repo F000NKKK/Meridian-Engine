@@ -2,7 +2,7 @@
 
 use std::io::ErrorKind;
 
-use meridian_editor_protocol::FrameError;
+use meridian_editor_domain::FrameError;
 use substrate_data::Schema;
 use tokio::io::{AsyncWrite, AsyncWriteExt};
 

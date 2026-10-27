@@ -1,7 +1,12 @@
-# `meridian-graphics-core` design notes
+# `meridian-rendering-domain` design notes
 
 Rationale moved out of the module docs (Craftbook ch. 5 §5.2: a `//!` is at
 most 30 lines). Each section belongs to the module named in its heading.
+
+Wave 5 (ADR 019) moved the GPU-touching parts of `bloom`, `submission` and
+`sprites` (pipelines, shaders, baking and recording) to `meridian-rendering-wgpu`;
+the sections below describe them where they now live. `rendering-domain` keeps the
+scene, the registries, sprite batching, the shadow light and the ports.
 
 ## `bloom`
 
@@ -35,7 +40,7 @@ clamped to `[0,1]` like every other color in this bridge. A true HDR
 pipeline (`Rgba16Float` intermediate targets, exposure/tone-mapping)
 is real future work if a scene ever needs emissive values above `1.0`
 to look right — it would only mean adding a variant to
-`graphics-driver::ColorFormat` and passing it through, not a redesign
+`rendering-wgpu::ColorFormat` and passing it through, not a redesign
 here; the visible glow this produces today does not depend on it.
 
 **Fixed at construction size**, matching the swapchain/target it was
@@ -49,7 +54,7 @@ windowed example.
 **No per-instance uniform, no GPU-side instancing yet.** A render
 pass here has exactly one shared uniform buffer (view-projection,
 camera position, ambient, lights) per view — there is no dynamic-
-offset or per-draw uniform mechanism in `graphics-driver` today, and
+offset or per-draw uniform mechanism in `rendering-wgpu` today, and
 writing a *shared* uniform once per draw would race (every draw only
 executes once the whole command buffer is submitted, by which point
 the last write wins for *all* of them — the same footgun the
@@ -67,14 +72,14 @@ the same "correct now, batch later" trade-off.
 array, not a dynamically-sized storage buffer — keeping the uniform
 shape simple until a scene actually needs more): extra lights beyond
 the cap are dropped, logged once per [`SceneRenderer::prepare`] call
-via `meridian_foundation::log_warn!`, not silently ignored.
+via `meridian_diagnostics::log_warn!`, not silently ignored.
 
 ## `sprites`
 
 The 2D path, split so the interesting half needs no GPU: `batch_scene2d`
 (cull to camera, stable sort by `layer`, merge consecutive same-texture
 sprites) is plain data in, plain data out; `SpriteRenderer` is the only
-part that touches `graphics-driver`.
+part that touches `rendering-wgpu`.
 
 - **Why consecutive-only merging.** Painter's order is the contract
   (`layer` = draw order), so batching may never move a sprite across a
@@ -92,7 +97,7 @@ part that touches `graphics-driver`.
   lives in the scene plane. `Motor3::transform_point` is the cost (see
   `benches/sprite_batching.rs`).
 - **Clip spans by layer, not per sprite.** `Sprite` and `Scene2d` are
-  built as struct literals by `meridian-ui-render`, so a clip field on
+  built as struct literals by `meridian-ui-scene2d`, so a clip field on
   either would break it. A `ClipSpan` over a layer range matches how a
   tree walk emits a container's content (one contiguous run) and keeps the
   scene types unchanged. Batches merge only when texture and clip match.
@@ -100,5 +105,5 @@ part that touches `graphics-driver`.
   rectangle (outward-rounded, clamped to the target) hides the rest.
   Sprites fully outside their clip are dropped before upload.
 - **Premultiplied alpha.** Textures are straight RGBA8
-  (`asset-core::ImageAsset`); the fragment shader multiplies by `tint` and
+  (`asset-domain::ImageAsset`); the fragment shader multiplies by `tint` and
   then by alpha, and the pipeline blends `src + dst * (1 - src.a)`.

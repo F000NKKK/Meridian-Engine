@@ -1,0 +1,20 @@
+[package]
+name = "meridian-ui-scene2d"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Turns a laid-out meridian-ui-domain element tree into a rendering-domain Scene2d: backgrounds today, text and images next. No GPU, no windowing; see ADR 021."
+
+[dependencies]
+meridian-gac = { workspace = true }
+meridian-rendering-domain = { workspace = true }
+meridian-ui-domain = { workspace = true }
+
+[dev-dependencies]
+meridian-memory = { workspace = true }
+meridian-resource = { workspace = true }
+
+[lints]
+workspace = true

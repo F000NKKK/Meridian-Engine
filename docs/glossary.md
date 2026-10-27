@@ -82,7 +82,17 @@ the other, in the same change.
 | Hybrid kernel | A kernel whose batch is split between CPU and GPU. | `HybridKernel`, `BackendSplit` |
 | Dispatch size | How many items one dispatch covers. | `DispatchSize` |
 | Compute buffer | Untyped bytes on a device; meaning belongs to the adapter. | `ComputeBuffer` |
+| Compute device | The port a compute context dispatches CPU index ranges through. | `ComputeDevice`, `CpuComputeDevice` |
+| GPU backend | The port holding a GPU in a compute context; kernel adapters downcast it. | `GpuBackend`, `GpuComputeDevice` |
 | GPU device | The `wgpu` device and queue. | `gpu_driver::Device`, `GpuComputeDevice` |
+
+## Rendering ports
+
+| Term | Meaning | In code |
+|---|---|---|
+| Frame recorder | The port that draws a scene to a target and presents it. | `FrameRecorder`, `GpuFrameRecorder` |
+| Texture store | The port that turns decoded images into handle-addressed GPU textures. | `TextureStore`, `GpuTextureStore` |
+| Mesh store | The port that keeps validated mesh sources by handle. | `MeshStore`, `MeshRegistry` |
 
 ## Assets
 
@@ -135,7 +145,7 @@ the other, in the same change.
 | Mixer | Renders emitters into speaker channels. | `Mixer` |
 | DSP graph | Effects applied to a signal, in order. | `DspGraph`, `DspNode` |
 | Binaural rendering | Headphone spatialization by head-related delays and filters. | `BinauralRenderer` |
-| Audio output | The device stream samples are pushed to. | `AudioOutput`, `AudioStream` |
+| Audio sink | The port through which mixed samples leave the audio domain; the platform adapter implements it. | `AudioSink`, `AudioStream` |
 
 ## Runtime
 

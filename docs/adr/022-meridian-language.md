@@ -41,7 +41,7 @@ engine needs.
 ## Options
 
 1. **Compile to Rust source.** The generator writes `.g.rs` from a
-   `build.rs`, as `mel-build` already does for markup. No runtime, native
+   `build.rs`, as `ui-mel` already does for markup. No runtime, native
    speed, the `Fixed` type is the engine's own, Rust tooling debugs and
    profiles it. Cost: a Rust toolchain and a rebuild per change, and
    errors must be caught by our own checker so they do not surface as
@@ -99,7 +99,7 @@ must agree on the semantics, as Yog's backend and interpreter do.
   (owner-confirmed). It is a compiled language, not a "script language".
   Its files use **`.mel`**; UI markup moves to
   **`.meui`**; resources stay `.mres`. The markup and its generator keep
-  their current crate and identifier names (`mel-build`, `MelDocument`,
+  their current crate and identifier names (`ui-mel`, `MelDocument`,
   `mel_include!`) until the engine freeze lifts; renaming them to `meui`
   is a separate change.
 - **Pairing.** A UI is a `.meui` markup file plus a `.mel` code-behind

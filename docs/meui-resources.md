@@ -6,7 +6,7 @@ is the Meridian counterpart of Yog's `.yres` and of a .NET `.resx`: a build
 step turns it into typed constants, and `.meui` attributes refer to entries
 as `@res:Set.name`. Decided in
 [ADR 017](adr/017-meui-markup-and-code-behind.md); built by
-`meridian-mel-build`.
+`meridian-ui-mel`.
 
 ## Where they go
 

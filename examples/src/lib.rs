@@ -17,7 +17,7 @@
 //!
 //! **On the `.meui` extension:** scene files here are Meridian Engine
 //! Language documents — today just the tag/attribute DSL
-//! (`meridian_dsl_core`/`meridian_sdk::dsl`); the planned direction
+//! (`meridian_markup`/`meridian_sdk::dsl`); the planned direction
 //! (see `docs/adr/017-meui-markup-and-code-behind.md`) is WPF-style
 //! code-behind: the `.meui` file stays markup, names a code-behind type
 //! with `x:Class`/`x:ViewModel`, and wires it with events and compiled

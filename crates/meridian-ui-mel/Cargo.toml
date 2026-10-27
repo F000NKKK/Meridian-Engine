@@ -1,0 +1,15 @@
+[package]
+name = "meridian-ui-mel"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Build-time .meui generator: turns each .meui document into a generated <name>.g.rs (x:Name ids, typed builder, code-behind aliases) that a code-behind pulls in with meridian_sdk::mel_include!. Used from build.rs; see ADR 017."
+readme = "README.md"
+
+[dependencies]
+meridian-markup = { workspace = true }
+meridian-ui-domain = { workspace = true }
+substrate-data = { workspace = true }
+thiserror = { workspace = true }

@@ -9,34 +9,34 @@ backlog; architecture decisions still go to `docs/adr/`, status to
 
 | Area | Where | State |
 |---|---|---|
-| UI rendering vocabulary (screen-space = `Scene2D` with pixel `Camera2D`, world-space = `Renderable3D` with `billboard`/`always_on_top`) | `meridian-graphics-core` (`scene.rs`), [graphics-design.md](../graphics-design.md) "UI is a role, not a third scene kind" | Design accepted; `Scene2D`/`Sprite`/`Camera2D` exist; `always_on_top` and blend modes not acted on by the submission bridge yet |
-| Widgets, layout, focus, input routing | `meridian-ui-core`, [ADR 018](../adr/018-ui-architecture.md) | Element tree, typed properties, layout, hit testing, focus and input routing done; no controls or styles yet |
+| UI rendering vocabulary (screen-space = `Scene2D` with pixel `Camera2D`, world-space = `Renderable3D` with `billboard`/`always_on_top`) | `meridian-rendering-domain` (`scene.rs`), [graphics-design.md](../graphics-design.md) "UI is a role, not a third scene kind" | Design accepted; `Scene2D`/`Sprite`/`Camera2D` exist; `always_on_top` and blend modes not acted on by the submission bridge yet |
+| Widgets, layout, focus, input routing | `meridian-ui-domain`, [ADR 018](../adr/018-ui-architecture.md) | Element tree, typed properties, layout, hit testing, focus and input routing done; no controls or styles yet |
 | Text: fonts, shaping, glyph atlas | future crate, own ADR | Not started |
-| Pointer/keyboard input feeding UI | `meridian-platform-core::InputState` (consumer, not owner) | Key/mouse state exists; UI has its own `InputEvent`; the `platform-core` adapter that fills it is not written; no IME composition, no gamepad |
+| Pointer/keyboard input feeding UI | `meridian-platform-winit::InputState` (consumer, not owner) | Key/mouse state exists; UI has its own `InputEvent`; the `platform-winit` adapter that fills it is not written; no IME composition, no gamepad |
 | Editor / IDLE UX (inspector, scene tree, viewport gizmos) | Meridian IDLE app (owned by **team/ide**); engine side through the editor protocol in `docs/data-formats.md` / substrate-data | We own UX requirements and engine-side hooks, team/ide owns the app |
-| Tree to `Scene2d` | `meridian-ui-render`, [ADR 021](../adr/021-ui-extraction-and-extensibility.md) | `Background` fills extracted; text, borders, images, custom paint not yet; no sprite renderer consumes `Scene2d` |
+| Tree to `Scene2d` | `meridian-ui-scene2d`, [ADR 021](../adr/021-ui-extraction-and-extensibility.md) | `Background` fills extracted; text, borders, images, custom paint not yet; no sprite renderer consumes `Scene2d` |
 
 ## Boundaries
 
-- `ui-core` (tier 1) depends on `foundation` and `memory-core` only. A
-  later adapter above `graphics-core` and `platform-core` turns the
+- `ui-domain` (tier 1) depends on `diagnostics` and `memory` only. A
+  later adapter above `rendering-domain` and `platform-winit` turns the
   laid-out tree into `Scene2D`/`Scene3D` renderables and feeds it
-  `InputState`. Nobody calls `graphics-driver` from UI code and nothing
-  adds a UI pass to `graphics-core`.
-- `ecs-core` stays UI-agnostic. If widgets live in the ECS, the
-  components are defined in `ui-core`, not in `ecs-core`.
-- Layout math uses `gac-core` (`Motor3` frames, `Aabb`) instead of a
+  `InputState`. Nobody calls `rendering-wgpu` from UI code and nothing
+  adds a UI pass to `rendering-domain`.
+- `ecs` stays UI-agnostic. If widgets live in the ECS, the
+  components are defined in `ui-domain`, not in `ecs`.
+- Layout math uses `gac` (`Motor3` frames, `Aabb`) instead of a
   parallel 2D math stack (ADR 001).
 - Composition of the UI view into the frame (`[Scene3D, Scene2D-as-UI]`)
-  is orchestration and belongs in `engine-core`/`sdk`.
+  is orchestration and belongs in `runtime-app`/`sdk`.
 - Text asset decoding (font bytes → glyph outlines) goes to
-  `asset-core`; atlas lifetime goes through `resource-core` handles.
+  `asset-domain`; atlas lifetime goes through `resource` handles.
 
 ## Neighbours
 
 - **team/rendering** — `always_on_top`, alpha blending, glyph atlas
   texture upload, render order of the UI view.
-- **team/core** — input event stream in `platform-core`, `Runtime::tick`
+- **team/core** — input event stream in `platform-winit`, `Runtime::tick`
   frame composition.
 - **team/scripting** — UI markup in `.meui` (ADR 015 DSL) and bindings
   from scripts to widgets.
@@ -65,7 +65,7 @@ code-behind, branch `claude/project-thread-h5kbvo`) — `x:Class`/
 properties (`Grid.Row`), compiled `{x:Bind ...}` and `{StaticResource}`,
 `foo.meui` → `foo.g.rs` via `mel_include!`. The UI-architecture ADR maps
 that syntax onto the element model; ui-ux owns the runtime
-(`meridian-ui-core`), scripting owns syntax, `dsl-core` and codegen.
+(`meridian-ui-domain`), scripting owns syntax, `markup` and codegen.
 
 ## Principle: tool, not shackles
 
@@ -87,9 +87,9 @@ In order; nothing here starts without a task from the owner.
    `Material::always_on_top` and `AlphaBlend`; sprite alpha blending
    in the UI view.
 4. **Input prerequisites** (with team/core) — text/IME input and an
-   ordered input event stream in `platform-core`, plus a "consumed by
+   ordered input event stream in `platform-winit`, plus a "consumed by
    UI" flag for gameplay.
-5. **`meridian-ui-core` next steps** — skeleton is done (tree, layout,
+5. **`meridian-ui-domain` next steps** — skeleton is done (tree, layout,
    hit testing). Markup literal parsing is done
    (`PropertyType::parse`). Focus and input routing are done too. Left: `Scene2D`
    extraction adapter, text rendering, controls.
