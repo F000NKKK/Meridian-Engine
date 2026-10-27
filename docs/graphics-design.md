@@ -239,13 +239,9 @@ driver.
    `create_textured_bind_group` passthroughs, and `submission/` picks
    between two unlit pipelines per renderable — `TEXTURED_SHADER_WGSL`
    (samples `Material::albedo` when it resolves in the `TextureRegistry`)
-   or `UNLIT_SHADER_WGSL` (flat `base_color_factor` otherwise). Still
-   disclosed, not hidden, as scoped down: no *lighting* yet (both
-   pipelines are unlit — that's step 3), and no GPU instancing (no
-   per-instance uniform mechanism exists, so world-space vertices and
-   textured-draw bind groups are baked/rebuilt fresh every frame — see
-   the module doc's "no per-instance uniform" note and the
-   GPU-driven-rendering section below). Two windowed examples
+   or `UNLIT_SHADER_WGSL` (flat `base_color_factor` otherwise). Both were
+   unlit at this step; lighting is step 3. Instancing arrived later (see
+   step 3's last paragraph). Two windowed examples
    (`magic_figures`, `physic_figures`) have converged onto the bridge —
    a real PNG-textured checkerboard floor (`AnyImageDecoder`/
    `TextureRegistry::upload` on a decoded file, not a generated
@@ -269,12 +265,13 @@ driver.
    extra lights dropped and logged) and `Scene3d::ambient`; the existing
    `UNLIT_SHADER_WGSL`/`TEXTURED_SHADER_WGSL` stay for `Material::unlit`.
    `Material::emissive` bakes into every vertex regardless of family and
-   feeds bloom's bright-pass mask (see next). Meshes now carry per-vertex
-   normals (`MeshSource::normals`, transformed by `Motor3::transform_vector`
-   — rotation only, matching a normal's transform rule). **Bloom is
+   feeds bloom's bright-pass mask (see next). Meshes carry per-vertex
+   normals (`MeshSource::normals`); the shader rotates them with the
+   instance's model matrix, which for a rigid `Motor3` is exactly a
+   normal's transform rule. **Bloom is
    real** too, one layer up from the design's original "Post Processing"
    scaffold entry: `crate::bloom::BloomPass` redraws each frame's already-
-   baked `DrawBuffers` through an emissive-extraction pipeline into an
+   prepared batches through an emissive-extraction pipeline into an
    offscreen texture, separably Gaussian-blurs it (two full-screen-
    triangle passes, horizontal then vertical), and additively composites
    the result onto the already-rendered view via the new
@@ -296,6 +293,17 @@ driver.
    `MainPipelines` holds one pipeline per family × lighting × state;
    bloom still redraws every draw, so translucent and on-top emissive
    surfaces bloom as if solid.
+   **Instancing is real:** a mesh uploads once to `MeshCache` (local-space
+   position, normal and UV) and every drawn renderable becomes one
+   100-byte record (model matrix, colour or tint, emissive, gloss) in a
+   per-frame instance buffer bound in vertex slot 1; the model matrix is
+   applied in the vertex shader, so CPU vertex baking is gone.
+   `rendering-domain::plan_batches` groups opaque renderables with equal
+   `BatchKey`s (mesh, resolved albedo, lighting, shadow casting) into one
+   instanced draw; blended and on-top renderables stay one draw each so
+   they can sort. The shadow and bloom passes read the same buffers.
+   Still open: the instance buffer is rewritten every frame, there is no
+   indirect or GPU-culled path, and meshes keep the `u16` index limit.
 4. `Runtime::tick` integration — **not** blocked on vocabulary anymore
    (steps 1-3 above cover it); blocked on an actual architecture
    decision instead, since presenting a frame needs a windowed

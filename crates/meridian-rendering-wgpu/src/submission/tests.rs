@@ -2,7 +2,7 @@
 
 use meridian_gac::{Motor3, Vec3};
 use meridian_rendering_domain::scene::{Light, Material};
-use meridian_rendering_domain::{Camera, MeshSource, ShadowLight, ViewUniforms};
+use meridian_rendering_domain::{Camera, ShadowLight, ViewUniforms};
 
 use super::{lit_uniform_bytes, mat4_to_bytes, *};
 
@@ -142,59 +142,56 @@ async fn texture_registry_round_trips_a_real_upload() {
     assert!(textures.get(handle).is_none());
 }
 
-fn triangle_request<'a>(
-    mesh: &'a MeshSource,
-    material: &'a Material,
-    frame: &'a Motor3,
-) -> DrawRequest<'a> {
-    DrawRequest {
-        mesh,
-        material,
-        frame,
-        albedo: None,
-        casts_shadow: true,
-    }
-}
-
-fn triangle_mesh() -> MeshSource {
-    MeshSource {
-        positions: vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
-        normals: vec![[0.0, 0.0, 1.0]; 3],
-        uvs: vec![[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]],
-        indices: vec![0, 1, 2],
-    }
-}
-
 #[test]
-fn baked_vertices_match_their_layout_strides_and_carry_the_gloss() {
-    use meridian_rendering_domain::scene::Material;
+fn an_instance_record_fills_its_layout_and_carries_matrix_and_gloss() {
+    use super::instance_data::push_instance;
 
-    use super::draw_buffers::{colored_vertex_bytes, textured_vertex_bytes};
-
-    let mesh = triangle_mesh();
     let material = Material {
+        base_color_factor: [0.1, 0.2, 0.3, 0.4],
+        emissive: [0.5, 0.6, 0.7],
         shininess: 8.0,
         specular: 0.75,
         ..Material::default()
     };
-    let frame = Motor3::translation(Vec3::ZERO);
-    let request = triangle_request(&mesh, &material, &frame);
+    let frame = Motor3::translation(Vec3::new(1.0, 2.0, 3.0));
+    let mut bytes = Vec::new();
+    push_instance(&mut bytes, &frame, &material);
 
-    for (bytes, stride) in [
-        (
-            colored_vertex_bytes(&request),
-            colored_vertex_layout().stride,
-        ),
-        (
-            textured_vertex_bytes(&request),
-            textured_vertex_layout().stride,
-        ),
+    assert_eq!(
+        u64::try_from(bytes.len()).unwrap(),
+        instance_vertex_layout().stride
+    );
+    let float =
+        |index: usize| f32::from_le_bytes(bytes[index * 4..index * 4 + 4].try_into().unwrap());
+    // The fourth matrix column is the translation, column-major.
+    assert_eq!(
+        [float(12), float(13), float(14), float(15)],
+        [1.0, 2.0, 3.0, 1.0]
+    );
+    assert_eq!(
+        [float(16), float(17), float(18), float(19)],
+        [0.1, 0.2, 0.3, 0.4]
+    );
+    assert_eq!([float(20), float(21), float(22)], [0.5, 0.6, 0.7]);
+    assert_eq!([float(23), float(24)], [8.0, 0.75]);
+}
+
+#[test]
+fn every_attribute_lies_within_its_layouts_stride() {
+    for layout in [
+        mesh_vertex_layout(),
+        instance_vertex_layout(),
+        position_only_mesh_layout(),
+        shadow_instance_layout(),
+        emissive_instance_layout(),
     ] {
-        let stride = usize::try_from(stride).expect("stride fits usize");
-        assert_eq!(bytes.len(), 3 * stride);
-        let gloss = &bytes[stride - 8..stride];
-        assert_eq!(&gloss[..4], &8.0f32.to_le_bytes());
-        assert_eq!(&gloss[4..], &0.75f32.to_le_bytes());
+        for attribute in &layout.attributes {
+            assert!(
+                attribute.offset + attribute.format.size() <= layout.stride,
+                "location {} overruns the stride",
+                attribute.location
+            );
+        }
     }
 }
 

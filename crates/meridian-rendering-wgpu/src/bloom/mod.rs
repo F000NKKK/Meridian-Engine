@@ -2,7 +2,7 @@
 //! first piece of docs/graphics-design.md's "Post Processing" scaffold.
 //! Built entirely on primitives [`crate::submission`] and
 //! this crate already expose: an emissive-only redraw of the same
-//! [`crate::submission::DrawBuffers`] the main pass baked, a separable
+//! [`crate::submission::PreparedScene`] batches the main pass drew, a separable
 //! Gaussian blur, and an additive composite back onto the main render
 //! target.
 //!

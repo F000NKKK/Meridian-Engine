@@ -33,7 +33,7 @@ fn vec3_to_padded_bytes(v: [f32; 3]) -> [u8; 16] {
 /// `light_count` (16), `shadow_caster` (16), then [`MAX_LIGHTS`](super::MAX_LIGHTS)
 /// `LightData` entries (48 bytes each) — 416 bytes total. Lights beyond
 /// the cap are dropped (logged once by the caller, not here — see
-/// [`SceneRenderer::prepare`](super::SceneRenderer::prepare)). `shadow_caster` is the index into
+/// `bake_batches`). `shadow_caster` is the index into
 /// `lights` of the shadow-casting light (see
 /// [`SceneRenderer::render_shadow_pass`](super::SceneRenderer::render_shadow_pass)), or `u32::MAX` if none —
 /// `shade`'s shadow lookup only ever matches a real light index, never

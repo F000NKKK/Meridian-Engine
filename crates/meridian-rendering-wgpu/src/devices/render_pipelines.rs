@@ -2,7 +2,7 @@
 
 use meridian_rendering_domain::DrawState;
 
-use crate::{ColorFormat, Device, RenderPipeline, ShaderStages, Surface, VertexLayout};
+use crate::{ColorFormat, Device, RenderPipeline, ShaderStages, Surface, VertexLayout, VertexStep};
 
 impl Device {
     /// Builds a depth-only pipeline — no fragment stage, no color
@@ -17,15 +17,10 @@ impl Device {
         &self,
         shader: &meridian_gpu_wgpu::Shader,
         vertex_entry: &str,
-        vertex_layout: &VertexLayout,
+        vertex_layouts: &[VertexLayout],
     ) -> RenderPipeline {
-        let wgpu_attributes = wgpu_attributes(vertex_layout);
-        let buffer_layout = wgpu::VertexBufferLayout {
-            array_stride: vertex_layout.stride,
-            step_mode: wgpu::VertexStepMode::Vertex,
-            attributes: &wgpu_attributes,
-        };
-
+        let attributes = buffer_attributes(vertex_layouts);
+        let buffers = buffer_layouts(vertex_layouts, &attributes);
         let raw = self
             .0
             .wgpu_device()
@@ -36,7 +31,7 @@ impl Device {
                     module: shader.wgpu_shader(),
                     entry_point: Some(vertex_entry),
                     compilation_options: wgpu::PipelineCompilationOptions::default(),
-                    buffers: &[Some(buffer_layout)],
+                    buffers: &buffers,
                 },
                 fragment: None,
                 primitive: wgpu::PrimitiveState {
@@ -131,7 +126,7 @@ impl Device {
         let depth = depth_enabled.then(|| depth_stencil(DrawState::Opaque));
         self.build_pipeline(
             stages,
-            vertex_layout,
+            core::slice::from_ref(vertex_layout),
             format,
             FixedFunction {
                 blend: false,
@@ -149,13 +144,13 @@ impl Device {
     pub fn create_scene_pipeline(
         &self,
         stages: &ShaderStages<'_>,
-        vertex_layout: &VertexLayout,
+        vertex_layouts: &[VertexLayout],
         surface: &Surface,
         state: DrawState,
     ) -> RenderPipeline {
         self.build_pipeline(
             stages,
-            vertex_layout,
+            vertex_layouts,
             surface.config.format,
             FixedFunction {
                 blend: state.blends(),
@@ -164,20 +159,36 @@ impl Device {
         )
     }
 
+    /// [`create_scene_pipeline`](Self::create_scene_pipeline)'s offscreen
+    /// counterpart for an opaque, depth-tested pass: targets `format`, the
+    /// value the offscreen texture was created with.
+    pub fn create_offscreen_scene_pipeline(
+        &self,
+        stages: &ShaderStages<'_>,
+        vertex_layouts: &[VertexLayout],
+        format: ColorFormat,
+    ) -> RenderPipeline {
+        self.build_pipeline(
+            stages,
+            vertex_layouts,
+            format.to_wgpu(),
+            FixedFunction {
+                blend: false,
+                depth_stencil: Some(depth_stencil(DrawState::Opaque)),
+            },
+        )
+    }
+
     fn build_pipeline(
         &self,
         stages: &ShaderStages<'_>,
-        vertex_layout: &VertexLayout,
+        vertex_layouts: &[VertexLayout],
         format: wgpu::TextureFormat,
         fixed: FixedFunction,
     ) -> RenderPipeline {
         let shader = stages.shader;
-        let wgpu_attributes = wgpu_attributes(vertex_layout);
-        let buffer_layout = wgpu::VertexBufferLayout {
-            array_stride: vertex_layout.stride,
-            step_mode: wgpu::VertexStepMode::Vertex,
-            attributes: &wgpu_attributes,
-        };
+        let attributes = buffer_attributes(vertex_layouts);
+        let buffers = buffer_layouts(vertex_layouts, &attributes);
 
         let raw = self
             .0
@@ -189,7 +200,7 @@ impl Device {
                     module: shader.wgpu_shader(),
                     entry_point: Some(stages.vertex_entry),
                     compilation_options: wgpu::PipelineCompilationOptions::default(),
-                    buffers: &[Some(buffer_layout)],
+                    buffers: &buffers,
                 },
                 fragment: Some(wgpu::FragmentState {
                     module: shader.wgpu_shader(),
@@ -240,6 +251,32 @@ fn depth_stencil(state: DrawState) -> wgpu::DepthStencilState {
         stencil: wgpu::StencilState::default(),
         bias: wgpu::DepthBiasState::default(),
     }
+}
+
+/// The `wgpu` attributes of each layout, one list per buffer slot.
+fn buffer_attributes(layouts: &[VertexLayout]) -> Vec<Vec<wgpu::VertexAttribute>> {
+    layouts.iter().map(wgpu_attributes).collect()
+}
+
+/// One `wgpu` buffer layout per slot, borrowing `attributes`.
+fn buffer_layouts<'a>(
+    layouts: &[VertexLayout],
+    attributes: &'a [Vec<wgpu::VertexAttribute>],
+) -> Vec<Option<wgpu::VertexBufferLayout<'a>>> {
+    layouts
+        .iter()
+        .zip(attributes)
+        .map(|(layout, attributes)| {
+            Some(wgpu::VertexBufferLayout {
+                array_stride: layout.stride,
+                step_mode: match layout.step {
+                    VertexStep::Vertex => wgpu::VertexStepMode::Vertex,
+                    VertexStep::Instance => wgpu::VertexStepMode::Instance,
+                },
+                attributes,
+            })
+        })
+        .collect()
 }
 
 /// The `wgpu` attributes of a vertex layout.

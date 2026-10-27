@@ -1,10 +1,10 @@
 //! The textured WGSL shader.
 
 /// An unlit, textured pipeline: samples `albedo_tex` and multiplies by
-/// the per-vertex tint (the material's `base_color_factor`), plus
-/// per-vertex emissive — baked in at [`SceneRenderer::prepare`](crate::submission::SceneRenderer::prepare) time
-/// (see the module doc for why tint/emissive travel per-vertex rather
-/// than through a second uniform). Used for `Material::unlit` materials
+/// the per-instance tint (the material's `base_color_factor`), plus
+/// per-instance emissive, both from the instance record
+/// `bake_batches`
+/// writes. Used for `Material::unlit` materials
 /// whose albedo resolves in a [`TextureRegistry`](crate::submission::TextureRegistry).
 pub const TEXTURED_SHADER_WGSL: &str = r#"
 struct Uniforms {
@@ -22,8 +22,13 @@ struct VertexInput {
     @location(0) position: vec3<f32>,
     @location(1) normal: vec3<f32>,
     @location(2) uv: vec2<f32>,
-    @location(3) tint: vec4<f32>,
-    @location(4) emissive: vec3<f32>,
+    @location(3) model_0: vec4<f32>,
+    @location(4) model_1: vec4<f32>,
+    @location(5) model_2: vec4<f32>,
+    @location(6) model_3: vec4<f32>,
+    @location(7) color: vec4<f32>,
+    @location(8) emissive: vec3<f32>,
+    @location(9) gloss: vec2<f32>,
 };
 
 struct VertexOutput {
@@ -36,9 +41,10 @@ struct VertexOutput {
 @vertex
 fn vs_main(in: VertexInput) -> VertexOutput {
     var out: VertexOutput;
-    out.clip_position = u.view_proj * vec4<f32>(in.position, 1.0);
+    let model = mat4x4<f32>(in.model_0, in.model_1, in.model_2, in.model_3);
+    out.clip_position = u.view_proj * (model * vec4<f32>(in.position, 1.0));
     out.uv = in.uv;
-    out.tint = in.tint;
+    out.tint = in.color;
     out.emissive = in.emissive;
     return out;
 }

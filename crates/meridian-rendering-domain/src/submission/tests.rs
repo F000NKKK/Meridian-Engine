@@ -212,3 +212,92 @@ fn equal_distances_keep_submission_order() {
 fn nothing_to_order_gives_an_empty_order() {
     assert!(order_draws(&[]).is_empty());
 }
+
+fn key(mesh: crate::MeshHandle, state: DrawState) -> BatchKey {
+    BatchKey {
+        mesh,
+        albedo: None,
+        lit: true,
+        state,
+        casts_shadow: true,
+    }
+}
+
+fn mesh_handles() -> (crate::MeshHandle, crate::MeshHandle) {
+    let mut registry = MeshRegistry::new();
+    let a = registry.register(triangle()).unwrap();
+    let b = registry.register(triangle()).unwrap();
+    (a, b)
+}
+
+#[test]
+fn opaque_draws_of_one_mesh_share_a_batch() {
+    let (a, b) = mesh_handles();
+    let item = |mesh, distance_squared| DrawItem {
+        key: key(mesh, DrawState::Opaque),
+        distance_squared,
+    };
+    let batches = plan_batches(&[item(a, 1.0), item(b, 2.0), item(a, 3.0), item(a, 4.0)]);
+    assert_eq!(batches.len(), 2);
+    assert_eq!(batches[0].members, vec![0, 2, 3]);
+    assert_eq!(batches[1].members, vec![1]);
+}
+
+#[test]
+fn a_different_flag_splits_the_batch() {
+    let (a, _) = mesh_handles();
+    let base = key(a, DrawState::Opaque);
+    let item = |key| DrawItem {
+        key,
+        distance_squared: 1.0,
+    };
+    let batches = plan_batches(&[
+        item(base),
+        item(BatchKey { lit: false, ..base }),
+        item(BatchKey {
+            casts_shadow: false,
+            ..base
+        }),
+    ]);
+    assert_eq!(batches.len(), 3);
+}
+
+#[test]
+fn blended_draws_never_merge_and_sort_far_to_near() {
+    let (a, _) = mesh_handles();
+    let item = |distance_squared| DrawItem {
+        key: key(a, DrawState::Transparent),
+        distance_squared,
+    };
+    let batches = plan_batches(&[item(1.0), item(9.0), item(4.0)]);
+    let order: Vec<usize> = batches.iter().map(|b| b.members[0]).collect();
+    assert_eq!(order, vec![1, 2, 0]);
+}
+
+#[test]
+fn batches_follow_the_draw_state_order() {
+    let (a, b) = mesh_handles();
+    let item = |mesh, state| DrawItem {
+        key: key(mesh, state),
+        distance_squared: 1.0,
+    };
+    let batches = plan_batches(&[
+        item(a, DrawState::OnTopOpaque),
+        item(b, DrawState::Transparent),
+        item(a, DrawState::Opaque),
+    ]);
+    let states: Vec<DrawState> = batches.iter().map(|batch| batch.key.state).collect();
+    assert_eq!(
+        states,
+        vec![
+            DrawState::Opaque,
+            DrawState::Transparent,
+            DrawState::OnTopOpaque
+        ]
+    );
+}
+
+#[test]
+fn no_items_plan_no_batches() {
+    assert!(plan_batches(&[]).is_empty());
+}

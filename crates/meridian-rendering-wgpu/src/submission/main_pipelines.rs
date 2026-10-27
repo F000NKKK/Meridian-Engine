@@ -3,8 +3,8 @@
 use meridian_rendering_domain::DrawState;
 
 use super::{
-    TEXTURED_SHADER_WGSL, UNLIT_SHADER_WGSL, colored_vertex_layout, lit_shader_wgsl,
-    lit_textured_shader_wgsl, textured_vertex_layout,
+    TEXTURED_SHADER_WGSL, UNLIT_SHADER_WGSL, instance_vertex_layout, lit_shader_wgsl,
+    lit_textured_shader_wgsl, mesh_vertex_layout,
 };
 use crate::{BindGroup, Buffer, Device, RenderPipeline, Sampler, ShaderStages, Surface, Texture};
 
@@ -60,7 +60,7 @@ impl MainPipelines {
             ("meridian-lit-textured", lit_textured_shader_wgsl()),
         ]
         .map(|(label, source)| device.create_shader(label, &source));
-        let (colored, textured) = (colored_vertex_layout(), textured_vertex_layout());
+        let layouts = [mesh_vertex_layout(), instance_vertex_layout()];
         let mut slots = Vec::with_capacity(STATES.len() * shaders.len());
         for state in STATES {
             for (index, shader) in shaders.iter().enumerate() {
@@ -69,13 +69,12 @@ impl MainPipelines {
                     lit: index % 2 == 1,
                     state,
                 };
-                let layout = if key.textured { &textured } else { &colored };
                 let stages = ShaderStages {
                     shader,
                     vertex_entry: "vs_main",
                     fragment_entry: "fs_main",
                 };
-                let pipeline = device.create_scene_pipeline(&stages, layout, surface, state);
+                let pipeline = device.create_scene_pipeline(&stages, &layouts, surface, state);
                 slots.push(with_shared_bind_group(device, pipeline, key, bindings));
             }
         }

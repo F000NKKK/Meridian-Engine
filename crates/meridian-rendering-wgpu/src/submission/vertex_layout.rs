@@ -1,147 +1,92 @@
-//! Vertex layouts for the colored, textured, emissive and shadow passes.
+//! Vertex layouts of the mesh buffer and the per-instance buffer.
+//!
+//! Every pass reads two buffers: slot 0 holds a mesh's vertices once, slot 1
+//! one record per drawn instance. A pass declares only the attributes its
+//! shader reads; the strides stay those of the full records.
 
-use crate::{VertexAttributeDesc, VertexFormat, VertexLayout};
+use crate::{VertexAttributeDesc, VertexFormat, VertexLayout, VertexStep};
 
-/// [`UNLIT_SHADER_WGSL`](super::UNLIT_SHADER_WGSL)/[`lit_shader_wgsl`](super::lit_shader_wgsl)'s shared vertex layout:
-/// position, normal, color, emissive, gloss (shininess, specular strength)
-/// — tightly packed.
-pub(crate) fn colored_vertex_layout() -> VertexLayout {
-    VertexLayout {
-        stride: 60, // 3 + 3 + 4 + 3 + 2 = 15 floats
-        attributes: vec![
-            VertexAttributeDesc {
-                location: 0,
-                format: VertexFormat::Float32x3,
-                offset: 0,
-            },
-            VertexAttributeDesc {
-                location: 1,
-                format: VertexFormat::Float32x3,
-                offset: 12,
-            },
-            VertexAttributeDesc {
-                location: 2,
-                format: VertexFormat::Float32x4,
-                offset: 24,
-            },
-            VertexAttributeDesc {
-                location: 3,
-                format: VertexFormat::Float32x3,
-                offset: 40,
-            },
-            VertexAttributeDesc {
-                location: 4,
-                format: VertexFormat::Float32x2,
-                offset: 52,
-            },
-        ],
+/// Bytes of one mesh vertex: position, normal, UV.
+pub(crate) const MESH_VERTEX_BYTES: u64 = 32;
+
+/// Bytes of one instance record: model matrix, colour, emissive, gloss.
+pub(crate) const INSTANCE_BYTES: u64 = 100;
+
+/// `@location` of the first of the four model matrix columns.
+const MODEL_LOCATION: u32 = 3;
+const COLOR_LOCATION: u32 = 7;
+const EMISSIVE_LOCATION: u32 = 8;
+const GLOSS_LOCATION: u32 = 9;
+
+fn attribute(location: u32, format: VertexFormat, offset: u64) -> VertexAttributeDesc {
+    VertexAttributeDesc {
+        location,
+        format,
+        offset,
     }
 }
 
-/// [`TEXTURED_SHADER_WGSL`](super::TEXTURED_SHADER_WGSL)/[`lit_textured_shader_wgsl`](super::lit_textured_shader_wgsl)'s shared vertex
-/// layout: position, normal, uv, tint, emissive, gloss — tightly packed.
-pub(crate) fn textured_vertex_layout() -> VertexLayout {
+/// The four columns of the model matrix, `@location(3..=6)`.
+fn model_attributes() -> Vec<VertexAttributeDesc> {
+    (0..4)
+        .map(|column| {
+            attribute(
+                MODEL_LOCATION + column,
+                VertexFormat::Float32x4,
+                u64::from(column) * 16,
+            )
+        })
+        .collect()
+}
+
+fn mesh_layout(attributes: Vec<VertexAttributeDesc>) -> VertexLayout {
     VertexLayout {
-        stride: 68, // 3 + 3 + 2 + 4 + 3 + 2 = 17 floats
-        attributes: vec![
-            VertexAttributeDesc {
-                location: 0,
-                format: VertexFormat::Float32x3,
-                offset: 0,
-            },
-            VertexAttributeDesc {
-                location: 1,
-                format: VertexFormat::Float32x3,
-                offset: 12,
-            },
-            VertexAttributeDesc {
-                location: 2,
-                format: VertexFormat::Float32x2,
-                offset: 24,
-            },
-            VertexAttributeDesc {
-                location: 3,
-                format: VertexFormat::Float32x4,
-                offset: 32,
-            },
-            VertexAttributeDesc {
-                location: 4,
-                format: VertexFormat::Float32x3,
-                offset: 48,
-            },
-            VertexAttributeDesc {
-                location: 5,
-                format: VertexFormat::Float32x2,
-                offset: 60,
-            },
-        ],
+        stride: MESH_VERTEX_BYTES,
+        attributes,
+        step: VertexStep::Vertex,
     }
 }
 
-/// Reinterprets [`colored_vertex_layout`]'s buffer bytes as just
-/// position + emissive (same stride, two attributes) — what
-/// [`EMISSIVE_EXTRACT_SHADER_WGSL`](super::EMISSIVE_EXTRACT_SHADER_WGSL) reads for a colored-family draw.
-pub(crate) fn emissive_from_colored_layout() -> VertexLayout {
+fn instance_layout(attributes: Vec<VertexAttributeDesc>) -> VertexLayout {
     VertexLayout {
-        stride: 60,
-        attributes: vec![
-            VertexAttributeDesc {
-                location: 0,
-                format: VertexFormat::Float32x3,
-                offset: 0,
-            },
-            VertexAttributeDesc {
-                location: 1,
-                format: VertexFormat::Float32x3,
-                offset: 40,
-            },
-        ],
+        stride: INSTANCE_BYTES,
+        attributes,
+        step: VertexStep::Instance,
     }
 }
 
-/// [`emissive_from_colored_layout`]'s textured-family counterpart.
-pub(crate) fn emissive_from_textured_layout() -> VertexLayout {
-    VertexLayout {
-        stride: 68,
-        attributes: vec![
-            VertexAttributeDesc {
-                location: 0,
-                format: VertexFormat::Float32x3,
-                offset: 0,
-            },
-            VertexAttributeDesc {
-                location: 1,
-                format: VertexFormat::Float32x3,
-                offset: 48,
-            },
-        ],
-    }
+/// The main passes' mesh buffer: position, normal, UV.
+pub(crate) fn mesh_vertex_layout() -> VertexLayout {
+    mesh_layout(vec![
+        attribute(0, VertexFormat::Float32x3, 0),
+        attribute(1, VertexFormat::Float32x3, 12),
+        attribute(2, VertexFormat::Float32x2, 24),
+    ])
 }
 
-/// Position-only reinterpretation of [`colored_vertex_layout`]'s buffer
-/// bytes — what the shadow depth pass reads for a colored-family draw
-/// (see [`SHADOW_DEPTH_SHADER_WGSL`](super::SHADOW_DEPTH_SHADER_WGSL)): the depth pass only needs
-/// clip-space position, so normal/color/emissive are never touched,
-/// even though they're still physically present in the same buffer.
-pub(crate) fn shadow_from_colored_layout() -> VertexLayout {
-    VertexLayout {
-        stride: 60,
-        attributes: vec![VertexAttributeDesc {
-            location: 0,
-            format: VertexFormat::Float32x3,
-            offset: 0,
-        }],
-    }
+/// The main passes' instance buffer: model matrix, colour (or tint),
+/// emissive, gloss.
+pub(crate) fn instance_vertex_layout() -> VertexLayout {
+    let mut attributes = model_attributes();
+    attributes.push(attribute(COLOR_LOCATION, VertexFormat::Float32x4, 64));
+    attributes.push(attribute(EMISSIVE_LOCATION, VertexFormat::Float32x3, 80));
+    attributes.push(attribute(GLOSS_LOCATION, VertexFormat::Float32x2, 92));
+    instance_layout(attributes)
 }
 
-/// `shadow_from_colored_layout`'s textured-family counterpart.
-pub(crate) fn shadow_from_textured_layout() -> VertexLayout {
-    VertexLayout {
-        stride: 68,
-        attributes: vec![VertexAttributeDesc {
-            location: 0,
-            format: VertexFormat::Float32x3,
-            offset: 0,
-        }],
-    }
+/// The depth and emissive passes read only a mesh's position.
+pub(crate) fn position_only_mesh_layout() -> VertexLayout {
+    mesh_layout(vec![attribute(0, VertexFormat::Float32x3, 0)])
+}
+
+/// The shadow depth pass reads only the model matrix of an instance.
+pub(crate) fn shadow_instance_layout() -> VertexLayout {
+    instance_layout(model_attributes())
+}
+
+/// The emissive pass reads the model matrix and the emissive colour.
+pub(crate) fn emissive_instance_layout() -> VertexLayout {
+    let mut attributes = model_attributes();
+    attributes.push(attribute(EMISSIVE_LOCATION, VertexFormat::Float32x3, 80));
+    instance_layout(attributes)
 }

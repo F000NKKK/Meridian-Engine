@@ -4,8 +4,8 @@ use meridian_rendering_domain::BloomConfig;
 
 use super::{BloomInput, BlurDirection, blur_shader_wgsl, composite_shader_wgsl};
 use crate::submission::{
-    DrawBuffers, DrawKind, EMISSIVE_EXTRACT_SHADER_WGSL, emissive_from_colored_layout,
-    emissive_from_textured_layout,
+    EMISSIVE_EXTRACT_SHADER_WGSL, PreparedScene, emissive_instance_layout,
+    position_only_mesh_layout,
 };
 use crate::{
     BindGroup, BufferUsage, ColorFormat, DepthTexture, Device, RenderPipeline, Sampler,
@@ -39,7 +39,7 @@ struct BlurStep<'a> {
 }
 
 /// Owns bloom's offscreen textures and its three small pipelines
-/// (emissive extraction x2 — colored/textured, blur, composite), sized
+/// (emissive extraction, blur, composite), sized
 /// for one `width`x`height` render target — see the module doc for the
 /// four-step pipeline and why this isn't HDR.
 ///
@@ -71,8 +71,7 @@ pub struct BloomPass {
     bright_depth: DepthTexture,
     ping: Texture,
     pong: Texture,
-    emissive_from_colored_pipeline: RenderPipeline,
-    emissive_from_textured_pipeline: RenderPipeline,
+    emissive_pipeline: RenderPipeline,
     blur_pipeline: RenderPipeline,
     composite_pipeline: RenderPipeline,
     sampler: Sampler,
@@ -99,17 +98,10 @@ impl BloomPass {
             vertex_entry: "vs_main",
             fragment_entry: "fs_main",
         };
-        let emissive_from_colored_pipeline = device.create_render_pipeline_for_offscreen(
+        let emissive_pipeline = device.create_offscreen_scene_pipeline(
             &emissive_stages,
-            &emissive_from_colored_layout(),
+            &[position_only_mesh_layout(), emissive_instance_layout()],
             OFFSCREEN_FORMAT,
-            true,
-        );
-        let emissive_from_textured_pipeline = device.create_render_pipeline_for_offscreen(
-            &emissive_stages,
-            &emissive_from_textured_layout(),
-            OFFSCREEN_FORMAT,
-            true,
         );
 
         let blur_shader = device.create_shader("meridian-bloom-blur", &blur_shader_wgsl());
@@ -140,8 +132,7 @@ impl BloomPass {
             bright_depth,
             ping,
             pong,
-            emissive_from_colored_pipeline,
-            emissive_from_textured_pipeline,
+            emissive_pipeline,
             blur_pipeline,
             composite_pipeline,
             sampler,
@@ -151,48 +142,30 @@ impl BloomPass {
         }
     }
 
-    /// Redraws `buffers` through this `BloomPass`'s own emissive-
-    /// extraction pipelines into `self.bright` — step 2 of the module
-    /// doc's pipeline. `renderer` supplies only the shared view/lighting
-    /// uniform buffer (for `view_proj`); the pipelines themselves are
-    /// this struct's, not `renderer`'s (see [`BloomPass::new`]'s doc
-    /// comment for why).
+    /// Redraws `prepared`'s batches through this `BloomPass`'s own
+    /// emissive-extraction pipeline into `self.bright` — step 2 of the
+    /// module doc's pipeline. `renderer` supplies the shared view/lighting
+    /// uniform buffer (for `view_proj`) and the uploaded meshes; the
+    /// pipeline itself is this struct's, not `renderer`'s (see
+    /// [`BloomPass::new`]'s doc comment for why).
     fn draw_emissive(
         &self,
         device: &Device,
         renderer: &SceneRenderer,
         pass: &mut crate::RenderPass<'_>,
-        buffers: &[DrawBuffers],
+        prepared: &PreparedScene,
     ) {
-        // Two bind groups, not one: with `layout: None` (auto-derived
-        // bind group layout), wgpu treats each pipeline's layout as a
-        // distinct object even when two shaders declare an identical
-        // `@group`/`@binding` shape — a bind group built against one
-        // pipeline is rejected ("exclusive pipelines don't match") the
-        // moment a *different* pipeline is bound, as the colored/textured
-        // pipeline switch below does. Both rebuilt every frame, same
-        // "correct now, cache later" trade-off as the per-texture bind
-        // groups in `submission.rs`.
-        let colored_bind_group = device.create_uniform_bind_group(
-            &self.emissive_from_colored_pipeline,
-            renderer.uniform_buffer(),
-        );
-        let textured_bind_group = device.create_uniform_bind_group(
-            &self.emissive_from_textured_pipeline,
-            renderer.uniform_buffer(),
-        );
-        for entry in buffers {
-            let (pipeline, bind_group) = match &entry.kind {
-                DrawKind::Colored => (&self.emissive_from_colored_pipeline, &colored_bind_group),
-                DrawKind::Textured { .. } => {
-                    (&self.emissive_from_textured_pipeline, &textured_bind_group)
-                }
-            };
-            pass.set_pipeline(pipeline);
-            pass.set_bind_group(0, bind_group);
-            pass.set_vertex_buffer(0, &entry.vertex_buffer);
-            pass.set_index_buffer_u16(&entry.index_buffer);
-            pass.draw_indexed(0..entry.index_count);
+        let Some(instances) = &prepared.instances else {
+            return;
+        };
+        // Rebuilt every frame, the same "correct now, cache later"
+        // trade-off as the per-texture bind groups of the main pass.
+        let bind_group =
+            device.create_uniform_bind_group(&self.emissive_pipeline, renderer.uniform_buffer());
+        pass.set_pipeline(&self.emissive_pipeline);
+        pass.set_bind_group(0, &bind_group);
+        for batch in &prepared.batches {
+            renderer.draw_batch(pass, batch, instances);
         }
     }
 
@@ -221,7 +194,7 @@ impl BloomPass {
                 [0.0, 0.0, 0.0, 1.0],
                 Some(&self.bright_depth),
             );
-            self.draw_emissive(device, input.renderer, &mut pass, input.draw_buffers);
+            self.draw_emissive(device, input.renderer, &mut pass, input.prepared);
         }
 
         // Step 3: horizontal blur (bright -> ping), then vertical (ping -> pong).

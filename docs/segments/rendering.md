@@ -64,9 +64,10 @@ Not started; ordered by suggested priority. Items wait for an explicit task.
    texture within a scene. Glyph atlas packing lives in `text-domain`; a
    general RGBA sprite atlas waits for a consumer. Composition `[Scene3d, Scene2d]` is
    done (`FrameRequest::overlays`, `OverlayPass`, `compose_frame`).
-4. **Per-instance data / instancing.** Vertices are baked to world space
-   and textured bind groups rebuilt every frame. Add a per-instance uniform
-   or storage buffer, then indirect draw and compute culling (GPU-driven
+4. **Instancing — done (2026-10-27).** Meshes upload once, renderables
+   become instance records, opaque ones batch into instanced draws; see
+   graphics-design.md step 3. Follow-ups: skip rewriting unchanged
+   instances, then indirect draws and compute culling (GPU-driven
    direction in graphics-design.md).
 5. **Per-material highlights — done (2026-10-27).** `Material::shininess` and
    `Material::specular`; roughness/metallic wait for a PBR shader.

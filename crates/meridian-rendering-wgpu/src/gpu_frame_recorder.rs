@@ -115,7 +115,7 @@ impl FrameRecorder for GpuFrameRecorder {
             &mut commands,
             &BloomInput {
                 renderer: &self.renderer,
-                draw_buffers: &prepared.buffers,
+                prepared: &prepared,
                 target_frame: &frame,
             },
         );
