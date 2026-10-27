@@ -643,7 +643,7 @@ priority before writing implementations is keeping that document and the
     (window title, logging, crash-report config) was considered and
     deliberately deferred; `.mel` behavior (WPF-style code-behind,
     generated `.g.rs` glue, compiled `{x:Bind}` bindings, later an own
-    script language) — decided in
+    compiled language, ADR 022) — decided in
     [ADR 017](adr/017-mel-markup-and-code-behind.md). Started: the
     `dsl-core` side is done (line/column spans, the `x:` prefix, dotted
     names and property elements, parsed markup extensions, typed

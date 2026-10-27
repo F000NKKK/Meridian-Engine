@@ -64,9 +64,9 @@ composition plus behavior wiring, `.mscene` is stored scene data
 assets and resources without a translation layer.
 
 **5. Languages.** The first code-behind language is Rust. Logic that must
-change without a Rust rebuild comes later through an own `.mel` script
-language with a domain-blind interpreter (the role `yog-script-run` plays
-for Yog Script), then WASM. Every backend binds through one host API, so
+change without a Rust rebuild comes later through an own compiled
+language (not a scripting language; [ADR 022](022-meridian-language.md))
+with a domain-blind front end and a WASM backend. Every backend binds through one host API, so
 the markup and generated glue do not depend on which language a
 code-behind is written in. Logic running in the fixed-step simulation
 uses the deterministic `Fixed` path ([ADR 008](008-fixed-point-determinism.md)).
@@ -84,7 +84,7 @@ the same `.mel` syntax and generator.
   for diagnostics and the editor. Its "no namespaces" rule in the crate
   doc changes to "only the `x:` prefix".
 - New crates are planned: a build-time generator used from a
-  `build.rs`, and later the script language core. Each is added to
+  `build.rs`, and later the language core (ADR 022). Each is added to
   `docs/dependency-rules.md` and `scripts/check_dependency_rules.py` when
   it is created, not before.
 - Hot reload splits in two: markup and resource changes reload at run

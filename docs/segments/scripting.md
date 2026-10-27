@@ -26,11 +26,11 @@ in the examples; the DSL describes composition only.
 ## Ownership and boundaries
 
 The segment owns `meridian-dsl-core`, `meridian-dsl-macros`,
-`meridian_sdk::dsl`, the `.mel` samples, and every future scripting crate.
+`meridian_sdk::dsl`, the `.mel` samples, and every future language crate.
 It follows the workspace rules in [dependency-rules.md](../dependency-rules.md):
 
-- The language core (lexer, parser, AST, interpreter/VM) stays
-  domain-blind, like `dsl-core`: it never names ECS, physics or graphics
+- The language core (lexer, parser, checker, IR; backends sit beside
+  it) stays domain-blind, like `dsl-core`: it never names ECS, physics or graphics
   types. Engine bindings live in an adapter crate above it.
 - No global script manager or singleton VM ([ADR 003](../adr/003-no-global-managers.md));
   a script runtime is a value owned by whoever composes it (`engine-core`
@@ -123,14 +123,17 @@ the prior art to copy from is Yog-Mod-Loader's `.yui` -> `.g.rs` pipeline
    `poll`. Still open: a changed `x:Bind` expression is compiled
    code-behind and needs a rebuild of the program, rebuilds that keep
    unchanged `NodeId`s, and the engine-core wiring that calls `refresh`.
-9. **Host API and script language** (options compared against Yog's
-   `.ys` in [ADR 022](../adr/022-mel-script-language.md)). One trait-based host API for all
-   code-behind backends; then the own `.mel` script language
-   (domain-blind lexer/parser/interpreter, `Fixed` path for fixed-step
-   logic); then WASM.
+9. **Host API and the Meridian language** (compiled, not a scripting
+   language: [ADR 022](../adr/022-meridian-language.md), compared against
+   Yog's `.ys`). One trait-based host API for all code-behind backends;
+   then the language: a domain-blind front end and typed IR, a Rust
+   source backend first (like `mel-build`), a WASM backend second, a
+   small compile-time evaluator for constants and tests, a `Fixed` path
+   for fixed-step logic.
 10. **Tooling (with `team/ide`).** Diagnostics/symbols for a `.mel`
     language server on Substrate's `lsp`; a designer like Yog-IDLE's
-    later; DAP once the interpreter can step.
+    later; DAP once there is a debuggable backend (the WASM one, or the Rust
+    one through its own debugger).
 
 ## Split with other segments
 
