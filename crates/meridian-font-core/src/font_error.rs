@@ -22,6 +22,9 @@ pub enum FontError {
     /// A valid font feature this version does not read.
     #[error("unsupported font feature: {0}")]
     Unsupported(&'static str),
+    /// A glyph would rasterize larger than the 4096-pixel limit.
+    #[error("glyph bitmap is too large")]
+    BitmapTooLarge,
     /// A glyph id beyond the face's glyph count.
     #[error("glyph {0} is out of range")]
     GlyphOutOfRange(u16),
