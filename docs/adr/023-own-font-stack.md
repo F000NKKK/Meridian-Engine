@@ -1,4 +1,4 @@
-# ADR 022: Our own font stack (`meridian-font-core`)
+# ADR 023: Our own font stack (`meridian-font-core`)
 
 ## Status
 
