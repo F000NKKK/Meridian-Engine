@@ -20,7 +20,12 @@ pub fn compile_dir(dir: impl AsRef<Path>) -> Result<Vec<PathBuf>, BuildError> {
     sources
         .iter()
         .map(|source| {
-            let relative = source.strip_prefix(dir).unwrap_or(source);
+            let relative = source
+                .strip_prefix(dir)
+                .map_err(|_| BuildError::OutsideDir {
+                    file: source.clone(),
+                    dir: dir.to_path_buf(),
+                })?;
             compile_file(source, &out_dir.join(relative).with_extension("g.rs"))
         })
         .collect()
@@ -90,6 +95,13 @@ mod tests {
         let error = compile_file(&source, &dir.join("bad.g.rs")).unwrap_err();
         assert!(error.to_string().contains("bad.mel:1:"), "{error}");
         assert!(!dir.join("bad.g.rs").exists());
+    }
+
+    #[test]
+    fn compile_dir_outside_a_build_script_is_an_error() {
+        // Cargo sets OUT_DIR only while compiling, never for a test run.
+        let error = compile_dir(scratch("no-out-dir")).unwrap_err();
+        assert!(matches!(error, BuildError::OutDirMissing));
     }
 
     #[test]

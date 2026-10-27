@@ -31,7 +31,7 @@ mod tag;
 
 pub use parse::{ParseError, ParseErrorKind, Span, parse};
 pub use syntax::{
-    Attribute, Element, MarkupExtension, MarkupValue, MarkupValueError, Prefix, QualifiedName,
-    QualifiedNameError,
+    Attribute, Element, MarkupExtension, MarkupValue, MarkupValueError, MarkupValueErrorKind,
+    Prefix, QualifiedName, QualifiedNameError,
 };
 pub use tag::{BuiltNode, DslRegistry, DslTag, TagParseError, text_attr};

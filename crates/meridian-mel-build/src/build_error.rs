@@ -1,25 +1,35 @@
 //! [`BuildError`]: why a `.mel` document could not be compiled.
 
-use std::fmt;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use meridian_dsl_core::{ParseError, Span};
 
 use crate::InvalidMarkup;
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum BuildError {
     /// `OUT_DIR` is not set: not running inside a Cargo build script.
+    #[error("OUT_DIR is not set; call this from build.rs")]
     OutDirMissing,
+    #[error("{}: {error}", path.display())]
     Io {
         path: PathBuf,
+        #[source]
         error: std::io::Error,
     },
+    /// A file found under the compiled directory is not inside it (the
+    /// directory walk followed a link elsewhere), so it has no output
+    /// path relative to that directory.
+    #[error("{} is not under {}", file.display(), dir.display())]
+    OutsideDir { file: PathBuf, dir: PathBuf },
+    #[error("{}:{error}", path.display())]
     Parse {
         path: PathBuf,
+        #[source]
         error: ParseError,
     },
     /// Something the parser accepts but `.mel` code-behind does not.
+    #[error("{}:{span}: {reason}", path.display())]
     Invalid {
         path: PathBuf,
         span: Span,
@@ -28,7 +38,7 @@ pub enum BuildError {
 }
 
 impl BuildError {
-    pub(crate) fn invalid(path: &std::path::Path, span: Span, reason: InvalidMarkup) -> Self {
+    pub(crate) fn invalid(path: &Path, span: Span, reason: InvalidMarkup) -> Self {
         Self::Invalid {
             path: path.to_path_buf(),
             span,
@@ -36,18 +46,3 @@ impl BuildError {
         }
     }
 }
-
-impl fmt::Display for BuildError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::OutDirMissing => f.write_str("OUT_DIR is not set; call this from build.rs"),
-            Self::Io { path, error } => write!(f, "{}: {error}", path.display()),
-            Self::Parse { path, error } => write!(f, "{}:{error}", path.display()),
-            Self::Invalid { path, span, reason } => {
-                write!(f, "{}:{span}: {reason}", path.display())
-            }
-        }
-    }
-}
-
-impl std::error::Error for BuildError {}

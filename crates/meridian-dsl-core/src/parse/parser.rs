@@ -125,6 +125,21 @@ impl Parser<'_> {
         Ok(ch)
     }
 
+    /// The source offset of byte `unescaped` of a string literal whose
+    /// content starts at `content_start`: each `\"` / `\\` escape is two
+    /// source bytes for one value byte.
+    fn source_offset(&self, content_start: usize, unescaped: usize) -> usize {
+        let mut raw = content_start;
+        for _ in 0..unescaped {
+            raw += if self.bytes.get(raw) == Some(&b'\\') {
+                2
+            } else {
+                1
+            };
+        }
+        raw.min(self.bytes.len())
+    }
+
     fn parse_attrs(&mut self) -> Result<Vec<Attribute>, ParseError> {
         let mut attrs: Vec<Attribute> = Vec::new();
         loop {
@@ -145,7 +160,12 @@ impl Parser<'_> {
             let text = self.parse_quoted_string()?;
             let value = MarkupValue::parse(&text).map_err(|error| {
                 let attribute = name.to_string();
-                self.error_at(ParseErrorKind::Extension { attribute, error }, value_start)
+                let offset = self.source_offset(value_start + 1, error.offset);
+                let kind = ParseErrorKind::Extension {
+                    attribute,
+                    error: error.kind,
+                };
+                self.error_at(kind, offset)
             })?;
             let span = self.lines.span(start);
             attrs.push(Attribute { name, value, span });
