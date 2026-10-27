@@ -8,8 +8,9 @@ use meridian_sdk::{
 use crate::sun_renderable;
 
 /// The sun, a translucent glass sphere around the orbit's centre (lit,
-/// drawn after the shapes it surrounds so they show through) and a small
-/// glowing marker sunk below the floor that `always_on_top` draws over it.
+/// drawn after the shapes it surrounds so they show through), a polished
+/// and a matte sphere side by side, and a small marker sunk below the floor
+/// that `always_on_top` draws over it.
 pub(crate) fn scene_extras(base: &mut GraphicsSession) -> Vec<Renderable3d> {
     vec![
         sun_renderable(base),
@@ -21,6 +22,25 @@ pub(crate) fn scene_extras(base: &mut GraphicsSession) -> Vec<Renderable3d> {
                 ..Default::default()
             },
             (1.4, Vec3::new(0.0, 1.5, 0.0)),
+        ),
+        sphere(
+            base,
+            Material {
+                base_color_factor: [0.8, 0.8, 0.85, 1.0],
+                shininess: 200.0,
+                specular: 1.0,
+                ..Default::default()
+            },
+            (0.6, Vec3::new(-2.2, 0.6, 1.0)),
+        ),
+        sphere(
+            base,
+            Material {
+                base_color_factor: [0.8, 0.8, 0.85, 1.0],
+                specular: 0.0,
+                ..Default::default()
+            },
+            (0.6, Vec3::new(2.2, 0.6, 1.0)),
         ),
         sphere(
             base,

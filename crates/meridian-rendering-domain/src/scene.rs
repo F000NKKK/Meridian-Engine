@@ -30,9 +30,15 @@ pub enum BlendMode {
     AlphaBlend,
 }
 
+/// The Blinn-Phong exponent [`Material::default`] uses.
+pub const DEFAULT_SHININESS: f32 = 32.0;
+
+/// The specular strength [`Material::default`] uses.
+pub const DEFAULT_SPECULAR: f32 = 0.3;
+
 /// A surface's shading inputs. Pure data — mapping this onto an actual
 /// GPU pipeline is the submission bridge's job, not this type's.
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy)]
 pub struct Material {
     /// Sampled and multiplied with `base_color_factor` when present;
     /// `base_color_factor` alone otherwise.
@@ -53,6 +59,30 @@ pub struct Material {
     /// `emissive` above the bridge's bloom threshold blooms; zero (the
     /// default) never does.
     pub emissive: [f32; 3],
+    /// The Blinn-Phong exponent: how tight the highlight is. Low is a
+    /// broad, soft sheen (a rough surface), high a small, sharp one (a
+    /// polished one). Ignored when `unlit`.
+    pub shininess: f32,
+    /// How strong the highlight is, scaling the light's colour: `0.0`
+    /// is matte. Ignored when `unlit`.
+    pub specular: f32,
+}
+
+impl Default for Material {
+    /// Black, opaque-mode, lit, with the highlight the shader had before it
+    /// was configurable ([`DEFAULT_SHININESS`], [`DEFAULT_SPECULAR`]).
+    fn default() -> Self {
+        Self {
+            albedo: None,
+            base_color_factor: [0.0; 4],
+            unlit: false,
+            always_on_top: false,
+            blend: BlendMode::default(),
+            emissive: [0.0; 3],
+            shininess: DEFAULT_SHININESS,
+            specular: DEFAULT_SPECULAR,
+        }
+    }
 }
 
 /// A mesh's identity plus the CPU-side info culling needs. The GPU
