@@ -2,10 +2,10 @@
 
 use meridian_asset_core::ImageAsset;
 
-use crate::TextureHandle;
+use meridian_graphics_core::TextureHandle;
 
 /// Where decoded images become sampleable textures, addressed by
-/// [`TextureHandle`].
+/// [`TextureHandle`](meridian_graphics_core::TextureHandle).
 ///
 /// Uploading is the adapter's work (it owns the device); callers hold only
 /// handles (ADR 002). `graphics-driver` implements it with GPU textures;

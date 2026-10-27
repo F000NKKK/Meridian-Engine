@@ -27,7 +27,6 @@
 #![forbid(unsafe_code)]
 
 mod attenuation_model;
-mod audio_sink;
 mod channel;
 pub mod effects;
 mod emitter;
@@ -38,13 +37,10 @@ mod render_and_output_tests;
 mod spatial_gains;
 mod speaker;
 mod speaker_layout;
-#[cfg(any(test, feature = "testing"))]
-pub mod testing;
 #[cfg(test)]
 mod tests;
 
 pub use attenuation_model::AttenuationModel;
-pub use audio_sink::AudioSink;
 pub use channel::Channel;
 pub use effects::{
     AcousticMedium, BinauralConfig, BinauralRenderer, Declicker, DspGraph, DspNode, Gain,

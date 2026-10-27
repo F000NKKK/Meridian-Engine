@@ -19,7 +19,7 @@ The entry points are documented on [docs.rs](https://docs.rs/meridian-graphics-d
 
 ## Depends on / used by
 
-- Depends on: [`meridian-asset-core`](../meridian-asset-core), [`meridian-foundation`](../meridian-foundation), [`meridian-gac-core`](../meridian-gac-core), [`meridian-gpu-driver`](../meridian-gpu-driver), [`meridian-graphics-core`](../meridian-graphics-core), [`meridian-memory-core`](../meridian-memory-core), [`meridian-platform-core`](../meridian-platform-core)
+- Depends on: [`meridian-asset-core`](../meridian-asset-core), [`meridian-foundation`](../meridian-foundation), [`meridian-gac-core`](../meridian-gac-core), [`meridian-gpu-driver`](../meridian-gpu-driver), [`meridian-graphics-core`](../meridian-graphics-core), [`meridian-memory-core`](../meridian-memory-core), [`meridian-platform-core`](../meridian-platform-core), [`meridian-rendering-app`](../meridian-rendering-app)
 - Used by: [`meridian-sdk`](../meridian-sdk)
 
 ## License

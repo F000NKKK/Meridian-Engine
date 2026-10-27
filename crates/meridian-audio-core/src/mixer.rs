@@ -43,7 +43,7 @@ impl Mixer {
 
     /// Renders `frames` output frames as interleaved samples in this
     /// layout's speaker order — the format `audio-driver`'s
-    /// `AudioStream::push_samples` (any [`AudioSink`](crate::AudioSink)) consumes.
+    /// `AudioStream::push_samples` (any `AudioSink` of `meridian-audio-app`) consumes.
     ///
     /// The block-sized counterpart of [`mix`](Self::mix): each emitter's
     /// spatial gains are computed once for the whole block (emitter and

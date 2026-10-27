@@ -1,0 +1,19 @@
+[package]
+name = "meridian-audio-app"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Audio use cases and the ports to the outside world: the AudioSink mixed samples leave through."
+readme = "README.md"
+
+[dependencies]
+meridian-audio-core = { workspace = true }
+
+[features]
+# The fake `AudioSink` and its contract suite, for adapters' own tests (Craftbook 8.4).
+testing = []
+
+[lints]
+workspace = true

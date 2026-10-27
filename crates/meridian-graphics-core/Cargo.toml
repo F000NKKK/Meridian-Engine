@@ -25,8 +25,6 @@ name = "sprite_batching"
 harness = false
 
 [features]
-# The fakes and contract suites of the rendering ports, for adapters' own tests (Craftbook 8.4).
-testing = []
 # Tests that need a real GPU or audio device; CI has neither (docs/adr/020).
 hw-tests = []
 

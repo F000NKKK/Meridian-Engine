@@ -14,9 +14,11 @@ meridian-gac-core = { workspace = true }
 meridian-platform-core = { workspace = true }
 meridian-asset-core = { workspace = true }
 meridian-graphics-driver = { workspace = true }
+meridian-rendering-app = { workspace = true }
 meridian-graphics-core = { workspace = true }
 meridian-physics-core = { workspace = true }
 meridian-audio-core = { workspace = true }
+meridian-audio-app = { workspace = true }
 meridian-audio-driver = { workspace = true }
 meridian-engine-core = { workspace = true }
 meridian-compute-driver = { workspace = true }

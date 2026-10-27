@@ -1,4 +1,4 @@
-//! High-level rendering domain: render graph, scene extraction, visibility/culling, lighting, materials, camera and the ports to a GPU.
+//! High-level rendering domain: render graph, scene extraction, visibility/culling, lighting, materials, camera and sprite batching.
 //!
 //! Layer: domain; bounded context: rendering (`craftbook.toml`,
 //! docs/context-map.md).
@@ -10,7 +10,6 @@ mod camera;
 mod frustum;
 mod graph_resource_id;
 mod mesh_handle;
-mod ports;
 mod render_graph;
 mod render_graph_error;
 mod render_pass;
@@ -18,8 +17,6 @@ pub mod scene;
 mod shader_handle;
 pub mod sprites;
 pub mod submission;
-#[cfg(any(test, feature = "testing"))]
-pub mod testing;
 #[cfg(test)]
 mod tests;
 mod texture_handle;
@@ -29,7 +26,6 @@ pub use camera::{Camera, look_at_rotor};
 pub use frustum::Frustum;
 pub use graph_resource_id::GraphResourceId;
 pub use mesh_handle::{MeshHandle, MeshMarker};
-pub use ports::{FrameOutcome, FrameRecorder, FrameRequest, MeshStore, TextureStore};
 pub use render_graph::RenderGraph;
 pub use render_graph_error::RenderGraphError;
 pub use render_pass::RenderPass;

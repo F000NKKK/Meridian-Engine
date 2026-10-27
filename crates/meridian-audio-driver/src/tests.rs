@@ -64,7 +64,7 @@ fn stream_passes_the_sink_contract() {
         eprintln!("skipping: no audio device available");
         return;
     }
-    meridian_audio_core::testing::run_contract(|| open().expect("the device opened a moment ago"));
+    meridian_audio_app::testing::run_contract(|| open().expect("the device opened a moment ago"));
 }
 
 #[cfg(feature = "hw-tests")]

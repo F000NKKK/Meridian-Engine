@@ -36,9 +36,11 @@ pub use meridian_asset_core::{
 };
 // -- meridian-audio-core: spatial audio --
 pub use meridian_audio_core::{
-    AcousticMedium, AttenuationModel, AudioSink, BinauralRenderer, Channel, Declicker, DspNode,
-    Emitter, Listener, Mixer, SpeakerLayout,
+    AcousticMedium, AttenuationModel, BinauralRenderer, Channel, Declicker, DspNode, Emitter,
+    Listener, Mixer, SpeakerLayout,
 };
+// -- meridian-audio-app: the output port --
+pub use meridian_audio_app::AudioSink;
 // -- meridian-audio-driver: the platform audio adapter (composition root) --
 pub use meridian_audio_driver::{AudioStream, open_output};
 // -- meridian-compute-driver: the platform compute adapter (composition root) --
@@ -60,9 +62,12 @@ pub use meridian_foundation::{
 pub use meridian_gac_core::{Aabb, Bivector3, Motor3, Projection, Rotor, Vec3};
 // -- meridian-graphics-core: scene/material/lighting/submission --
 pub use meridian_graphics_core::{
-    Camera, FrameOutcome, FrameRecorder, FrameRequest, Frustum, Light, Material, MaterialHandle,
-    MaterialRegistry, MeshHandle, MeshRegistry, MeshSource, MeshStore, Renderable3d, Scene2d,
-    Scene3d, TextureHandle, TextureStore,
+    Camera, Frustum, Light, Material, MaterialHandle, MaterialRegistry, MeshHandle, MeshRegistry,
+    MeshSource, Renderable3d, Scene2d, Scene3d, TextureHandle,
+};
+// -- meridian-rendering-app: the GPU ports --
+pub use meridian_rendering_app::{
+    FrameOutcome, FrameRecorder, FrameRequest, MeshStore, TextureStore,
 };
 // -- meridian-graphics-driver: the GPU device a windowed app opens once --
 pub use meridian_graphics_driver::{

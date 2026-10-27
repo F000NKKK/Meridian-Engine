@@ -66,6 +66,8 @@ crate has its own README.
 | Crate | Context | What it gives |
 |---|---|---|
 | [`meridian-compute-runtime`](crates/meridian-compute-runtime) | compute | Compute context, kernel interfaces, dispatch size and split |
+| [`meridian-audio-app`](crates/meridian-audio-app) | audio | The `AudioSink` port, with a fake and a contract suite |
+| [`meridian-rendering-app`](crates/meridian-rendering-app) | rendering | Ports `FrameRecorder`, `MeshStore`, `TextureStore`, with fakes and contract suites |
 | [`meridian-engine-core`](crates/meridian-engine-core) | runtime | `Runtime`: frame scheduler, events, physics/audio subsystems, stages |
 
 **Infrastructure (adapters)**
@@ -135,7 +137,7 @@ and every layer may use the shared kernel.
 
 ```mermaid
 flowchart LR
-    I[interface<br/>sdk, dsl-macros, examples] --> A[application<br/>engine-core, compute-runtime]
+    I[interface<br/>sdk, dsl-macros, examples] --> A[application<br/>engine-core, compute-runtime, audio-app, rendering-app]
     A --> D[domain<br/>graphics, physics, audio, assets, ui]
     X[infrastructure<br/>drivers, adapters, scene, editor-protocol, editor-host, editor-tcp] --> D
     K[shared kernel<br/>foundation, numeric, gac, memory, resource, ecs, dsl-core]

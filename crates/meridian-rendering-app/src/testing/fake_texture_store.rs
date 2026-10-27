@@ -3,7 +3,9 @@
 use meridian_asset_core::ImageAsset;
 use meridian_memory_core::ResourcePool;
 
-use crate::{TextureHandle, TextureStore};
+use meridian_graphics_core::TextureHandle;
+
+use crate::TextureStore;
 
 /// Keeps each texture's size instead of pixels; no GPU.
 #[derive(Debug, Default)]

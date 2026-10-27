@@ -65,6 +65,8 @@ Meridian-Engine — небольшой устойчивый набор крей�
 | Crate | Context | Что даёт |
 |---|---|---|
 | [`meridian-compute-runtime`](crates/meridian-compute-runtime) | compute | Контекст вычислений, интерфейсы ядер, размер диспетчеризации и разделение |
+| [`meridian-audio-app`](crates/meridian-audio-app) | audio | Порт `AudioSink` с фейком и контрактным набором тестов |
+| [`meridian-rendering-app`](crates/meridian-rendering-app) | rendering | Порты `FrameRecorder`, `MeshStore`, `TextureStore` с фейками и контрактными наборами |
 | [`meridian-engine-core`](crates/meridian-engine-core) | runtime | `Runtime`: планировщик кадра, события, подсистемы физики и звука, стадии |
 
 **Инфраструктура (адаптеры)**
@@ -134,7 +136,7 @@ fn main() {
 
 ```mermaid
 flowchart LR
-    I[interface<br/>sdk, dsl-macros, examples] --> A[application<br/>engine-core, compute-runtime]
+    I[interface<br/>sdk, dsl-macros, examples] --> A[application<br/>engine-core, compute-runtime, audio-app, rendering-app]
     A --> D[domain<br/>graphics, physics, audio, assets, ui]
     X[infrastructure<br/>drivers, adapters, scene, editor-protocol, editor-host, editor-tcp] --> D
     K[shared kernel<br/>foundation, numeric, gac, memory, resource, ecs, dsl-core]

@@ -10,7 +10,7 @@
 //! `winit` is to windowing (see ADR 012 and the workspace `Cargo.toml`'s
 //! `cpal` entry for the full rationale).
 //!
-//! The direction is ADR 019's: `audio-core` owns the [`AudioSink`] port and
+//! The direction is ADR 019's: `audio-app` owns the [`AudioSink`] port and
 //! knows about spatial panning, mixing and DSP; this crate is the adapter
 //! that knows about OS audio devices and stream lifecycle, and implements the
 //! port with [`AudioStream`].
@@ -23,7 +23,8 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-use meridian_audio_core::{AudioSink, SpeakerLayout};
+use meridian_audio_app::AudioSink;
+use meridian_audio_core::SpeakerLayout;
 use meridian_platform_core::{BackendCapabilities, CpuCapabilities, GpuCapabilities};
 
 /// Why [`AudioDevice::new`] or [`AudioDevice::open_stream`] failed.

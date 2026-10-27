@@ -1133,6 +1133,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "meridian-audio-app"
+version = "0.1.0"
+dependencies = [
+ "meridian-audio-core",
+]
+
+[[package]]
 name = "meridian-audio-core"
 version = "0.19.0"
 dependencies = [
@@ -1145,6 +1152,7 @@ version = "0.12.0"
 dependencies = [
  "cpal",
  "crossbeam-channel",
+ "meridian-audio-app",
  "meridian-audio-core",
  "meridian-foundation",
  "meridian-platform-core",
@@ -1315,6 +1323,7 @@ dependencies = [
  "meridian-graphics-core",
  "meridian-memory-core",
  "meridian-platform-core",
+ "meridian-rendering-app",
  "tokio",
  "wgpu",
 ]
@@ -1379,6 +1388,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "meridian-rendering-app"
+version = "0.1.0"
+dependencies = [
+ "meridian-asset-core",
+ "meridian-graphics-core",
+ "meridian-memory-core",
+]
+
+[[package]]
 name = "meridian-resource-core"
 version = "0.8.0"
 dependencies = [
@@ -1400,6 +1418,7 @@ name = "meridian-sdk"
 version = "0.5.0"
 dependencies = [
  "meridian-asset-core",
+ "meridian-audio-app",
  "meridian-audio-core",
  "meridian-audio-driver",
  "meridian-compute-driver",
@@ -1413,6 +1432,7 @@ dependencies = [
  "meridian-graphics-driver",
  "meridian-physics-core",
  "meridian-platform-core",
+ "meridian-rendering-app",
  "meridian-ui-core",
 ]
 

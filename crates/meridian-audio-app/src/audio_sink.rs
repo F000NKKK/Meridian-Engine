@@ -2,7 +2,7 @@
 
 /// Where interleaved samples go to be heard: the audio context's output port.
 ///
-/// The samples are those of [`Mixer::render_interleaved`](crate::Mixer::render_interleaved):
+/// The samples are those of [`Mixer::render_interleaved`](meridian_audio_core::Mixer::render_interleaved):
 /// one value per speaker per frame, in speaker order. Opening a device is the
 /// adapter's business (it is I/O and `async`), so a sink only receives samples
 /// once it exists. Adapters implement this trait (`meridian-audio-driver` for

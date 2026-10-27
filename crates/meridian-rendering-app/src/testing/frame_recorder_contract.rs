@@ -1,7 +1,9 @@
 //! The behaviour every [`FrameRecorder`](crate::FrameRecorder) must have.
 
-use crate::scene::Scene3d;
-use crate::{FrameOutcome, FrameRecorder, FrameRequest, MaterialRegistry, MeshRegistry};
+use meridian_graphics_core::scene::Scene3d;
+use meridian_graphics_core::{MaterialRegistry, MeshRegistry};
+
+use crate::{FrameOutcome, FrameRecorder, FrameRequest};
 
 /// Asserts the frame recorder contract against fresh recorders from `make`: an
 /// empty scene is presented; a frame after a resize is presented; and a

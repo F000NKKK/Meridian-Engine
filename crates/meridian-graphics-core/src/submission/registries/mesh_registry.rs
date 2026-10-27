@@ -2,8 +2,8 @@
 
 use meridian_memory_core::ResourcePool;
 
+use crate::MeshHandle;
 use crate::submission::{MeshRegistryError, MeshSource};
-use crate::{MeshHandle, MeshStore};
 
 /// Handle-addressed storage for [`MeshSource`](crate::submission::MeshSource)s — the CPU-side registry
 /// [`Renderable3d::mesh`](crate::scene::Renderable3d::mesh) resolves against. Owns no GPU objects; GPU
@@ -51,30 +51,5 @@ impl MeshRegistry {
 
     pub fn get(&self, handle: MeshHandle) -> Option<&MeshSource> {
         self.sources.get(handle.handle)
-    }
-}
-
-impl MeshStore for MeshRegistry {
-    fn add(&mut self, source: MeshSource) -> Result<MeshHandle, MeshRegistryError> {
-        self.register(source)
-    }
-
-    fn get(&self, handle: MeshHandle) -> Option<&MeshSource> {
-        MeshRegistry::get(self, handle)
-    }
-
-    fn remove(&mut self, handle: MeshHandle) -> Option<MeshSource> {
-        self.unregister(handle)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::testing::run_mesh_store_contract;
-
-    #[test]
-    fn the_registry_passes_the_mesh_store_contract() {
-        run_mesh_store_contract(MeshRegistry::new);
     }
 }

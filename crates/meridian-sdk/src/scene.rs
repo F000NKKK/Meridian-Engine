@@ -10,9 +10,10 @@
 
 use meridian_gac_core::icosphere;
 use meridian_graphics_core::{
-    FrameRecorder, MaterialRegistry, MeshHandle, MeshRegistry, MeshSource, TextureHandle,
+    MaterialRegistry, MeshHandle, MeshRegistry, MeshSource, TextureHandle,
 };
 use meridian_graphics_driver::{Device, GpuFrameRecorder, Surface};
+use meridian_rendering_app::FrameRecorder;
 
 use crate::assets::AssetCache;
 

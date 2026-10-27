@@ -1,9 +1,8 @@
 //! The `wgpu` implementation of [`FrameRecorder`].
 
 use meridian_asset_core::ImageAsset;
-use meridian_graphics_core::{
-    FrameOutcome, FrameRecorder, FrameRequest, TextureHandle, TextureStore,
-};
+use meridian_graphics_core::TextureHandle;
+use meridian_rendering_app::{FrameOutcome, FrameRecorder, FrameRequest, TextureStore};
 
 use crate::{
     BloomInput, BloomPass, DEFAULT_SHADOW_MAP_SIZE, DepthTexture, Device, GpuTextureStore,

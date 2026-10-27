@@ -80,6 +80,11 @@ layer = "domain"
 context = "rendering"
 
 [[crate]]
+name = "meridian-rendering-app"
+layer = "app"
+context = "rendering"
+
+[[crate]]
 name = "meridian-graphics-driver"
 layer = "infra"
 context = "rendering"
@@ -98,6 +103,11 @@ context = "physics"
 [[crate]]
 name = "meridian-audio-core"
 layer = "domain"
+context = "audio"
+
+[[crate]]
+name = "meridian-audio-app"
+layer = "app"
 context = "audio"
 
 [[crate]]

@@ -141,7 +141,7 @@ impl BinauralSourceState {
 /// Stateful: keep one renderer alive across blocks and pass sources in a
 /// stable order (state is per source index). Output is interleaved
 /// stereo `[L, R]` — the layout [`SpeakerLayout::stereo_headphones`](crate::SpeakerLayout::stereo_headphones)
-/// describes, ready for [`AudioSink::push_interleaved`](crate::AudioSink::push_interleaved).
+/// describes, ready for `AudioSink::push_interleaved` (`meridian-audio-app`).
 #[derive(Debug)]
 pub struct BinauralRenderer {
     sample_rate: u32,

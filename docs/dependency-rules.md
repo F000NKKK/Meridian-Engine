@@ -52,15 +52,14 @@ depend on crates in tiers `0..N`, never a same-tier or higher-tier one
 (that's what makes the graph a DAG):
 
 ```text
-tier 0  foundation, memory-core, task-core, dsl-macros
+tier 0  compute-runtime, dsl-macros, foundation, memory-core, task-core
 tier 1  asset-core, dsl-core, numeric-core, platform-core, resource-core, ui-core
-tier 2  audio-driver, gac-core, gpu-driver, mel-build
-tier 3  audio-core, compute-driver, ecs-core, graphics-driver, physics-core
-tier 4  compute-runtime, graphics-core, scene
-tier 5  editor-protocol, gac-compute
-tier 6  editor-host, physics-compute
-tier 7  editor-tcp, engine-core
-tier 8  sdk
+tier 2  gac-core, gpu-driver, mel-build
+tier 3  audio-core, compute-driver, ecs-core, physics-core
+tier 4  audio-app, gac-compute, graphics-core, scene
+tier 5  audio-driver, editor-protocol, physics-compute, rendering-app, ui-render
+tier 6  editor-host, engine-core, graphics-driver
+tier 7  editor-tcp, sdk
 ```
 
 `meridian-dsl-core`/`meridian-dsl-macros` are the two crates behind the
@@ -260,9 +259,11 @@ bottom-up.
 - `meridian-resource-core` -> `meridian-memory-core`
 - `meridian-ecs-core` -> `meridian-gac-core`, `meridian-memory-core`
 - `meridian-gpu-driver` -> `meridian-foundation`, `meridian-platform-core`
-- `meridian-graphics-driver` -> `meridian-asset-core`, `meridian-foundation`, `meridian-gac-core`, `meridian-gpu-driver`, `meridian-graphics-core`, `meridian-memory-core`, `meridian-platform-core`
+- `meridian-rendering-app` -> `meridian-asset-core`, `meridian-graphics-core`, `meridian-memory-core`
+- `meridian-graphics-driver` -> `meridian-asset-core`, `meridian-foundation`, `meridian-gac-core`, `meridian-gpu-driver`, `meridian-graphics-core`, `meridian-memory-core`, `meridian-platform-core`, `meridian-rendering-app`
 - `meridian-compute-driver` -> `meridian-compute-runtime`, `meridian-gpu-driver`, `meridian-platform-core`
-- `meridian-audio-driver` -> `meridian-audio-core`, `meridian-foundation`, `meridian-platform-core`
+- `meridian-audio-app` -> `meridian-audio-core`
+- `meridian-audio-driver` -> `meridian-audio-app`, `meridian-audio-core`, `meridian-foundation`, `meridian-platform-core`
 - `meridian-compute-runtime` -> (none; it owns the `ComputeDevice` and `GpuBackend` ports)
 - `meridian-gac-compute` -> `meridian-compute-driver`, `meridian-compute-runtime`, `meridian-gac-core`, `meridian-gpu-driver`, `meridian-numeric-core`
 - `meridian-asset-core` -> `meridian-foundation`
@@ -280,7 +281,7 @@ bottom-up.
 - `meridian-mel-build` -> `meridian-dsl-core`, `meridian-ui-core`
 - `meridian-ui-core` -> `meridian-foundation`, `meridian-memory-core`
 - `meridian-ui-render` -> `meridian-gac-core`, `meridian-graphics-core`, `meridian-ui-core`
-- `meridian-sdk` -> `meridian-asset-core`, `meridian-audio-core`, `meridian-audio-driver`, `meridian-compute-driver`, `meridian-compute-runtime`, `meridian-dsl-core`, `meridian-dsl-macros`, `meridian-engine-core`, `meridian-foundation`, `meridian-gac-core`, `meridian-graphics-core`, `meridian-graphics-driver`, `meridian-physics-core`, `meridian-platform-core`, `meridian-ui-core`
+- `meridian-sdk` -> `meridian-asset-core`, `meridian-audio-app`, `meridian-audio-core`, `meridian-audio-driver`, `meridian-compute-driver`, `meridian-compute-runtime`, `meridian-dsl-core`, `meridian-dsl-macros`, `meridian-engine-core`, `meridian-foundation`, `meridian-gac-core`, `meridian-graphics-core`, `meridian-graphics-driver`, `meridian-physics-core`, `meridian-platform-core`, `meridian-rendering-app`, `meridian-ui-core`
 
 `meridian-engine-core` has no edge to `meridian-graphics-core` or
 `meridian-asset-core`: `Runtime::tick` doesn't render a frame or load an

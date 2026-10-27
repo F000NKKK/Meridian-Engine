@@ -11,8 +11,9 @@
 //! `Runtime::tick` guarantees it never runs before that state is ready.
 
 use meridian_engine_core::{Stage, StageContext};
-use meridian_graphics_core::{FrameOutcome, FrameRecorder, FrameRequest, Scene3d};
+use meridian_graphics_core::Scene3d;
 use meridian_platform_core::Window;
+use meridian_rendering_app::{FrameOutcome, FrameRecorder, FrameRequest};
 
 use crate::scene::GraphicsSession;
 

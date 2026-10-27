@@ -15,7 +15,8 @@ the domain and application crates own the ports their adapters implement.
 ```text
   interface       sdk (composition root), examples
       |
-  application     engine-core (runtime use cases), compute-runtime
+  application     engine-core (runtime use cases), compute-runtime,
+                  audio-app, rendering-app (ports)
       |
   domain          graphics-core, physics-core, audio-core, asset-core
       ^

@@ -1,7 +1,8 @@
 //! GPU textures behind the [`TextureStore`] port.
 
 use meridian_asset_core::ImageAsset;
-use meridian_graphics_core::{TextureHandle, TextureStore};
+use meridian_graphics_core::TextureHandle;
+use meridian_rendering_app::TextureStore;
 
 use crate::{Device, TextureRegistry};
 
@@ -50,7 +51,7 @@ impl TextureStore for GpuTextureStore {
 
 #[cfg(all(test, feature = "hw-tests"))]
 mod tests {
-    use meridian_graphics_core::testing::run_texture_store_contract;
+    use meridian_rendering_app::testing::run_texture_store_contract;
 
     use super::*;
 

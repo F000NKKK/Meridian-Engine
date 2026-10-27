@@ -1,7 +1,7 @@
 //! Everything a recorder needs to draw one frame.
 
-use crate::scene::Scene3d;
-use crate::{MaterialRegistry, MeshRegistry};
+use meridian_graphics_core::scene::Scene3d;
+use meridian_graphics_core::{MaterialRegistry, MeshRegistry};
 
 /// One frame to draw: the scene, the registries its handles resolve against,
 /// and the colour the target is cleared to.

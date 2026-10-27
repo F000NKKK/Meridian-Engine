@@ -1,7 +1,7 @@
 //! The behaviour every [`MeshStore`](crate::MeshStore) must have.
 
 use crate::MeshStore;
-use crate::submission::{MeshRegistryError, MeshSource};
+use meridian_graphics_core::{MeshRegistryError, MeshSource};
 
 fn triangle() -> MeshSource {
     MeshSource {

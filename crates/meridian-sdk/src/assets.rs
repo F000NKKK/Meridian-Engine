@@ -22,9 +22,8 @@ use meridian_asset_core::{
     AnyImageDecoder, AudioAsset, DecodeStrategy, Decoder, ImageAsset, ObjDecoder,
     StreamingAudioDecoder, open_audio,
 };
-use meridian_graphics_core::{
-    MeshHandle, MeshRegistryError, MeshSource, MeshStore, TextureHandle, TextureStore,
-};
+use meridian_graphics_core::{MeshHandle, MeshRegistryError, MeshSource, TextureHandle};
+use meridian_rendering_app::{MeshStore, TextureStore};
 
 /// Reads and decodes a real image asset file, identified by its magic
 /// bytes (never its extension — the same rule
