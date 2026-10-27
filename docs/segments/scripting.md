@@ -49,7 +49,7 @@ It follows the workspace rules in [dependency-rules.md](../dependency-rules.md):
 
 Ordered roughly by dependency. Nothing here is started.
 
-1. **ADR 017 (tentative; 016 is taken by `team/data` for data formats): `.mel` scripting model.** Decide before writing code:
+1. **ADR 017 (016 is `team/data`'s data-formats ADR): `.mel` scripting model.** Decide before writing code:
    embedding syntax (Razor-style `@expr` in attributes and `@{ ... }`
    blocks, or a dedicated `<Script>` element), the first execution
    backend (own interpreter vs. embedding an existing VM such as WASM or
@@ -89,3 +89,8 @@ Ordered roughly by dependency. Nothing here is started.
 - Is Razor-style `@` embedding the agreed syntax, or still open?
 - Which languages besides `.mel` must be supported for game logic
   (Rust-only plugins, WASM, Lua, C#)?
+- How should `.mel` and `.mscene` converge (open question in `team/data`'s
+  ADR 016, `docs/data-formats.md`)? Either DSL attribute values adopt the
+  Substrate-Data literal grammar (`@kind:id` refs, `@@` escape, which
+  collides with Razor-style `@` embedding), or `.mel` compiles to
+  `.mscene`. Resolve in ADR 017.
