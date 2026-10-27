@@ -23,7 +23,7 @@ pub struct Handle {
 /// counting. Looking a [`Handle`] up against a slot whose generation moved
 /// on (the slot was freed and possibly reused) returns `None` instead of
 /// aliasing unrelated data.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ResourcePool<T> {
     slots: Vec<Option<T>>,
     generations: Vec<u32>,

@@ -28,6 +28,7 @@ mod component;
 mod entity;
 mod entity_location;
 mod query;
+mod snapshot;
 #[cfg(test)]
 mod tests;
 mod tick;
@@ -44,6 +45,7 @@ pub use query::{
     Changed, Fetch, OptionalRows, Query, QueryMany, QueryManyMut, QueryMut, ReadFetch,
     ReadSelection, Selection, With, Without,
 };
+pub use snapshot::{Cloners, SnapshotError, WorldSnapshot};
 pub use tick::Tick;
 pub use transform::Transform;
 pub use world::World;

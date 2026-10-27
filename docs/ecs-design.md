@@ -77,6 +77,20 @@ archetype), `remove`, `despawn`, `get_mut`, `query_mut`, and the columns behind
 `&mut` / `Option<&mut>` elements of `query_many_mut` as soon as they are handed
 out, whether or not the loop writes. Shared queries never mark anything.
 
+### Snapshots
+
+`World::snapshot(&Cloners)` copies every entity with its generation, every
+component value and the archetype layout into a `WorldSnapshot`;
+`World::restore(snapshot)` puts the world back. It is in memory and format-free
+(the on-disk forms are `meridian-data-substrate`'s, through its own codecs), and
+meant for editor play/stop, rollback and tests. A world is type-erased, so the
+application registers the `Clone` component types in `Cloners`; a world holding
+an unregistered type returns `SnapshotError::Unregistered` and copies nothing.
+An `Entity` held across the round trip names the same entity afterwards, and one
+spawned after the snapshot is dead after the restore. The clock never runs
+backwards: a restore advances it once and stamps every column changed, so
+`Changed<T>` readers see the rollback.
+
 ## What this crate is not
 
 It does not know about frames, rendering, physics, or the application main
