@@ -33,6 +33,7 @@ meridian-engine-core     Runtime: the single JobGraph-based frame-work entry poi
 meridian-dsl-core        domain-blind tag/attribute markup parser + typed-tag registry (the mechanics under the scene DSL)
 meridian-dsl-macros      #[dsl_tag(name = "...")] — the code-gen half of the DSL, lets a game register its own tags
 meridian-scene           .mscene load/save on Substrate Data: application-built ComponentRegistry, diagnostics with line/column/path (not re-exported by sdk yet)
+meridian-editor-protocol typed, append-only editor <-> game messages on Substrate Data frames (Meridian IDLE; no host yet)
 meridian-mel-build       build.rs generator: each .mel becomes a <name>.g.rs (typed x:Name ids, builder) pulled in with mel_include! (ADR 017)
 meridian-sdk             application entry point: re-exports every type above, plus resource loading, the extensible scene DSL, and windowed-app/render-stage scaffolding
 ```

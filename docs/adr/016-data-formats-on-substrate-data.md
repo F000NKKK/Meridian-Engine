@@ -57,7 +57,10 @@ own".
    by `resource-core` identity, never by the loader (ADR 006).
 5. **Formats evolve by appending.** Every document carries `format: N`;
    frames only append fields; binary tags only grow (Substrate Data's own
-   rule). A migration is a function `Value -> Value` per bump.
+   rule). A migration is a function `Value -> Value` per bump. The named
+   binary form an `io` frame carries rejects what it doesn't know, so the
+   editor protocol adds a version handshake on top
+   ([editor-protocol.md](../editor-protocol.md)).
 
 ## Consequences
 

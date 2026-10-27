@@ -39,7 +39,7 @@ tier 1  numeric-core, platform-core, resource-core, dsl-core, ui-core
 tier 2  asset-core, audio-driver, gac-core, gpu-driver, mel-build, physics-driver
 tier 3  audio-core, compute-driver, ecs-core, graphics-driver
 tier 4  compute-runtime, scene
-tier 5  gac-compute
+tier 5  gac-compute, editor-protocol
 tier 6  graphics-core, physics-core
 tier 7  physics-compute
 tier 8  engine-core
@@ -80,6 +80,15 @@ until `ecs-core` has a hierarchy of its own. Nothing depends on it yet; `engine-
 editor host and scene loading are wired up (docs/roadmap.md). The
 `data` features of `numeric-core`/`gac-core` add no internal edge — only
 the optional external `substrate-data` dependency.
+
+`meridian-editor-protocol` is the wire protocol between a running game and
+its editor (Meridian IDLE): typed `Request`/`Response`/`Event` messages as
+Substrate Data frames (see [editor-protocol.md](editor-protocol.md)). It
+sits *above* `meridian-scene` because it reuses its `ComponentName` and
+carries `ComponentRegistry::describe()` unchanged, and takes `ecs-core` only
+for `Entity`'s shape (`EntityRef`). Pure protocol: no `async`, no sockets,
+no I/O beyond a generic `Read`/`Write`; the host that answers requests is
+`engine-core`'s (or an adapter's) job, so nothing depends on it yet.
 
 `meridian-ui-core` (tier 1, on `foundation` and `memory-core` only) is the
 WPF-style UI runtime of [ADR 018](adr/018-ui-architecture.md): element
@@ -231,6 +240,7 @@ bottom-up.
 - `meridian-physics-compute` -> `meridian-compute-runtime`, `meridian-foundation`, `meridian-gac-compute`, `meridian-gac-core`, `meridian-gpu-driver`, `meridian-numeric-core`, `meridian-physics-core`
 - `meridian-engine-core` -> `meridian-asset-core`, `meridian-audio-core`, `meridian-compute-runtime`, `meridian-ecs-core`, `meridian-foundation`, `meridian-gac-core`, `meridian-graphics-core`, `meridian-memory-core`, `meridian-physics-compute`, `meridian-physics-core`, `meridian-platform-core`, `meridian-task-core`
 - `meridian-scene` -> `meridian-ecs-core`, `meridian-gac-core`
+- `meridian-editor-protocol` -> `meridian-ecs-core`, `meridian-scene`
 - `meridian-dsl-core` -> `meridian-foundation`
 - `meridian-dsl-macros` -> (nothing; external `syn`/`quote`/`proc-macro-crate` only)
 - `meridian-mel-build` -> `meridian-dsl-core`

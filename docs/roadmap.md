@@ -724,14 +724,19 @@ rest are not started.
    stays file-blind), `.mscene` load into a
    `World` (all-or-nothing, every problem with line/column/path, unknown
    component names with a "did you mean" or kept as written for editors),
-   save, and `describe()` for an IDE. Parent links load as
+   save, and `describe()` for an IDE. **Editor protocol:** the
+   `meridian-editor-protocol` crate ([editor-protocol.md](editor-protocol.md))
+   defines the typed, append-only `Request`/`Response`/`Event` messages
+   between a game and Meridian IDLE (golden-byte pinned, version
+   handshake). Parent links load as
    `meridian-scene::Parent`, a stand-in until `ecs-core` gets a
    hierarchy (it moves there then). **Not yet done:** transform
    propagation along parents; `World::component_types(entity)` in
    `ecs-core` (saving walks registered types until then); `.mprefab`
    instancing, `.meta`, `.msave` (voxel/chunk data via
-   `substrate_data::Stream`), `.mpak`, the editor protocol, and wiring
-   scene loading into `engine-core`/`sdk`. The substrate-data dependency
+   `substrate_data::Stream`), `.mpak`, the editor *host* in `engine-core`
+   that answers the protocol, and wiring scene loading into
+   `engine-core`/`sdk`. The substrate-data dependency
    is a git revision pin (its `main`) until it is published to crates.io.
 6. **No networking.** Multiplayer (both games have it) is a subsystem
    that doesn't exist in any form — no netcode, no client/server
