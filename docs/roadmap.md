@@ -879,7 +879,8 @@ sprint — treat this section as "what's missing," not "next release."
   `audio-cpal` still report `gpu: None` since neither dispatches to a
   GPU yet.
 - **Async I/O — decided: `tokio`, scoped to genuine I/O only, not applied
-  uniformly.** `rendering-wgpu::Device::new`/`read_buffer` (an OS/driver
+  uniformly** (asset file reads are the exception: background threads,
+  [ADR 027](adr/027-background-asset-loading.md)). `rendering-wgpu::Device::new`/`read_buffer` (an OS/driver
   handshake and waiting on in-flight GPU work — both genuinely unbounded
   wait, no useful CPU work to do meanwhile) are real `async fn`s now, not
   `pollster`-wrapped synchronous functions; `read_buffer`'s manual

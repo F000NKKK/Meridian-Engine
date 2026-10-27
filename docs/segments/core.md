@@ -93,9 +93,12 @@ change that closed them.
    `run` no longer spawns threads (1-job graph ~210 µs -> ~0.35 µs, 1 000-job
    chain 1.1 ms -> 0.33 ms, `cargo bench -p meridian-runtime-threads`). Work-stealing
    deques wait for a frame profile that shows queue contention.
-6. **Asynchronous asset I/O.** `asset-domain` decodes in-memory bytes only.
-   File and network loading with tokio belongs in a loader layer above it
-   (ADR 009), never inside the decoders.
+6. **Done: background asset loading** ([ADR 027](../adr/027-background-asset-loading.md)).
+   `asset-app` (`ByteSource`, `Spawn`, `AssetLoader`, `Pending`), `asset-fs`
+   (`FsSource`) and `runtime-threads::BackgroundPool`; a load returns at once
+   and costs ~2.5 µs per small file on 4 threads (`cargo bench -p
+   meridian-asset-fs`). Open: wiring into `sdk`, priority and cancellation,
+   and an HTTP `ByteSource` (tokio inside the adapter).
 7. **Compute buffer reuse.** `compute-app` reallocates GPU buffers and
    bind groups per dispatch (roadmap, deferred). Build it when a per-frame
    caller exists.

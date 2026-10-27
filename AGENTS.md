@@ -282,7 +282,9 @@ before writing new code, not after.
 
 ## Async only on genuine I/O
 
-This is an async-native engine: `tokio` is the workspace's async runtime
+Reading asset files is the exception: it blocks a background thread
+(`BackgroundPool`, [ADR 027](docs/adr/027-background-asset-loading.md)) and is
+not `async`. This is an async-native engine: `tokio` is the workspace's async runtime
 (see ADR 009). A function becomes `async fn` only when it performs
 genuine I/O — completion time that is unbounded and determined by
 something outside this process (an OS/driver handshake, a GPU/device

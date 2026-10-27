@@ -54,8 +54,8 @@ depend on crates in tiers `0..N`, never a same-tier or higher-tier one
 ```text
 tier 0  compute-app, diagnostics, markup-macros, memory, text-domain
 tier 1  asset-domain, diagnostics-fs, markup, numeric, platform-winit, resource, ui-domain
-tier 2  asset-png, asset-symphonia, gac, gpu-wgpu, ui-mel
-tier 3  audio-domain, compute-wgpu, ecs, physics-domain
+tier 2  asset-app, asset-png, asset-symphonia, gac, gpu-wgpu, ui-mel
+tier 3  asset-fs, audio-domain, compute-wgpu, ecs, physics-domain
 tier 4  audio-app, gac-wgpu, rendering-domain, physics-app, data-substrate
 tier 5  audio-cpal, editor-domain, runtime-app, physics-wgpu, rendering-app, ui-scene2d
 tier 6  editor-app, rendering-wgpu, runtime-threads
@@ -245,7 +245,7 @@ bottom-up.
 
 - `meridian-diagnostics` -> (nothing)
 - `meridian-memory` -> (nothing)
-- `meridian-runtime-threads` -> `meridian-runtime-app`
+- `meridian-runtime-threads` -> `meridian-asset-app`, `meridian-runtime-app`
 - `meridian-numeric` -> `meridian-diagnostics`
 - `meridian-platform-winit` -> `meridian-diagnostics`
 - `meridian-gac` -> `meridian-numeric`
@@ -261,6 +261,8 @@ bottom-up.
 - `meridian-gac-wgpu` -> `meridian-compute-wgpu`, `meridian-compute-app`, `meridian-gac`, `meridian-gpu-wgpu`, `meridian-numeric`
 - `meridian-diagnostics-fs` -> `meridian-diagnostics`
 - `meridian-asset-domain` -> `meridian-diagnostics`
+- `meridian-asset-app` -> `meridian-asset-domain`
+- `meridian-asset-fs` -> `meridian-asset-app`
 - `meridian-asset-png` -> `meridian-asset-domain`
 - `meridian-asset-symphonia` -> `meridian-asset-domain`
 - `meridian-rendering-domain` -> `meridian-ecs`, `meridian-diagnostics`, `meridian-gac`, `meridian-memory`, `meridian-resource`
