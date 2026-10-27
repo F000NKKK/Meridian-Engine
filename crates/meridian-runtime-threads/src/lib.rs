@@ -13,6 +13,7 @@
 #![doc = include_str!("../README.md")]
 #![forbid(unsafe_code)]
 
+mod background_pool;
 mod job_entry;
 mod job_graph;
 mod job_id;
@@ -24,6 +25,7 @@ mod tests;
 mod topology;
 mod worker_pool;
 
+pub use background_pool::BackgroundPool;
 pub use job_graph::JobGraph;
 pub use job_id::JobId;
 pub use scheduler::Scheduler;

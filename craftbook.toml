@@ -80,6 +80,16 @@ layer = "domain"
 context = "assets"
 
 [[crate]]
+name = "meridian-asset-app"
+layer = "app"
+context = "assets"
+
+[[crate]]
+name = "meridian-asset-fs"
+layer = "infra"
+context = "assets"
+
+[[crate]]
 name = "meridian-asset-png"
 layer = "infra"
 context = "assets"

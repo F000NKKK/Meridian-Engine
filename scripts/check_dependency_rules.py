@@ -41,7 +41,7 @@ ALLOWED = {
     "meridian-gac": {"meridian-numeric"},
     "meridian-memory": set(),
     "meridian-resource": {"meridian-memory"},
-    "meridian-runtime-threads": {"meridian-runtime-app"},
+    "meridian-runtime-threads": {"meridian-asset-app", "meridian-runtime-app"},
     "meridian-platform-winit": {"meridian-diagnostics"},
     "meridian-gpu-wgpu": {"meridian-diagnostics", "meridian-platform-winit"},
     "meridian-compute-wgpu": {
@@ -59,6 +59,8 @@ ALLOWED = {
     },
     "meridian-ecs": {"meridian-memory", "meridian-gac"},
     "meridian-asset-domain": {"meridian-diagnostics"},
+    "meridian-asset-app": {"meridian-asset-domain"},
+    "meridian-asset-fs": {"meridian-asset-app"},
     "meridian-asset-png": {"meridian-asset-domain"},
     "meridian-asset-symphonia": {"meridian-asset-domain"},
     "meridian-rendering-wgpu": {

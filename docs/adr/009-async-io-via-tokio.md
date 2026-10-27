@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted
+Accepted. Reading asset files is not `tokio`'s job: [ADR 027](027-background-asset-loading.md)
+runs it on `BackgroundPool` threads. This ADR still governs device and network I/O.
 
 ## Context
 

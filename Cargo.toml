@@ -26,6 +26,8 @@ meridian-compute-wgpu = { path = "crates/meridian-compute-wgpu", version = "0.18
 meridian-compute-app = { path = "crates/meridian-compute-app", version = "0.20" }
 meridian-gac-wgpu = { path = "crates/meridian-gac-wgpu", version = "0.23" }
 meridian-asset-domain = { path = "crates/meridian-asset-domain", version = "0.13" }
+meridian-asset-app = { path = "crates/meridian-asset-app", version = "0.1" }
+meridian-asset-fs = { path = "crates/meridian-asset-fs", version = "0.1" }
 meridian-asset-png = { path = "crates/meridian-asset-png", version = "0.1" }
 meridian-asset-symphonia = { path = "crates/meridian-asset-symphonia", version = "0.1" }
 meridian-ecs = { path = "crates/meridian-ecs", version = "0.15" }

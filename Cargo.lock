@@ -1123,10 +1123,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "meridian-asset-app"
+version = "0.1.0"
+dependencies = [
+ "meridian-asset-domain",
+]
+
+[[package]]
 name = "meridian-asset-domain"
 version = "0.13.0"
 dependencies = [
  "meridian-diagnostics",
+]
+
+[[package]]
+name = "meridian-asset-fs"
+version = "0.1.0"
+dependencies = [
+ "criterion",
+ "meridian-asset-app",
+ "meridian-asset-domain",
+ "meridian-runtime-threads",
 ]
 
 [[package]]
@@ -1432,6 +1449,7 @@ name = "meridian-runtime-threads"
 version = "0.7.0"
 dependencies = [
  "criterion",
+ "meridian-asset-app",
  "meridian-runtime-app",
 ]
 
