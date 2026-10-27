@@ -207,7 +207,7 @@ where
                     MAX_CONTACTS_PER_PAIR
                 );
             }
-            for (slot, contact) in slots.iter_mut().zip(contacts.into_iter()) {
+            for (slot, contact) in slots.iter_mut().zip(contacts) {
                 *slot = Some(contact);
             }
             self.results.lock().unwrap()[i] = slots;
