@@ -56,13 +56,15 @@ Not started; ordered by suggested priority. Items wait for an explicit task.
    `roadmap.md` and the code say it is real. `roadmap.md` also still has an
    older paragraph saying extraction/lighting are scaffolds and the driver
    is headless-only. Reconcile all three.
-2. **Material flags the bridge ignores.** `BlendMode::AlphaBlend` and
+2. **Material flags the bridge ignores (3D).** `BlendMode::AlphaBlend` and
    `always_on_top` exist on `Material` but every draw is opaque and
    depth-tested. Needs a sorted transparent pass and a no-depth overlay
    pass in the render graph.
-3. **`Scene2D` path.** Vocabulary is designed (`Sprite`, `Camera2D`,
-   layered painter's order) but has no submission path; prerequisite for
-   screen-space UI (team/ui-ux).
+3. **`Scene2d` path — done (2026-10-27).** `sprites/` in
+   `graphics-core`; see graphics-design.md step 5. Follow-ups: bind-group
+   cache, scissor/clip rectangles for UI, atlas packing, glyph-atlas
+   textures once team/ui-ux has text, composing `[Scene3d, Scene2d]` in
+   `meridian-sdk`.
 4. **Per-instance data / instancing.** Vertices are baked to world space
    and textured bind groups rebuilt every frame. Add a per-instance uniform
    or storage buffer, then indirect draw and compute culling (GPU-driven

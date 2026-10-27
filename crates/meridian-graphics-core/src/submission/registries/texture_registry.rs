@@ -33,6 +33,15 @@ impl TextureRegistry {
         TextureHandle::new(self.textures.insert(texture))
     }
 
+    /// Uploads a 1×1 texture of one `rgba` color and returns its handle.
+    /// Sprites that are plain colored rectangles (UI backgrounds) point at
+    /// a white one and carry their color in `Sprite::tint`.
+    pub fn upload_solid(&mut self, device: &Device, rgba: [u8; 4]) -> TextureHandle {
+        let texture = device.create_texture_2d(1, 1);
+        device.write_texture(&texture, &rgba);
+        TextureHandle::new(self.textures.insert(texture))
+    }
+
     pub fn unregister(&mut self, handle: TextureHandle) -> Option<Texture> {
         self.textures.remove(handle.handle)
     }

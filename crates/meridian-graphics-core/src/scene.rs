@@ -131,13 +131,17 @@ impl Component for MeshRenderer {}
 #[derive(Debug, Clone, Copy)]
 pub struct Sprite {
     pub texture: TextureHandle,
-    /// Texture-space sub-rectangle (`x, y, width, height`); `None` draws
-    /// the whole texture.
+    /// Normalized texture-space sub-rectangle (`x, y, width, height`, each
+    /// in `0..=1`, origin top-left); `None` draws the whole texture.
     pub source_rect: Option<[f32; 4]>,
     /// Quad size in the scene's units (world units for gameplay, logical
     /// pixels for screen-space UI — the camera decides which).
     pub size: [f32; 2],
+    /// Straight (not premultiplied) RGBA multiplier on the texel; the
+    /// sprite pass premultiplies when blending.
     pub tint: [f32; 4],
+    /// Quad centre in the camera's units; rotation about the plane normal
+    /// turns the quad.
     pub frame: Motor3,
     /// Painter's-order sort key: lower draws first (further back).
     pub layer: i32,

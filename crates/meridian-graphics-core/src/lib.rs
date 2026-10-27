@@ -15,6 +15,7 @@ mod render_graph_error;
 mod render_pass;
 pub mod scene;
 mod shader_handle;
+pub mod sprites;
 pub mod submission;
 #[cfg(test)]
 mod tests;
@@ -34,6 +35,10 @@ pub use scene::{
     world_space_bounds,
 };
 pub use shader_handle::{ShaderHandle, ShaderMarker};
+pub use sprites::{
+    PreparedSprites, SPRITE_SHADER_WGSL, SPRITE_VERTEX_BYTES, SpriteBatch, SpriteRenderer,
+    SpriteVertex, batch_scene2d,
+};
 pub use submission::{
     DEFAULT_SHADOW_MAP_SIZE, DrawBuffers, MAX_LIGHTS, MaterialRegistry, MeshRegistry,
     MeshRegistryError, MeshSource, PreparedScene, SHADOW_VOLUME_HALF_EXTENT, SceneAssets,
