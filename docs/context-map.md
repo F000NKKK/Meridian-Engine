@@ -26,6 +26,7 @@ two layers today is listed under the one it is moving to; Craftbook's
 | rendering | domain + adapter | `rendering-domain` (domain), `rendering-app` (app: ports `FrameRecorder`/`MeshStore`/`TextureStore`), `rendering-wgpu` (infra: wgpu recording, implements the ports) | scenes, cameras, lights, materials, render graph, frame submission |
 | physics | domain + adapters | `physics-domain` (domain, perf), `physics-app` (app: `PhysicsSubsystem`, the `PhysicsStepper` port), `physics-wgpu` (infra: batched stepper) | rigid bodies, colliders, contacts, solver, integrator, soft bodies |
 | audio | domain + adapter | `audio-domain` (domain), `audio-app` (app: `AudioSubsystem`, the `AudioSink` port), `audio-cpal` (infra: cpal, implements it) | listener, emitters, speakers, mixer, DSP graph |
+| text | domain | `text-domain` (domain: TrueType parsing, outlines, rasterizer, glyph atlas, shaper) | faces, outlines, coverage bitmaps, glyph atlas |
 | ui | domain + adapter | `ui-domain` (domain), `mel-build` (infra: build-time `.mel` generator), `ui-scene2d` (infra: adapter from the UI tree to `rendering-domain::Scene2d`) | element tree, typed properties, layout, hit testing, generated bindings |
 | data | infrastructure | `scene` (infra: Substrate Data scene documents) | scene document schema and migration |
 | editor | infrastructure | `editor-domain`, `editor-app`, `editor-tcp` (infra) | host/editor wire messages, versions, ids; the host's session, ports and loopback TCP adapter |
@@ -52,6 +53,7 @@ dependencies need one of these:
 | audio → platform | customer–supplier | capability report |
 | physics → platform | customer–supplier | `CpuCapabilities` (`platform-winit`) |
 | runtime → physics, audio, rendering, platform, assets, compute, diagnostics | customer–supplier | each context's published API, called by runtime use cases |
+| ui → text | customer–supplier | `ui-scene2d` measures and draws text through `text-domain` faces and the glyph atlas (ADR 023) |
 | ui → rendering | customer–supplier | `ui-scene2d` extracts the UI tree into `rendering-domain::Scene2d` (ADR 021) |
 | editor → data | customer–supplier | the protocol carries scene documents and entity refs |
 | scene-markup → runtime | anticorruption layer | markup tags translated into runtime commands |
