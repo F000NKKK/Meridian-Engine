@@ -15,6 +15,18 @@ The second core idea is strict layering. Low-level crates provide primitives;
 domain crates build upward; the application layer owns policy. The project
 prefers stable boundaries over quick coupling.
 
+## Engineering standard
+
+Rust code here follows **Craftbook**, our engineering standard:
+https://github.com/F000NKKK/craftbook. Read its `README.md` and the relevant
+`rust/` chapter before writing or reviewing code; the short version is in
+[`.claude/rules/craftbook.md`](.claude/rules/craftbook.md). Known conflicts
+between Craftbook and this repository's docs (driver direction, the
+float/fixed file rule, `foundation`'s global log sink) are listed in
+Craftbook's `adoption/meridian-engine.md`: until the ADR that resolves one is
+accepted, keep the current rule here and do not make the gap wider. Anything
+not listed there follows Craftbook.
+
 ## Source of truth order
 
 When instructions conflict, use this order:

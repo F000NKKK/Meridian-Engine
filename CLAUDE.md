@@ -15,6 +15,18 @@ The design goal is: one spatial model, no global managers, no accidental hub
 crates, no hidden lifetime policy in loader/identity crates, and no driver/core
 coupling.
 
+## Engineering standard
+
+Rust code here follows **Craftbook**, our engineering standard:
+https://github.com/F000NKKK/craftbook. Read its `README.md` and the relevant
+`rust/` chapter before writing or reviewing code; the short version is in
+[`.claude/rules/craftbook.md`](.claude/rules/craftbook.md). Known conflicts
+between Craftbook and this repository's docs (driver direction, the
+float/fixed file rule, `foundation`'s global log sink) are listed in
+Craftbook's `adoption/meridian-engine.md`: until the ADR that resolves one is
+accepted, keep the current rule here and do not make the gap wider. Anything
+not listed there follows Craftbook.
+
 ## Read order
 
 For any task, first read `AGENTS.md`. Then read the narrowest applicable docs:
