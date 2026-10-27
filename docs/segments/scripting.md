@@ -54,14 +54,12 @@ the prior art to copy from is Yog-Mod-Loader's `.yui` -> `.g.rs` pipeline
 (`yog-ui`, `yog-kit`) and Yog-IDLE's `docs/yui.md`/`mvvm.md`/`yres.md`.
 
 1. ~~ADR 017: `.mel` behavior model~~ — done.
-2. **Source spans in `dsl-core`.** Line/column spans on `Element`,
-   attributes and `ParseError`. Needed by `// @mel file:line` markers and
-   by `team/ide`'s LSP.
-3. **Grammar growth in `dsl-core`.** The `x:` prefix (`x:Class`,
-   `x:ViewModel`, `x:Name`, `x:Key`), dotted property elements and
-   attached properties (`Grid.Row`, `Entity.Components`), and parsing of
-   markup-extension values (`{x:Bind ...}`, `{StaticResource ...}`) into
-   a typed form. Malformed-input tests for each.
+2. ~~Source spans in `dsl-core`~~ — done: `Span` (offset, line,
+   column) on every `Element`, `Attribute` and `ParseError`.
+3. ~~Grammar growth in `dsl-core`~~ — done: `x:` prefix, dotted names
+   and property elements, markup extensions parsed into `MarkupValue`,
+   typed `ParseErrorKind`; a tag built straight from markup rejects an
+   extension value with a clear error (`text_attr`).
 4. **Literal grammar.** Validate plain attribute values against
    Substrate-Data string rules (`@kind:id`, `@@`, error on other `@`),
    reusing `substrate-data`'s classifier (`typed::classify`, in progress
