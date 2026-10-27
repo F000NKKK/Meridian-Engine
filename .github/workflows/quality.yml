@@ -82,9 +82,9 @@ jobs:
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-llvm-cov,cargo-deny
-      - run: cargo test --workspace --no-fail-fast --features "$TEST_FEATURES"
+      - run: cargo test --locked --workspace --no-fail-fast --features "$TEST_FEATURES"
       # llvm-cov on stable does not run doc tests; they run here.
-      - run: cargo test --workspace --features "$TEST_FEATURES" --doc
+      - run: cargo test --locked --workspace --features "$TEST_FEATURES" --doc
       - name: coverage per crate
         run: cargo llvm-cov --workspace --features "$TEST_FEATURES" --summary-only
       - name: coverage threshold by layer (chapter 8 §8.1; reported during adoption)
