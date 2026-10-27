@@ -42,7 +42,7 @@ pub(super) async fn run(
     let device = gpu.gpu_driver_device();
     let generations = scratch.generations();
     let slots = &scratch.slots;
-    let bind_group = scratch.bind_group.get_or_build(&generations, || {
+    let bind_group = scratch.bind_group.reuse_or_build(&generations, || {
         let buffers = slots
             .each_ref()
             .map(|slot| slot.buffer().expect("every slot was filled"));
