@@ -3,8 +3,8 @@
 //! Layer: infrastructure (adapter); bounded context: physics
 //! (`craftbook.toml`, docs/context-map.md).
 //!
-//! No GPU backend yet. Planned: `wgpu`, once `graphics-driver` needs it —
-//! see docs/roadmap.md. `PhysicsBackend` reports real CPU capability so
+//! No GPU backend here: GPU kernels run through `meridian-gpu-driver` from
+//! `meridian-physics-compute`. `PhysicsBackend` reports real CPU capability so
 //! `physics-core` can decide batch-size cutoffs the same way
 //! `compute-runtime` does.
 

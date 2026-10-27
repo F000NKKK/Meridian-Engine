@@ -172,10 +172,11 @@ meridian-gac-core   meridian-compute-runtime
 
 `meridian-gac-compute` depends on both and implements `compute-runtime`'s
 `ComputeKernel` trait for GAC batch operations (`MotorTransformKernel`,
-`MotorComposeKernel`, ...). `graphics-core` and `physics-core` depend on
+`MotorComposeKernel`, ...). `graphics-core` depends on
 `gac-compute` for batched transform work and on `compute-runtime` directly
 for non-GAC compute (e.g. GPU culling) — both edges omitted from the main
-diagram above for readability, along with `meridian-audio-core`'s
+diagram above for readability. `physics-core` has neither edge: its batching
+lives in `physics-compute`. Also omitted: `meridian-audio-core`'s
 dependency on `meridian-gac-core`/`meridian-audio-driver`/
 `meridian-resource-core` and `meridian-graphics-core`'s/
 `meridian-physics-core`'s own direct dependency on `meridian-resource-core`

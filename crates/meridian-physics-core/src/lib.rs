@@ -5,19 +5,18 @@
 //! data-oriented layout is provisional until a benchmark justifies it
 //! (ADR 020 D8).
 //!
-//! Real, tested physics pipeline: `BroadPhase` (naive O(n²) AABB sweep —
-//! a spatial hash/BVH is a later optimization once profiling calls for
-//! it, same policy as `task-core`'s scheduler), `NarrowPhase`
+//! Real, tested physics pipeline: `BroadPhase` (x-axis sweep-and-prune
+//! over AABBs — a grid/BVH is a later step for dense scenes where many
+//! bodies share the same x range), `NarrowPhase`
 //! (sphere-sphere, sphere-cuboid, and cuboid-cuboid via SAT — the two
 //! `ColliderShape` variants that exist so far), `ConstraintSolver`
 //! (impulse-based, linear *and* angular, with positional correction
 //! against sinking), and `Integrator` (semi-implicit Euler, using
 //! `gac-core`'s bivector exponential map for rotation — not a naive "add
-//! angle" or a separately-tracked quaternion). No GPU/SIMD dispatch
-//! through `compute-runtime` wired in yet — these are correct sequential
-//! CPU implementations first; batching them through `compute-runtime` is
-//! additive later, not a rewrite (the same kernel logic, called per-pair
-//! instead of once).
+//! angle" or a separately-tracked quaternion). These are
+//! correct sequential CPU implementations; batched and GPU dispatch lives
+//! in `meridian-physics-compute`, which calls the same per-pair logic
+//! through `compute-runtime`.
 //!
 //! Design notes: docs/notes/meridian-physics-core.md (`lib`).
 #![doc = include_str!("../README.md")]

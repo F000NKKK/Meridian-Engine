@@ -46,15 +46,13 @@ fn rejects_what_the_tree_cannot_build() {
     );
     assert_eq!(
         node("<Grid><Grid.RowDefinitions /></Grid>"),
-        Err(InvalidMarkup::UnknownElement(
+        Err(InvalidMarkup::UnsupportedPropertyElement(
             "Grid.RowDefinitions".to_string()
         ))
     );
     assert_eq!(
-        node(r#"<TextBlock text="{StaticResource K}" />"#),
-        Err(InvalidMarkup::UnsupportedExtension(
-            "StaticResource".to_string()
-        ))
+        node(r#"<TextBlock text="{Binding K}" />"#),
+        Err(InvalidMarkup::UnsupportedExtension("Binding".to_string()))
     );
     assert!(matches!(
         node(r#"<TextBlock colour="red" />"#),
@@ -87,5 +85,95 @@ fn resource_references_are_resolved_in_attributes() {
             .unwrap_err()
             .1,
         InvalidMarkup::UnknownResource("Strings.nope".to_string())
+    );
+}
+
+const DEMO: &str = r##"<StackPanel width="{StaticResource Wide}">
+    <StackPanel.Resources>
+        <Number x:Key="Wide" Value="300" />
+        <String x:Key="Title" Value="Outer" />
+        <Color x:Key="Accent" Value="#FF8800" />
+    </StackPanel.Resources>
+    <TextBlock text="{StaticResource Title}" />
+    <Border>
+        <Border.Resources><String x:Key="Title" Value="Inner" /></Border.Resources>
+        <TextBlock text="{StaticResource Title}" />
+    </Border>
+    <TextBlock text="{StaticResource Title}" />
+</StackPanel>"##;
+
+#[test]
+fn static_resources_resolve_to_the_nearest_block() {
+    let root = node(DEMO).unwrap();
+    let text = |node: &UiNode| node.literals[0].text.clone();
+    assert_eq!(text(&root), "300");
+    assert_eq!(text(&root.children[0]), "Outer");
+    assert_eq!(text(&root.children[1].children[0]), "Inner");
+    // The inner block ends with its element.
+    assert_eq!(text(&root.children[2]), "Outer");
+    // A Resources block is not a child element.
+    assert_eq!(root.children.len(), 3);
+}
+
+#[test]
+fn static_resources_fall_back_to_resource_sets() {
+    let mut resources = ResourceSets::default();
+    let set = crate::ResourceSet::parse(
+        std::path::Path::new("Strings.mres"),
+        "Strings",
+        r#"{ title: "Yog" }"#,
+    )
+    .unwrap();
+    resources.insert(set);
+    let root = parse(r#"<TextBlock text="{StaticResource Strings.title}" />"#).unwrap();
+    let node = UiNode::from_element(&root, &[], &resources).unwrap();
+    assert_eq!(node.literals[0].text, "Yog");
+}
+
+fn broken(source: &str) -> InvalidMarkup {
+    node(source).unwrap_err()
+}
+
+#[test]
+fn resource_blocks_are_checked() {
+    let block =
+        |inner: &str| format!(r#"<Border><Border.Resources>{inner}</Border.Resources></Border>"#);
+    assert_eq!(
+        broken(r#"<TextBlock text="{StaticResource Nope}" />"#),
+        InvalidMarkup::UnknownStaticResource("Nope".to_string())
+    );
+    assert_eq!(
+        broken(r#"<TextBlock text="{StaticResource A, B}" />"#),
+        InvalidMarkup::InvalidStaticResource
+    );
+    assert_eq!(
+        broken(&block(r#"<String Value="x" />"#)),
+        InvalidMarkup::MissingResourceKey("String".to_string())
+    );
+    assert_eq!(
+        broken(&block(r#"<String x:Key="a" />"#)),
+        InvalidMarkup::MissingResourceValue("a".to_string())
+    );
+    assert_eq!(
+        broken(&block(r#"<String x:Key="a.b" Value="x" />"#)),
+        InvalidMarkup::InvalidResourceKey("a.b".to_string())
+    );
+    assert_eq!(
+        broken(&block(
+            r#"<String x:Key="a" Value="x" /><Bool x:Key="a" Value="true" />"#
+        )),
+        InvalidMarkup::DuplicateResourceKey("a".to_string())
+    );
+    assert_eq!(
+        broken(&block(r#"<Sprite x:Key="a" Value="x" />"#)),
+        InvalidMarkup::InvalidResourceElement("Sprite".to_string())
+    );
+    assert!(matches!(
+        broken(&block(r#"<Number x:Key="a" Value="many" />"#)),
+        InvalidMarkup::InvalidResourceValue(_)
+    ));
+    assert_eq!(
+        broken(r#"<Border><Border.Resources /><Border.Resources /></Border>"#),
+        InvalidMarkup::DuplicateResourcesBlock("Border".to_string())
     );
 }

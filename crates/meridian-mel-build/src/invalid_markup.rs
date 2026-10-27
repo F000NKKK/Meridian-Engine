@@ -1,5 +1,7 @@
 //! [`InvalidMarkup`]: a rule of ADR 017 that a parsed `.mel` document breaks.
 
+use crate::ResourceProblem;
+
 /// A rule of ADR 017 a parsed document breaks.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum InvalidMarkup {
@@ -64,4 +66,31 @@ pub enum InvalidMarkup {
     /// Substrate-Data string.
     #[error("{0}")]
     InvalidLiteral(String),
+    /// A property element other than `<Owner.Resources>` in a UI document.
+    #[error("<{0}> is not supported in a UI document (only <Owner.Resources>)")]
+    UnsupportedPropertyElement(String),
+    #[error("<{0}> has more than one Resources block")]
+    DuplicateResourcesBlock(String),
+    /// An element of a `Resources` block that is not `String`, `Number`,
+    /// `Bool` or `Color` without children.
+    #[error(
+        "<{0}> is not a resource (use <String>, <Number>, <Bool> or <Color> with x:Key and Value)"
+    )]
+    InvalidResourceElement(String),
+    #[error("resource <{0}> needs an x:Key")]
+    MissingResourceKey(String),
+    #[error("resource key '{0}' is not an identifier")]
+    InvalidResourceKey(String),
+    #[error("resource key '{0}' is defined twice in one Resources block")]
+    DuplicateResourceKey(String),
+    #[error("resource '{0}' needs a Value")]
+    MissingResourceValue(String),
+    #[error("{0}")]
+    InvalidResourceValue(ResourceProblem),
+    #[error(
+        "no resource '{0}' in scope (define it in a Resources block, or use Set.name for a .mres entry)"
+    )]
+    UnknownStaticResource(String),
+    #[error("{{StaticResource}} takes exactly one key")]
+    InvalidStaticResource,
 }

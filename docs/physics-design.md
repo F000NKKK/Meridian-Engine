@@ -36,7 +36,7 @@ Real, tested (not stub) as of this writing:
 
 ```text
 Geometry              Sphere, Cuboid (ColliderShape) — capsule/mesh later
-Broad Phase           Naive O(n²) AABB sweep — spatial hash/BVH once profiling calls for it
+Broad Phase           Sweep-and-prune on the x axis (same pairs, same order as the exhaustive sweep) — grid/BVH for dense scenes
 Narrow Phase          Sphere-sphere, sphere-cuboid, cuboid-cuboid (SAT) exact tests
 Constraint Solver     Impulse-based + positional correction against sinking,
                        resolve split into resolve_velocity/

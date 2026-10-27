@@ -689,12 +689,13 @@ the rest are not started.
    ("every entity with `Conveyor` *and* `ItemSlot` *and* `Position`").
    Not built yet: `Option<&T>`/`Without<T>` filters, parallel iteration,
    and change detection.
-3. **`physics-core::BroadPhase` is pairwise candidate generation**
-   (`find_candidate_pairs`), fine for the dozens of dynamic bodies the
-   examples exercise, not for thousands of mostly-static colliders (a
-   voxel world's solid blocks, a factory's machine footprints). Needs a
-   real spatial structure (uniform grid keyed to chunk size, or a BVH)
-   so broad-phase cost scales with *nearby* bodies, not total bodies.
+3. **`physics-core::BroadPhase` is x-axis sweep-and-prune** (first
+   step, done): `find_candidate_pairs` sorts AABBs by minimum x and only
+   tests bodies that overlap along x, returning the same pairs in the same
+   order as the exhaustive sweep. Still open for thousands of
+   mostly-static colliders (a voxel world's solid blocks, a factory's
+   machine footprints) that share an x range: a uniform grid keyed to
+   chunk size or a BVH, plus incremental updates for static bodies.
 4. **Done: `physics-compute`'s batched rigid-body kernels are wired
    into `engine-core::Runtime`.** `PhysicsStepStage` (in `engine-core`,
    re-exported from `meridian-sdk`, alongside its `PhysicsDispatchMode`
@@ -773,8 +774,9 @@ the rest are not started.
    `meridian-ui-core` ([ADR 018](adr/018-ui-architecture.md)) has the
    WPF-style element tree, typed properties, measure/arrange layout
    (`Border`, `StackPanel`, `DockPanel`, `Grid`, `TextBlock`) and hit
-   testing, tested without a GPU. Still missing: extraction to
-   `Scene2d`, text rendering, input routing and controls, styles and
+   testing, focus and input routing (`handle_input`, `UiEvent`s, a
+   consumed/ignored outcome), tested without a GPU. Still missing:
+   extraction to `Scene2D`, text rendering, controls, styles and
    templates. Markup literals (`"Auto"`, `"2*"`, `"4,2"`) parse through
    `PropertyType::parse`.
 8. **Asset pipeline stops at static meshes.** `asset-core::ObjDecoder`

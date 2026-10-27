@@ -1,10 +1,11 @@
 //! [`UiNode`]: an element of a `.mel` document that builds a
 //! `meridian-ui-core` element.
 
-use meridian_dsl_core::{Attribute, Element, MarkupValue, Span};
+use meridian_dsl_core::{Element, Span};
 use meridian_ui_core::ElementKind;
 
-use crate::{InvalidMarkup, NamedElement, PropertyPath, ResourceSets, UiLiteral};
+use crate::ui_builder::UiBuilder;
+use crate::{InvalidMarkup, NamedElement, ResourceSets, UiLiteral};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UiNode {
@@ -28,78 +29,22 @@ impl UiNode {
     }
 
     /// Checks `element` and its subtree; `names` are the document's
-    /// `x:Name`s and `resources` resolve `@res:` references.
+    /// `x:Name`s and `resources` resolve `@res:` and dotted
+    /// `{StaticResource}` references.
     pub fn from_element(
         element: &Element,
         names: &[NamedElement],
         resources: &ResourceSets,
     ) -> Result<Self, UiNodeError> {
-        let tag = element.name.to_string();
-        let Some(kind) = element_kind(element) else {
-            return Err((element.span, InvalidMarkup::UnknownElement(tag)));
-        };
-        let field = element
-            .directive("Name")
-            .and_then(Attribute::text)
-            .and_then(|name| names.iter().find(|named| named.name == name))
-            .map(|named| named.field.clone());
-        let mut literals = Vec::new();
-        for attr in element
-            .attrs
-            .iter()
-            .filter(|attr| attr.name.prefix().is_none())
-        {
-            if let Some(literal) = literal(&tag, attr, resources)? {
-                literals.push(literal);
-            }
-        }
-        let children = element
-            .children
-            .iter()
-            .map(|child| Self::from_element(child, names, resources))
-            .collect::<Result<_, _>>()?;
-        Ok(Self {
-            kind,
-            field,
-            literals,
-            children,
-        })
+        UiBuilder::new(names, resources).node(element)
     }
 }
 
-fn element_kind(element: &Element) -> Option<ElementKind> {
+pub(crate) fn element_kind(element: &Element) -> Option<ElementKind> {
     if element.is_property_element() {
         return None;
     }
     ElementKind::from_tag(&element.name.to_string())
-}
-
-/// `None` for an `{x:Bind}`, which `apply_bindings` writes.
-fn literal(
-    tag: &str,
-    attr: &Attribute,
-    resources: &ResourceSets,
-) -> Result<Option<UiLiteral>, UiNodeError> {
-    let text = match &attr.value {
-        MarkupValue::Text(text) => text,
-        MarkupValue::Extension(extension) if extension.name.is_directive("Bind") => {
-            return Ok(None);
-        }
-        MarkupValue::Extension(extension) => {
-            let reason = InvalidMarkup::UnsupportedExtension(extension.name.to_string());
-            return Err((attr.span, reason));
-        }
-    };
-    let path = PropertyPath::resolve(tag, &attr.name).map_err(|reason| (attr.span, reason))?;
-    let text = resources
-        .resolve(text)
-        .map_err(|reason| (attr.span, reason))?;
-    Ok(Some(UiLiteral {
-        path,
-        property: attr.name.to_string(),
-        text,
-        span: attr.span,
-    }))
 }
 
 #[cfg(test)]

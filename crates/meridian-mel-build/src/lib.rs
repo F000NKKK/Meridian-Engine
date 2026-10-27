@@ -36,6 +36,7 @@ mod named_element;
 mod resources;
 mod ui_bindings;
 mod ui_build;
+mod ui_builder;
 mod ui_literal;
 mod ui_node;
 
@@ -52,8 +53,9 @@ pub use invalid_markup::InvalidMarkup;
 pub use mel_document::MelDocument;
 pub use named_element::NamedElement;
 pub use resources::{
-    GeneratedResources, ResourceEntry, ResourceError, ResourceProblem, ResourceSet, ResourceSets,
-    ResourceValue,
+    GeneratedResources, LocalResources, ResourceEntry, ResourceError, ResourceProblem, ResourceSet,
+    ResourceSets, ResourceValue,
 };
+pub(crate) use resources::{RESOURCE_TAGS, read_markup_value};
 pub use ui_literal::UiLiteral;
 pub use ui_node::UiNode;
