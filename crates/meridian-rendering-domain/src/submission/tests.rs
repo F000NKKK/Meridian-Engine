@@ -146,3 +146,69 @@ fn material_registry_round_trips() {
     assert!(registry.unregister(handle).is_some());
     assert!(registry.get(handle).is_none());
 }
+
+fn material(blend: crate::scene::BlendMode, always_on_top: bool) -> Material {
+    Material {
+        always_on_top,
+        blend,
+        ..Material::default()
+    }
+}
+
+#[test]
+fn materials_pick_their_draw_state() {
+    use crate::scene::BlendMode::{AlphaBlend, Opaque};
+    assert_eq!(DrawState::of(&material(Opaque, false)), DrawState::Opaque);
+    assert_eq!(
+        DrawState::of(&material(AlphaBlend, false)),
+        DrawState::Transparent
+    );
+    assert_eq!(
+        DrawState::of(&material(Opaque, true)),
+        DrawState::OnTopOpaque
+    );
+    assert_eq!(
+        DrawState::of(&material(AlphaBlend, true)),
+        DrawState::OnTopTransparent
+    );
+}
+
+#[test]
+fn transparent_draws_neither_write_depth_nor_hide_what_is_behind() {
+    assert!(DrawState::Opaque.writes_depth());
+    assert!(DrawState::Transparent.tests_depth() && !DrawState::Transparent.writes_depth());
+    assert!(!DrawState::OnTopOpaque.tests_depth());
+    assert!(!DrawState::OnTopTransparent.tests_depth());
+}
+
+#[test]
+fn draws_go_opaque_then_far_to_near_translucent_then_on_top() {
+    let draw = |state, distance_squared| OrderedDraw {
+        state,
+        distance_squared,
+    };
+    let order = order_draws(&[
+        draw(DrawState::OnTopOpaque, 1.0),
+        draw(DrawState::Transparent, 4.0),
+        draw(DrawState::Opaque, 9.0),
+        draw(DrawState::Transparent, 16.0),
+        draw(DrawState::Opaque, 1.0),
+        draw(DrawState::OnTopTransparent, 2.0),
+    ]);
+    // Opaque keep submission order, translucent run farthest first.
+    assert_eq!(order, vec![2, 4, 3, 1, 0, 5]);
+}
+
+#[test]
+fn equal_distances_keep_submission_order() {
+    let draw = OrderedDraw {
+        state: DrawState::Transparent,
+        distance_squared: 5.0,
+    };
+    assert_eq!(order_draws(&[draw, draw, draw]), vec![0, 1, 2]);
+}
+
+#[test]
+fn nothing_to_order_gives_an_empty_order() {
+    assert!(order_draws(&[]).is_empty());
+}
