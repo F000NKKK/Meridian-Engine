@@ -2,8 +2,8 @@
 
 mod face_measurer;
 mod glyph_sprites;
-mod text_paint;
+mod paint;
 
 pub use face_measurer::FaceMeasurer;
 pub(crate) use glyph_sprites::push_text;
-pub use text_paint::TextPaint;
+pub use paint::TextPaint;

@@ -6,7 +6,7 @@ use meridian_graphics_core::Sprite;
 use meridian_ui_core::properties::text_block::{FONT_SIZE, FOREGROUND, TEXT};
 use meridian_ui_core::{NodeId, Rect, UiTree};
 
-use super::text_paint::TextPaint;
+use super::paint::TextPaint;
 use crate::RenderError;
 
 /// Appends the glyph sprites of `node`'s text, laid out in `area`.
