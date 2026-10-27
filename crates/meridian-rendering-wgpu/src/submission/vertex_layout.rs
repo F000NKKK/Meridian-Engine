@@ -3,10 +3,11 @@
 use crate::{VertexAttributeDesc, VertexFormat, VertexLayout};
 
 /// [`UNLIT_SHADER_WGSL`](super::UNLIT_SHADER_WGSL)/[`lit_shader_wgsl`](super::lit_shader_wgsl)'s shared vertex layout:
-/// position, normal, color, emissive — tightly packed.
+/// position, normal, color, emissive, gloss (shininess, specular strength)
+/// — tightly packed.
 pub(crate) fn colored_vertex_layout() -> VertexLayout {
     VertexLayout {
-        stride: 52, // 3 + 3 + 4 + 3 = 13 floats
+        stride: 60, // 3 + 3 + 4 + 3 + 2 = 15 floats
         attributes: vec![
             VertexAttributeDesc {
                 location: 0,
@@ -28,15 +29,20 @@ pub(crate) fn colored_vertex_layout() -> VertexLayout {
                 format: VertexFormat::Float32x3,
                 offset: 40,
             },
+            VertexAttributeDesc {
+                location: 4,
+                format: VertexFormat::Float32x2,
+                offset: 52,
+            },
         ],
     }
 }
 
 /// [`TEXTURED_SHADER_WGSL`](super::TEXTURED_SHADER_WGSL)/[`lit_textured_shader_wgsl`](super::lit_textured_shader_wgsl)'s shared vertex
-/// layout: position, normal, uv, tint, emissive — tightly packed.
+/// layout: position, normal, uv, tint, emissive, gloss — tightly packed.
 pub(crate) fn textured_vertex_layout() -> VertexLayout {
     VertexLayout {
-        stride: 60, // 3 + 3 + 2 + 4 + 3 = 15 floats
+        stride: 68, // 3 + 3 + 2 + 4 + 3 + 2 = 17 floats
         attributes: vec![
             VertexAttributeDesc {
                 location: 0,
@@ -63,6 +69,11 @@ pub(crate) fn textured_vertex_layout() -> VertexLayout {
                 format: VertexFormat::Float32x3,
                 offset: 48,
             },
+            VertexAttributeDesc {
+                location: 5,
+                format: VertexFormat::Float32x2,
+                offset: 60,
+            },
         ],
     }
 }
@@ -72,7 +83,7 @@ pub(crate) fn textured_vertex_layout() -> VertexLayout {
 /// [`EMISSIVE_EXTRACT_SHADER_WGSL`](super::EMISSIVE_EXTRACT_SHADER_WGSL) reads for a colored-family draw.
 pub(crate) fn emissive_from_colored_layout() -> VertexLayout {
     VertexLayout {
-        stride: 52,
+        stride: 60,
         attributes: vec![
             VertexAttributeDesc {
                 location: 0,
@@ -91,7 +102,7 @@ pub(crate) fn emissive_from_colored_layout() -> VertexLayout {
 /// [`emissive_from_colored_layout`]'s textured-family counterpart.
 pub(crate) fn emissive_from_textured_layout() -> VertexLayout {
     VertexLayout {
-        stride: 60,
+        stride: 68,
         attributes: vec![
             VertexAttributeDesc {
                 location: 0,
@@ -114,7 +125,7 @@ pub(crate) fn emissive_from_textured_layout() -> VertexLayout {
 /// even though they're still physically present in the same buffer.
 pub(crate) fn shadow_from_colored_layout() -> VertexLayout {
     VertexLayout {
-        stride: 52,
+        stride: 60,
         attributes: vec![VertexAttributeDesc {
             location: 0,
             format: VertexFormat::Float32x3,
@@ -126,7 +137,7 @@ pub(crate) fn shadow_from_colored_layout() -> VertexLayout {
 /// `shadow_from_colored_layout`'s textured-family counterpart.
 pub(crate) fn shadow_from_textured_layout() -> VertexLayout {
     VertexLayout {
-        stride: 60,
+        stride: 68,
         attributes: vec![VertexAttributeDesc {
             location: 0,
             format: VertexFormat::Float32x3,

@@ -68,7 +68,8 @@ Not started; ordered by suggested priority. Items wait for an explicit task.
    and textured bind groups rebuilt every frame. Add a per-instance uniform
    or storage buffer, then indirect draw and compute culling (GPU-driven
    direction in graphics-design.md).
-5. **Per-material roughness/specular.** Shininess is hard-coded to 32.
+5. **Per-material highlights — done (2026-10-27).** `Material::shininess` and
+   `Material::specular`; roughness/metallic wait for a PBR shader.
 6. **Render-graph resource lifetime.** Ordering is real; transient target
    allocation/aliasing is not.
 7. **`Runtime::tick` integration.** Blocked on an architecture decision:

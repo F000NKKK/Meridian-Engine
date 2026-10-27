@@ -33,8 +33,7 @@ Post Processing      -- real (bloom); HDR/tone-mapping still open
 `Camera`, frustum culling, render graph pass ordering, scene extraction,
 lighting and the submission bridge are all real and tested (`cargo test
 -p meridian-rendering-domain`) — see "Implementation order" below for the
-step-by-step history and exactly what's still open (per-material
-roughness/specular, HDR). `rendering-wgpu` is real too, both headless (`Device::new`) and
+step-by-step history and exactly what's still open (HDR). `rendering-wgpu` is real too, both headless (`Device::new`) and
 windowed (`Device::new_windowed`, a real swapchain `Surface` —
 `Buffer`/`Texture`/`Shader`/compute `Pipeline`/`CommandBuffer` either
 way). `Animation` is the one row above with no work started yet — no
@@ -282,8 +281,11 @@ driver.
    `CommandBuffer::begin_render_pass_loaded` (preserves existing content
    instead of clearing) — deliberately non-HDR (`Rgba8UnormSrgb`
    throughout; `Rgba16Float` + exposure is real future work if a scene
-   ever needs it). Still open: real per-material roughness/specular
-   control (shininess is fixed at 32 in the shader).
+   ever needs it). Highlights are per material:
+   `Material::shininess` (the Blinn-Phong exponent, default 32) and
+   `Material::specular` (strength, default 0.3) are baked into each vertex
+   as a `gloss` pair and read by the lit shaders; a PBR upgrade replaces
+   them with roughness/metallic.
    **Material states are real:** `DrawState::of(material)` (domain) maps
    `blend` and `always_on_top` to `Opaque`, `Transparent` (alpha blended,
    depth tested but not written), `OnTopOpaque` and `OnTopTransparent`
