@@ -1,8 +1,8 @@
 //! Tests of this module.
 
 use super::*;
-use meridian_physics_core::soft_body::fixed_softbody::{
-    FixedSoftBodyIntegrator, fixed_icosphere_soft_body,
+use meridian_physics_core::soft_body::fixed::{
+    FixedSoftBodyIntegrator, FixedSoftBodyMaterial, FixedSpringTuning, fixed_icosphere_soft_body,
 };
 
 fn fv3(x: f64, y: f64, z: f64) -> FixedVec3 {
@@ -22,11 +22,17 @@ fn ball(center: FixedVec3, radius: f64) -> FixedSoftBody {
         center,
         Fixed::from_num(radius),
         1,
-        Fixed::from_num(0.05),
-        Fixed::from_num(400.0),
-        Fixed::from_num(2.0),
-        Fixed::from_num(150.0),
-        Fixed::from_num(1.0),
+        FixedSoftBodyMaterial {
+            particle_mass: Fixed::from_num(0.05),
+            edge: FixedSpringTuning {
+                stiffness: Fixed::from_num(400.0),
+                damping: Fixed::from_num(2.0),
+            },
+            spoke: FixedSpringTuning {
+                stiffness: Fixed::from_num(150.0),
+                damping: Fixed::from_num(1.0),
+            },
+        },
     )
 }
 
@@ -51,7 +57,7 @@ async fn kernel_or_skip() -> Option<(ComputeContext, FixedSoftBodyGpuKernel)> {
 /// bit-for-bit identical to `FixedSoftBodyIntegrator::step` — every
 /// position and velocity component, every step, no drift. A gentle
 /// drop at a fine timestep, matching
-/// `fixed_softbody`'s own reproducibility test, to stay inside
+/// `soft_body::fixed`'s own reproducibility test, to stay inside
 /// explicit-Euler's stable regime (see that test's own comment).
 #[cfg(feature = "hw-tests")]
 #[tokio::test]

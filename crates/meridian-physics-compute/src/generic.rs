@@ -4,7 +4,7 @@
 //! its own, so no GPU-dispatch constraint forces it to be flavor-split —
 //! see [`crate`]'s own doc comment).
 //!
-//! `SoftBodyIntegrator::step` (`physics-core::soft_body::generic_softbody`)
+//! `SoftBodyIntegrator::step` (`physics-core::soft_body::time_step`)
 //! computes forces by iterating `springs` once and scattering the result
 //! into both endpoints (`forces[a] += total; forces[b] -= total`) — fine
 //! sequentially on the CPU, but a data race on the GPU if parallelized
@@ -18,7 +18,7 @@
 //! Design notes: docs/notes/meridian-physics-compute.md (`generic`).
 
 use meridian_gac_core::{GaFlavor, ScalarLike};
-use meridian_physics_core::soft_body::generic_softbody::SoftBody;
+use meridian_physics_core::soft_body::mass_spring::SoftBody;
 
 /// `neighbor`'s top bit, set when this half-edge's owning particle is the
 /// original spring's `a` endpoint. Particle counts in this workspace are
@@ -47,7 +47,7 @@ pub fn decode_neighbor(encoded: u32) -> (usize, bool) {
 /// storage buffers. `rest_length`/`stiffness`/`damping` are duplicated
 /// per directed half-edge (once from each endpoint's perspective) so a
 /// GPU thread never needs to know which side of the original [`Spring`](
-/// meridian_physics_core::soft_body::generic_softbody::Spring) it's on,
+/// meridian_physics_core::soft_body::spring::Spring) it's on,
 /// beyond the `is_a` flag encoded in [`Self::neighbor`] (see the module
 /// doc for why that flag exists).
 #[derive(Debug, Clone)]
@@ -112,7 +112,9 @@ pub fn build_adjacency<F: GaFlavor>(body: &SoftBody<F>) -> Adjacency<F> {
 mod tests {
     use super::*;
     use meridian_gac_core::FloatFlavor;
-    use meridian_physics_core::soft_body::float_softbody::icosphere_soft_body;
+    use meridian_physics_core::soft_body::float::{
+        SoftBodyMaterial, SpringTuning, icosphere_soft_body,
+    };
 
     #[test]
     fn every_spring_produces_exactly_two_half_edges() {
@@ -120,11 +122,17 @@ mod tests {
             meridian_gac_core::Vec3::ZERO,
             1.0,
             1,
-            0.05,
-            400.0,
-            2.0,
-            150.0,
-            1.0,
+            SoftBodyMaterial {
+                particle_mass: 0.05,
+                edge: SpringTuning {
+                    stiffness: 400.0,
+                    damping: 2.0,
+                },
+                spoke: SpringTuning {
+                    stiffness: 150.0,
+                    damping: 1.0,
+                },
+            },
         );
         let adjacency = build_adjacency::<FloatFlavor>(&body);
         assert_eq!(adjacency.offsets.len(), body.particle_count() + 1);

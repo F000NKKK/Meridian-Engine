@@ -2,13 +2,13 @@
 
 use super::ColliderShape;
 use super::Contact;
-use super::RigidBody;
 use super::cuboid_vs_cuboid;
 use super::sphere_vs_cuboid;
 use super::sphere_vs_sphere;
+use crate::dynamics::RigidBody;
 use meridian_gac_core::{GaFlavor, ScalarLike};
 
-/// Resolves candidate pairs from [`BroadPhase`](super::BroadPhase) into exact [`Contact`](super::Contact)s.
+/// Resolves candidate pairs from [`BroadPhase`](crate::collision::BroadPhase) into exact [`Contact`](crate::collision::Contact)s.
 #[derive(Debug)]
 pub struct NarrowPhase<F: GaFlavor>(core::marker::PhantomData<F>);
 
@@ -24,7 +24,7 @@ impl<F: GaFlavor> NarrowPhase<F> {
         Self::default()
     }
 
-    /// Exact test for the current pair of [`ColliderShape`](super::ColliderShape)s. `None` if
+    /// Exact test for the current pair of [`ColliderShape`](crate::collision::ColliderShape)s. `None` if
     /// not overlapping.
     pub fn test_pair(&self, bodies: &[RigidBody<F>], a: usize, b: usize) -> Option<Contact<F>> {
         let (point, penetration, normal) = match (bodies[a].shape, bodies[b].shape) {
@@ -73,9 +73,9 @@ impl<F: GaFlavor> NarrowPhase<F> {
     }
 
     /// Like [`test_pair`](Self::test_pair), but expands a box-box pair's
-    /// full contact manifold (see `face_manifold`) into one [`Contact`](super::Contact)
+    /// full contact manifold (see `face_manifold`) into one [`Contact`](crate::collision::Contact)
     /// per manifold point instead of collapsing it to one — this is what
-    /// [`ConstraintSolver::resolve`](super::ConstraintSolver::resolve) should iterate over; `test_pair`'s
+    /// [`ConstraintSolver::resolve`](crate::dynamics::ConstraintSolver::resolve) should iterate over; `test_pair`'s
     /// single-point view exists only for simple exact-overlap queries.
     pub fn generate_contacts(
         &self,

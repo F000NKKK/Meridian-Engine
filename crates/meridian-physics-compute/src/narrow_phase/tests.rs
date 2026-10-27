@@ -3,7 +3,7 @@
 use super::*;
 use meridian_gac_core::FloatFlavor;
 use meridian_gac_core::{Motor3, Vec3};
-use meridian_physics_core::generic::ColliderShape;
+use meridian_physics_core::collision::ColliderShape;
 
 fn sphere_at(x: f32) -> RigidBody<FloatFlavor> {
     RigidBody {

@@ -1,4 +1,4 @@
-//! Batch [`NarrowPhase::test_pair`](meridian_physics_core::generic::NarrowPhase)
+//! Batch [`NarrowPhase::test_pair`](meridian_physics_core::collision::NarrowPhase)
 //! across many candidate pairs through `compute-runtime` — the
 //! `NarrowPhase` half of the rigid-body-pipeline batching this crate's
 //! own module doc describes (see [`crate::broad_phase`] for the broad
@@ -28,10 +28,11 @@ use std::sync::Mutex;
 
 use meridian_compute_runtime::{ComputeContext, ComputeKernel, DispatchSize};
 use meridian_gac_core::GaFlavor;
-use meridian_physics_core::generic::{Contact, NarrowPhase, RigidBody};
+use meridian_physics_core::collision::{Contact, NarrowPhase};
+use meridian_physics_core::dynamics::RigidBody;
 
 /// Batch-tests `pairs` (indices into `bodies`, typically
-/// [`BroadPhase::find_candidate_pairs`](meridian_physics_core::generic::BroadPhase::find_candidate_pairs)'s
+/// [`BroadPhase::find_candidate_pairs`](meridian_physics_core::collision::BroadPhase::find_candidate_pairs)'s
 /// output) for exact overlap, one dispatch instead of a loop.
 /// [`NarrowPhaseTestPairKernel::results`] holds one `Option<Contact<F>>`
 /// per pair, in the same order as `pairs` — `None` where `test_pair`
@@ -120,7 +121,7 @@ pub const MAX_CONTACTS_PER_PAIR: usize = 4;
 /// Batch-expands `pairs` into full contact manifolds via
 /// [`NarrowPhase::generate_contacts`] — the manifold-aware counterpart to
 /// [`NarrowPhaseTestPairKernel`], for callers that need
-/// [`ConstraintSolver::resolve`](meridian_physics_core::generic::ConstraintSolver::resolve)'s
+/// [`ConstraintSolver::resolve`](meridian_physics_core::dynamics::ConstraintSolver::resolve)'s
 /// real multi-point input (see this module's own doc comment for why
 /// `generate_contacts`'s variable per-pair output needed a different
 /// kernel shape than `test_pair`'s fixed 1:1 one).

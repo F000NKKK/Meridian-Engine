@@ -60,7 +60,7 @@ exist to arbitrate).
 
 Each half-edge also encodes, in `neighbor`'s top bit, whether *this*
 particle is the original [`Spring`](
-meridian_physics_core::soft_body::generic_softbody::Spring)'s `a` or
+meridian_physics_core::soft_body::spring::Spring)'s `a` or
 `b` endpoint (see [`decode_neighbor`]) — not a topology detail, a
 numerical-correctness one. `Fixed::mul`'s `>>16` truncation rounds
 toward negative infinity, so `fixed_mul(-p, q)` is *not* always

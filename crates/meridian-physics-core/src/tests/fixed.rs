@@ -1,6 +1,6 @@
-//! Tests of this module.
+//! Fixed-point-flavor tests: parity with the float path and bit-reproducibility.
 
-use super::*;
+use crate::fixed::*;
 use meridian_gac_core::FixedMotor3;
 use meridian_gac_core::FixedVec3;
 use meridian_numeric_core::Fixed;

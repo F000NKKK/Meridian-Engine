@@ -38,6 +38,6 @@ clippy::unreachable	2
 clippy::unused_async	1
 clippy::unused_self	5
 elided_lifetimes_in_paths	1
-missing_docs	703
+missing_docs	695
 unreachable_pub	12
 unused_qualifications	8

@@ -1,5 +1,5 @@
 //! GPU soft-body integration, `float` flavor — mirrors
-//! `physics-core::soft_body::float_softbody::SoftBodyIntegrator::step`'s
+//! `physics-core::soft_body::float::SoftBodyIntegrator::step`'s
 //! per-particle result, run as one WGSL compute invocation per particle
 //! instead of a sequential CPU loop.
 //!
@@ -26,8 +26,8 @@ use meridian_gac_core::FloatFlavor;
 use meridian_gac_core::Vec3;
 use meridian_gac_core::volume::Plane;
 use meridian_gpu_driver::{BufferUsage, ComputePipeline};
-use meridian_physics_core::generic::RigidBody;
-use meridian_physics_core::soft_body::float_softbody::SoftBody;
+use meridian_physics_core::dynamics::RigidBody;
+use meridian_physics_core::soft_body::float::SoftBody;
 
 use crate::generic::build_adjacency;
 
@@ -374,7 +374,7 @@ fn broad_phase_overlap(@builtin(global_invocation_id) id: vec3<u32>) {
 /// just the pairwise overlap test: [`RigidBody::aabb`] (reused, never
 /// reimplemented — see CLAUDE.md's "don't drag another crate's logic
 /// into your own" rule) is still computed on the CPU per body before
-/// upload, since deriving it for a [`meridian_physics_core::generic::ColliderShape::Cuboid`]
+/// upload, since deriving it for a [`meridian_physics_core::collision::ColliderShape::Cuboid`]
 /// needs the body's rotor sandwich-transformed local axes — genuine GA
 /// (geometric-algebra) work this crate's other three pipeline stages
 /// (integrator's rotor exponential/motor composition, narrow-phase's

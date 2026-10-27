@@ -2,7 +2,9 @@
 
 use super::*;
 use meridian_gac_core::Vec3;
-use meridian_physics_core::soft_body::float_softbody::{SoftBodyIntegrator, icosphere_soft_body};
+use meridian_physics_core::soft_body::float::{
+    SoftBodyIntegrator, SoftBodyMaterial, SpringTuning, icosphere_soft_body,
+};
 
 fn ground() -> Plane<FloatFlavor> {
     Plane {
@@ -13,7 +15,22 @@ fn ground() -> Plane<FloatFlavor> {
 }
 
 fn ball(center: Vec3, radius: f32) -> SoftBody {
-    icosphere_soft_body(center, radius, 1, 0.05, 400.0, 2.0, 150.0, 1.0)
+    icosphere_soft_body(
+        center,
+        radius,
+        1,
+        SoftBodyMaterial {
+            particle_mass: 0.05,
+            edge: SpringTuning {
+                stiffness: 400.0,
+                damping: 2.0,
+            },
+            spoke: SpringTuning {
+                stiffness: 150.0,
+                damping: 1.0,
+            },
+        },
+    )
 }
 
 /// Needs a real adapter; skip rather than fail where none is
@@ -100,7 +117,7 @@ fn sphere_at(x: f32) -> RigidBody<FloatFlavor> {
         velocity: Vec3::ZERO,
         angular_velocity: meridian_gac_core::Bivector3::ZERO,
         mass: 1.0,
-        shape: meridian_physics_core::generic::ColliderShape::Sphere { radius: 0.5 },
+        shape: meridian_physics_core::collision::ColliderShape::Sphere { radius: 0.5 },
     }
 }
 
@@ -128,7 +145,7 @@ async fn gpu_pairs_match_direct_find_candidate_pairs() {
         sphere_at(10.4), // overlaps 2, not 0/1
     ];
 
-    let mut broad_phase = meridian_physics_core::generic::BroadPhase::<FloatFlavor>::new();
+    let mut broad_phase = meridian_physics_core::collision::BroadPhase::<FloatFlavor>::new();
     let expected = broad_phase.find_candidate_pairs(&bodies).to_vec();
 
     let got = kernel.pairs(&context, &bodies).await;
@@ -153,7 +170,7 @@ async fn gpu_pairs_match_direct_find_candidate_pairs_large_batch() {
     // pair overlaps, none else do -> 1770 candidate pairs.
     let bodies: Vec<_> = (0..60).map(|i| sphere_at(i as f32 * 0.4)).collect();
 
-    let mut broad_phase = meridian_physics_core::generic::BroadPhase::<FloatFlavor>::new();
+    let mut broad_phase = meridian_physics_core::collision::BroadPhase::<FloatFlavor>::new();
     let expected = broad_phase.find_candidate_pairs(&bodies).to_vec();
 
     let got = kernel.pairs(&context, &bodies).await;

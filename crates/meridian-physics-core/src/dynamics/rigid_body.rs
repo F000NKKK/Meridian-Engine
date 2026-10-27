@@ -1,14 +1,14 @@
 //! A rigid body: frame, motion state and collider.
 
-use super::ColliderShape;
-use super::aabb_of;
+use crate::collision::ColliderShape;
+use crate::collision::aabb_of;
 use meridian_gac_core::volume::{Aabb, Obb};
 use meridian_gac_core::{BivectorLike, GaFlavor, MotorLike, ScalarLike, VectorLike};
 
 /// A simulated rigid body: spatial frame (shared with every other
 /// subsystem via the GAC) + linear and angular state. `mass <= 0` means
-/// static/immovable (infinite mass) — never touched by [`Integrator`](super::Integrator) or
-/// given any velocity change by [`ConstraintSolver`](super::ConstraintSolver).
+/// static/immovable (infinite mass) — never touched by [`Integrator`](crate::dynamics::Integrator) or
+/// given any velocity change by [`ConstraintSolver`](crate::dynamics::ConstraintSolver).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct RigidBody<F: GaFlavor> {
     pub frame: F::Motor,
@@ -43,7 +43,7 @@ impl<F: GaFlavor> RigidBody<F> {
     /// exact (`(2/5) * m * r²`, isotropic by construction). `Cuboid` is
     /// *not* exact — see `docs/physics-design.md`; this returns the
     /// average of the three principal moments, `(2/9) * m * (hx² + hy² +
-    /// hz²)`, since [`ConstraintSolver`](super::ConstraintSolver)'s angular response only has a
+    /// hz²)`, since [`ConstraintSolver`](crate::dynamics::ConstraintSolver)'s angular response only has a
     /// single scalar `inverse_inertia` to work with.
     pub fn moment_of_inertia(&self) -> F::Scalar {
         match self.shape {
@@ -85,7 +85,7 @@ impl<F: GaFlavor> RigidBody<F> {
     }
 
     /// This body's world-space [`Aabb`] — the same bound
-    /// [`BroadPhase::find_candidate_pairs`](super::BroadPhase::find_candidate_pairs) uses internally, exposed so
+    /// [`BroadPhase::find_candidate_pairs`](crate::collision::BroadPhase::find_candidate_pairs) uses internally, exposed so
     /// an external batching adapter (e.g.
     /// `meridian-physics-compute`'s own broad-phase kernel) can reuse
     /// the real bound instead of re-deriving it.

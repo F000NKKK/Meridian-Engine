@@ -171,8 +171,8 @@ fn face_manifold<F: GaFlavor>(
 /// is the geometrically correct manifold; there's no face to clip
 /// against. Returns every manifold point sharing this pair's one
 /// `normal` and total `penetration` (not divided per point — see
-/// [`NarrowPhase::generate_contacts`](super::NarrowPhase::generate_contacts), the caller that divides it when
-/// expanding one pair into multiple [`Contact`](super::Contact)s, so the sum of
+/// [`NarrowPhase::generate_contacts`](crate::collision::NarrowPhase::generate_contacts), the caller that divides it when
+/// expanding one pair into multiple [`Contact`](crate::collision::Contact)s, so the sum of
 /// per-point positional corrections reproduces the same total magnitude
 /// a single-point contact would have applied instead of over-correcting
 /// once per extra point).

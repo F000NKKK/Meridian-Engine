@@ -1,4 +1,4 @@
-//! Batch [`Integrator::step`](meridian_physics_core::generic::Integrator)
+//! Batch [`Integrator::step`](meridian_physics_core::dynamics::Integrator)
 //! for many independent [`RigidBody`]s through `compute-runtime`, the
 //! rigid-body half of docs/roadmap.md's "batching through compute-runtime
 //! is additive later" follow-up (`Integrator`/`BroadPhase`/`NarrowPhase`/
@@ -24,7 +24,7 @@ use std::sync::Mutex;
 
 use meridian_compute_runtime::{ComputeContext, ComputeKernel, DispatchSize};
 use meridian_gac_core::GaFlavor;
-use meridian_physics_core::generic::{Integrator, RigidBody};
+use meridian_physics_core::dynamics::{Integrator, RigidBody};
 
 /// Batch-integrates `bodies` by one timestep `dt`, sharing one
 /// [`Integrator`] (gravity vector) across the whole batch — the common
@@ -108,7 +108,7 @@ mod tests {
     use super::*;
     use meridian_gac_core::FloatFlavor;
     use meridian_gac_core::{Motor3, Vec3};
-    use meridian_physics_core::generic::ColliderShape;
+    use meridian_physics_core::collision::ColliderShape;
 
     fn falling_body(mass: f32) -> RigidBody<FloatFlavor> {
         RigidBody {

@@ -1,6 +1,6 @@
 //! GPU soft-body integration, `Fixed` flavor — the deterministic
 //! counterpart to [`crate::float`]: bit-exact against
-//! `physics-core::soft_body::fixed_softbody::FixedSoftBodyIntegrator::step`,
+//! `physics-core::soft_body::fixed::FixedSoftBodyIntegrator::step`,
 //! not merely numerically close, the same guarantee
 //! `meridian_gac_compute::fixed_wgsl::FixedArithmeticKernels` proves for
 //! plain scalar arithmetic. This module reuses that same WGSL arithmetic
@@ -23,7 +23,7 @@ use meridian_gac_core::volume::Plane;
 use meridian_gac_core::{FixedFlavor, FixedVec3};
 use meridian_gpu_driver::{BufferUsage, ComputePipeline};
 use meridian_numeric_core::Fixed;
-use meridian_physics_core::soft_body::fixed_softbody::FixedSoftBody;
+use meridian_physics_core::soft_body::fixed::FixedSoftBody;
 
 use crate::generic::build_adjacency;
 

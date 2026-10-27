@@ -31,7 +31,8 @@ use std::sync::Mutex;
 
 use meridian_compute_runtime::ComputeContext;
 use meridian_gac_core::GaFlavor;
-use meridian_physics_core::generic::{ConstraintSolver, Contact, RigidBody};
+use meridian_physics_core::collision::Contact;
+use meridian_physics_core::dynamics::{ConstraintSolver, RigidBody};
 
 /// Partitions `contacts` into color groups: no two contacts in the same
 /// group share `contact.a` or `contact.b`. Greedy, contacts assigned in
@@ -248,7 +249,7 @@ mod tests {
     use super::*;
     use meridian_gac_core::FloatFlavor;
     use meridian_gac_core::{Motor3, Vec3};
-    use meridian_physics_core::generic::{BroadPhase, ColliderShape, NarrowPhase};
+    use meridian_physics_core::collision::{BroadPhase, ColliderShape, NarrowPhase};
 
     fn cuboid_at(x: f32, y: f32, half: f32) -> RigidBody<FloatFlavor> {
         RigidBody {

@@ -1,16 +1,16 @@
 //! Broad phase: candidate pairs from overlapping bounds.
 
 use super::ColliderShape;
-use super::RigidBody;
 use super::axis_x;
 use super::axis_y;
 use super::axis_z;
+use crate::dynamics::RigidBody;
 use meridian_gac_core::volume::Aabb;
 use meridian_gac_core::{GaFlavor, Shape, VectorLike};
 
 /// Computes `body`'s world-space AABB — a free function (rather than a
 /// method) purely because it's called through `.map(aabb_of)` below;
-/// [`RigidBody::aabb`](super::RigidBody::aabb) is the public entry point, defined right after
+/// [`RigidBody::aabb`](crate::dynamics::RigidBody::aabb) is the public entry point, defined right after
 /// `impl RigidBody` above and forwarding here, so this logic exists in
 /// exactly one place regardless of caller (`BroadPhase` itself, or an
 /// external adapter crate like `meridian-physics-compute` batching the

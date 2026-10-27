@@ -1,4 +1,4 @@
-//! Batch [`BroadPhase::find_candidate_pairs`](meridian_physics_core::generic::BroadPhase::find_candidate_pairs)'s
+//! Batch [`BroadPhase::find_candidate_pairs`](meridian_physics_core::collision::BroadPhase::find_candidate_pairs)'s
 //! AABB overlap sweep through `compute-runtime` — the last of the three
 //! "aren't batched yet" items [`crate::narrow_phase`]'s own module doc
 //! left open (`Integrator`/`NarrowPhase::test_pair`/`generate_contacts`
@@ -32,7 +32,7 @@ use std::sync::Mutex;
 
 use meridian_compute_runtime::{ComputeContext, ComputeKernel, DispatchSize};
 use meridian_gac_core::GaFlavor;
-use meridian_physics_core::generic::RigidBody;
+use meridian_physics_core::dynamics::RigidBody;
 
 /// Batch-tests every candidate pair `(i, j)`, `i < j`, among `bodies`
 /// for AABB overlap — one dispatch instead of `BroadPhase`'s O(n²)
@@ -128,7 +128,7 @@ mod tests {
     use meridian_compute_runtime::DispatchSize;
     use meridian_gac_core::FloatFlavor;
     use meridian_gac_core::{Motor3, Vec3};
-    use meridian_physics_core::generic::{BroadPhase, ColliderShape};
+    use meridian_physics_core::collision::{BroadPhase, ColliderShape};
 
     fn sphere_at(x: f32) -> RigidBody<FloatFlavor> {
         RigidBody {

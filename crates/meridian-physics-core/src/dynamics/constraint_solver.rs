@@ -1,7 +1,7 @@
 //! Sequential-impulse contact solver.
 
-use super::Contact;
 use super::RigidBody;
+use crate::collision::Contact;
 use meridian_gac_core::{BivectorLike, GaFlavor, MotorLike, ScalarLike, VectorLike};
 
 /// Resolves contacts into corrective linear *and* angular impulses
@@ -39,7 +39,7 @@ pub struct ConstraintSolver<F: GaFlavor> {
     /// actually rests, just bounces at a shrinking-but-never-zero
     /// amplitude. A single point (a resting sphere) barely shows it; a
     /// box/pyramid's multi-point manifold (see
-    /// [`NarrowPhase::generate_contacts`](super::NarrowPhase::generate_contacts)) re-triggers it at up to 4
+    /// [`NarrowPhase::generate_contacts`](crate::collision::NarrowPhase::generate_contacts)) re-triggers it at up to 4
     /// points per tick, which is what made it visible as continuous
     /// up/down jitter — the concrete bug this threshold exists to kill
     /// outright, not just shrink.
@@ -106,7 +106,7 @@ impl<F: GaFlavor> ConstraintSolver<F> {
 
     /// The velocity-only half of [`resolve`](Self::resolve): normal
     /// impulse, angular response (unless
-    /// [`Contact::suppress_angular_response`](super::Contact::suppress_angular_response)) and friction. Safe to call
+    /// [`Contact::suppress_angular_response`](crate::collision::Contact::suppress_angular_response)) and friction. Safe to call
     /// repeatedly per tick (e.g. once per relaxation pass over a
     /// multi-point manifold) without the positional over-correction
     /// [`resolve`](Self::resolve) would apply each time.
@@ -139,7 +139,7 @@ impl<F: GaFlavor> ConstraintSolver<F> {
     }
 
     /// Applies `impulse` to the pair — opposite linear velocity changes
-    /// and, unless [`Contact::suppress_angular_response`](super::Contact::suppress_angular_response), the angular
+    /// and, unless [`Contact::suppress_angular_response`](crate::collision::Contact::suppress_angular_response), the angular
     /// response (see the type's doc comment on why this is a simplified,
     /// decoupled solve, and that field's doc comment for why a box-box
     /// manifold point skips it entirely).

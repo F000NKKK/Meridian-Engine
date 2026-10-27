@@ -23,9 +23,13 @@
 #![doc = include_str!("../README.md")]
 #![forbid(unsafe_code)]
 
+pub mod collision;
+pub mod dynamics;
 pub mod fixed;
 pub mod float;
-pub mod generic;
 pub mod soft_body;
+
+#[cfg(test)]
+mod tests;
 
 pub use float::*;
