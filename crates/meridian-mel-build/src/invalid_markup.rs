@@ -57,4 +57,11 @@ pub enum InvalidMarkup {
     /// A markup extension other than `{x:Bind}` on a UI attribute.
     #[error("{{{0}}} is not supported on UI attributes yet")]
     UnsupportedExtension(String),
+    /// `@res:Set.name` with no such entry.
+    #[error("no resource '{0}' (write @res:Set.name for an entry of Set.mres)")]
+    UnknownResource(String),
+    /// An attribute value that starts with '@' but is not a valid
+    /// Substrate-Data string.
+    #[error("{0}")]
+    InvalidLiteral(String),
 }

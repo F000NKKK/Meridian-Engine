@@ -90,5 +90,8 @@ the same `.mel` syntax and generator.
 - Hot reload splits in two: markup and resource changes reload at run
   time; Rust code-behind changes need a rebuild until a script backend
   exists.
+- Resources are `.mres` files in Substrate-Data text, one set per file,
+  compiled to typed constants and referenced as `@res:Set.name`
+  ([mel-resources.md](../mel-resources.md)).
 - ADR 015's tag registry stays the extension mechanism for element types;
   this ADR only adds behavior wiring on top of it.
