@@ -169,3 +169,55 @@ fn other_extensions_are_not_bindings() {
     let doc = document(r#"<A x:ViewModel="Vm"><B v="{StaticResource K}" /></A>"#).unwrap();
     assert!(doc.bindings.is_empty());
 }
+
+const EVENTS: &str = r#"<StackPanel x:ViewModel="Vm" x:Name="panel">
+    <TextBlock x:Name="title" click="{x:Bind save}" key_pressed="{x:Bind on_key(e)}" text="{x:Bind t}" />
+</StackPanel>"#;
+
+#[test]
+fn event_attributes_are_handlers_not_bindings() {
+    let doc = document(EVENTS).unwrap();
+    let handlers: Vec<_> = doc
+        .events
+        .iter()
+        .map(|h| {
+            (
+                h.field.as_str(),
+                h.attribute.as_str(),
+                h.method.as_str(),
+                h.takes_event,
+            )
+        })
+        .collect();
+    assert_eq!(
+        handlers,
+        [
+            ("title", "click", "save", false),
+            ("title", "key_pressed", "on_key", true)
+        ]
+    );
+    assert_eq!(doc.events[1].call(), "vm.on_key(event)");
+    // `text` is the property; the text event is `text_input`.
+    assert_eq!(doc.bindings.len(), 1);
+}
+
+#[test]
+fn event_handlers_are_checked() {
+    let handler = |attr: &str| {
+        rejection(&format!(
+            r#"<A x:ViewModel="Vm"><TextBlock x:Name="t" click="{attr}" /></A>"#
+        ))
+    };
+    let shape = InvalidMarkup::EventHandlerShape("click".to_string());
+    assert_eq!(handler("{x:Bind a.b}"), shape);
+    assert_eq!(handler("{x:Bind a(1)}"), shape);
+    assert_eq!(handler("{x:Bind a(e, e)}"), shape);
+    assert_eq!(
+        handler("{x:Bind a, Mode=TwoWay}"),
+        InvalidMarkup::EventHandlerArgument("Mode".to_string())
+    );
+    assert_eq!(
+        rejection(r#"<A x:ViewModel="Vm"><TextBlock click="{x:Bind a}" /></A>"#),
+        InvalidMarkup::BindingWithoutName("TextBlock".to_string())
+    );
+}

@@ -43,7 +43,7 @@ mod ui_node;
 
 pub(crate) use binding::snake_case;
 pub use binding::{
-    CompareOperator, Expr as BindingExpr, ExprError as BindingExprError,
+    CompareOperator, EventHandler, Expr as BindingExpr, ExprError as BindingExprError,
     ExprErrorKind as BindingExprErrorKind, Literal, Mode as BindingMode, PropertyBinding,
     PropertyPath,
 };

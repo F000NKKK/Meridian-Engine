@@ -4,8 +4,12 @@
 use std::path::{Path, PathBuf};
 
 use meridian_dsl_core::{Attribute, Element, MarkupValue, parse};
+use meridian_ui_core::UiEventTag;
 
-use crate::{BuildError, InvalidMarkup, NamedElement, PropertyBinding, ResourceSets, UiNode};
+use crate::{
+    BuildError, EventHandler, InvalidMarkup, NamedElement, PropertyBinding, PropertyPath,
+    ResourceSets, UiNode,
+};
 
 const ROOT_ONLY: [&str; 2] = ["Class", "ViewModel"];
 const ANYWHERE: [&str; 2] = ["Name", "Key"];
@@ -22,6 +26,8 @@ pub struct MelDocument {
     pub view_model: Option<String>,
     /// Every `{x:Bind}`, in document order.
     pub bindings: Vec<PropertyBinding>,
+    /// Every `event="{x:Bind method}"`, in document order.
+    pub events: Vec<EventHandler>,
     /// The element tree to build, when the root is a UI element.
     pub ui: Option<UiNode>,
 }
@@ -50,6 +56,7 @@ impl MelDocument {
             root,
             names: Vec::new(),
             bindings: Vec::new(),
+            events: Vec::new(),
             ui: None,
         };
         let root = document.root.clone();
@@ -124,10 +131,26 @@ impl MelDocument {
             return fail(InvalidMarkup::BindingWithoutName(element.name.to_string()));
         };
         let tag = element.name.to_string();
+        if let Some(event) = Self::event_tag(&tag, attr) {
+            let handler =
+                EventHandler::new(named, &attr.name.to_string(), event, extension, attr.span)
+                    .map_err(|reason| BuildError::invalid(&self.path, attr.span, reason))?;
+            self.events.push(handler);
+            return Ok(());
+        }
         let binding = PropertyBinding::new(named, &tag, &attr.name, extension, attr.span)
             .map_err(|reason| BuildError::invalid(&self.path, attr.span, reason))?;
         self.bindings.push(binding);
         Ok(())
+    }
+
+    /// The event `attr` names on `<tag>`: a plain attribute that is not
+    /// one of the element's properties (`text` stays the property).
+    fn event_tag(tag: &str, attr: &Attribute) -> Option<UiEventTag> {
+        if attr.name.owner().is_some() || PropertyPath::resolve(tag, &attr.name).is_ok() {
+            return None;
+        }
+        UiEventTag::from_attribute(attr.name.local())
     }
 
     fn add_name(&mut self, named: NamedElement, attr: &Attribute) -> Result<(), BuildError> {
