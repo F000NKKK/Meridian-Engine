@@ -1,7 +1,7 @@
 //! A whole session over a real socket on loopback.
 
-use meridian_ecs_core::Entity;
-use meridian_editor_protocol::{
+use meridian_ecs::Entity;
+use meridian_editor_domain::{
     EntityRef, Event, EventTopic, HostMessage, ProtocolVersion, Request, RequestError, Response,
 };
 use meridian_editor_tcp::{EditorListener, ServeError};

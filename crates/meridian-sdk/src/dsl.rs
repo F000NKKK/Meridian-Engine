@@ -16,8 +16,8 @@ use dsl_core::{DslRegistry, TagParseError};
 /// The domain-blind parser and typed-tag machinery — see the module doc
 /// above for how this layers under [`dsl_tag`] and this module's
 /// built-in tags.
-pub use meridian_dsl_core as dsl_core;
-pub use meridian_dsl_macros::dsl_tag;
+pub use meridian_markup as dsl_core;
+pub use meridian_markup_macros::dsl_tag;
 
 /// The document root — a plain container for [`Entity`] nodes, carrying
 /// no data of its own. Every DSL document this crate writes has one of
@@ -74,7 +74,7 @@ pub struct Material {
 /// axis — a floor slab and a cube prop need different aspect ratios, so
 /// this doesn't collapse to a single uniform `size` the way procedural
 /// `Mesh` shapes mostly do), `mass` of `0.0` meaning static/immovable,
-/// matching `physics-core::RigidBody`'s own convention.
+/// matching `physics-domain::RigidBody`'s own convention.
 #[dsl_tag(name = "RigidBody")]
 #[derive(Debug, Clone, PartialEq)]
 pub struct RigidBody {
@@ -130,10 +130,10 @@ pub fn build_scene(source: &str, registry: &DslRegistry) -> Result<dsl_core::Bui
     registry.build(&element).map_err(DslError::Tag)
 }
 
-/// Pulls in the module `meridian-mel-build` generated for a `.mel`
+/// Pulls in the module `meridian-ui-mel` generated for a `.mel`
 /// document (ADR 017): `mel_include!("magic_figures")` includes
 /// `$OUT_DIR/mel/magic_figures.g.rs`, written by
-/// `meridian_mel_build::compile_dir` in the crate's `build.rs`. Use it
+/// `meridian_ui_mel::compile_dir` in the crate's `build.rs`. Use it
 /// inside the code-behind module:
 ///
 /// ```ignore
@@ -170,7 +170,7 @@ impl std::fmt::Display for DslError {
 
 impl std::error::Error for DslError {}
 
-impl meridian_foundation::EngineError for DslError {}
+impl meridian_diagnostics::EngineError for DslError {}
 
 #[cfg(test)]
 mod tests {

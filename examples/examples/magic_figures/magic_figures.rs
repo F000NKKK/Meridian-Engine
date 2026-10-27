@@ -3,10 +3,10 @@
 //! each playing its own music track from a *different* container/codec
 //! format (`demo-music.mp3`/`.opus`/`.ogg` — real files under
 //! `examples/assets/audio/`, identified by signature via
-//! `asset-core::AnyAudioDecoder`, never by extension — see ADR 013),
+//! `asset-symphonia::AnyAudioDecoder`, never by extension — see ADR 013),
 //! and each textured from a different real image file/format
 //! (`examples/assets/textures/*.{png,bmp}` — signature-sniffed the same
-//! way via `asset-core::AnyImageDecoder`).
+//! way via `sdk::AnyImageDecoder`).
 //!
 //! **Scene composition lives in `assets/scenes/magic_figures.mel`**,
 //! compiled by this crate's `build.rs` into a generated module (typed

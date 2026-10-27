@@ -1,0 +1,24 @@
+[package]
+name = "meridian-physics-domain"
+version = "0.25.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Rigid body dynamics built on the GAC: broad/narrow phase collision, constraint solving and integration."
+readme = "README.md"
+
+[dependencies]
+meridian-gac = { workspace = true }
+meridian-numeric = { workspace = true }
+meridian-resource = { workspace = true }
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+criterion = { version = "0.8", default-features = false }
+
+[[bench]]
+name = "physics_core"
+harness = false
