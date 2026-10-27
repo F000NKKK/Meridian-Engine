@@ -4,12 +4,11 @@ use core::ops::Range;
 
 use meridian_rendering_domain::ScissorRect;
 
-use crate::BindGroup;
-
-/// One draw: a texture's bind group and its slice of the vertex buffer.
+/// One draw: the index of a texture's bind group in
+/// [`PreparedSprites`](super::PreparedSprites) and its slice of the vertex buffer.
 #[derive(Debug)]
 pub(crate) struct SpriteRun {
-    pub bind_group: BindGroup,
+    pub group: usize,
     pub vertices: Range<u32>,
     pub scissor: Option<ScissorRect>,
 }

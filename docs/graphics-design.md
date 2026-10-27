@@ -33,8 +33,8 @@ Post Processing      -- real (bloom); HDR/tone-mapping still open
 `Camera`, frustum culling, render graph pass ordering, scene extraction,
 lighting and the submission bridge are all real and tested (`cargo test
 -p meridian-rendering-domain`) — see "Implementation order" below for the
-step-by-step history and exactly what's still open (shadow mapping,
-per-material roughness/specular, blend-mode/`always_on_top` handling,
+step-by-step history and exactly what's still open (per-material
+roughness/specular, blend-mode/`always_on_top` handling,
 HDR). `rendering-wgpu` is real too, both headless (`Device::new`) and
 windowed (`Device::new_windowed`, a real swapchain `Surface` —
 `Buffer`/`Texture`/`Shader`/compute `Pipeline`/`CommandBuffer` either
@@ -284,7 +284,7 @@ driver.
    instead of clearing) — deliberately non-HDR (`Rgba8UnormSrgb`
    throughout; `Rgba16Float` + exposure is real future work if a scene
    ever needs it). Still open: real per-material roughness/specular
-   control (shininess is fixed at 32 in the shader), shadow mapping, and
+   control (shininess is fixed at 32 in the shader) and
    blend-mode/`always_on_top` handling (both fields exist on `Material`
    but the submission bridge doesn't act on either yet — every draw is
    still opaque, depth-tested).
@@ -316,9 +316,14 @@ driver.
    scissor per run (`ClipRect::to_scissor` rounds outward from camera units
    to pixels, so `SpriteView` carries the target size). Clipping is
    rectangular and axis-aligned in camera units; no rounded or rotated
-   clips. Still open: one bind group per run per
-   frame (no cache), no sprite atlas packing,
-   and `Motor3::transform_point` (about 350 ns) dominates batching cost.
+   clips. `prepare` creates one bind group per distinct texture
+   per scene (`PreparedSprites::bind_groups`), so clipped runs of one texture
+   share it; the bind group still lives one frame, because it holds that
+   frame's camera uniform. Batching 10 000 sprites takes about 0.3 ms
+   (`benches/sprite_batching.rs`, after the hand-expanded `Motor3` point
+   transform), so it no longer dominates. Glyph atlas packing lives in
+   `text-domain` (`GlyphAtlas`); a general RGBA sprite atlas waits for a
+   consumer.
 6. **Done.** Composing `[Scene3d, Scene2d]`: `FrameRequest` carries
    `overlays: &[Overlay2d]` (a `Scene2d` plus its `ClipSpan`s, a
    `rendering-domain` type); `RenderSession::render_with_overlays` hands them to

@@ -227,7 +227,7 @@ Step 8's physics half (`physics-driver`/`physics-domain`) is real: AABB
 broad phase, sphere-sphere/sphere-cuboid/cuboid-cuboid (SAT) narrow phase
 (see below for the `Cuboid` collider shape), an impulse-based constraint
 solver (linear *and* angular — see below), semi-implicit Euler
-integration. `rendering-wgpu` is real now, headless-only — see "Not yet
+integration. `rendering-wgpu` is real now, headless and windowed — see "Not yet
 decided" below for the `wgpu` details. `audio-cpal` is real, backed by
 `cpal` (see [ADR 012](adr/012-audio-output-via-cpal.md)): async device
 enumeration per ADR 009, and an `AudioStream` that bridges cpal's
@@ -313,10 +313,9 @@ resource reads/writes (Kahn's algorithm, the same pattern as `runtime-threads`'s
 `JobGraph`, applied to resource conflicts instead of explicit
 dependencies), rejecting write conflicts and cycles rather than guessing
 (`cargo test -p meridian-rendering-domain`). Scene extraction, lighting,
-materials-as-shading-inputs, animation and post processing remain scaffolds
-— they need an actual GPU resource to shade against, `rendering-wgpu`
-now has real headless `wgpu` resources (see "Not yet decided" below) but
-no window/swapchain yet, so nothing to present a shaded frame to.
+materials-as-shading-inputs and post processing (bloom) are real now, and
+`rendering-wgpu` presents to a window (see "Current state" below); only
+animation is still a scaffold.
 
 `meridian-gac` also grew a small shared geometric-primitives set:
 `Aabb` (moved here after it turned out `physics-domain` and `rendering-domain`
