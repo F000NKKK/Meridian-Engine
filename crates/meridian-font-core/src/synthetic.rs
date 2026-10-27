@@ -1,4 +1,6 @@
 //! A tiny TrueType font assembled in memory, so no real font is committed.
+//! Behind the `synthetic-font` feature: tests of this crate and of crates that
+//! draw text use it as their fixture.
 //!
 //! Glyphs: 0 empty (`.notdef`), 1 square, 2 quadratic curve, 3 composite of
 //! the square moved right by 100, 4 a loop of off-curve points, 5 a
@@ -8,12 +10,15 @@
 
 /// How the synthetic font stores optional parts.
 #[derive(Debug, Clone, Copy)]
-pub(crate) struct Build {
-    pub(crate) long_loca: bool,
-    pub(crate) format12: bool,
+pub struct Build {
+    /// Store `loca` as 32-bit offsets (otherwise 16-bit, halved).
+    pub long_loca: bool,
+    /// Map characters with a format 12 `cmap` (otherwise format 4).
+    pub format12: bool,
 }
 
-pub(crate) const DEFAULT: Build = Build {
+/// Format 4 `cmap`, long `loca`.
+pub const DEFAULT: Build = Build {
     long_loca: true,
     format12: false,
 };
@@ -205,7 +210,8 @@ fn cmap(format12: bool) -> Vec<u8> {
 }
 
 /// The whole font file.
-pub(crate) fn font(build: Build) -> Vec<u8> {
+#[must_use]
+pub fn font(build: Build) -> Vec<u8> {
     let glyphs = glyphs();
     let mut glyf = Vec::new();
     let mut loca = Vec::new();

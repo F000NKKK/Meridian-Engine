@@ -7,8 +7,15 @@ license.workspace = true
 repository.workspace = true
 description = "Our own font stack, CPU only: a bounds-checked TrueType parser producing glyph outlines and metrics. Rasterizer and glyph atlas follow; see ADR 023."
 
+[features]
+# An in-memory test font (`synthetic`), for this crate's tests and its users'.
+synthetic-font = []
+
 [dependencies]
 thiserror = { workspace = true }
+
+[dev-dependencies]
+meridian-font-core = { path = ".", features = ["synthetic-font"] }
 
 [lints]
 workspace = true

@@ -1,9 +1,7 @@
 //! Reading the synthetic font.
 
-mod support;
-
+use meridian_font_core::synthetic::{Build, DEFAULT, font};
 use meridian_font_core::{FontError, FontFace, GlyphId, Point, Segment};
-use support::{Build, DEFAULT};
 
 /// Uses a result so the call cannot be optimised away or flagged unused.
 fn touch<T>(value: T) {
@@ -11,7 +9,7 @@ fn touch<T>(value: T) {
 }
 
 fn face() -> FontFace {
-    FontFace::parse(&support::font(DEFAULT)).expect("test font")
+    FontFace::parse(&font(DEFAULT)).expect("test font")
 }
 
 #[test]
@@ -46,7 +44,7 @@ fn format4_maps_deltas_and_glyph_arrays() {
 
 #[test]
 fn format12_covers_beyond_the_basic_plane() {
-    let face = FontFace::parse(&support::font(Build {
+    let face = FontFace::parse(&font(Build {
         format12: true,
         ..DEFAULT
     }))
@@ -59,7 +57,7 @@ fn format12_covers_beyond_the_basic_plane() {
 #[test]
 fn short_loca_gives_the_same_glyphs() {
     let long = face().outline(GlyphId(2)).expect("outline");
-    let short = FontFace::parse(&support::font(Build {
+    let short = FontFace::parse(&font(Build {
         long_loca: false,
         ..DEFAULT
     }))
@@ -158,7 +156,7 @@ fn non_font_bytes_are_rejected() {
 
 #[test]
 fn a_missing_table_is_named() {
-    let mut bytes = support::font(DEFAULT);
+    let mut bytes = font(DEFAULT);
     let kern = bytes
         .windows(4)
         .position(|w| w == b"kern")
@@ -179,7 +177,7 @@ fn a_missing_table_is_named() {
 
 #[test]
 fn every_truncation_and_corruption_is_an_error_or_a_face_never_a_panic() {
-    let bytes = support::font(DEFAULT);
+    let bytes = font(DEFAULT);
     for len in 0..bytes.len() {
         touch(FontFace::parse(&bytes[..len]));
     }

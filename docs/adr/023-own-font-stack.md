@@ -2,8 +2,10 @@
 
 ## Status
 
-Proposed (2026-10-27). Implemented so far: the TrueType parser and
-outlines (§2, §3); rasterizer, atlas and wiring (§4, §5, §7) follow.
+Proposed (2026-10-27). Implemented: the TrueType parser and outlines
+(§2, §3), the rasterizer (§4), the atlas and cache (§5), the shaper (§6)
+and `ui-render`'s text extraction (§7). Not done: OpenType/CFF outlines,
+hinting, SDF, ligatures and complex scripts.
 
 ## Context
 
@@ -54,7 +56,9 @@ through `resource-core` handles.
 **6. Shaping scope.** Left-to-right, one cluster per `char`, advance from
 `hmtx`, pair adjustment from `kern`, line breaks on `\n`. Ligatures,
 bidirectional text and complex scripts are out of scope until a concrete
-need; the `Shaper` is a trait so a game or a later crate can replace it.
+need; `shape` is a plain function returning public types (`ShapedRun`,
+`PlacedGlyph`); it becomes a trait when a second shaper exists, and a game
+can already bypass it by building a `ShapedRun` itself.
 
 **7. Wiring.** `ui-render` depends on `font-core`, implements
 `TextMeasurer` over a `FontFace` (so layout and drawing share the same

@@ -19,6 +19,7 @@ pub struct GlyphCache {
     atlas: GlyphAtlas,
     glyphs: HashMap<(GlyphId, u32), CachedGlyph>,
     version: u64,
+    resets: u64,
 }
 
 impl GlyphCache {
@@ -29,6 +30,7 @@ impl GlyphCache {
             atlas: GlyphAtlas::new(width, height),
             glyphs: HashMap::new(),
             version: 0,
+            resets: 0,
         }
     }
 
@@ -42,6 +44,14 @@ impl GlyphCache {
     #[must_use]
     pub const fn version(&self) -> u64 {
         self.version
+    }
+
+    /// How many times the page has been wiped to make room. Glyphs obtained
+    /// before a wipe are stale; a caller that holds several at once can
+    /// compare this before and after to know.
+    #[must_use]
+    pub const fn resets(&self) -> u64 {
+        self.resets
     }
 
     /// `glyph` of `face` at `pixel_size` pixels per em, rasterizing it on the
@@ -85,6 +95,7 @@ impl GlyphCache {
         self.atlas.clear();
         self.glyphs.clear();
         self.version += 1;
+        self.resets += 1;
     }
 }
 

@@ -5,10 +5,8 @@
     reason = "normalized rects are exact binary fractions"
 )]
 
-mod support;
-
+use meridian_font_core::synthetic::{DEFAULT, font};
 use meridian_font_core::{Bitmap, FontError, FontFace, GlyphAtlas, GlyphCache, GlyphId};
-use support::DEFAULT;
 
 fn block(width: u32, height: u32, value: u8) -> Bitmap {
     Bitmap {
@@ -21,7 +19,7 @@ fn block(width: u32, height: u32, value: u8) -> Bitmap {
 }
 
 fn face() -> FontFace {
-    FontFace::parse(&support::font(DEFAULT)).expect("test font")
+    FontFace::parse(&font(DEFAULT)).expect("test font")
 }
 
 #[test]

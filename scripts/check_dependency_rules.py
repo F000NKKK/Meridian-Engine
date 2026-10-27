@@ -103,6 +103,7 @@ ALLOWED = {
     "meridian-font-core": set(),
     "meridian-ui-core": {"meridian-foundation", "meridian-memory-core"},
     "meridian-ui-render": {
+        "meridian-font-core",
         "meridian-gac-core",
         "meridian-graphics-core",
         "meridian-ui-core",
