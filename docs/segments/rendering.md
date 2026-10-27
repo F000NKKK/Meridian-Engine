@@ -51,20 +51,18 @@ windowed (`Surface`) devices. 30 `#[test]`s across the three crates.
 
 Not started; ordered by suggested priority. Items wait for an explicit task.
 
-1. **Docs drift (small, do first).** `graphics-design.md` step 3 and the
-   `submission.rs` module doc still call shadow mapping future work, while
-   `roadmap.md` and the code say it is real. `roadmap.md` also still has an
-   older paragraph saying extraction/lighting are scaffolds and the driver
-   is headless-only. Reconcile all three.
+1. **Docs drift — done (2026-10-27).** Shadow mapping, the windowed driver
+   and the Motor3 batching cost are reconciled across `graphics-design.md`
+   and `roadmap.md`.
 2. **Material flags the bridge ignores (3D).** `BlendMode::AlphaBlend` and
    `always_on_top` exist on `Material` but every draw is opaque and
    depth-tested. Needs a sorted transparent pass and a no-depth overlay
    pass in the render graph.
 3. **`Scene2d` path — done (2026-10-27).** `sprites/` in
    `rendering-domain`; see graphics-design.md step 5. Clip rectangles are done
-   too (`ClipSpan`/`ClipRect`, scissor per run). Follow-ups: bind-group
-   cache, atlas packing, glyph-atlas
-   textures once team/ui-ux has text. Composition `[Scene3d, Scene2d]` is
+   too (`ClipSpan`/`ClipRect`, scissor per run). Bind groups are shared per
+   texture within a scene. Glyph atlas packing lives in `text-domain`; a
+   general RGBA sprite atlas waits for a consumer. Composition `[Scene3d, Scene2d]` is
    done (`FrameRequest::overlays`, `OverlayPass`, `compose_frame`).
 4. **Per-instance data / instancing.** Vertices are baked to world space
    and textured bind groups rebuilt every frame. Add a per-instance uniform
