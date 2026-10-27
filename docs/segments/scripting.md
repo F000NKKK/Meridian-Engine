@@ -49,7 +49,7 @@ It follows the workspace rules in [dependency-rules.md](../dependency-rules.md):
 
 Ordered roughly by dependency. Nothing here is started.
 
-1. **ADR 016: `.mel` scripting model.** Decide before writing code:
+1. **ADR 017 (tentative; 016 is taken by `team/data` for data formats): `.mel` scripting model.** Decide before writing code:
    embedding syntax (Razor-style `@expr` in attributes and `@{ ... }`
    blocks, or a dedicated `<Script>` element), the first execution
    backend (own interpreter vs. embedding an existing VM such as WASM or
