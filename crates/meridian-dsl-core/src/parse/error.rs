@@ -4,7 +4,7 @@
 use std::fmt;
 
 use super::span::Span;
-use crate::MarkupValueError;
+use crate::MarkupValueErrorKind;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ParseError {
@@ -44,7 +44,7 @@ pub enum ParseErrorKind {
     /// not one.
     Extension {
         attribute: String,
-        error: MarkupValueError,
+        error: MarkupValueErrorKind,
     },
 }
 

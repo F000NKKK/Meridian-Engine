@@ -124,11 +124,16 @@ fn prefix_errors() {
 }
 
 #[test]
-fn malformed_extension_is_an_error() {
+fn malformed_extension_is_an_error_at_its_position() {
     assert!(matches!(
         kind(r#"<A b="{x:Bind" />"#),
         ParseErrorKind::Extension { .. }
     ));
+    let err = parse(r#"<A b="{x:Bind" />"#).unwrap_err();
+    assert_eq!(err.span.column, 14);
+    // An escaped quote is two source bytes for one value byte.
+    let err = parse(r#"<A b="{x:Bind \"a" />"#).unwrap_err();
+    assert_eq!(err.span.column, 18);
 }
 
 #[test]

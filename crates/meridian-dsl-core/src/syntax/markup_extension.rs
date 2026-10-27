@@ -1,7 +1,7 @@
 //! [`MarkupExtension`]: the parsed inside of `{Name args...}`.
 
 use super::bracket_depth::BracketDepth;
-use super::markup_value::{MarkupValue, MarkupValueError};
+use super::markup_value::{MarkupValue, MarkupValueError, MarkupValueErrorKind, offset_in};
 use super::qualified_name::{QualifiedName, is_identifier};
 
 /// `{Name positional, ..., Key=value, ...}`. Positional arguments come
@@ -14,45 +14,59 @@ pub struct MarkupExtension {
 }
 
 impl MarkupExtension {
-    /// Parses the text between the outer braces.
+    /// Parses the text between the outer braces; error offsets are
+    /// relative to `body`.
     pub(crate) fn parse_body(body: &str) -> Result<Self, MarkupValueError> {
-        let body = body.trim_start();
-        let name_end = body.find(char::is_whitespace).unwrap_or(body.len());
-        let name =
-            QualifiedName::parse(&body[..name_end]).map_err(|_| MarkupValueError::InvalidName)?;
+        let trimmed = body.trim_start();
+        let name_end = trimmed.find(char::is_whitespace).unwrap_or(trimmed.len());
+        let name = QualifiedName::parse(&trimmed[..name_end]).map_err(|_| {
+            MarkupValueError::at(MarkupValueErrorKind::InvalidName, offset_in(body, trimmed))
+        })?;
         let mut extension = Self {
             name,
             positional: Vec::new(),
             named: Vec::new(),
         };
-        let arguments = body[name_end..].trim();
-        if !arguments.is_empty() {
-            for argument in BracketDepth::split_top_level(arguments)? {
-                extension.push_argument(argument.trim())?;
-            }
+        let arguments = trimmed[name_end..].trim();
+        if arguments.is_empty() {
+            return Ok(extension);
+        }
+        let parts = BracketDepth::split_top_level(arguments)
+            .map_err(|error| error.shifted(offset_in(body, arguments)))?;
+        for part in parts {
+            let argument = part.trim();
+            extension
+                .push_argument(argument)
+                .map_err(|error| error.shifted(offset_in(body, argument)))?;
         }
         Ok(extension)
     }
 
+    /// Adds one trimmed argument; error offsets are relative to it.
     fn push_argument(&mut self, argument: &str) -> Result<(), MarkupValueError> {
+        let fail = |kind| Err(MarkupValueError::at(kind, 0));
         if argument.is_empty() {
-            return Err(MarkupValueError::EmptyArgument);
+            return fail(MarkupValueErrorKind::EmptyArgument);
         }
         let Some((key, value)) = split_named(argument) else {
             if !self.named.is_empty() {
-                return Err(MarkupValueError::PositionalAfterNamed);
+                return fail(MarkupValueErrorKind::PositionalAfterNamed);
             }
             self.positional.push(MarkupValue::parse(argument)?);
             return Ok(());
         };
         if self.argument(key).is_some() {
-            return Err(MarkupValueError::DuplicateArgument(key.to_string()));
+            return fail(MarkupValueErrorKind::DuplicateArgument(key.to_string()));
         }
-        let value = value.trim();
-        if value.is_empty() {
-            return Err(MarkupValueError::EmptyArgument);
+        let trimmed = value.trim();
+        let at = offset_in(argument, trimmed);
+        if trimmed.is_empty() {
+            return Err(MarkupValueError::at(
+                MarkupValueErrorKind::EmptyArgument,
+                at,
+            ));
         }
-        let value = MarkupValue::parse(value)?;
+        let value = MarkupValue::parse(trimmed).map_err(|error| error.shifted(at))?;
         self.named.push((QualifiedName::plain(key), value));
         Ok(())
     }

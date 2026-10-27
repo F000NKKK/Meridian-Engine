@@ -9,3 +9,4 @@ description = "Build-time .mel generator: turns each .mel document into a genera
 
 [dependencies]
 meridian-dsl-core = { workspace = true }
+thiserror = { workspace = true }

@@ -12,7 +12,7 @@ mod qualified_name;
 pub use attribute::Attribute;
 pub use element::Element;
 pub use markup_extension::MarkupExtension;
-pub use markup_value::{MarkupValue, MarkupValueError};
+pub use markup_value::{MarkupValue, MarkupValueError, MarkupValueErrorKind};
 pub use prefix::Prefix;
 pub(crate) use qualified_name::is_identifier_byte;
 pub use qualified_name::{QualifiedName, QualifiedNameError};

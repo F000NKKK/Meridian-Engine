@@ -1,7 +1,7 @@
 //! Tests for [`MarkupValue::parse`] and markup extensions.
 
 use super::*;
-use crate::MarkupExtension;
+use crate::{MarkupExtension, MarkupValueErrorKind};
 
 fn extension(value: &str) -> MarkupExtension {
     match MarkupValue::parse(value).unwrap() {
@@ -66,26 +66,30 @@ fn extension_without_arguments() {
 }
 
 #[test]
-fn malformed_extensions_are_errors() {
+fn malformed_extensions_are_errors_at_their_offset() {
+    use MarkupValueErrorKind as Kind;
     let cases = [
-        ("{x:Bind a", MarkupValueError::Unbalanced),
-        ("{x:Bind f(a}", MarkupValueError::Unbalanced),
-        ("{x:Bind a} tail", MarkupValueError::TrailingContent),
-        ("{ }", MarkupValueError::InvalidName),
-        ("{y:Bind a}", MarkupValueError::InvalidName),
-        ("{x:Bind a,,b}", MarkupValueError::EmptyArgument),
-        ("{x:Bind Mode=}", MarkupValueError::EmptyArgument),
-        (
-            "{x:Bind Mode=OneWay, a}",
-            MarkupValueError::PositionalAfterNamed,
-        ),
+        ("{x:Bind a", Kind::Unbalanced, 9),
+        ("{x:Bind f(a}", Kind::Unbalanced, 11),
+        ("{x:Bind a} tail", Kind::TrailingContent, 10),
+        ("{ }", Kind::InvalidName, 2),
+        ("{y:Bind a}", Kind::InvalidName, 1),
+        ("{x:Bind a,,b}", Kind::EmptyArgument, 10),
+        ("{x:Bind Mode=}", Kind::EmptyArgument, 13),
+        ("{x:Bind Mode=OneWay, a}", Kind::PositionalAfterNamed, 21),
         (
             "{x:Bind a, Mode=OneWay, Mode=TwoWay}",
-            MarkupValueError::DuplicateArgument("Mode".to_string()),
+            Kind::DuplicateArgument("Mode".to_string()),
+            24,
         ),
-        ("{x:Bind 'open}", MarkupValueError::Unbalanced),
+        ("{x:Bind 'open}", Kind::Unbalanced, 14),
+        ("{x:Bind t, Fallback={ }}", Kind::InvalidName, 22),
     ];
-    for (value, expected) in cases {
-        assert_eq!(MarkupValue::parse(value), Err(expected), "{value}");
+    for (value, kind, offset) in cases {
+        assert_eq!(
+            MarkupValue::parse(value),
+            Err(MarkupValueError { kind, offset }),
+            "{value}"
+        );
     }
 }
