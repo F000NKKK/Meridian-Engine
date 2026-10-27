@@ -4,7 +4,7 @@ Archetype-based, data-oriented Entity Component System with `SoA` storage, built
 
 **Layer and context:** shared kernel · entity
 
-- **For:** Entities, components, archetypes with `SoA` storage, and `Query`/`QueryMut` and `query_many`/`query_many_mut` over two to four components.
+- **For:** Entities, components, archetypes with `SoA` storage, and `Query`/`QueryMut` and `query_many`/`query_many_mut` over two to four components, with `Option` elements and `With`/`Without` filters.
 - The `Transform` component, a `Motor3`.
 - **Not for:** graphics, physics or audio concepts: those stay in their own `*-core` crates.
 
