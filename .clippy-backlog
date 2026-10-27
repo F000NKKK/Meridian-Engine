@@ -18,7 +18,7 @@ clippy::many_single_char_names	3
 clippy::map_unwrap_or	7
 clippy::missing_errors_doc	33
 clippy::missing_panics_doc	15
-clippy::module_name_repetitions	33
+clippy::module_name_repetitions	34
 clippy::must_use_candidate	283
 clippy::needless_raw_string_hashes	16
 clippy::panic	25

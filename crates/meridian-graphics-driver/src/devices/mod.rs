@@ -3,6 +3,7 @@
 mod bind_groups;
 mod device;
 mod fullscreen_pipelines;
+mod premultiplied_pipelines;
 mod render_pipelines;
 mod textures;
 

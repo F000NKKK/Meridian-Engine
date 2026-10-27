@@ -1295,6 +1295,7 @@ dependencies = [
 name = "meridian-graphics-core"
 version = "0.26.0"
 dependencies = [
+ "criterion",
  "meridian-asset-core",
  "meridian-ecs-core",
  "meridian-foundation",
