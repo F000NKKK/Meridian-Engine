@@ -25,6 +25,7 @@ env:
   RUSTDOCFLAGS: -D rustdoc::all
   # The Craftbook version this project follows; bumped by the project's own PR.
   CRAFTBOOK_REF: main
+  # The clippy backlog counts warnings of this exact toolchain; bump both together.
   # Every feature except hw-tests.
   TEST_FEATURES: meridian-sdk/file-logging
 
@@ -42,7 +43,7 @@ jobs:
           # Needed while Craftbook is private: a fine-grained token that can read it.
           token: ${{ secrets.CRAFTBOOK_TOKEN }}
       - run: sudo apt-get update && sudo apt-get install -y libasound2-dev
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.97
         with:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
@@ -80,7 +81,7 @@ jobs:
           path: .craftbook
           token: ${{ secrets.CRAFTBOOK_TOKEN }}
       - run: sudo apt-get update && sudo apt-get install -y libasound2-dev
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.97
         with:
           components: llvm-tools-preview
       - uses: Swatinem/rust-cache@v2
@@ -139,7 +140,7 @@ jobs:
           path: .craftbook
           token: ${{ secrets.CRAFTBOOK_TOKEN }}
       - run: sudo apt-get update && sudo apt-get install -y libasound2-dev
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.97
       - uses: Swatinem/rust-cache@v2
       - uses: taiki-e/install-action@v2
         with:
@@ -169,7 +170,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: sudo apt-get update && sudo apt-get install -y libasound2-dev
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.97
       - uses: Swatinem/rust-cache@v2
       - run: cargo bench --workspace --features "$TEST_FEATURES"
 

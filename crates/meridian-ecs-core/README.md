@@ -1,10 +1,10 @@
 # meridian-ecs-core
 
-Archetype-based, data-oriented Entity Component System with SoA storage, built for cache- and SIMD-friendly iteration.
+Archetype-based, data-oriented Entity Component System with `SoA` storage, built for cache- and SIMD-friendly iteration.
 
 **Layer and context:** shared kernel · entity
 
-- **For:** Entities, components, archetypes with SoA storage, and `Query`/`QueryMut`.
+- **For:** Entities, components, archetypes with `SoA` storage, and `Query`/`QueryMut`.
 - The `Transform` component, a `Motor3`.
 - **Not for:** graphics, physics or audio concepts: those stay in their own `*-core` crates.
 

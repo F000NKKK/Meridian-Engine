@@ -1,6 +1,6 @@
 # meridian-dsl-core
 
-Generic tag/attribute/children text parser underlying the SDK's extensible scene DSL — no knowledge of any domain tag (Mesh, RigidBody, ...); see meridian-sdk::dsl for that layer.
+Generic tag/attribute/children text parser underlying the SDK's extensible scene DSL — no knowledge of any domain tag (`Mesh`, `RigidBody`, ...); see `meridian-sdk::dsl` for that layer.
 
 **Layer and context:** shared kernel · scene-markup
 
