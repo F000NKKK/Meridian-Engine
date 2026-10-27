@@ -1,3 +1,5 @@
+//! The file log writes, flushes and applies retention.
+
 use meridian_diagnostics::logging::{LogLevel, set_max_level};
 use meridian_diagnostics::{log_debug, log_error, log_info};
 

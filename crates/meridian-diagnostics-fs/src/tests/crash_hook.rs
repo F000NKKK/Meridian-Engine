@@ -1,3 +1,5 @@
+//! The crash hook writes a report for a real panic.
+
 use crate::{CrashReportConfig, install_crash_hook as install};
 
 /// The report writer is exercised directly (not via a real panic —
