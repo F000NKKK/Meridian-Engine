@@ -47,6 +47,13 @@ the `engine_core::Stage` impl that lets an application register
 frame presentation on the *same* `Runtime`/`JobGraph` as physics —
 see that module's own doc for why `engine-core` itself can never
 provide this (it has no `graphics-driver` access).
+[`compose_frame`] composes `[Scene3d, Scene2d...]`: the 3D
+frame (shadow pass, main pass, bloom) first, then each [`Overlay2d`] (a
+`Scene2d` plus its `ClipSpan`s) in one no-depth pass that loads the 3D
+result, so UI draws over the world and is never bloomed. `GraphicsSession`
+owns the `SpriteRenderer`; `RenderStage::with_overlays` feeds overlays from
+the stage context. `examples/magic_figures` draws a small clipped HUD
+through it.
 - Everything else below is a direct `pub use` from the crate that
 actually owns it — this crate adds no new types for spatial math,
 physics, graphics or audio; it only makes them reachable through

@@ -7,8 +7,8 @@ use meridian_sdk::{
 };
 
 use crate::{
-    MusicRig, ORBIT_RADIUS, SUN_DIRECTION, ShapeSpec, load_scene, mesh_source_for, orbit_position,
-    sun_renderable,
+    Hud, MusicRig, ORBIT_RADIUS, SUN_DIRECTION, ShapeSpec, load_scene, mesh_source_for,
+    orbit_position, sun_renderable,
 };
 
 pub(crate) struct App {
@@ -25,6 +25,7 @@ pub(crate) struct App {
 struct GpuState {
     base: GraphicsSession,
     scene: Scene3d,
+    hud: Hud,
     /// Per-shape index into `scene.renderables`, in the same order as
     /// `App::shapes`, so `on_redraw` can update each shape's frame every
     /// tick without re-walking `shapes`.
@@ -77,9 +78,11 @@ impl GpuState {
             ambient_sky: [0.02, 0.02, 0.028],
             ..Scene3d::default()
         };
+        let hud = Hud::new(&mut base);
         Self {
             base,
             scene,
+            hud,
             shape_renderable_indices,
             point_light_indices,
         }
@@ -226,7 +229,14 @@ impl AppHandler for App {
         }
         gpu.scene.camera = camera;
 
-        meridian_sdk::render_frame(&mut gpu.base, &gpu.scene, [0.03, 0.03, 0.05, 1.0], window);
+        let hud = gpu.hud.overlay([window.width(), window.height()], elapsed);
+        meridian_sdk::compose_frame(
+            &mut gpu.base,
+            &gpu.scene,
+            &[hud],
+            [0.03, 0.03, 0.05, 1.0],
+            window,
+        );
     }
 
     fn on_resized(&mut self, width: u32, height: u32) {

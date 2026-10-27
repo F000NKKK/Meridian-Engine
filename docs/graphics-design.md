@@ -320,7 +320,14 @@ driver.
    clips. Still open: one bind group per run per
    frame (no cache), no sprite atlas packing,
    and `Motor3::transform_point` (about 350 ns) dominates batching cost.
-6. `ui-core` (widgets/layout/input) and text rendering — separate,
+6. **Done.** Composing `[Scene3d, Scene2d]` is `meridian_sdk`'s job, not
+   `graphics-core`'s (it needs a `Surface`/swapchain frame and the 3D
+   bloom pass): `compose_frame` draws the 3D scene, applies
+   bloom, then draws each `Overlay2d` unblurred and without depth over the
+   result. Overlay order is slice order. Verified headless under
+   Xvfb + lavapipe with `magic_figures` (a translucent clipped HUD over
+   the bloomed scene, no `wgpu` validation errors).
+7. `ui-core` (widgets/layout/input) and text rendering — separate,
    ADR-gated.
 
 ## GPU-driven rendering

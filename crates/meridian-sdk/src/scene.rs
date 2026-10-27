@@ -11,7 +11,7 @@
 use meridian_gac_core::icosphere;
 use meridian_graphics_core::{
     BloomPass, MaterialRegistry, MeshHandle, MeshRegistry, MeshSource, SceneRenderer,
-    TextureHandle, TextureRegistry,
+    SpriteRenderer, TextureHandle, TextureRegistry,
 };
 use meridian_graphics_driver::{DepthTexture, Device, Surface};
 
@@ -275,6 +275,8 @@ pub struct GraphicsSession {
     pub depth: DepthTexture,
     pub renderer: SceneRenderer,
     pub bloom: BloomPass,
+    /// Draws [`Overlay2d`](crate::Overlay2d)s over the 3D scene.
+    pub sprites: SpriteRenderer,
     pub meshes: MeshRegistry,
     pub materials: MaterialRegistry,
     pub textures: TextureRegistry,
@@ -308,12 +310,14 @@ impl GraphicsSession {
         let depth = device.create_depth_texture(width, height);
         let renderer = SceneRenderer::with_shadow_map_size(&device, &surface, shadow_map_size);
         let bloom = BloomPass::new(&device, width, height, &surface);
+        let sprites = SpriteRenderer::new(&device, &surface);
         Self {
             device,
             surface,
             depth,
             renderer,
             bloom,
+            sprites,
             meshes: MeshRegistry::new(),
             materials: MaterialRegistry::new(),
             textures: TextureRegistry::new(),

@@ -64,8 +64,9 @@ Not started; ordered by suggested priority. Items wait for an explicit task.
    `graphics-core`; see graphics-design.md step 5. Clip rectangles are done
    too (`ClipSpan`/`ClipRect`, scissor per run). Follow-ups: bind-group
    cache, atlas packing, glyph-atlas
-   textures once team/ui-ux has text, composing `[Scene3d, Scene2d]` in
-   `meridian-sdk`.
+   textures once team/ui-ux has text. Composition `[Scene3d, Scene2d]`
+   is done in `meridian-sdk` (`compose_frame`, `Overlay2d`,
+   `RenderStage::with_overlays`).
 4. **Per-instance data / instancing.** Vertices are baked to world space
    and textured bind groups rebuilt every frame. Add a per-instance uniform
    or storage buffer, then indirect draw and compute culling (GPU-driven

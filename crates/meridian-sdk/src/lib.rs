@@ -23,6 +23,8 @@
 pub mod assets;
 pub mod camera;
 pub mod dsl;
+mod overlay;
+mod overlay_builder;
 pub mod render;
 pub mod scene;
 
@@ -54,9 +56,10 @@ pub use meridian_foundation::{
 pub use meridian_gac_core::{Aabb, Bivector3, Motor3, Projection, Rotor, Vec3};
 // -- meridian-graphics-core: scene/material/lighting/submission --
 pub use meridian_graphics_core::{
-    BloomPass, Camera, DEFAULT_SHADOW_MAP_SIZE, DrawBuffers, Frustum, Light, Material,
-    MaterialHandle, MaterialRegistry, MeshHandle, MeshRegistry, MeshSource, Renderable3d, Scene2d,
-    Scene3d, SceneRenderer, TextureHandle, TextureRegistry, submit_scene3d,
+    BloomPass, Camera, Camera2d, ClipRect, ClipSpan, DEFAULT_SHADOW_MAP_SIZE, DrawBuffers, Frustum,
+    Light, Material, MaterialHandle, MaterialRegistry, MeshHandle, MeshRegistry, MeshSource,
+    Renderable3d, Scene2d, Scene3d, SceneRenderer, Sprite, SpriteBatch, SpriteRenderer,
+    SpriteVertex, TextureHandle, TextureRegistry, submit_scene3d,
 };
 // -- meridian-graphics-driver: the GPU device a windowed app opens once --
 pub use meridian_graphics_driver::{
@@ -73,7 +76,8 @@ pub use meridian_platform_core::{
 /// The retained UI runtime (ADR 018); generated `.mel` glue names it
 /// through here.
 pub use meridian_ui_core as ui_core;
-pub use render::{RenderStage, render_frame};
+pub use overlay::Overlay2d;
+pub use render::{RenderStage, compose_frame, render_frame};
 pub use scene::{
     GraphicsSession, cube_mesh_source, ground_mesh_source, icosphere_mesh_source,
     pyramid_mesh_source,
