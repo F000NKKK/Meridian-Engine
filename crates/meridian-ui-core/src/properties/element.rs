@@ -1,8 +1,8 @@
 //! Properties every element has (WPF's `FrameworkElement`).
 
-use crate::Thickness;
 use crate::layout::value::{Alignment, Length, Visibility};
 use crate::property::{Invalidates, Property, PropertyId, PropertyType};
+use crate::{Color, Thickness};
 
 pub const WIDTH: Property<Length> =
     Property::new(PropertyId::new(0), "Width", Invalidates::Layout, || {
@@ -33,4 +33,12 @@ pub const VISIBILITY: Property<Visibility> = Property::new(
     "Visibility",
     Invalidates::Layout,
     || Visibility::Visible.into_value(),
+);
+
+/// The fill behind the element's area; panels and borders alike.
+pub const BACKGROUND: Property<Color> = Property::new(
+    PropertyId::new(18),
+    "Background",
+    Invalidates::Nothing,
+    || Color::TRANSPARENT.into_value(),
 );

@@ -20,6 +20,7 @@
 //! assert_eq!(tree.layout_rect(root).unwrap().size.width, 100.0);
 //! ```
 
+mod color;
 mod error;
 mod hit_test;
 mod node;
@@ -31,6 +32,7 @@ pub mod properties;
 pub mod property;
 pub mod tree;
 
+pub use color::Color;
 pub use error::UiError;
 pub use geometry::{Point, Rect, Size, Thickness};
 pub use hit_test::hit_test;

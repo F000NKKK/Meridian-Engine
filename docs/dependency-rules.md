@@ -125,8 +125,9 @@ WPF-style UI runtime of [ADR 018](adr/018-ui-architecture.md): element
 tree, typed properties, layout and hit testing. It deliberately has no
 edge to `graphics-core`, `platform-core` or `ecs-core`: turning a laid-out
 tree into `Scene2D` renderables and feeding it `InputState` are the job of
-a later adapter above both (rule 7: orchestration lives at the top), not of
-this crate.
+`meridian-ui-render` (the adapter above both `ui-core` and `graphics-core`,
+ADR 021) does the first half; the second is a later adapter above
+`platform-core`.
 
 This shows *depth*, not *which crate depends on which* — two crates in
 the same tier aren't necessarily related at all (`audio-core` and
@@ -278,6 +279,7 @@ bottom-up.
 - `meridian-dsl-macros` -> (nothing; external `syn`/`quote`/`proc-macro-crate` only)
 - `meridian-mel-build` -> `meridian-dsl-core`, `meridian-ui-core`
 - `meridian-ui-core` -> `meridian-foundation`, `meridian-memory-core`
+- `meridian-ui-render` -> `meridian-gac-core`, `meridian-graphics-core`, `meridian-ui-core`
 - `meridian-sdk` -> `meridian-asset-core`, `meridian-audio-core`, `meridian-dsl-core`, `meridian-dsl-macros`, `meridian-engine-core`, `meridian-foundation`, `meridian-gac-core`, `meridian-graphics-core`, `meridian-graphics-driver`, `meridian-physics-core`, `meridian-platform-core`, `meridian-task-core`, `meridian-ui-core`
 
 `meridian-engine-core` lists `meridian-graphics-core` as an allowed edge

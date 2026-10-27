@@ -2,6 +2,7 @@
 //! `Margin="4,2"`). Text is parsed once, here, on the way in; nothing
 //! downstream sees the string.
 
+mod color;
 mod error;
 mod grid_length;
 mod keyword;
@@ -10,6 +11,7 @@ mod number;
 mod text;
 mod thickness;
 
+pub(super) use color::color;
 pub use error::LiteralError;
 pub(super) use grid_length::grid_lengths;
 pub(super) use keyword::{alignment, dock, orientation, visibility};

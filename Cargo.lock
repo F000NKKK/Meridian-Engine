@@ -1443,6 +1443,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "meridian-ui-render"
+version = "0.1.0"
+dependencies = [
+ "meridian-gac-core",
+ "meridian-graphics-core",
+ "meridian-memory-core",
+ "meridian-resource-core",
+ "meridian-ui-core",
+]
+
+[[package]]
 name = "miniz_oxide"
 version = "0.8.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"

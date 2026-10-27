@@ -156,6 +156,11 @@ layer = "infra"
 context = "ui"
 
 [[crate]]
+name = "meridian-ui-render"
+layer = "infra"
+context = "ui"
+
+[[crate]]
 name = "meridian-scene"
 layer = "infra"
 context = "data"

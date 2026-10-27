@@ -42,6 +42,7 @@ meridian-editor-protocol = { path = "crates/meridian-editor-protocol", version =
 meridian-editor-host = { path = "crates/meridian-editor-host", version = "0.1" }
 meridian-editor-tcp = { path = "crates/meridian-editor-tcp", version = "0.1" }
 meridian-ui-core = { path = "crates/meridian-ui-core", version = "0.1" }
+meridian-ui-render = { path = "crates/meridian-ui-render", version = "0.1" }
 meridian-mel-build = { path = "crates/meridian-mel-build", version = "0.1" }
 
 # External dependencies shared by more than one crate go here too, same

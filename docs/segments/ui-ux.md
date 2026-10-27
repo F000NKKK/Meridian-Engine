@@ -10,10 +10,11 @@ backlog; architecture decisions still go to `docs/adr/`, status to
 | Area | Where | State |
 |---|---|---|
 | UI rendering vocabulary (screen-space = `Scene2D` with pixel `Camera2D`, world-space = `Renderable3D` with `billboard`/`always_on_top`) | `meridian-graphics-core` (`scene.rs`), [graphics-design.md](../graphics-design.md) "UI is a role, not a third scene kind" | Design accepted; `Scene2D`/`Sprite`/`Camera2D` exist; `always_on_top` and blend modes not acted on by the submission bridge yet |
-| Widgets, layout, focus, input routing | `meridian-ui-core`, [ADR 018](../adr/018-ui-architecture.md) | Element tree, typed properties, layout and hit testing done; no controls, styles, input routing or rendering yet |
+| Widgets, layout, focus, input routing | `meridian-ui-core`, [ADR 018](../adr/018-ui-architecture.md) | Element tree, typed properties, layout, hit testing, focus and input routing done; no controls or styles yet |
 | Text: fonts, shaping, glyph atlas | future crate, own ADR | Not started |
 | Pointer/keyboard input feeding UI | `meridian-platform-core::InputState` (consumer, not owner) | Key/mouse state exists; UI has its own `InputEvent`; the `platform-core` adapter that fills it is not written; no IME composition, no gamepad |
 | Editor / IDLE UX (inspector, scene tree, viewport gizmos) | Meridian IDLE app (owned by **team/ide**); engine side through the editor protocol in `docs/data-formats.md` / substrate-data | We own UX requirements and engine-side hooks, team/ide owns the app |
+| Tree to `Scene2d` | `meridian-ui-render`, [ADR 021](../adr/021-ui-extraction-and-extensibility.md) | `Background` fills extracted; text, borders, images, custom paint not yet; no sprite renderer consumes `Scene2d` |
 
 ## Boundaries
 
@@ -65,6 +66,13 @@ properties (`Grid.Row`), compiled `{x:Bind ...}` and `{StaticResource}`,
 `foo.mel` → `foo.g.rs` via `mel_include!`. The UI-architecture ADR maps
 that syntax onto the element model; ui-ux owns the runtime
 (`meridian-ui-core`), scripting owns syntax, `dsl-core` and codegen.
+
+## Principle: tool, not shackles
+
+2026-10-27, owner: give developers the freedom Unity and UE5 give. Markup
+optional, custom elements/draw/input via public traits, interception,
+overridable styles, raw `Scene2d` escape hatch, no sealed types. Rules in
+ADR 021 §6.
 
 ## Backlog
 
