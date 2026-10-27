@@ -19,6 +19,20 @@ use crate::vector::float::Vec3;
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Motor3(pub Multivector);
 
+/// Row-major 3x3 matrix a motor's rotor blades expand to.
+struct LinearPart([[Scalar; 3]; 3]);
+
+impl LinearPart {
+    fn apply(&self, v: Vec3) -> Vec3 {
+        let [r0, r1, r2] = &self.0;
+        Vec3::new(
+            r0[0] * v.x + r0[1] * v.y + r0[2] * v.z,
+            r1[0] * v.x + r1[1] * v.y + r1[2] * v.z,
+            r2[0] * v.x + r2[1] * v.y + r2[2] * v.z,
+        )
+    }
+}
+
 impl Default for Motor3 {
     fn default() -> Self {
         Motor3::identity()
@@ -65,29 +79,50 @@ impl Motor3 {
         Motor3(self.0.reverse())
     }
 
-    /// Transforms a point through this rigid motion via the sandwich
-    /// product `M P M~`, where `P` is `point` embedded as the PGA
-    /// trivector `e123 - x*e023 + y*e013 - z*e012`.
+    /// Transforms a point through this rigid motion: the sandwich product
+    /// `M P M~`, where `P` is `point` embedded as the PGA trivector
+    /// `e123 - x*e023 + y*e013 - z*e012`.
+    ///
+    /// The product is expanded once by hand instead of multiplying two
+    /// 16-component multivectors: a motor only has the eight even blades and
+    /// a point only four, so the result is the affine map
+    /// `linear_part() * point + origin()`, a few dozen multiplications.
     pub fn transform_point(self, point: Vec3) -> Vec3 {
-        let mut pm = [0.0; 16];
-        pm[blade::E123] = 1.0;
-        pm[blade::E023] = -point.x;
-        pm[blade::E013] = point.y;
-        pm[blade::E012] = -point.z;
-        let p = Multivector(pm);
-        let r = self.0 * p * self.0.reverse();
-        Vec3::new(-r.0[blade::E023], r.0[blade::E013], -r.0[blade::E012])
+        self.linear_part().apply(point) + self.origin()
     }
 
     /// Transforms a direction (not a point) through this rigid motion's
     /// rotational part only — translation has no effect on a direction.
-    /// Computed exactly as `transform_point(v) - transform_point(ZERO)`:
-    /// `transform_point` is an affine map, so the translation term cancels
-    /// out of that difference algebraically, leaving exactly the linear
-    /// (rotational) part — not an approximation, the same reasoning
-    /// [`to_mat4`](Self::to_mat4) uses to isolate each basis column.
     pub fn transform_vector(self, v: Vec3) -> Vec3 {
-        self.transform_point(v) - self.transform_point(Vec3::ZERO)
+        self.linear_part().apply(v)
+    }
+
+    /// Where this motor sends the origin: the translation of the affine map
+    /// `transform_point` evaluates.
+    fn origin(self) -> Vec3 {
+        let m = &self.0.0;
+        let (s, e12, e13, e23) = (m[blade::S], m[blade::E12], m[blade::E13], m[blade::E23]);
+        let (e01, e02, e03, e0123) = (m[blade::E01], m[blade::E02], m[blade::E03], m[blade::E0123]);
+        Vec3::new(
+            -2.0 * (s * e01 + e12 * e02 + e13 * e03 + e23 * e0123),
+            -2.0 * (s * e02 - e12 * e01 - e13 * e0123 + e23 * e03),
+            -2.0 * (s * e03 + e12 * e0123 - e13 * e01 - e23 * e02),
+        )
+    }
+
+    /// The rotational part of the affine map `transform_point` evaluates,
+    /// from the four rotor blades (`s`, `e12`, `e13`, `e23`) only.
+    fn linear_part(self) -> LinearPart {
+        let m = &self.0.0;
+        let (s, e12, e13, e23) = (m[blade::S], m[blade::E12], m[blade::E13], m[blade::E23]);
+        let (ss, aa, bb, cc) = (s * s, e12 * e12, e13 * e13, e23 * e23);
+        let (s12, s13, s23) = (2.0 * s * e12, 2.0 * s * e13, 2.0 * s * e23);
+        let (p13_23, p12_23, p12_13) = (2.0 * e13 * e23, 2.0 * e12 * e23, 2.0 * e12 * e13);
+        LinearPart([
+            [ss - aa - bb + cc, s12 - p13_23, s13 + p12_23],
+            [-s12 - p13_23, ss - aa + bb - cc, s23 - p12_13],
+            [p12_23 - s13, -s23 - p12_13, ss + aa - bb - cc],
+        ])
     }
 
     /// The equivalent column-major homogeneous 4x4 matrix: `to_mat4()[c][r]`
@@ -104,14 +139,12 @@ impl Motor3 {
     /// (see docs/gac-design.md), so it belongs here rather than being
     /// re-derived independently in `graphics-core`.
     pub fn to_mat4(self) -> [[Scalar; 4]; 4] {
-        let origin = self.transform_point(Vec3::ZERO);
-        let x_axis = self.transform_point(Vec3::X) - origin;
-        let y_axis = self.transform_point(Vec3::Y) - origin;
-        let z_axis = self.transform_point(Vec3::Z) - origin;
+        let [r0, r1, r2] = self.linear_part().0;
+        let origin = self.origin();
         [
-            [x_axis.x, x_axis.y, x_axis.z, 0.0],
-            [y_axis.x, y_axis.y, y_axis.z, 0.0],
-            [z_axis.x, z_axis.y, z_axis.z, 0.0],
+            [r0[0], r1[0], r2[0], 0.0],
+            [r0[1], r1[1], r2[1], 0.0],
+            [r0[2], r1[2], r2[2], 0.0],
             [origin.x, origin.y, origin.z, 1.0],
         ]
     }

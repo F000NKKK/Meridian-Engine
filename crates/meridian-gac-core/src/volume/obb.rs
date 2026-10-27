@@ -43,10 +43,19 @@ impl<F: GaFlavor> Shape<F> for Obb<F> {
         // translation) — the same idea as Aabb::support, done in a frame
         // where the box actually is axis-aligned.
         let local_direction = self.frame.inverse().transform_vector(direction);
+        // A zero component picks the positive corner, as `Aabb::support`
+        // does: `signum` would turn the sign of `-0.0` into the answer.
+        let corner = |extent: F::Scalar, direction: F::Scalar| {
+            if direction >= F::Scalar::ZERO {
+                extent
+            } else {
+                -extent
+            }
+        };
         let local_support = F::Vector::new(
-            self.half_extents.x() * local_direction.x().signum(),
-            self.half_extents.y() * local_direction.y().signum(),
-            self.half_extents.z() * local_direction.z().signum(),
+            corner(self.half_extents.x(), local_direction.x()),
+            corner(self.half_extents.y(), local_direction.y()),
+            corner(self.half_extents.z(), local_direction.z()),
         );
         self.frame.transform_point(local_support)
     }

@@ -241,3 +241,17 @@ fn icosphere_subdivision_increases_vertex_and_face_count() {
     assert!(subdivided.vertices.len() > base.vertices.len());
     assert_eq!(subdivided.faces.len(), base.faces.len() * 4);
 }
+
+#[test]
+fn obb_support_picks_the_positive_corner_for_a_zero_component() {
+    // Regression: `signum` made `-0.0` pick the negative corner, so the
+    // result flipped with the sign of a zero the frame math happened to leave.
+    let obb = Obb {
+        frame: Motor3::identity(),
+        half_extents: Vec3::new(1.0, 2.0, 3.0),
+    };
+    assert_vec3_approx(
+        obb.support(Vec3::new(1.0, -0.0, -0.0)),
+        Vec3::new(1.0, 2.0, 3.0),
+    );
+}
