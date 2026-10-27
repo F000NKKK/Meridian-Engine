@@ -1,9 +1,8 @@
 //! Tests of this module.
 
+use super::*;
 use crate::Decoder;
 use crate::audio::wav::WavDecoder;
-
-use super::*;
 
 fn make_wav(sample_rate: u32, channels: u16, samples: &[i16]) -> Vec<u8> {
     let data_bytes: Vec<u8> = samples.iter().flat_map(|s| s.to_le_bytes()).collect();

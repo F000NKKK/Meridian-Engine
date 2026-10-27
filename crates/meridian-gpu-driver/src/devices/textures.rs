@@ -1,8 +1,6 @@
 //! Texture and sampler creation on the device.
 
-use crate::Device;
-use crate::Sampler;
-use crate::Texture;
+use crate::{Device, Sampler, Texture};
 
 impl Device {
     /// A 2D texture in `format`, with `usage` flags the caller picks

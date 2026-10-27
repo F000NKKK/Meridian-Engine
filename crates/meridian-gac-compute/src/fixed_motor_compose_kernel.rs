@@ -1,8 +1,9 @@
 //! Fixed-point motor pair composition, bit-exact on the GPU.
 
+use std::sync::Mutex;
+
 use meridian_compute_runtime::{ComputeContext, ComputeKernel, DispatchSize};
 use meridian_gac_core::fixed_ga::FixedMotor3;
-use std::sync::Mutex;
 
 /// Mirrors [`MotorComposeKernel`](crate::MotorComposeKernel), built on
 /// `gac-core::fixed_ga::FixedMotor3`.

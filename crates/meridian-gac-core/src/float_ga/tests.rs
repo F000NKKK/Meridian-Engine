@@ -1,8 +1,9 @@
 //! Tests of this module.
 
+use core::f32::consts::PI;
+
 use super::*;
 use crate::generic::Shape;
-use core::f32::consts::PI;
 
 fn assert_vec3_approx(a: Vec3, b: Vec3) {
     assert!(

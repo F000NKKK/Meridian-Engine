@@ -1,9 +1,6 @@
 //! Command recording and submission.
 
-use crate::BindGroup;
-use crate::Buffer;
-use crate::ComputePipeline;
-use crate::Device;
+use crate::{BindGroup, Buffer, ComputePipeline, Device};
 
 /// A recorded, submittable sequence of GPU commands. Borrows the
 /// [`Device`](crate::Device) it was opened from ([`Device::create_command_buffer`](crate::Device::create_command_buffer)) so a

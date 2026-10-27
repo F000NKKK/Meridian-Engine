@@ -1,10 +1,10 @@
 //! Compute pipelines for the fixed-point operations.
 
-use super::FixedBinaryOp;
-use super::dispatch_entry_points_wgsl;
 use meridian_compute_runtime::ComputeContext;
 use meridian_gpu_driver::{BufferUsage, ComputePipeline};
 use meridian_numeric_core::Fixed;
+
+use super::{FixedBinaryOp, dispatch_entry_points_wgsl};
 
 /// Compiled compute pipelines for every [`Fixed`] binary operation,
 /// built once against a [`ComputeContext`]'s GPU backend

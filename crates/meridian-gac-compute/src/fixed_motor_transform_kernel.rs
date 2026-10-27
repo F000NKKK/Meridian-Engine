@@ -1,8 +1,9 @@
 //! Fixed-point parent-times-child motor transform, bit-exact on the GPU.
 
+use std::sync::Mutex;
+
 use meridian_compute_runtime::{ComputeContext, ComputeKernel, DispatchSize};
 use meridian_gac_core::fixed_ga::FixedMotor3;
-use std::sync::Mutex;
 
 /// Mirrors [`MotorTransformKernel`](crate::MotorTransformKernel), built on
 /// `gac-core::fixed_ga::FixedMotor3`. See the module doc for why this

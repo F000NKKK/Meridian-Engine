@@ -1,11 +1,6 @@
 //! Renders emitters into speaker channels.
 
-use crate::AttenuationModel;
-use crate::Channel;
-use crate::Emitter;
-use crate::Listener;
-use crate::SpeakerLayout;
-use crate::spatial_gains;
+use crate::{AttenuationModel, Channel, Emitter, Listener, SpeakerLayout, spatial_gains};
 
 /// Mixes active emitters down to the output stream: one gain-weighted
 /// sample per output channel, summed across every `(Emitter, sample)`

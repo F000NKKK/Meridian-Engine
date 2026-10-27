@@ -1,8 +1,9 @@
 //! Registered textures by handle.
 
-use crate::TextureHandle;
 use meridian_graphics_driver::{Device, Texture};
 use meridian_memory_core::ResourcePool;
+
+use crate::TextureHandle;
 
 /// GPU-resident textures, handle-addressed by [`TextureHandle`] — the
 /// registry a [`Material::albedo`](crate::scene::Material::albedo) resolves against. Upload happens once

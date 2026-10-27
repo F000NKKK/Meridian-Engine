@@ -1,20 +1,14 @@
 //! The world: entities and their archetype storage.
 
-use crate::AnyColumn;
-use crate::Archetype;
-use crate::Column;
-use crate::Component;
-use crate::Entity;
-use crate::EntityLocation;
-use crate::Query;
-use crate::QueryMany;
-use crate::QueryManyMut;
-use crate::QueryMut;
-use crate::ReadSelection;
-use crate::Selection;
-use meridian_memory_core::ResourcePool;
 use std::any::TypeId;
 use std::collections::HashMap;
+
+use meridian_memory_core::ResourcePool;
+
+use crate::{
+    AnyColumn, Archetype, Column, Component, Entity, EntityLocation, Query, QueryMany,
+    QueryManyMut, QueryMut, ReadSelection, Selection,
+};
 
 /// Owns entity allocation, every archetype, and their `SoA` storage. Not a
 /// global singleton — the application creates and owns a `World` like any

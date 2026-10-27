@@ -1,6 +1,7 @@
 //! Grid track definitions: `Auto`, `120`, `*`, `2*`, comma separated.
 
-use super::{LiteralError, number::float};
+use super::LiteralError;
+use super::number::float;
 use crate::layout::value::GridLength;
 
 const EXPECTED: &str = "Auto, a size in pixels, or a star weight like `*` or `2*`";

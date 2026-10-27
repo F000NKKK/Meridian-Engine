@@ -1,7 +1,8 @@
 //! The arrange pass.
 
+use super::frame::Frame;
 use super::value::Alignment;
-use super::{border, dock_panel, frame::Frame, grid, stack_panel};
+use super::{border, dock_panel, grid, stack_panel};
 use crate::{ElementKind, NodeId, Point, Rect, Size, UiTree};
 
 /// Places `node` inside `slot` (in its parent's coordinates, margin

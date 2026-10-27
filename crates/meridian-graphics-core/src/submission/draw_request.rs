@@ -1,9 +1,10 @@
 //! One renderable, resolved and ready to bake.
 
-use super::MeshSource;
-use crate::scene::Material;
 use meridian_gac_core::Motor3;
 use meridian_graphics_driver::Texture;
+
+use super::MeshSource;
+use crate::scene::Material;
 
 /// A renderable whose mesh, material and albedo texture are resolved.
 #[derive(Debug, Clone, Copy)]

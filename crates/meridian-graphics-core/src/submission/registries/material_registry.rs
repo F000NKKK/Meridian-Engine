@@ -1,8 +1,9 @@
 //! Registered materials by handle.
 
+use meridian_memory_core::ResourcePool;
+
 use crate::MaterialHandle;
 use crate::scene::Material;
-use meridian_memory_core::ResourcePool;
 
 /// Handle-addressed storage for [`Material`]s. Materials are plain data
 /// (see `scene::Material`'s own doc comment); this registry exists so

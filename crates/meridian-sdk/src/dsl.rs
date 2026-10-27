@@ -12,13 +12,12 @@
 //!
 //! Design notes: docs/notes/meridian-sdk.md (`dsl`).
 
+use dsl_core::{DslRegistry, TagParseError};
 /// The domain-blind parser and typed-tag machinery — see the module doc
 /// above for how this layers under [`dsl_tag`] and this module's
 /// built-in tags.
 pub use meridian_dsl_core as dsl_core;
 pub use meridian_dsl_macros::dsl_tag;
-
-use dsl_core::{DslRegistry, TagParseError};
 
 /// The document root — a plain container for [`Entity`] nodes, carrying
 /// no data of its own. Every DSL document this crate writes has one of

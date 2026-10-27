@@ -1,8 +1,9 @@
 //! Criterion benches for the geometric-algebra hot paths.
 
+use std::hint::black_box;
+
 use criterion::{Criterion, criterion_group, criterion_main};
 use meridian_gac_core::{Motor3, Rotor, Vec3};
-use std::hint::black_box;
 
 fn rotor_transform(c: &mut Criterion) {
     let rotor = Rotor::from_axis_angle(Vec3::new(1.0, 2.0, 3.0), 0.7);

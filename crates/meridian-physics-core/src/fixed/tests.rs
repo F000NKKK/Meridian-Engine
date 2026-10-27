@@ -1,9 +1,9 @@
 //! Tests of this module.
 
-use super::*;
-use meridian_gac_core::fixed_ga::FixedMotor3;
-use meridian_gac_core::fixed_ga::FixedVec3;
+use meridian_gac_core::fixed_ga::{FixedMotor3, FixedVec3};
 use meridian_numeric_core::Fixed;
+
+use super::*;
 
 fn sphere(position: FixedVec3, velocity: FixedVec3, mass: f64, radius: f64) -> RigidBody {
     RigidBody {

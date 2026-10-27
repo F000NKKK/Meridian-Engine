@@ -1,8 +1,9 @@
 //! Orbit tags and the circular path shapes follow.
 
-use crate::ShapeSpec;
 use meridian_sdk::Vec3;
 use meridian_sdk::dsl::dsl_tag;
+
+use crate::ShapeSpec;
 
 pub(crate) const ORBIT_RADIUS: f32 = 3.2;
 

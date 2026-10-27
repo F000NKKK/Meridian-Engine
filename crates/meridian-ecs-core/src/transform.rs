@@ -1,7 +1,8 @@
 //! The spatial component: a motor.
 
-use crate::Component;
 use meridian_gac_core::Motor3;
+
+use crate::Component;
 
 /// The engine-wide spatial component: rotation + translation as a single
 /// motor, shared with physics/graphics/audio (see docs/gac-design.md).

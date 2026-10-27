@@ -246,9 +246,10 @@ fn has_cycle(indegree: &[usize], dependents: &[Vec<usize>], n: usize) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::{Arc, Mutex as StdMutex};
+
+    use super::*;
 
     #[test]
     fn empty_graph_runs_without_blocking() {

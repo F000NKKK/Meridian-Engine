@@ -1,9 +1,8 @@
 //! Buffer creation, upload and readback on the device.
 
-use crate::Buffer;
-use crate::BufferUsage;
-use crate::Device;
 use std::sync::mpsc;
+
+use crate::{Buffer, BufferUsage, Device};
 
 impl Device {
     /// Allocates a GPU-visible buffer of `byte_len` bytes. Always usable

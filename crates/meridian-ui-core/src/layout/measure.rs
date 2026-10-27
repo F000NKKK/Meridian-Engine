@@ -1,7 +1,8 @@
 //! The measure pass.
 
+use super::frame::Frame;
 use super::text_measurer::TextMeasurer;
-use super::{border, dock_panel, frame::Frame, grid, stack_panel, text_block};
+use super::{border, dock_panel, grid, stack_panel, text_block};
 use crate::{ElementKind, NodeId, Size, UiTree};
 
 /// Measures `node` given the room `available` (margin included) and stores

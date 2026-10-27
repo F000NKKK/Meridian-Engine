@@ -1,8 +1,9 @@
 //! Criterion benches for entity lifecycle, component migration and queries.
 
+use std::hint::black_box;
+
 use criterion::{Criterion, criterion_group, criterion_main};
 use meridian_ecs_core::{Component, World};
-use std::hint::black_box;
 
 struct Position(f32);
 impl Component for Position {}

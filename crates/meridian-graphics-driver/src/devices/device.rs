@@ -1,10 +1,8 @@
 //! The windowed graphics device: a GPU device plus surface-aware pipeline creation.
 
-use crate::BufferUsage;
-use crate::CommandBuffer;
-use crate::DeviceError;
-use crate::Surface;
 use meridian_platform_core::{BackendCapabilities, CpuCapabilities, GpuCapabilities};
+
+use crate::{BufferUsage, CommandBuffer, DeviceError, Surface};
 
 /// A windowed-capable GPU device. Wraps [`meridian_gpu_driver::Device`]
 /// (which owns the actual `wgpu::Device`/`wgpu::Queue` and every

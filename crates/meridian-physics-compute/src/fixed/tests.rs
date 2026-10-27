@@ -1,9 +1,10 @@
 //! Tests of this module.
 
-use super::*;
 use meridian_physics_core::soft_body::fixed_softbody::{
     FixedSoftBodyIntegrator, fixed_icosphere_soft_body,
 };
+
+use super::*;
 
 fn fv3(x: f64, y: f64, z: f64) -> FixedVec3 {
     FixedVec3::new(Fixed::from_num(x), Fixed::from_num(y), Fixed::from_num(z))

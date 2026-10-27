@@ -43,10 +43,11 @@ pub fn fixed_icosphere_soft_body(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use meridian_gac_core::fixed_ga::FixedVec3;
     use meridian_gac_core::generic::Plane;
     use meridian_numeric_core::Fixed;
+
+    use super::*;
 
     fn fv3(x: f64, y: f64, z: f64) -> FixedVec3 {
         FixedVec3::new(Fixed::from_num(x), Fixed::from_num(y), Fixed::from_num(z))

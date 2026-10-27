@@ -1,10 +1,10 @@
 //! A rigid body: frame, motion state and collider.
 
-use super::ColliderShape;
-use super::aabb_of;
 use meridian_gac_core::generic::{
     Aabb, BivectorLike, GaFlavor, MotorLike, Obb, ScalarLike, VectorLike,
 };
+
+use super::{ColliderShape, aabb_of};
 
 /// A simulated rigid body: spatial frame (shared with every other
 /// subsystem via the GAC) + linear and angular state. `mass <= 0` means

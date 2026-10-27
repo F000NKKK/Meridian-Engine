@@ -1,9 +1,10 @@
 //! Shared test bodies and subsystems.
 
-use crate::*;
 use meridian_audio_core::{Mixer, SpeakerLayout};
 use meridian_gac_core::{Motor3, Vec3};
 use meridian_physics_core::{ColliderShape, RigidBody};
+
+use crate::*;
 
 pub(crate) fn falling_body() -> RigidBody {
     RigidBody {

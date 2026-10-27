@@ -1,9 +1,10 @@
 //! Tests of this module.
 
-use super::*;
 use meridian_gac_core::float_ga::FloatFlavor;
 use meridian_gac_core::{Motor3, Vec3};
 use meridian_physics_core::generic::ColliderShape;
+
+use super::*;
 
 fn sphere_at(x: f32) -> RigidBody<FloatFlavor> {
     RigidBody {

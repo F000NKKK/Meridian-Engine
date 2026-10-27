@@ -1,7 +1,6 @@
 //! Command recording.
 
-use crate::DepthTexture;
-use crate::RenderPass;
+use crate::{DepthTexture, RenderPass};
 
 /// A recorded, submittable sequence of GPU commands. Wraps
 /// [`meridian_gpu_driver::CommandBuffer`], adding

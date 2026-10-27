@@ -1,10 +1,9 @@
 //! GPU buffers baked for one frame's draws.
 
-use super::DrawKind;
-use super::DrawRequest;
-use super::SceneRenderer;
 use meridian_gac_core::Vec3;
 use meridian_graphics_driver::{Buffer, BufferUsage, Device, SampledTexture, Texture};
+
+use super::{DrawKind, DrawRequest, SceneRenderer};
 
 /// One renderable's baked-for-this-frame GPU state — built by
 /// [`SceneRenderer::prepare`](super::SceneRenderer::prepare) *before* the render pass opens, kept alive
