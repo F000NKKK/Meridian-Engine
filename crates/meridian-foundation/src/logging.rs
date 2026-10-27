@@ -456,11 +456,24 @@ macro_rules! log_trace {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::MutexGuard;
+
     use super::*;
+
+    /// The sink, its ring and the max level are process-wide, and tests run
+    /// in parallel: a test that asserts on ring contents or the level holds
+    /// this guard so no other such test floods the ring or changes the level
+    /// in between. Poison is ignored: one failed test must not fail the rest.
+    fn own_the_sink() -> MutexGuard<'static, ()> {
+        static LOCK: Mutex<()> = Mutex::new(());
+        LOCK.lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
 
     #[cfg(feature = "file-logging")]
     #[test]
     fn file_sink_writes_flushes_and_cleans_old_logs() {
+        let _sink = own_the_sink();
         let dir = std::env::temp_dir().join(format!("meridian-log-test-{}", std::process::id()));
         if dir.exists() {
             std::fs::remove_dir_all(&dir).unwrap();
@@ -505,6 +518,7 @@ mod tests {
 
     #[test]
     fn ring_keeps_recent_lines_and_respects_level() {
+        let _sink = own_the_sink();
         set_max_level(LogLevel::Info);
         crate::log_info!("ring test message one");
         crate::log_debug!("must be filtered out at Info");
@@ -519,6 +533,7 @@ mod tests {
 
     #[test]
     fn ring_is_bounded() {
+        let _sink = own_the_sink();
         set_max_level(LogLevel::Info);
         for i in 0..(RING_CAPACITY + 50) {
             crate::log_info!("flood {i}");
