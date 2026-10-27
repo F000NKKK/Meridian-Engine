@@ -38,6 +38,7 @@ meridian-sdk = { path = "crates/meridian-sdk", version = "0.5" }
 meridian-dsl-core = { path = "crates/meridian-dsl-core", version = "0.1" }
 meridian-dsl-macros = { path = "crates/meridian-dsl-macros", version = "0.1" }
 meridian-scene = { path = "crates/meridian-scene", version = "0.1" }
+meridian-mel-build = { path = "crates/meridian-mel-build", version = "0.1" }
 
 # External dependencies shared by more than one crate go here too, same
 # reasoning: one place to bump a version instead of drifting per-crate
@@ -67,6 +68,11 @@ winit = "0.30.13"
 # platform bugs; cpal is to audio output what winit is to windowing.
 cpal = "0.18"
 crossbeam-channel = "0.5"
+
+# `thiserror` derives `std::error::Error`/`Display` for the typed error
+# enums Craftbook requires of libraries (see `.claude/rules/craftbook.md`);
+# adopted crate by crate, starting with `meridian-mel-build`.
+thiserror = "2"
 
 # Compressed-audio decoding for `asset-core` — the same class of decision
 # as `cpal`/`winit`/`wgpu` (see docs/adr/013-compressed-audio-codecs.md):

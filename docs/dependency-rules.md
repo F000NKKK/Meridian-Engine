@@ -36,7 +36,7 @@ depend on crates in tiers `0..N`, never a same-tier or higher-tier one
 ```text
 tier 0  foundation, memory-core, task-core, dsl-macros
 tier 1  numeric-core, platform-core, resource-core, dsl-core
-tier 2  asset-core, audio-driver, gac-core, gpu-driver, physics-driver
+tier 2  asset-core, audio-driver, gac-core, gpu-driver, mel-build, physics-driver
 tier 3  audio-core, compute-driver, ecs-core, graphics-driver
 tier 4  compute-runtime, scene
 tier 5  gac-compute
@@ -59,6 +59,12 @@ this diagram only tracks internal `meridian-*` edges). Neither knows
 about `Entity`/`Mesh`/`RigidBody` or any other specific tag — those are
 defined in `meridian-sdk::dsl` (built-ins) or in a game's own crate
 (custom tags), both just ordinary `#[dsl_tag]`-annotated structs.
+`meridian-mel-build` (tier 2, on `dsl-core` only) is the build-time
+`.mel` -> `.g.rs` generator of [ADR 017](adr/017-mel-markup-and-code-behind.md).
+An application takes it as a **build-dependency** for its `build.rs`,
+the one exception to "applications depend on `meridian-sdk` alone": a
+build script cannot use the SDK without compiling the whole engine for
+the host, and the generated code itself names only `meridian_sdk`.
 
 `meridian-scene` is scene serialization on Substrate Data (see
 [ADR 016](adr/016-data-formats-on-substrate-data.md) and
@@ -219,6 +225,7 @@ bottom-up.
 - `meridian-scene` -> `meridian-ecs-core`, `meridian-gac-core`
 - `meridian-dsl-core` -> `meridian-foundation`
 - `meridian-dsl-macros` -> (nothing; external `syn`/`quote`/`proc-macro-crate` only)
+- `meridian-mel-build` -> `meridian-dsl-core`
 - `meridian-sdk` -> `meridian-asset-core`, `meridian-audio-core`, `meridian-dsl-core`, `meridian-dsl-macros`, `meridian-engine-core`, `meridian-foundation`, `meridian-gac-core`, `meridian-graphics-core`, `meridian-graphics-driver`, `meridian-physics-core`, `meridian-platform-core`, `meridian-task-core`
 
 `meridian-engine-core` lists `meridian-graphics-core` as an allowed edge

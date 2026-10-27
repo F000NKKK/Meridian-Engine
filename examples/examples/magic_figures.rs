@@ -9,9 +9,11 @@
 //! way via `asset-core::AnyImageDecoder`).
 //!
 //! **Scene composition lives in `assets/scenes/magic_figures.mel`**,
-//! parsed through `meridian_sdk::dsl` (via the shared
-//! `meridian_examples::scene_loader`) — same as `physic_figures`, but
-//! this scene needs data the SDK's built-in tags don't carry (glow
+//! compiled by this crate's `build.rs` into a generated module (typed
+//! `x:Name` ids, markup checked at build time; see
+//! [ADR 017](../../docs/adr/017-mel-markup-and-code-behind.md)) and built
+//! through `meridian_sdk::dsl` — unlike `physic_figures`, which still
+//! reads its file at run time. This scene also needs data the SDK's built-in tags don't carry (glow
 //! color, orbit phase/speed, which audio file to play), so this file
 //! defines its *own* tags ([`Glow`]/[`Orbit`]/[`AudioTag`]) with the
 //! exact same `#[dsl_tag(name = "...")]` macro the SDK's built-ins use
@@ -58,8 +60,13 @@
 //!   ./build.sh run magic_figures
 
 use meridian_examples::paths::asset_path;
-use meridian_examples::scene_loader::load_dsl_scene;
 use meridian_sdk::dsl::{self, dsl_tag};
+
+/// The code generated from `assets/scenes/magic_figures.mel` by this
+/// crate's `build.rs` (ADR 017): `Name` has one variant per `x:Name`.
+mod scene {
+    meridian_sdk::mel_include!("magic_figures");
+}
 use meridian_sdk::{
     AcousticMedium, AppHandler, AudioOutput, AudioTrack, BinauralRenderer, Declicker, Device,
     DspNode, Emitter, FlyCamera, GraphicsBase, InputState, KeyCode, Light, Listener, Material,
@@ -137,23 +144,27 @@ struct ShapeSpec {
     spin_speed: f32,
 }
 
-/// Parses `assets/scenes/magic_figures.mel` against the SDK's built-in
-/// tags plus this example's own [`Glow`]/[`OrbitTag`]/[`AudioTag`] and
-/// flattens every `<Entity>` into a [`ShapeSpec`]. The read/parse/
-/// error-logging sequence itself is
-/// `meridian_examples::scene_loader::load_dsl_scene` — see
-/// `physic_figures::load_scene`'s identical use of it.
+/// Builds `assets/scenes/magic_figures.mel` (embedded and checked at
+/// compile time through the generated [`scene`] module) against the
+/// SDK's built-in tags plus this example's own
+/// [`Glow`]/[`OrbitTag`]/[`AudioTag`], and flattens each named
+/// `<Entity>` into a [`ShapeSpec`], looked up by its typed `x:Name`.
 fn load_scene() -> Vec<ShapeSpec> {
     let mut registry = dsl::default_registry();
     registry.register::<Glow>();
     registry.register::<OrbitTag>();
     registry.register::<AudioTag>();
 
-    let root = load_dsl_scene("assets/scenes/magic_figures.mel", &registry);
+    let root = scene::build(&registry).unwrap_or_else(|e| {
+        meridian_sdk::log_error!("failed to build magic_figures.mel: {e}");
+        panic!("failed to build magic_figures.mel: {e}");
+    });
 
-    root.children
-        .iter()
-        .map(|entity_node| {
+    scene::Name::ALL
+        .into_iter()
+        .map(|name| {
+            let entity_node = scene::find(&root, name)
+                .unwrap_or_else(|| panic!("x:Name '{}' missing from the scene", name.as_str()));
             let entity = entity_node
                 .downcast_ref::<dsl::Entity>()
                 .unwrap_or_else(|| panic!("<{}> at scene root must be <Entity>", entity_node.tag));
@@ -565,4 +576,15 @@ fn main() {
     meridian_examples::app_main::install_diagnostics("magic_figures");
     run_windowed_app("Meridian Engine — Magic Figures", 1024, 768, App::new())
         .expect("windowed app exited with an error");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn generated_scene_builds_every_named_entity() {
+        let names: Vec<_> = load_scene().into_iter().map(|shape| shape.name).collect();
+        assert_eq!(names, ["cube", "sphere", "pyramid"]);
+    }
 }

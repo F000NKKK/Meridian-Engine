@@ -33,6 +33,7 @@ meridian-engine-core     Runtime: the single JobGraph-based frame-work entry poi
 meridian-dsl-core        domain-blind tag/attribute markup parser + typed-tag registry (the mechanics under the scene DSL)
 meridian-dsl-macros      #[dsl_tag(name = "...")] — the code-gen half of the DSL, lets a game register its own tags
 meridian-scene           .mscene load/save on Substrate Data: application-built ComponentRegistry, diagnostics with line/column/path (not re-exported by sdk yet)
+meridian-mel-build       build.rs generator: each .mel becomes a <name>.g.rs (typed x:Name ids, builder) pulled in with mel_include! (ADR 017)
 meridian-sdk             application entry point: re-exports every type above, plus resource loading, the extensible scene DSL, and windowed-app/render-stage scaffolding
 ```
 
@@ -63,8 +64,9 @@ queries, GA math) stays synchronous (see
 [ADR 009](docs/adr/009-async-io-via-tokio.md)).
 
 Both examples build their scene from a `.mel` file (Meridian Engine
-Language — today the tag/attribute DSL; a Razor-style scripting
-extension is planned, see [ADR 015](docs/adr/015-extensible-scene-dsl.md))
+Language — today the tag/attribute DSL of [ADR 015](docs/adr/015-extensible-scene-dsl.md);
+behavior is planned as WPF-style code-behind with compiled bindings, see
+[ADR 017](docs/adr/017-mel-markup-and-code-behind.md))
 under `examples/assets/scenes/`, parsed via `meridian_sdk::dsl` —
 `magic_figures` registers its own `<Glow>`/`<Orbit>`/`<Audio>` tags
 alongside the SDK's built-ins, the concrete demonstration that a game
