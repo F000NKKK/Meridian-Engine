@@ -28,10 +28,10 @@ Step 3 (`memory-core`/`task-core`/`platform-core`) is also real and tested:
   detection via generation bump on reuse) and `FrameArena<T>`/
   `PersistentArena<T>` (safe bump-style lists, `reset()` retains capacity).
 - `meridian-task-core` — `JobGraph`/`Scheduler`: dependency-ordered
-  execution across worker threads, panics on a cycle instead of hanging.
-  Deliberately a shared mutex-guarded ready-queue rather than per-worker
-  lock-free work-stealing deques — see docs/threading-model.md for why
-  that's a first step, not the final design.
+  execution on a persistent worker pool (spawned once with the
+  `Scheduler`), panics on a cycle instead of hanging, re-raises a job's panic
+  from `run`. Deliberately a shared mutex-guarded ready-queue rather than
+  per-worker work-stealing deques — see docs/threading-model.md.
 - `meridian-platform-core` — `Time`/`Clock` and `InputState` (held/
   pressed-this-frame/released-this-frame key state, mouse position+delta)
   are real; `BackendCapabilities`/`CpuCapabilities`/`GpuCapabilities`
