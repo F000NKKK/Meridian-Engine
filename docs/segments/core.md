@@ -107,8 +107,10 @@ change that closed them.
    `transform_vector` / `to_mat4` use the hand-expanded sandwich (rotor 3x3
    plus origin) instead of two 16-component products: 1.16 µs -> 8 ns per
    point, 10k points 5.6 ms -> 82 µs (`cargo bench -p meridian-gac`).
-   `FixedMotor3` still uses the generic product; expand it the same way when
-   a deterministic hot path shows up.
+   `FixedMotor3` has the same expansion (`transform_point` 1.50 µs -> 13 ns,
+   `transform_vector` 2.58 µs -> 10 ns); its results can differ from the old
+   product by a few units of the last place and stay bit-identical across
+   platforms.
 8. **Benchmarks.** `ecs` has criterion benches; add them for
    `runtime-threads` and the `gac-wgpu` batch kernels so items 3, 5 and 7 are
    decided on numbers.
