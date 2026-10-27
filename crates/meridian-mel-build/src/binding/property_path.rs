@@ -3,6 +3,7 @@
 
 use meridian_dsl_core::QualifiedName;
 use meridian_ui_core::properties::by_name;
+use meridian_ui_core::{PropertyId, PropertyMeta};
 
 use crate::InvalidMarkup;
 
@@ -14,6 +15,7 @@ const PROPERTIES: &str = "::meridian_sdk::ui_core::properties";
 pub struct PropertyPath {
     module: String,
     constant: String,
+    id: PropertyId,
 }
 
 impl PropertyPath {
@@ -29,7 +31,7 @@ impl PropertyPath {
         candidates
             .iter()
             .find_map(|name| by_name(name))
-            .map(|meta| Self::from_registered(meta.name))
+            .map(Self::from_registered)
             .ok_or_else(|| InvalidMarkup::UnknownProperty {
                 element: tag.to_string(),
                 property: attr.to_string(),
@@ -37,12 +39,19 @@ impl PropertyPath {
     }
 
     /// `"Grid.Row"` -> `grid::ROW`; a bare `"Width"` -> `element::WIDTH`.
-    fn from_registered(name: &str) -> Self {
-        let (owner, member) = name.split_once('.').unwrap_or(("Element", name));
+    fn from_registered(meta: &PropertyMeta) -> Self {
+        let (owner, member) = meta.name.split_once('.').unwrap_or(("Element", meta.name));
         Self {
             module: snake_case(owner),
             constant: snake_case(member).to_ascii_uppercase(),
+            id: meta.id,
         }
+    }
+
+    /// The registered property, for code that sets it at run time rather
+    /// than through the generated constant.
+    pub fn id(&self) -> PropertyId {
+        self.id
     }
 
     /// The constant as a Rust path.

@@ -655,7 +655,10 @@ priority before writing implementations is keeping that document and the
     A document with a UI root also gets `build_ui`, which creates the
     `UiTree` from the markup, and `.mres` resource sets
     ([mel-resources.md](mel-resources.md)) generate typed constants and
-    resolve `@res:Set.name` in attributes. Event dispatch is next.
+    resolve `@res:Set.name` in attributes; `<Owner.Resources>` blocks and
+    `{StaticResource}` resolve at build time, and `LiveUi` patches changed
+    attributes of a reparsed document into a live tree (hot reload, step
+    one). Event dispatch is next.
 
 ## Scaling beyond a tech demo (Minecraft/Satisfactory-class scope)
 

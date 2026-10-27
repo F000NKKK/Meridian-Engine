@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 use meridian_dsl_core::{Attribute, Element};
 
 use crate::ui_node::UiNodeError;
-use crate::{InvalidMarkup, RESOURCE_TAGS, ResourceValue, read_markup_value};
+use crate::{InvalidMarkup, ResourceTag, ResourceValue, read_markup_value};
 
 /// `<Owner.Resources>` holds `<String|Number|Bool|Color x:Key=".."
 /// Value=".." />`; they are visible to `{StaticResource Key}` on the
@@ -37,9 +37,9 @@ impl LocalResources {
 fn read_resource(element: &Element) -> Result<(String, ResourceValue), UiNodeError> {
     let tag = element.name.to_string();
     let at = |reason| (element.span, reason);
-    if !RESOURCE_TAGS.contains(&tag.as_str()) || !element.children.is_empty() {
+    let Some(kind) = ResourceTag::parse(&tag).filter(|_| element.children.is_empty()) else {
         return Err(at(InvalidMarkup::InvalidResourceElement(tag)));
-    }
+    };
     let key = element
         .directive("Key")
         .and_then(Attribute::text)
@@ -53,7 +53,7 @@ fn read_resource(element: &Element) -> Result<(String, ResourceValue), UiNodeErr
         .find(|attr| attr.name.is_plain("Value"))
         .and_then(Attribute::text)
         .ok_or_else(|| at(InvalidMarkup::MissingResourceValue(key.to_string())))?;
-    let value = read_markup_value(key, &tag, text)
+    let value = read_markup_value(key, kind, text)
         .map_err(|problem| at(InvalidMarkup::InvalidResourceValue(problem)))?;
     Ok((key.to_string(), value))
 }
