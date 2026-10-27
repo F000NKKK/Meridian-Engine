@@ -21,7 +21,7 @@
 //! instead of forcing an awkward fit.
 //!
 //! Design notes: docs/notes/meridian-compute-runtime.md (`lib`).
-
+#![doc = include_str!("../README.md")]
 #![forbid(unsafe_code)]
 
 mod backend_split;

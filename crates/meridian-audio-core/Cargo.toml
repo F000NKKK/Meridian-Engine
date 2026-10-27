@@ -6,6 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 description = "Spatial audio built on the GAC: mixer, DSP graph, listener and emitter frames."
+readme = "README.md"
 
 [dependencies]
 meridian-gac-core = { workspace = true }

@@ -24,6 +24,7 @@
 //! No CDATA, no processing instructions, no text nodes between elements.
 //! Every element, attribute and error carries a [`Span`] (line/column)
 //! for diagnostics and the editor.
+#![doc = include_str!("../README.md")]
 
 mod parse;
 mod syntax;

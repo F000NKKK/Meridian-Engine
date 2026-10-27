@@ -6,6 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 description = "WPF-style retained UI runtime: element tree, typed dependency properties, measure/arrange layout (StackPanel, DockPanel, Grid) and hit testing. Emits no pixels itself; see ADR 018."
+readme = "README.md"
 
 [dependencies]
 meridian-foundation = { workspace = true }

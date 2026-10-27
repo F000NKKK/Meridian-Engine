@@ -6,6 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 description = "Frame/persistent arenas, resource pools and generational handles; minimizes dynamic allocation across the engine."
+readme = "README.md"
 
 [dependencies]
 

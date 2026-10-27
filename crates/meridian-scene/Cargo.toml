@@ -6,6 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 description = "Scene serialization on Substrate Data: an application-built component registry, the .mscene document schema, and World load/save with line/column/path diagnostics."
+readme = "README.md"
 
 [dependencies]
 meridian-ecs-core = { workspace = true }
