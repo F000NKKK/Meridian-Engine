@@ -42,7 +42,7 @@ Editor to host, always a `RequestEnvelope { id: RequestId, request }`:
 | `Describe` | | `Described` |
 | `ListEntities` | | `Entities` |
 | `GetComponent` | `entity`, `component` | `Component` |
-| `PatchComponent` | `entity`, `component`, `patch` | `Done` |
+| `SetComponent` | `entity`, `component`, `value` | `Done` |
 | `SpawnEntity` | | `Spawned` |
 | `DespawnEntity` | `entity` | `Done` |
 | `Play`, `Pause`, `Step` | | `Done` |
@@ -54,7 +54,7 @@ events), or `Event { event }`.
 
 | `Response` | Carries |
 |---|---|
-| `Welcome` | the host's `version` |
+| `Welcome` | the negotiated `version`: the lower of the host's and the editor's |
 | `Described` | `components: Vec<ComponentShape>` — `ComponentRegistry::describe()` **as it is**, not re-modelled; the IDE builds inspectors and completion from it |
 | `Entities` | `entities: Vec<EntityRef>` |
 | `Component` | `value`: the component as a Substrate Data value |
@@ -69,7 +69,8 @@ events), or `Event { event }`.
 | `NoSuchEntity { entity }` | |
 | `NoSuchComponent { component }` | no such name in the host's registry |
 | `ComponentMissing { entity, component }` | the entity exists but lacks it |
-| `InvalidValue { diagnostics }` | a patch that isn't a value of the component's shape |
+| `InvalidValue { diagnostics }` | a `value` that isn't of the component's shape |
+| `Unsupported` | a request this host doesn't know (a newer editor's, or past the negotiated version) |
 
 Errors are data, not text: the editor decides how to show them.
 
@@ -89,9 +90,9 @@ Errors are data, not text: the editor decides how to show them.
 - `RequestId` — chosen by the editor, echoed in the response.
 - `ProtocolVersion` — see below.
 
-### Patching
+### Setting a component
 
-`PatchComponent.patch` is the component's *new value* (a Substrate Data
+`SetComponent.value` replaces the component; it is the component's *new value* (a Substrate Data
 value, read with the component's own schema; a value that doesn't read is
 `InvalidValue` with every problem and its path). Where the entity comes from
 a text `.mscene`, the host builds the document's new value and writes it
@@ -126,13 +127,37 @@ send:
 
 1. The editor's first message is `Hello { version }`.
 2. A host accepts a client whose version is **not newer than its own**
-   (`ProtocolVersion::accepts`), else `Failed(VersionMismatch)`, and
-   answers `Welcome { version }` with its own.
-3. From then on each peer sends only what the *lower* of the two versions
+   and negotiates `host.negotiate(client)`, the lower of the two, else
+   `Failed(VersionMismatch)`. It answers `Welcome { version }` with the
+   negotiated version.
+3. From then on each peer sends only what the negotiated version
    knows: a newer host does not send variants or fields appended after the
    editor's version.
 
 A request before `Hello` is `Failed(NotGreeted)`.
+
+**What bumps the version.** Besides adding messages, any change to the
+written shape of what the messages embed from Substrate Data bumps
+`ProtocolVersion`: `Diagnostic` (in `InvalidValue`), `ComponentShape` and its
+`ShapeDoc` (in `Described`), and the `Value` model (in `Component`,
+`ComponentChanged`, `SetComponent`). Moving to packed frames would be a bump
+too.
+
+### Requests the host cannot read
+
+`read_message::<RequestEnvelope>` fails a whole frame it doesn't understand
+(`Malformed`), and then the host has no `id` to answer. A host that wants to
+answer instead of dropping the connection (an old host, or a client that
+skipped `Hello`) does this:
+
+1. `read_message::<Value>` the frame (any frame is a `Value`);
+2. take its `id` field and read it as `RequestId`;
+3. read the whole value as `RequestEnvelope` (`substrate_data::read_value`);
+4. on failure answer `HostMessage::Response { id, response: Failed {
+   error: Unsupported } }` with that id.
+
+A frame with no readable `id` is a broken peer: close the connection. The
+`malformed` tests run this pattern against an unknown-variant request.
 
 ## How Meridian IDLE consumes it
 
@@ -144,7 +169,7 @@ speaks the same types) and:
    the `ComponentShape` list (`Shape::describe()` of each component);
 3. sends `ListEntities`, then `Subscribe` to `Entities`, `Components`, `Log`
    and `PlayState` to stay current;
-4. edits through `PatchComponent` and `SpawnEntity` / `DespawnEntity`, and
+4. edits through `SetComponent` and `SpawnEntity` / `DespawnEntity`, and
    drives the simulation with `Play`, `Pause` and `Step`.
 
 Messages are matched by `RequestId`; events arrive any time between.

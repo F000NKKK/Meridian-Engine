@@ -8,7 +8,7 @@ use crate::{ComponentRef, EntityRef, EventTopic, ProtocolVersion};
 #[derive(Debug, Clone, PartialEq, Schema)]
 pub enum Request {
     /// The first request of a connection: the protocol version the editor
-    /// speaks. Answered with [`crate::Response::Welcome`], or
+    /// speaks. Answered with [`crate::Response::Welcome`] (the negotiated version), or
     /// [`crate::RequestError::VersionMismatch`] when the editor is newer.
     Hello {
         /// The editor's version.
@@ -25,17 +25,17 @@ pub enum Request {
         /// Its component.
         component: ComponentRef,
     },
-    /// Replaces one component of one entity. The host reads `patch` with
+    /// Replaces one component of one entity. The host reads `value` with
     /// the component's schema and, when the entity comes from a text
     /// document, writes it back with `substrate_data::patch::patch`, so
     /// hand-written comments and layout survive.
-    PatchComponent {
+    SetComponent {
         /// The entity.
         entity: EntityRef,
         /// Its component.
         component: ComponentRef,
         /// The component's new value.
-        patch: Value,
+        value: Value,
     },
     /// Spawns an entity with no components.
     SpawnEntity,
