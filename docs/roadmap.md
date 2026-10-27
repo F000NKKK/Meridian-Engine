@@ -774,12 +774,6 @@ sprint — treat this section as "what's missing," not "next release."
 
 ## Not yet decided
 
-- **`.mel` vs `.mscene`.** `.mel` ([ADR 015](adr/015-extensible-scene-dsl.md))
-  is the hand-written scene markup the examples use; `.mscene`
-  ([ADR 016](adr/016-data-formats-on-substrate-data.md)) is what tools
-  save. Whether the DSL's attribute values adopt the Substrate Data
-  literal grammar, or `.mel` compiles to `.mscene`, is open.
-
 - **Deterministic simulation mode — decided: Q16.16 fixed-point
   (`meridian-numeric-core::Fixed`), not ordered floating point.** Ordered
   floating point (careful summation order, no FMA, disabled

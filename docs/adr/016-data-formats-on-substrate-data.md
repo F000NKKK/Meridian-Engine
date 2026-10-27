@@ -67,8 +67,11 @@ own".
   and edits files through `substrate_data::patch`, so hand-written comments
   survive inspector edits.
 - `.mel` (ADR 015) stays the authoring markup for scenes written by hand;
-  `.mscene` is what tools save. Converging the two (the DSL's attribute
-  values using the Substrate Data literal grammar, or `.mel` compiling to
-  `.mscene`) is an open question recorded in the roadmap.
+  `.mscene` is what tools save. Settled by
+  [ADR 017](017-mel-markup-and-code-behind.md): the two stay separate
+  formats (`.mel` is not compiled into `.mscene`) but share one literal
+  grammar — `.mel` attribute values follow the Substrate Data string rules
+  (`@kind:id` is a reference, `@@` escapes, any other leading `@` is an
+  error; resources are `@res:Set.name`).
 - New external dependency `substrate-data` (git, pinned by revision until
   it is published to crates.io).
