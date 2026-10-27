@@ -4,6 +4,8 @@ use meridian_memory_core::ResourcePool;
 
 use super::Change;
 use super::element::Element;
+use super::pointer_state::PointerState;
+use crate::UiEvent;
 use crate::{ElementKind, NodeId, UiError};
 
 /// A retained element tree. Nodes live in a generational pool and refer to
@@ -14,6 +16,9 @@ pub struct UiTree {
     pub(super) elements: ResourcePool<Element>,
     pub(super) changes: Vec<Change>,
     pub(super) layout_dirty: bool,
+    pub(super) focused: Option<NodeId>,
+    pub(super) pointer: PointerState,
+    pub(super) events: Vec<UiEvent>,
 }
 
 impl UiTree {

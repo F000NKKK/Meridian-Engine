@@ -14,6 +14,10 @@ pub enum UiError {
     /// The node already has a parent; detach it first.
     #[error("node {0:?} already has a parent")]
     AlreadyAttached(NodeId),
+    /// The node cannot take keyboard focus: it is not `Focusable`, or it
+    /// or an ancestor is hidden or collapsed.
+    #[error("node {0:?} cannot take focus")]
+    NotFocusable(NodeId),
     /// No property with this id is registered in [`crate::properties`].
     #[error("unknown property {0:?}")]
     UnknownProperty(PropertyId),
