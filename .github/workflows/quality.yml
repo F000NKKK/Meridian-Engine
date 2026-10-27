@@ -39,8 +39,6 @@ jobs:
           repository: F000NKKK/craftbook
           ref: ${{ env.CRAFTBOOK_REF }}
           path: .craftbook
-          # Needed while Craftbook is private: a fine-grained token that can read it.
-          token: ${{ secrets.CRAFTBOOK_TOKEN }}
       - run: sudo apt-get update && sudo apt-get install -y libasound2-dev
       - uses: dtolnay/rust-toolchain@stable
         with:
@@ -78,7 +76,6 @@ jobs:
           repository: F000NKKK/craftbook
           ref: ${{ env.CRAFTBOOK_REF }}
           path: .craftbook
-          token: ${{ secrets.CRAFTBOOK_TOKEN }}
       - run: sudo apt-get update && sudo apt-get install -y libasound2-dev
       - uses: dtolnay/rust-toolchain@stable
         with:
@@ -137,7 +134,6 @@ jobs:
           repository: F000NKKK/craftbook
           ref: ${{ env.CRAFTBOOK_REF }}
           path: .craftbook
-          token: ${{ secrets.CRAFTBOOK_TOKEN }}
       - run: sudo apt-get update && sudo apt-get install -y libasound2-dev
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
