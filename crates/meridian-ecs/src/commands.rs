@@ -18,6 +18,7 @@ pub struct Commands {
 }
 
 impl Commands {
+    /// An empty queue.
     #[must_use]
     pub fn new() -> Self {
         Self::default()
