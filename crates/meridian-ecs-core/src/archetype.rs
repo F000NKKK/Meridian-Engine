@@ -10,7 +10,7 @@ use std::collections::HashMap;
 /// The set of component types an entity has; entities sharing an archetype
 /// share Structure-of-Arrays storage (each `Column<T>` here is one `SoA`
 /// column, keyed by `TypeId`).
-pub(crate) struct Archetype {
+pub struct Archetype {
     pub(crate) type_ids: Vec<TypeId>, // sorted; the archetype's identity
     pub(crate) entities: Vec<Entity>, // row -> Entity
     pub(crate) columns: HashMap<TypeId, Box<dyn AnyColumn>>,

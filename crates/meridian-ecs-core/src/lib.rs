@@ -12,13 +12,12 @@
 //! to know every `Component` type that will ever exist, but every move is
 //! still a safe, checked downcast, no `unsafe`.
 //!
-//! Scope, deliberately: [`Query`]/[`QueryMut`] iterate a *single*
-//! component type across every archetype that has it. Multi-component
-//! queries (`Query<(&Transform, &mut Velocity)>`) need to prove to the
-//! borrow checker that two different columns don't alias, which is a
-//! genuinely harder, `unsafe`-adjacent problem — deferred until there's a
-//! system that actually needs it, not built speculatively. See
-//! docs/ecs-design.md.
+//! [`Query`]/[`QueryMut`] iterate a *single* component type across every
+//! archetype that has it. [`World::query_many`]/[`World::query_many_mut`]
+//! iterate two to four at once (`(&Position, &mut Velocity)`). The borrow
+//! checker is satisfied without `unsafe`: an archetype's columns live in a
+//! `HashMap`, and `HashMap::get_disjoint_mut` hands out several `&mut`
+//! columns after checking their keys differ. See docs/ecs-design.md.
 
 #![forbid(unsafe_code)]
 
@@ -28,7 +27,6 @@ mod component;
 mod entity;
 mod entity_location;
 mod query;
-mod query_mut;
 #[cfg(test)]
 mod tests;
 mod transform;
@@ -39,7 +37,8 @@ use column::{AnyColumn, Column};
 pub use component::Component;
 pub use entity::Entity;
 use entity_location::EntityLocation;
-pub use query::Query;
-pub use query_mut::QueryMut;
+pub use query::{
+    Fetch, Query, QueryMany, QueryManyMut, QueryMut, ReadFetch, ReadSelection, Selection,
+};
 pub use transform::Transform;
 pub use world::World;

@@ -7,7 +7,11 @@ use crate::Component;
 use crate::Entity;
 use crate::EntityLocation;
 use crate::Query;
+use crate::QueryMany;
+use crate::QueryManyMut;
 use crate::QueryMut;
+use crate::ReadSelection;
+use crate::Selection;
 use meridian_memory_core::ResourcePool;
 use std::any::TypeId;
 use std::collections::HashMap;
@@ -299,5 +303,24 @@ impl World {
         QueryMut {
             inner: Box::new(inner),
         }
+    }
+
+    /// Iterates `(Entity, (&A, &B, ..))` for every entity that has all the
+    /// components in the tuple `Q` (two to four `&T` elements).
+    #[must_use]
+    pub fn query_many<Q: ReadSelection>(&self) -> QueryMany<'_, Q> {
+        QueryMany::new(self.archetypes.iter())
+    }
+
+    /// Iterates `(Entity, (&A, &mut B, ..))` for every entity that has all
+    /// the components in the tuple `Q` (two to four `&T` / `&mut T`
+    /// elements).
+    ///
+    /// # Panics
+    ///
+    /// If `Q` names one component type twice, since `(&mut T, &T)` would
+    /// alias the same column.
+    pub fn query_many_mut<Q: Selection>(&mut self) -> QueryManyMut<'_, Q> {
+        QueryManyMut::new(self.archetypes.iter_mut())
     }
 }

@@ -111,6 +111,7 @@ why physics and rendering need selective ticks rather than one
   [`docs/context-map.md`](docs/context-map.md) — the words of each bounded
   context and how the contexts relate
 - [`docs/adr/`](docs/adr/) — architecture decision records
+- [`docs/segments/`](docs/segments/) — per-segment ownership and backlog
 
 Rust code follows [Craftbook](https://github.com/F000NKKK/craftbook); the
 layer of each crate is declared in [`craftbook.toml`](craftbook.toml).
