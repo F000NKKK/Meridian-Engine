@@ -83,6 +83,8 @@ crate has its own README.
 | [`meridian-physics-compute`](crates/meridian-physics-compute) | physics | Batched rigid-body and soft-body kernels |
 | [`meridian-scene`](crates/meridian-scene) | data | `.mscene` documents on Substrate Data, `World` load/save |
 | [`meridian-editor-protocol`](crates/meridian-editor-protocol) | editor | Typed game/editor messages as Substrate Data frames |
+| [`meridian-editor-host`](crates/meridian-editor-host) | editor | The game's side of the protocol, without I/O: `Session`, `SimulationControl`, `RequestHandler` |
+| [`meridian-editor-tcp`](crates/meridian-editor-tcp) | editor | Serves one editor over loopback TCP (the only editor crate with `tokio`) |
 | [`meridian-mel-build`](crates/meridian-mel-build) | ui | `build.rs` generator turning `.mel` into typed Rust |
 
 **Interface**
@@ -136,7 +138,7 @@ and every layer may use the shared kernel.
 flowchart LR
     I[interface<br/>sdk, dsl-macros, examples] --> A[application<br/>engine-core, compute-runtime]
     A --> D[domain<br/>graphics, physics, audio, assets, ui]
-    X[infrastructure<br/>drivers, adapters, scene, editor-protocol] --> D
+    X[infrastructure<br/>drivers, adapters, scene, editor-protocol, editor-host, editor-tcp] --> D
     K[shared kernel<br/>foundation, numeric, gac, memory, resource, ecs, dsl-core]
     I -.-> K
     A -.-> K
@@ -184,7 +186,7 @@ Crates are released with `./release.sh` (see its `--help`).
 | Windowing (`winit`), GPU rendering and compute (`wgpu`) | Implemented |
 | Physics, spatial audio, assets, scene DSL | Implemented, in use by the examples |
 | UI runtime (`ui-core`) | Layout and hit testing; rendering and input routing not done |
-| Editor protocol, scene documents | Implemented; no editor host yet |
+| Editor protocol, scene documents | Implemented; editor host (`Session` + loopback TCP) implemented, not yet wired into `engine-core`'s frame loop |
 | Craftbook migration | In progress: some files and functions still above the limits, tracked by the baselines |
 
 The plan is in [`docs/roadmap.md`](docs/roadmap.md).

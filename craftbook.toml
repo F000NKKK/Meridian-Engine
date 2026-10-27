@@ -165,6 +165,18 @@ name = "meridian-editor-protocol"
 layer = "infra"
 context = "editor"
 
+# Infra, not app: the host answers in the protocol's terms, and an app crate may
+# not depend on infra (the protocol crate is infra, ADR 019). It is pure (no I/O).
+[[crate]]
+name = "meridian-editor-host"
+layer = "infra"
+context = "editor"
+
+[[crate]]
+name = "meridian-editor-tcp"
+layer = "infra"
+context = "editor"
+
 [[context_edge]]
 from = "physics"
 to = "geometry"

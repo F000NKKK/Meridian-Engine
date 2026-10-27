@@ -96,6 +96,12 @@ ALLOWED = {
     },
     "meridian-scene": {"meridian-ecs-core", "meridian-gac-core"},
     "meridian-editor-protocol": {"meridian-ecs-core", "meridian-scene"},
+    "meridian-editor-host": {
+        "meridian-ecs-core",
+        "meridian-editor-protocol",
+        "meridian-scene",
+    },
+    "meridian-editor-tcp": {"meridian-editor-host", "meridian-editor-protocol"},
     "meridian-dsl-core": {"meridian-foundation"},
     "meridian-dsl-macros": set(),
     "meridian-mel-build": {"meridian-dsl-core", "meridian-ui-core"},

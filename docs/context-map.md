@@ -28,7 +28,7 @@ two layers today is listed under the one it is moving to; Craftbook's
 | audio | domain + adapter | `audio-core` (domain), `audio-driver` (infra) | listener, emitters, speakers, mixer, DSP graph |
 | ui | domain + adapter | `ui-core` (domain), `mel-build` (infra: build-time `.mel` generator) | element tree, typed properties, layout, hit testing, generated bindings |
 | data | infrastructure | `scene` (infra: Substrate Data scene documents) | scene document schema and migration |
-| editor | infrastructure | `editor-protocol` (infra) | host/editor wire messages, versions, ids |
+| editor | infrastructure | `editor-protocol`, `editor-host`, `editor-tcp` (infra) | host/editor wire messages, versions, ids; the host's session, ports and loopback TCP adapter |
 | runtime | application + interface | `engine-core` (app), `task-core` (infra), `sdk` (interface: composition root), `examples` (interface) | frame stages, scheduler, events, job graph |
 
 ## Relations

@@ -7,9 +7,9 @@ other. The types live in `meridian-editor-protocol`
 [Substrate Data](data-formats.md) ([ADR 016](adr/016-data-formats-on-substrate-data.md)).
 
 The crate is **pure protocol**: no `async`, no sockets, no I/O beyond a
-generic `Read`/`Write`. Who listens on which socket, and the code that
-answers requests (it needs the `World`, the `ComponentRegistry` and the
-frame loop), is the host's job in `engine-core` — not written yet.
+generic `Read`/`Write`. The game's side is [the host](#host): the code that
+answers requests (`meridian-editor-host`) and the socket it is served on
+(`meridian-editor-tcp`).
 
 ## Wire
 
@@ -174,8 +174,99 @@ speaks the same types) and:
 
 Messages are matched by `RequestId`; events arrive any time between.
 
+## Host
+
+The game's side is two crates, split on purpose: what answers is pure and
+synchronous, what listens does I/O.
+
+| Crate | Does | Depends on `tokio` |
+|---|---|---|
+| `meridian-editor-host` | `Session`: the state machine of one editor connection | no |
+| `meridian-editor-tcp` | `EditorListener`, `serve_stream`: frames over loopback TCP | yes |
+
+Both sit at the same tier as the protocol (above `scene`, below
+`engine-core`) with no edge beyond `ecs-core`, `scene` and the protocol
+([dependency-rules.md](dependency-rules.md)); both are *infra* in
+`craftbook.toml`, because an app-layer crate may not depend on the protocol
+crate, which is infra (ADR 019).
+
+### Lifecycle
+
+1. The host binds `127.0.0.1:<port>` (`EditorListener::bind`; port `0` picks
+   a free one, read it back with `address()`) and accepts **one** editor
+   (`serve_one`). There is no authentication: the socket is loopback only,
+   and whoever can connect can edit the game.
+2. Each frame is classified (`Incoming::classify`): a request goes to the
+   `RequestHandler`; a frame with a readable `id` but a request this build
+   does not know is answered `Failed { Unsupported }` with that id (the
+   pattern under "Requests the host cannot read") and the connection goes
+   on; a frame with no readable `id` ends it with `ServeError::BrokenPeer`.
+3. `Session::handle(envelope, &mut Game)` returns the `HostMessage`s to
+   send: the `Response`, then the `Event`s the request caused that the
+   editor subscribed to. `Game` borrows the `World`, the `ComponentRegistry`
+   and a `SimulationControl` for that one request, so the host decides when
+   requests run and the session owns no game state.
+4. The editor hanging up between frames ends `serve_one` with `Ok`. A
+   stream cut inside a frame (**including inside the 4-byte length**, which
+   `substrate_data::io::read_frame_bytes` reads as a clean end), a length
+   over `MAX_FRAME` or bytes that are not a message end it with
+   `ServeError::Frame(Truncated | TooLong | Malformed)`.
+
+`Session` rules: before a successful `Hello` every request is
+`Failed(NotGreeted)`; `Hello` negotiates with `ProtocolVersion::negotiate`
+(a newer editor gets `VersionMismatch` and stays ungreeted; a second `Hello`
+negotiates again). `Describe` is `ComponentRegistry::describe()` as it is.
+`ListEntities` is ordered by index. `GetComponent` / `SetComponent` check, in
+order, the entity (`NoSuchEntity`), then the component name
+(`NoSuchComponent`); `GetComponent` then reports `ComponentMissing`, and
+`SetComponent` reads `value` with the component's own schema through
+`ComponentRegistry::set_component` (`InvalidValue` carries every
+`Diagnostic` with its path, and the world is untouched). A successful set
+announces the value *as stored*, not as sent.
+
+Events a request causes: `SpawnEntity` and `DespawnEntity` announce
+`EntityAdded` / `EntityRemoved` (topic `Entities`), `SetComponent` announces
+`ComponentChanged` (`Components`), and a request that changes the play
+state announces `PlayStateChanged` (`PlayState`) only when it did change.
+`Session::announce(event)` turns an event the host raises on its own into a
+message when its topic is subscribed.
+
+### Play, pause, step
+
+Stepping stays with `engine-core`: the host implements the
+`SimulationControl` port (`state`, `play`, `pause`, `step`) and the session
+only maps the requests onto it. `Step` pauses, steps once, and stays
+paused. `ManualSimulation` is the port's double: it counts steps, for tests
+and for a headless host.
+
+### What is implemented, and what is not
+
+Implemented: every `Request` of protocol version 1; subscriptions by
+`EventTopic`; the loopback TCP adapter; the unknown-request pattern.
+
+Not yet:
+
+- **Wiring into `engine-core`.** `engine-core` neither depends on the host
+  nor implements `SimulationControl`. A game today builds the pieces itself:
+  a `RequestHandler` that owns (or reaches) its `World`, runs
+  `Session::handle`, and an `EditorListener::serve_one` on a tokio task. The
+  `RequestHandler` is synchronous, so a handler that needs the frame loop's
+  `World` must forward requests to it (a channel, answered at a frame
+  boundary); that bridge comes with the wiring.
+- **Events the host raises on its own** (`Log`, `PlayStateChanged` from the
+  game, `ComponentChanged` for edits the game made itself): `announce`
+  exists, but the adapter writes only what the handler returns for a
+  request, so they are not pushed while the editor is idle. Detecting world
+  changes not caused by a request needs change tracking in `ecs-core`.
+- A Unix socket or named pipe (`serve_stream` takes any async stream, so it
+  is a few lines), a second concurrent editor, authentication.
+- Gating by the negotiated version: all of version 1 is served as soon as
+  the editor is greeted; this starts to matter with version 2.
+- Patching the text `.mscene` an entity came from with
+  `substrate_data::patch::patch` (see "Setting a component"): the host edits
+  the live `World` only.
+
 ## Not yet
 
-The host (`engine-core`), a transport, authentication, entity selection and
-hierarchy messages, scene load/save requests, and a log-history request.
-Each is appended when it is built.
+Entity selection and hierarchy messages, scene load/save requests, a
+log-history request, authentication. Each is appended when it is built.

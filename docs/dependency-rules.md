@@ -58,8 +58,8 @@ tier 2  asset-core, audio-driver, gac-core, gpu-driver, mel-build, physics-drive
 tier 3  audio-core, compute-driver, ecs-core, graphics-driver
 tier 4  compute-runtime, scene
 tier 5  gac-compute, editor-protocol
-tier 6  graphics-core, physics-core
-tier 7  physics-compute
+tier 6  graphics-core, physics-core, editor-host
+tier 7  physics-compute, editor-tcp
 tier 8  engine-core
 tier 9  sdk
 ```
@@ -106,8 +106,19 @@ Substrate Data frames (see [editor-protocol.md](editor-protocol.md)). It
 sits *above* `meridian-scene` because it reuses its `ComponentName` and
 carries `ComponentRegistry::describe()` unchanged, and takes `ecs-core` only
 for `Entity`'s shape (`EntityRef`). Pure protocol: no `async`, no sockets,
-no I/O beyond a generic `Read`/`Write`; the host that answers requests is
-`engine-core`'s (or an adapter's) job, so nothing depends on it yet.
+no I/O beyond a generic `Read`/`Write`.
+
+`meridian-editor-host` (tier 6) is the game's side of that protocol without
+I/O: a `Session` that answers decoded requests against a `World` and a
+`ComponentRegistry`, a `SimulationControl` port the frame loop implements,
+and a `RequestHandler` port a transport calls. It sits above
+`editor-protocol`, `scene` and `ecs-core` and needs no edge beyond those;
+it is *infra* in `craftbook.toml` because the protocol crate it speaks is
+(an app crate may not depend on infra, ADR 019). `meridian-editor-tcp`
+(tier 7) is its adapter: the only crate of the editor host with `tokio`,
+serving one editor over loopback TCP with `substrate_data::io` frames.
+Neither depends on `engine-core`, and `engine-core` does not depend on
+them yet: the wiring is a follow-up ([editor-protocol.md](editor-protocol.md#host)).
 
 `meridian-ui-core` (tier 1, on `foundation` and `memory-core` only) is the
 WPF-style UI runtime of [ADR 018](adr/018-ui-architecture.md): element
@@ -260,6 +271,8 @@ bottom-up.
 - `meridian-engine-core` -> `meridian-asset-core`, `meridian-audio-core`, `meridian-compute-runtime`, `meridian-ecs-core`, `meridian-foundation`, `meridian-gac-core`, `meridian-graphics-core`, `meridian-memory-core`, `meridian-physics-compute` (pending, wave 6), `meridian-physics-core`, `meridian-platform-core` (pending, wave 6), `meridian-task-core` (pending, wave 6)
 - `meridian-scene` -> `meridian-ecs-core`, `meridian-gac-core`
 - `meridian-editor-protocol` -> `meridian-ecs-core`, `meridian-scene`
+- `meridian-editor-host` -> `meridian-ecs-core`, `meridian-editor-protocol`, `meridian-scene`
+- `meridian-editor-tcp` -> `meridian-editor-host`, `meridian-editor-protocol`
 - `meridian-dsl-core` -> `meridian-foundation`
 - `meridian-dsl-macros` -> (nothing; external `syn`/`quote`/`proc-macro-crate` only)
 - `meridian-mel-build` -> `meridian-dsl-core`, `meridian-ui-core`

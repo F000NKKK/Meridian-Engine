@@ -150,3 +150,15 @@ fn transform_is_a_component_and_defaults_to_identity_motor() {
     world.insert(e, Transform::default());
     assert_eq!(world.get::<Transform>(e).unwrap().motor, Motor3::identity());
 }
+
+#[test]
+fn entities_lists_every_live_entity() {
+    let mut world = World::new();
+    let a = world.spawn();
+    let b = world.spawn();
+    let c = world.spawn();
+    world.despawn(b);
+    let mut listed: Vec<_> = world.entities().collect();
+    listed.sort_by_key(|e| e.index);
+    assert_eq!(listed, vec![a, c]);
+}

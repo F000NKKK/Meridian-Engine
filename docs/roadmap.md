@@ -748,14 +748,18 @@ the rest are not started.
    `meridian-editor-protocol` crate ([editor-protocol.md](editor-protocol.md))
    defines the typed, append-only `Request`/`Response`/`Event` messages
    between a game and Meridian IDLE (golden-byte pinned, version
-   handshake). Parent links load as
+   handshake). **Editor host:** `meridian-editor-host` (a pure `Session`
+   answering every request against a `World` and a `ComponentRegistry`,
+   events by subscription, a `SimulationControl` port) and
+   `meridian-editor-tcp` (one editor over loopback TCP, `tokio`); see
+   [editor-protocol.md](editor-protocol.md#host). Parent links load as
    `meridian-scene::Parent`, a stand-in until `ecs-core` gets a
    hierarchy (it moves there then). **Not yet done:** transform
    propagation along parents; `World::component_types(entity)` in
    `ecs-core` (saving walks registered types until then); `.mprefab`
    instancing, `.meta`, `.msave` (voxel/chunk data via
-   `substrate_data::Stream`), `.mpak`, the editor *host* in `engine-core`
-   that answers the protocol, and wiring scene loading into
+   `substrate_data::Stream`), `.mpak`, wiring the editor host into
+   `engine-core`'s frame loop, and wiring scene loading into
    `engine-core`/`sdk`. The substrate-data dependency
    is a git revision pin (its `main`) until it is published to crates.io.
 6. **No networking.** Multiplayer (both games have it) is a subsystem
