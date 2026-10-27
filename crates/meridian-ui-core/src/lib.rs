@@ -35,5 +35,5 @@ pub use geometry::{Point, Rect, Size, Thickness};
 pub use hit_test::hit_test;
 pub use layout::{FixedAdvanceText, TextMeasurer, compute_layout};
 pub use node::{ElementKind, NodeId};
-pub use property::{Property, PropertyId, PropertyMeta, PropertyType, PropertyValue};
+pub use property::{LiteralError, Property, PropertyId, PropertyMeta, PropertyType, PropertyValue};
 pub use tree::{Change, ChangeSource, UiTree};

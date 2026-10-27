@@ -711,15 +711,29 @@ rest are not started.
    has no `Gpu` variant yet for exactly this reason: adding one before
    all four stages have a real GPU path would silently mix GPU and CPU
    work under one name.
-5. **No persistence at all.** Nothing in the workspace derives
-   `serde::Serialize`/`Deserialize` or has any save/load story — every
-   `*-core` type is designed for one running process's lifetime. Both
-   target games need world state (voxel/chunk data, entity state,
-   inventories, factory layouts) to survive a process restart. This
-   likely wants its own crate (`meridian-persistence-core`?) rather than
-   scattering `#[derive(Serialize)]` across every existing type —
-   consistent with this workspace's "narrow, single-responsibility
-   crates" philosophy (see architecture.md).
+5. **Persistence: started, on Substrate Data.** Every Meridian-owned
+   format is [Substrate Data](https://github.com/F000NKKK/Substrate-Data)
+   (see [ADR 016](adr/016-data-formats-on-substrate-data.md) and
+   [data-formats.md](data-formats.md)) — not `serde` derives scattered
+   across every `*-core` type. **Done:** the optional `data` feature on
+   `numeric-core`/`gac-core` (`Fixed` as raw Q16.16 bits; `Vec3`/
+   `Bivector3`/`Rotor`/`Motor3` and their `Fixed*` counterparts as
+   `Shape::Named` values, bit-exact through text, binary and frames), and
+   the `meridian-scene` crate: an application-built `ComponentRegistry`
+   (by name and `TypeId`; `register`/`register_with` a codec —
+   `Transform` goes through the `TransformForm` newtype so `ecs-core`
+   stays file-blind), `.mscene` load into a
+   `World` (all-or-nothing, every problem with line/column/path, unknown
+   component names with a "did you mean" or kept as written for editors),
+   save, and `describe()` for an IDE. Parent links load as
+   `meridian-scene::Parent`, a stand-in until `ecs-core` gets a
+   hierarchy (it moves there then). **Not yet done:** transform
+   propagation along parents; `World::component_types(entity)` in
+   `ecs-core` (saving walks registered types until then); `.mprefab`
+   instancing, `.meta`, `.msave` (voxel/chunk data via
+   `substrate_data::Stream`), `.mpak`, the editor protocol, and wiring
+   scene loading into `engine-core`/`sdk`. The substrate-data dependency
+   is a git revision pin (its `main`) until it is published to crates.io.
 6. **No networking.** Multiplayer (both games have it) is a subsystem
    that doesn't exist in any form — no netcode, no client/server
    split, no replication. The deterministic `Fixed` numeric mode (see
@@ -733,7 +747,8 @@ rest are not started.
    (`Border`, `StackPanel`, `DockPanel`, `Grid`, `TextBlock`) and hit
    testing, tested without a GPU. Still missing: extraction to
    `Scene2D`, text rendering, input routing and controls, styles and
-   templates, parsing markup literals for the `.mel` generator.
+   templates. Markup literals (`"Auto"`, `"2*"`, `"4,2"`) parse through
+   `PropertyType::parse`.
 8. **Asset pipeline stops at static meshes.** `asset-core::ObjDecoder`
    has no skeletal/skinning support and there's no animation system at
    all — a blocker for any animated creature (Minecraft mobs) or
@@ -746,8 +761,9 @@ dispatch) is done. (1) and (2) next — they're the two things that make
 *any* further content-heavy work (chunks/factories, gameplay systems)
 viable at all, not nice-to-haves. (3) (spatial broad-phase) after that,
 once there's actually a large scene to profile against. (5)
-(persistence) before (6) (networking) — replication design usually
-wants a serialization format to already exist. (7)/(8) (UI, animation)
+(persistence — the format and scene load/save exist now, see above)
+before (6) (networking) — replication design usually wants a
+serialization format to already exist. (7)/(8) (UI, animation)
 can start in parallel with the above once a concrete game loop exists
 to build them against — see "Why implementation is deliberately last"
 below for why this workspace prefers building against a real,

@@ -82,8 +82,8 @@ In order; nothing here starts without a task from the owner.
    ordered input event stream in `platform-core`, plus a "consumed by
    UI" flag for gameplay.
 5. **`meridian-ui-core` next steps** — skeleton is done (tree, layout,
-   hit testing). Left: focus, `Scene2D` extraction adapter, markup
-   literal parsing for the generator.
+   hit testing). Markup literal parsing is done
+   (`PropertyType::parse`). Left: focus, `Scene2D` extraction adapter.
 6. **Base widgets** — panel, label, button, image, scroll view, text
    box; theme/style tokens.
 7. **Example** — HUD overlay over `magic_figures` or `physic_figures`

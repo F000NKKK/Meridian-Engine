@@ -92,6 +92,7 @@ ALLOWED = {
         "meridian-compute-runtime",
         "meridian-physics-compute",
     },
+    "meridian-scene": {"meridian-ecs-core", "meridian-gac-core"},
     "meridian-dsl-core": {"meridian-foundation"},
     "meridian-dsl-macros": set(),
     "meridian-mel-build": {"meridian-dsl-core", "meridian-ui-core"},
