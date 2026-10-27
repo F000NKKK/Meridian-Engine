@@ -4,9 +4,10 @@ use std::any::TypeId;
 use std::iter::{Copied, Map, Zip};
 use std::slice;
 
+use super::columns::{typed, typed_mut};
 use super::selection::sealed::{ReadSelectionRows, SelectionRows};
 use super::{Fetch, ReadFetch, ReadSelection, Selection};
-use crate::{Archetype, Column, Entity};
+use crate::{Archetype, Entity};
 
 /// Implements the query traits for one tuple arity. `nest_*` describe how
 /// the per-column iterators are zipped (`((a, b), c)` for three), and the
@@ -21,23 +22,33 @@ macro_rules! impl_query_tuple {
             type RowItem<'w> = ($($F::Item<'w>,)+);
 
             fn component_ids() -> Vec<TypeId> {
-                vec![$(TypeId::of::<$F::Component>()),+]
+                [$(($F::ACCESSES_COLUMN).then(TypeId::of::<$F::Component>)),+]
+                    .into_iter()
+                    .flatten()
+                    .collect()
             }
 
             fn rows_mut(archetype: &mut Archetype) -> Option<Self::Rows<'_>> {
                 let Archetype { entities, columns, .. } = archetype;
-                let [$(Some($f)),+] =
-                    columns.get_disjoint_mut([$(&TypeId::of::<$F::Component>()),+])
-                else {
-                    return None;
-                };
                 $(
-                    let $f = $F::iter(
-                        &mut $f.as_any_mut().downcast_mut::<Column<$F::Component>>()?.0,
-                    );
+                    if !$F::admits(columns.contains_key(&TypeId::of::<$F::Component>())) {
+                        return None;
+                    }
                 )+
-                let flatten: fn(_) -> _ =
-                    |$nest_pat| ($($f,)+);
+                $( let mut $f = None; )+
+                // One pass over the columns hands each accessed one to the
+                // element that wants it. Accessed types are pairwise distinct
+                // (checked in `QueryManyMut::new`), so no column goes twice.
+                for (id, column) in columns.iter_mut() {
+                    $(
+                        if $F::ACCESSES_COLUMN && *id == TypeId::of::<$F::Component>() {
+                            $f = Some(column);
+                        } else
+                    )+ {}
+                }
+                let rows = entities.len();
+                $( let $f = $F::iter($f.and_then(|column| typed_mut(column.as_mut())), rows); )+
+                let flatten: fn(_) -> _ = |$nest_pat| ($($f,)+);
                 Some(entities.iter().copied().zip($nest_expr.map(flatten)))
             }
         }
@@ -47,17 +58,20 @@ macro_rules! impl_query_tuple {
         impl<$($F: ReadFetch),+> ReadSelectionRows for ($($F,)+) {
             fn rows(archetype: &Archetype) -> Option<Self::Rows<'_>> {
                 $(
+                    let id = TypeId::of::<$F::Component>();
+                    if !$F::admits(archetype.columns.contains_key(&id)) {
+                        return None;
+                    }
                     let $f = $F::iter_shared(
-                        &archetype
+                        archetype
                             .columns
-                            .get(&TypeId::of::<$F::Component>())?
-                            .as_any()
-                            .downcast_ref::<Column<$F::Component>>()?
-                            .0,
+                            .get(&id)
+                            .filter(|_| $F::ACCESSES_COLUMN)
+                            .and_then(|column| typed(column.as_ref())),
+                        archetype.entities.len(),
                     );
                 )+
-                let flatten: fn(_) -> _ =
-                    |$nest_pat| ($($f,)+);
+                let flatten: fn(_) -> _ = |$nest_pat| ($($f,)+);
                 Some(archetype.entities.iter().copied().zip($nest_expr.map(flatten)))
             }
         }

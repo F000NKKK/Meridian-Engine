@@ -38,7 +38,8 @@ pub use component::Component;
 pub use entity::Entity;
 use entity_location::EntityLocation;
 pub use query::{
-    Fetch, Query, QueryMany, QueryManyMut, QueryMut, ReadFetch, ReadSelection, Selection,
+    Fetch, OptionalRows, Query, QueryMany, QueryManyMut, QueryMut, ReadFetch, ReadSelection,
+    Selection, With, Without,
 };
 pub use transform::Transform;
 pub use world::World;
