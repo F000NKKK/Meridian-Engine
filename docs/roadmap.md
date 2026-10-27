@@ -602,8 +602,8 @@ priority before writing implementations is keeping that document and the
     own module doc). **Both examples now build their scenes from a real
     `.mel` file** (`examples/assets/scenes/{physic_figures,magic_figures}.mel`,
     Meridian Engine Language — today just the tag/attribute DSL; the
-    planned direction is a Razor-style extension embedding real scripts
-    in the same file, hot-reloadable without a Rust rebuild),
+    planned direction is WPF-style code-behind with compiled bindings,
+    see [ADR 017](adr/017-mel-markup-and-code-behind.md)),
     parsed via `dsl::build_scene` — `physic_figures` uses only the
     SDK's built-in tags (`Entity`/`Transform`/`Mesh`/`Material`/
     `RigidBody`); `magic_figures` additionally defines its own
@@ -620,10 +620,10 @@ priority before writing implementations is keeping that document and the
     (see the "shadow mapping and hemisphere ambient" entry above) — no
     longer an open item either. **Not yet done:** an app-shell schema
     (window title, logging, crash-report config) was considered and
-    deliberately deferred; a `.mel` scripting extension (Razor-style
-    embedded scripts, hot-reloadable without a Rust rebuild) — see
-    [ADR 015](adr/015-extensible-scene-dsl.md)'s
-    own "not yet" note.
+    deliberately deferred; `.mel` behavior (WPF-style code-behind,
+    generated `.g.rs` glue, compiled `{x:Bind}` bindings, later an own
+    script language) — decided in
+    [ADR 017](adr/017-mel-markup-and-code-behind.md), not started.
 
 ## Scaling beyond a tech demo (Minecraft/Satisfactory-class scope)
 

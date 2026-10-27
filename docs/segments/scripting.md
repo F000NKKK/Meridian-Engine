@@ -47,50 +47,50 @@ It follows the workspace rules in [dependency-rules.md](../dependency-rules.md):
 
 ## Backlog
 
-Ordered roughly by dependency. Nothing here is started.
+Ordered by dependency. The model is decided in
+[ADR 017](../adr/017-mel-markup-and-code-behind.md) (WPF-style markup plus
+code-behind, compiled `{x:Bind}` bindings, Substrate-Data literal grammar);
+the prior art to copy from is Yog-Mod-Loader's `.yui` -> `.g.rs` pipeline
+(`yog-ui`, `yog-kit`) and Yog-IDLE's `docs/yui.md`/`mvvm.md`/`yres.md`.
 
-1. **ADR 017 (016 is `team/data`'s data-formats ADR): `.mel` scripting model.** Decide before writing code:
-   embedding syntax (Razor-style `@expr` in attributes and `@{ ... }`
-   blocks, or a dedicated `<Script>` element), the first execution
-   backend (own interpreter vs. embedding an existing VM such as WASM or
-   Lua behind the same host API), the value model, and the determinism
-   story. Needs the user's call on "own language now vs. later".
-2. **Source spans in `dsl-core`.** Add line/column spans to `Element` and
-   attributes and to `ParseError`. Prerequisite for script diagnostics and
-   for `team/ide`'s LSP; small, non-breaking if added as new fields with
-   a constructor change noted in the changelog.
-3. **Raw content in the markup grammar.** `dsl-core` rejects text between
-   elements; scripts need a raw-body form (`@{ }` or a raw-text element)
-   that the parser carries verbatim without interpreting it.
-4. **`meridian-script-core` crate.** Domain-blind lexer, parser, AST and a
-   tree-walking interpreter as the first backend; fuzz/malformed-input
-   tests; no panics on bad source. Tier placement next to `dsl-core`.
-5. **Host API and engine bindings.** A trait-based surface (call native
-   functions, read/write ECS components through `ecs-core` queries,
-   schedule work) in an adapter crate, composed by `engine-core`, so
-   additional languages plug into the same bindings (multi-language game
-   logic).
-6. **Script stage in the frame pipeline.** Run scripts as a stage in
-   `meridian_sdk::pipeline` / `engine-core::Runtime`, with a fixed-step
-   variant for deterministic logic.
-7. **Hot reload.** Watch `.mel` files, re-parse and swap scripts without
-   a Rust rebuild; state migration rules for live entities.
-8. **Tooling hooks (with `team/ide`).** Expose a diagnostics/symbols API
-   that a `.mel` language server can use on top of Substrate's `lsp`
-   feature; DAP comes after the VM has stepping support.
-9. **Data interop (with `team/data`).** Map script values to
-   Substrate-Data `Value`/`Shape` so scripts can read and write scene and
-   save data without a second serialization path.
+1. ~~ADR 017: `.mel` behavior model~~ — done.
+2. **Source spans in `dsl-core`.** Line/column spans on `Element`,
+   attributes and `ParseError`. Needed by `// @mel file:line` markers and
+   by `team/ide`'s LSP.
+3. **Grammar growth in `dsl-core`.** The `x:` prefix (`x:Class`,
+   `x:ViewModel`, `x:Name`, `x:Key`), dotted property elements and
+   attached properties (`Grid.Row`, `Entity.Components`), and parsing of
+   markup-extension values (`{x:Bind ...}`, `{StaticResource ...}`) into
+   a typed form. Malformed-input tests for each.
+4. **Literal grammar.** Validate plain attribute values against
+   Substrate-Data string rules (`@kind:id`, `@@`, error on other `@`),
+   reusing `substrate-data` rather than re-implementing it.
+5. **Generator crate + `mel_include!`.** Build-time `foo.mel` ->
+   `OUT_DIR/foo.g.rs` (ids, typed element accessors, builder, event
+   dispatch), driven from `build.rs`. Port `magic_figures` to a
+   code-behind as the first real user.
+6. **`{x:Bind}` expression compiler.** The Yog `x:Bind` subset compiled to
+   Rust, `Mode`/`BindBack`/`Fallback`, type errors mapped to `.mel` lines.
+7. **Resources.** `Resources` + `x:Key` in markup and an external
+   resource file (Yog's `.yres` analogue, in Substrate-Data text) with
+   generated typed accessors, referenced as `@res:Set.name`.
+8. **Hot reload of markup.** Re-parse changed `.mel`/resources at run
+   time and rebuild the affected scene part; code-behind changes still
+   need a rebuild.
+9. **Host API and script language.** One trait-based host API for all
+   code-behind backends; then the own `.mel` script language
+   (domain-blind lexer/parser/interpreter, `Fixed` path for fixed-step
+   logic); then WASM.
+10. **Tooling (with `team/ide`).** Diagnostics/symbols for a `.mel`
+    language server on Substrate's `lsp`; a designer like Yog-IDLE's
+    later; DAP once the interpreter can step.
 
-## Open questions for the user
+## Split with other segments
 
-- Own language from the start, or an embedded VM first with the own
-  language as a later backend?
-- Is Razor-style `@` embedding the agreed syntax, or still open?
-- Which languages besides `.mel` must be supported for game logic
-  (Rust-only plugins, WASM, Lua, C#)?
-- How should `.mel` and `.mscene` converge (open question in `team/data`'s
-  ADR 016, `docs/data-formats.md`)? Either DSL attribute values adopt the
-  Substrate-Data literal grammar (`@kind:id` refs, `@@` escape, which
-  collides with Razor-style `@` embedding), or `.mel` compiles to
-  `.mscene`. Resolve in ADR 017.
+- `team/ui-ux` owns the UI element, layout and binding runtime (future
+  `meridian-ui-core`); this segment owns the `.mel` syntax, parser and
+  generator that UI screens use too.
+- `team/data` owns `.mscene` and the Substrate-Data adapter (ADR 016);
+  `.mel` shares its literal grammar and is not compiled into `.mscene`.
+- `team/ide` owns the editor; this segment provides diagnostics and
+  symbols.
