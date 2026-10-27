@@ -7,20 +7,15 @@
 //! — spatial math, physics bodies, graphics scene/material types, the
 //! windowed-app loop, audio types, asset decoding, and `runtime-app`'s
 //! own [`Runtime`] — is re-exported from here; nothing in `examples/`
-//! reaches into `meridian-gac`/`meridian-physics-domain`/
-//! `meridian-rendering-domain`/etc. directly. This is deliberately
-//! different from `runtime-app`'s own boundary (rule 7:
-//! `meridian-runtime-app` is the only crate allowed to depend on every
-//! `*-core`, because it's where cross-`*-core` *coordination logic*
-//! lives): this crate depends on the same set of crates for a different
-//! reason — application ergonomics and driver access `runtime-app`
-//! itself is forbidden from having.
+//! reaches into the composed crates directly. This crate may depend on
+//! drivers (application ergonomics) that `runtime-app` itself may not.
 //!
 //! Design notes: docs/notes/meridian-sdk.md (`lib`).
 
 #![forbid(unsafe_code)]
 
 mod any_image_decoder;
+mod asset_loader;
 pub mod assets;
 pub mod dsl;
 mod fly_controls;
@@ -30,10 +25,15 @@ mod runtime;
 pub mod scene;
 
 pub use any_image_decoder::AnyImageDecoder;
+pub use asset_loader::{asset_loader, default_asset_loader, load_image};
 pub use assets::{AssetCache, AudioTrack, load_audio_track, load_image_asset};
 pub use dsl::dsl_core;
 pub use fly_controls::fly_controls;
+pub use meridian_asset_app::{
+    AssetLoader, AssetPath, ByteSource, LoadError, Pending, SourceError, Spawn,
+};
 pub use meridian_asset_domain::{Decoder, ImageAsset};
+pub use meridian_asset_fs::FsSource;
 pub use meridian_asset_png::PngDecoder;
 pub use meridian_asset_symphonia::{
     AnyAudioDecoder, AudioAsset, DecodeStrategy, StreamingAudioDecoder, open_audio,
@@ -91,7 +91,7 @@ pub use meridian_runtime_app::{
     ComputeStage, EventSystem, Job, JobExecutor, PhysicsStepStage, Runtime, Shared, Stage, StageId,
 };
 // -- meridian-runtime-threads: the threaded job executor --
-pub use meridian_runtime_threads::TaskExecutor;
+pub use meridian_runtime_threads::{BackgroundPool, TaskExecutor};
 /// The retained UI runtime (ADR 018), named by generated `.meui` glue.
 pub use meridian_ui_domain as ui_core;
 pub use render::{RenderStage, compose_frame, render_frame};

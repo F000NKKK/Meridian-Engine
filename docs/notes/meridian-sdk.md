@@ -30,6 +30,9 @@ own tags via `#[dsl_tag(name = "...")]` rather than picking from a
 fixed schema (see that module's own doc for the full three-layer
 design and why this replaced an earlier, rejected fixed-schema
 approach).
+- [`asset_loader`] — the background loader (ADR 027): `asset_loader(root, threads)`
+  builds an `AssetLoader` over `FsSource` + `BackgroundPool`, `load_image` starts
+  a decode and returns a `Pending` at once.
 - [`assets`] — resource loading: turning a file path into a real,
 cached, GPU-registered handle (textures, OBJ meshes) or a decoded,
 loopable audio source ([`AudioTrack`]/[`load_audio_track`]).

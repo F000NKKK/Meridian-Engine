@@ -97,7 +97,8 @@ change that closed them.
    `asset-app` (`ByteSource`, `Spawn`, `AssetLoader`, `Pending`), `asset-fs`
    (`FsSource`) and `runtime-threads::BackgroundPool`; a load returns at once
    and costs ~2.5 µs per small file on 4 threads (`cargo bench -p
-   meridian-asset-fs`). Open: wiring into `sdk`, priority and cancellation,
+   meridian-asset-fs`). Wired into `sdk` (`asset_loader`, `default_asset_loader`, `load_image`, loader
+   types re-exported). Open: priority and cancellation,
    and an HTTP `ByteSource` (tokio inside the adapter).
 7. **Compute buffer reuse.** `compute-app` reallocates GPU buffers and
    bind groups per dispatch (roadmap, deferred). Build it when a per-frame
