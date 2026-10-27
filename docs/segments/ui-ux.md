@@ -49,13 +49,22 @@ WPF-style grid layout, focus, scroll, textbox, themes) and `yog-font`
 so the useful part is the layout model and API shape. Whether anything
 gets extracted to a neutral shared crate is a decision for the ADR.
 
+## Direction from the owner
+
+2026-10-27: UI and its `.mel` markup follow the **WPF model** — retained
+element tree, layout panels (`Grid` with rows/columns in pixels/`Auto`/`*`,
+`StackPanel`, `DockPanel`), styles/templates, data binding — modelled on
+how `yog-ui` and Yog IDLE already do it. The UI-architecture ADR starts
+from this, not from an open choice between retained and immediate mode.
+Markup syntax is shared with team/scripting.
+
 ## Backlog
 
 In order; nothing here starts without a task from the owner.
 
-1. **ADR: UI architecture** — retained vs immediate mode, ECS-hosted
-   vs standalone tree, layout model (flex + grid), how UI consumes
-   input before gameplay does.
+1. **ADR: UI architecture** — WPF-style retained tree (see above):
+   ECS-hosted vs standalone tree, layout passes (measure/arrange),
+   binding and styles, how UI consumes input before gameplay does.
 2. **ADR: text rendering** — font source formats, shaping scope,
    bitmap/SDF/MSDF atlas, where decoding lives.
 3. **Rendering prerequisites** (with team/rendering) — honour
