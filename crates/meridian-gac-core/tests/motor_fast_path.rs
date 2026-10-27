@@ -1,9 +1,8 @@
 //! The hand-expanded `Motor3::transform_point` against the full sandwich
 //! product `M P M~` it replaces.
 
-use meridian_gac_core::blade;
 use meridian_gac_core::multivector::float::Multivector;
-use meridian_gac_core::{Motor3, Rotor, Vec3};
+use meridian_gac_core::{Motor3, Rotor, Vec3, blade};
 
 fn sandwich(motor: Motor3, point: Vec3) -> Vec3 {
     let mut pm = [0.0; 16];
