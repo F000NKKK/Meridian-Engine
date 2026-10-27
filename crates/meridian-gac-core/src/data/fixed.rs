@@ -1,64 +1,74 @@
-//! The fixed flavor's stored forms: how `Fixed` and [`crate::fixed_ga`]'s
-//! types map to their components. The schema logic itself is generic, in
-//! [`super`].
+//! The fixed flavour: `Fixed` and [`crate::fixed_ga`]'s types bound to the
+//! generic stored forms (components are raw `Fixed` bits).
 
 use meridian_numeric_core::Fixed;
+use substrate_data::named_schema;
+use substrate_data::schema::NamedType;
 
-use super::{
-    DataScalar, Stored, motor_multivector, motor_parts, motor_schema, rotor_multivector,
-    rotor_parts, stored_schema,
-};
+use super::blades::{motor_components, motor_multivector, rotor_components, rotor_multivector};
+use super::{MotorBlades, MotorForm, StoredScalar};
 use crate::fixed_ga::{FixedBivector3, FixedMotor3, FixedMultivector, FixedRotor, FixedVec3};
 
-impl DataScalar for Fixed {
+impl StoredScalar for Fixed {
     fn same_bits(self, other: Self) -> bool {
         self == other
     }
 }
 
-impl Stored<3> for FixedVec3 {
-    type S = Fixed;
+impl NamedType for FixedVec3 {
     const NAME: &'static str = "fixed_vec3";
-    fn parts(&self) -> [Fixed; 3] {
+    type Stored = [Fixed; 3];
+    fn to_stored(&self) -> [Fixed; 3] {
         [self.x, self.y, self.z]
     }
-    fn from_parts([x, y, z]: [Fixed; 3]) -> Self {
-        FixedVec3::new(x, y, z)
+    fn from_stored([x, y, z]: [Fixed; 3]) -> Option<Self> {
+        Some(FixedVec3::new(x, y, z))
     }
 }
 
-impl Stored<3> for FixedBivector3 {
-    type S = Fixed;
+impl NamedType for FixedBivector3 {
     const NAME: &'static str = "fixed_bivector3";
-    fn parts(&self) -> [Fixed; 3] {
+    type Stored = [Fixed; 3];
+    fn to_stored(&self) -> [Fixed; 3] {
         [self.e23, self.e31, self.e12]
     }
-    fn from_parts([e23, e31, e12]: [Fixed; 3]) -> Self {
-        FixedBivector3::new(e23, e31, e12)
+    fn from_stored([e23, e31, e12]: [Fixed; 3]) -> Option<Self> {
+        Some(FixedBivector3::new(e23, e31, e12))
     }
 }
 
-impl Stored<4> for FixedRotor {
-    type S = Fixed;
+impl NamedType for FixedRotor {
     const NAME: &'static str = "fixed_rotor";
-    fn parts(&self) -> [Fixed; 4] {
-        rotor_parts(&self.0.0)
+    type Stored = [Fixed; 4];
+    fn to_stored(&self) -> [Fixed; 4] {
+        rotor_components(&self.0.0)
     }
-    fn from_parts(parts: [Fixed; 4]) -> Self {
-        FixedRotor(FixedMultivector(rotor_multivector(parts)))
+    fn from_stored(components: [Fixed; 4]) -> Option<Self> {
+        Some(FixedRotor(FixedMultivector(rotor_multivector(components))))
     }
 }
 
-impl Stored<8> for FixedMotor3 {
-    type S = Fixed;
+impl MotorBlades for FixedMotor3 {
+    fn even_components(&self) -> [Fixed; 8] {
+        motor_components(&self.0.0)
+    }
+    fn from_even_components(components: [Fixed; 8]) -> Self {
+        FixedMotor3(FixedMultivector(motor_multivector(components)))
+    }
+}
+
+impl NamedType for FixedMotor3 {
     const NAME: &'static str = "fixed_motor";
-    fn parts(&self) -> [Fixed; 8] {
-        motor_parts(&self.0.0)
+    type Stored = MotorForm<Fixed>;
+    fn to_stored(&self) -> MotorForm<Fixed> {
+        self.form()
     }
-    fn from_parts(parts: [Fixed; 8]) -> Self {
-        FixedMotor3(FixedMultivector(motor_multivector(parts)))
+    fn from_stored(form: MotorForm<Fixed>) -> Option<Self> {
+        Self::from_form(form)
     }
 }
 
-stored_schema!(FixedVec3 => 3, FixedBivector3 => 3, FixedRotor => 4);
-motor_schema!(FixedMotor3);
+named_schema!(FixedVec3);
+named_schema!(FixedBivector3);
+named_schema!(FixedRotor);
+named_schema!(FixedMotor3);

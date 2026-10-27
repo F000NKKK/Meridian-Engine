@@ -2,7 +2,7 @@
 
 Every format Meridian itself writes is [Substrate Data](https://github.com/F000NKKK/Substrate-Data)
 (see [ADR 016](adr/016-data-formats-on-substrate-data.md)); its
-[format spec](https://github.com/F000NKKK/Substrate-Data/blob/claude/project-thread-d5eurv/docs/format.md)
+[format spec](https://github.com/F000NKKK/Substrate-Data/blob/main/docs/format.md)
 defines the model, the text syntax (JSON + comments, trailing commas,
 unquoted keys), the `SDAT` binary form and frames. This document defines
 what Meridian puts in them. Third-party asset formats (PNG, OBJ, MP3, …)
@@ -37,8 +37,10 @@ needs before loading anything.
 ## Math values
 
 With the `data` feature, `numeric-core` and `gac-core` implement
-`substrate_data::Schema`. Each describes itself as `Shape::Named` so an
-editor can show a gizmo instead of raw numbers.
+`substrate_data::schema::NamedType` for these types (and `Schema` through
+`named_schema!`), so each describes itself as `Shape::Named` and an editor
+can show a gizmo instead of raw numbers. A motor's stored form is the
+public `meridian_gac_core::MotorForm<S>`.
 
 | Type | Named | Stored as | Text |
 |---|---|---|---|
@@ -62,7 +64,8 @@ origin to `translation` — whenever rebuilding it from those two gives
 the same bits; otherwise (recovering a translation through a rotation
 rounds) it is written `{ rotor, dual }` with `dual` the motor's stored
 `e0` part `[e01, e02, e03, e0123]`. Reading accepts either; a missing
-`translation` is `[0, 0, 0]`; both at once is an error.
+`translation` is `[0, 0, 0]`; both at once is refused ("not a valid
+motor", `Problem::Invalid` at the motor's path).
 
 Every value round-trips bit-exactly through text, binary and frames —
 floats included (`0.1`, `1e-7`, `-0.0`): text spells each float so it
@@ -102,9 +105,13 @@ this, including the rotor order against the axis–angle formula.
 ```
 
 - `entities` is a list (order is the document's, kept by editors); each
-  entity's `id` is unique in the document. Runtime `Entity` handles are
+  entity's `id` is an `EntityKey` (any text without whitespace or control
+  characters), unique in the document. `@entity:` references are a kind
+  whose ids are `EntityKey`s (`kind!(EntityKind = "entity": EntityKey)`),
+  and `@prefab:` ones carry a `PrefabPath`. Runtime `Entity` handles are
   never written — they are generational and process-local.
-- `components` is a map from a **registered component name** to that
+- `components` is a map from a **registered component name** (a
+  `ComponentName`: lower case letters, digits and `_`) to that
   component's own schema. One entry per component type, matching the ECS
   (one component of a type per entity). An unknown name is an error with
   a "did you mean" suggestion, unless the registry allows unknown
@@ -127,38 +134,49 @@ functions that move it between a document and a `World`.
 
 ```rust
 let mut registry = ComponentRegistry::new();
-registry.register_with::<Transform, TransformCodec>("transform"); // ecs-core type: through a codec
-registry.register::<MeshRenderer>("mesh_renderer");               // T: Component + Schema + Clone
-let scene = registry.load_scene(&text, &mut world, &mut resolver)?; // SceneMap: id → Entity; problems with line + path
+registry.register_with::<Transform, TransformCodec>(ComponentName::new("transform")?)?; // ecs-core type: through a codec
+registry.register::<MeshRenderer>(ComponentName::new("mesh_renderer")?)?;               // T: Component + Schema + Clone
+registry.set_unknown_components(UnknownComponents::Keep);                               // editors; games keep `Reject`
+let scene = registry.load_scene(&text, &mut world, &mut resolver)?; // SceneMap: EntityKey → Entity, or LoadError
 let text = registry.save_scene(&world, &scene);                     // text form
-let shapes = registry.describe();                                   // for the IDE
+let shapes = registry.describe();                                   // Vec<ComponentShape>, for the IDE
 ```
+
+Registering a name or a type twice is a `RegisterError` (`NameTaken`,
+`TypeTaken`). A failed load is a `LoadError`: every `SceneIssue` in file
+order, each a typed `SceneProblem` (`Data { problem, .. }` for what
+Substrate Data finds — syntax, types, missing fields, an `@entity:` key
+the document hasn't — then `UnsupportedFormat`, `DuplicateEntity`,
+`OwnParent`, `UnknownComponent { name, suggestion }`, `BadComponentName`)
+with its path, line and column.
 
 `Transform` is `ecs-core`'s, and `ecs-core` stays file-blind (ADR 016,
 decision 3; no `data` feature on `ecs-core`), so it has no `Schema` impl:
-`meridian-scene::TransformData`, a newtype implementing `Schema` and
+`meridian-scene::TransformForm`, a newtype implementing `Schema` and
 converting to and from `Transform`, stores it as `{ motor }`, and
 `TransformCodec` registers `Transform` through it. Any component whose
 crate can't implement `Schema` uses the same `register_with` door. The
 registry is keyed by name and by `TypeId` (`name_of::<T>()`); saving walks
 the registered types per entity. Runtime `Entity { index, generation }`
-never reaches a file: document ids are remapped to fresh entities on
+never reaches a file: document keys are remapped to fresh entities on
 load.
 
 Loading is all-or-nothing: every problem is collected first, and a
 document with any error spawns nothing. `@entity:` references (in
 `parent` or inside components) are resolved against the document's own
-ids; every other kind goes to the caller's `Resolve`. `ecs-core` has no
+keys; every other kind goes to the caller's `Resolve` (`NoResolver`
+keeps them as written). `ecs-core` has no
 hierarchy yet, so `parent` becomes `meridian-scene::Parent(Entity)` — a
 component that lives in `meridian-scene` for now and moves to `ecs-core`
 once it has a hierarchy — and is also kept in the returned `SceneMap`
 (`parent_of`). Saving writes a `Parent` component back as the parent's
-document id. Nothing propagates transforms along it yet; instancing
+document key. Nothing propagates transforms along it yet; instancing
 `prefab` is also a later step.
 
-`describe()` returns one `Value`: every component's `Shape::describe()`
-by name. Meridian IDLE reads it to build its inspector and `.mel`
-completion; it reaches the IDE as a frame.
+`describe()` returns a `ComponentShape { name, shape: ShapeDoc }` per
+registered component, in registration order — a `Schema` itself, so
+Meridian IDLE gets it as a frame and builds its inspector and `.mel`
+completion from it.
 
 ## Asset metadata (`.meta`)
 

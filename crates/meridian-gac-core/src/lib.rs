@@ -40,6 +40,8 @@ pub mod fixed_ga;
 pub mod float_ga;
 pub mod generic;
 
+#[cfg(feature = "data")]
+pub use data::MotorForm;
 pub use float_ga::*;
 
 /// Named blade indices into a `Multivector`'s 16 components, encoded as a

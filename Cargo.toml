@@ -98,7 +98,7 @@ png = "0.18"
 # the library moves in its own repository; switch to a crates.io version
 # requirement once it's published. Used optionally (`data` feature) by
 # `numeric-core`/`gac-core`, and directly by `meridian-scene`.
-substrate-data = { git = "https://github.com/F000NKKK/substrate-data", rev = "230bd364223caedee29ceccbf18792c9ec7e0c9a" }
+substrate-data = { git = "https://github.com/F000NKKK/substrate-data", rev = "30e62fbcb5cc95cf97f38a1289a8195593f9790d" }
 
 [profile.release]
 lto = true

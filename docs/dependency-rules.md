@@ -68,7 +68,7 @@ depends on `ecs-core` (the `World` it fills) and on `gac-core` with its
 optional `data` feature (`Motor3`'s schema, for `Transform`), plus the
 external `substrate-data`. It sits *above* `ecs-core` on purpose, so
 `ecs-core` stays file-blind (rule 3): `Transform` is stored through a
-`TransformData` newtype in `meridian-scene` rather than `ecs-core` growing a
+`TransformForm` newtype in `meridian-scene` rather than `ecs-core` growing a
 format dependency, and the scene's `Parent` component lives there too
 until `ecs-core` has a hierarchy of its own. Nothing depends on it yet; `engine-core`/`sdk` will when the
 editor host and scene loading are wired up (docs/roadmap.md). The

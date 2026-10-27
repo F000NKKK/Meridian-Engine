@@ -712,7 +712,7 @@ rest are not started.
    `Shape::Named` values, bit-exact through text, binary and frames), and
    the `meridian-scene` crate: an application-built `ComponentRegistry`
    (by name and `TypeId`; `register`/`register_with` a codec —
-   `Transform` goes through the `TransformData` newtype so `ecs-core`
+   `Transform` goes through the `TransformForm` newtype so `ecs-core`
    stays file-blind), `.mscene` load into a
    `World` (all-or-nothing, every problem with line/column/path, unknown
    component names with a "did you mean" or kept as written for editors),
@@ -724,7 +724,7 @@ rest are not started.
    instancing, `.meta`, `.msave` (voxel/chunk data via
    `substrate_data::Stream`), `.mpak`, the editor protocol, and wiring
    scene loading into `engine-core`/`sdk`. The substrate-data dependency
-   is a git revision pin until it is published to crates.io.
+   is a git revision pin (its `main`) until it is published to crates.io.
 6. **No networking.** Multiplayer (both games have it) is a subsystem
    that doesn't exist in any form — no netcode, no client/server
    split, no replication. The deterministic `Fixed` numeric mode (see
