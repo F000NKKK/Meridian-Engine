@@ -52,7 +52,7 @@ depend on crates in tiers `0..N`, never a same-tier or higher-tier one
 (that's what makes the graph a DAG):
 
 ```text
-tier 0  compute-app, diagnostics, markup-macros, memory
+tier 0  compute-app, diagnostics, markup-macros, memory, text-domain
 tier 1  asset-domain, diagnostics-fs, markup, numeric, platform-winit, resource, ui-domain
 tier 2  asset-png, asset-symphonia, gac, gpu-wgpu, ui-mel
 tier 3  audio-domain, compute-wgpu, ecs, physics-domain
@@ -277,7 +277,8 @@ bottom-up.
 - `meridian-markup-macros` -> (nothing; external `syn`/`quote`/`proc-macro-crate` only)
 - `meridian-ui-mel` -> `meridian-markup`, `meridian-ui-domain`
 - `meridian-ui-domain` -> `meridian-diagnostics`, `meridian-memory`
-- `meridian-ui-scene2d` -> `meridian-gac`, `meridian-rendering-domain`, `meridian-ui-domain`
+- `meridian-text-domain` -> (no workspace crates)
+- `meridian-ui-scene2d` -> `meridian-gac`, `meridian-rendering-domain`, `meridian-text-domain`, `meridian-ui-domain`
 - `meridian-sdk` -> `meridian-asset-domain`, `meridian-asset-png`, `meridian-asset-symphonia`, `meridian-audio-app`, `meridian-audio-domain`, `meridian-audio-cpal`, `meridian-compute-wgpu`, `meridian-compute-app`, `meridian-diagnostics-fs`, `meridian-markup`, `meridian-markup-macros`, `meridian-runtime-app`, `meridian-diagnostics`, `meridian-gac`, `meridian-rendering-domain`, `meridian-rendering-wgpu`, `meridian-physics-app`, `meridian-physics-wgpu`, `meridian-physics-domain`, `meridian-platform-winit`, `meridian-rendering-app`, `meridian-runtime-threads`, `meridian-ui-domain`
 
 `meridian-runtime-app` has no edge to `meridian-rendering-domain` or

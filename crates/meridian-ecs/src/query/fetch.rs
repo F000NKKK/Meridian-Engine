@@ -3,7 +3,7 @@
 use std::slice::{Iter, IterMut};
 
 use super::sealed::Sealed;
-use crate::Component;
+use crate::{Component, Tick};
 
 /// One element of a multi-component query. Implemented for exactly these
 /// shapes (not extensible):
@@ -28,8 +28,14 @@ pub trait Fetch: Sealed {
     /// for the filters, which only look at the archetype's component set.
     const ACCESSES_COLUMN: bool;
 
-    /// Whether an archetype matches, given whether it has the component.
-    fn admits(has_component: bool) -> bool;
+    /// Whether the element writes the column, so the column counts as
+    /// changed once a query hands it out.
+    const WRITES: bool = false;
+
+    /// Whether an archetype matches, given the tick its component column
+    /// last changed at (`None` when it has no such column) and the tick the
+    /// query looks back to.
+    fn admits(column: Option<Tick>, since: Tick) -> bool;
 
     /// Walks `rows` rows of `column` (`None` when the archetype has no such
     /// column or the element does not access it).
@@ -49,8 +55,8 @@ impl<T: Component> Fetch for &T {
 
     const ACCESSES_COLUMN: bool = true;
 
-    fn admits(has_component: bool) -> bool {
-        has_component
+    fn admits(column: Option<Tick>, _since: Tick) -> bool {
+        column.is_some()
     }
 
     fn iter(column: Option<&mut [T]>, _rows: usize) -> Iter<'_, T> {
@@ -70,9 +76,10 @@ impl<T: Component> Fetch for &mut T {
     type Iter<'w> = IterMut<'w, T>;
 
     const ACCESSES_COLUMN: bool = true;
+    const WRITES: bool = true;
 
-    fn admits(has_component: bool) -> bool {
-        has_component
+    fn admits(column: Option<Tick>, _since: Tick) -> bool {
+        column.is_some()
     }
 
     fn iter(column: Option<&mut [T]>, _rows: usize) -> IterMut<'_, T> {

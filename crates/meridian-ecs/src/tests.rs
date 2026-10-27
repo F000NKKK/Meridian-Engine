@@ -1,5 +1,7 @@
 //! Tests of this module.
 
+use std::any::TypeId;
+
 use meridian_gac::Motor3;
 
 use super::*;
@@ -161,4 +163,31 @@ fn entities_lists_every_live_entity() {
     let mut listed: Vec<_> = world.entities().collect();
     listed.sort_by_key(|e| e.index);
     assert_eq!(listed, vec![a, c]);
+}
+
+#[test]
+fn component_types_lists_the_entitys_components_and_tracks_changes() {
+    let mut world = World::new();
+    let e = world.spawn();
+    assert_eq!(world.component_types(e), Some(&[][..]));
+
+    world.insert(e, Position(1.0, 2.0));
+    world.insert(e, Velocity(0.0, 1.0));
+    let mut expected = vec![TypeId::of::<Position>(), TypeId::of::<Velocity>()];
+    expected.sort();
+    assert_eq!(world.component_types(e), Some(expected.as_slice()));
+
+    world.remove::<Velocity>(e);
+    assert_eq!(
+        world.component_types(e),
+        Some(&[TypeId::of::<Position>()][..])
+    );
+}
+
+#[test]
+fn component_types_is_none_for_a_dead_entity() {
+    let mut world = World::new();
+    let e = world.spawn();
+    world.despawn(e);
+    assert_eq!(world.component_types(e), None);
 }

@@ -127,9 +127,11 @@ ALLOWED = {
     "meridian-markup-macros": set(),
     "meridian-ui-mel": {"meridian-markup", "meridian-ui-domain"},
     "meridian-ui-domain": {"meridian-diagnostics", "meridian-memory"},
+    "meridian-text-domain": set(),
     "meridian-ui-scene2d": {
         "meridian-gac",
         "meridian-rendering-domain",
+        "meridian-text-domain",
         "meridian-ui-domain",
     },
     "meridian-sdk": {

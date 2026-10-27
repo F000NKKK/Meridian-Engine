@@ -79,12 +79,16 @@ change that closed them.
 2. **Done: ECS filters.** `Option<&T>`, `Option<&mut T>`, `With<T>` and
    `Without<T>` elements for `query_many`/`query_many_mut`; the column pass
    no longer needs `get_disjoint_mut` (`query_many_mut` bench ~31 µs -> ~25 µs).
-3. **ECS change detection and entity commands.** Deferred
-   spawn/despawn/insert during iteration, and per-column change ticks so
-   rendering can skip unchanged instances (feeds roadmap "Scaling" item 1).
+3. **ECS change detection and entity commands.** Change detection is
+   **done**: a world clock and per-archetype-column ticks with a `Changed<T>`
+   filter, so rendering can skip unchanged instance batches (feeds roadmap
+   "Scaling" item 1). Still open: deferred spawn/despawn/insert during
+   iteration (command buffer).
 4. **Persistence hooks.** Roadmap "Scaling" item 5. Core side: component
-   enumeration per entity (`World::component_types(entity)`) and a world
-   snapshot API; the format and `meridian-data-substrate` belong to `team/data`.
+   enumeration per entity (**done**: `World::component_types(entity)`,
+   sorted `TypeId`s; the stable-name registry and serializers are the
+   adapter's) and a world snapshot API; the format and `meridian-data-substrate`
+   belong to `team/data`.
 5. **Done: persistent worker pool.** `Scheduler` spawns its workers once;
    `run` no longer spawns threads (1-job graph ~210 µs -> ~0.35 µs, 1 000-job
    chain 1.1 ms -> 0.33 ms, `cargo bench -p meridian-runtime-threads`). Work-stealing
