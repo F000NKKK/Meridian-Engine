@@ -94,6 +94,7 @@ ALLOWED = {
     },
     "meridian-dsl-core": {"meridian-foundation"},
     "meridian-dsl-macros": set(),
+    "meridian-mel-build": {"meridian-dsl-core"},
     "meridian-sdk": {
         "meridian-foundation",
         "meridian-gac-core",

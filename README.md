@@ -32,6 +32,7 @@ meridian-audio-core      spatial mixer, DSP graph, listener/emitter
 meridian-engine-core     Runtime: the single JobGraph-based frame-work entry point (physics/audio/compute stages, fine-grained locking)
 meridian-dsl-core        domain-blind tag/attribute markup parser + typed-tag registry (the mechanics under the scene DSL)
 meridian-dsl-macros      #[dsl_tag(name = "...")] — the code-gen half of the DSL, lets a game register its own tags
+meridian-mel-build       build.rs generator: each .mel becomes a <name>.g.rs (typed x:Name ids, builder) pulled in with mel_include! (ADR 017)
 meridian-sdk             application entry point: re-exports every type above, plus resource loading, the extensible scene DSL, and windowed-app/render-stage scaffolding
 ```
 

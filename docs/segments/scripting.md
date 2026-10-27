@@ -64,10 +64,14 @@ the prior art to copy from is Yog-Mod-Loader's `.yui` -> `.g.rs` pipeline
    Substrate-Data string rules (`@kind:id`, `@@`, error on other `@`),
    reusing `substrate-data`'s classifier (`typed::classify`, in progress
    on `team/data`'s side) rather than re-implementing the grammar.
-5. **Generator crate + `mel_include!`.** Build-time `foo.mel` ->
-   `OUT_DIR/foo.g.rs` (ids, typed element accessors, builder, event
-   dispatch), driven from `build.rs`. Port `magic_figures` to a
-   code-behind as the first real user.
+5. ~~Generator crate + `mel_include!`~~ — done: `meridian-mel-build`
+   (`compile_dir` from `build.rs`) writes `OUT_DIR/mel/<name>.g.rs` with
+   `SOURCE`, a `Name` enum per `x:Name`, `Class`/`ViewModel` aliases,
+   `build` and `find`, and rejects bad directives and names at build
+   time; `magic_figures` uses it. Still open: **event dispatch**
+   (`on_*` attributes -> code-behind methods), waiting for an engine
+   event source to raise them, and porting `physic_figures` once markup
+   hot reload (item 8) keeps run-time editing.
 6. **`{x:Bind}` expression compiler.** The Yog `x:Bind` subset compiled to
    Rust, `Mode`/`BindBack`/`Fallback`, type errors mapped to `.mel` lines.
 7. **Resources.** `Resources` + `x:Key` in markup and an external

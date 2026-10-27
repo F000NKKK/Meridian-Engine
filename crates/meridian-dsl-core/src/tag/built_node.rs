@@ -12,6 +12,8 @@ use std::fmt;
 /// built the same way.
 pub struct BuiltNode {
     pub tag: String,
+    /// The element's `x:Name`, if it has one.
+    pub name: Option<String>,
     pub value: Box<dyn Any>,
     pub children: Vec<BuiltNode>,
 }
@@ -20,6 +22,7 @@ impl fmt::Debug for BuiltNode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("BuiltNode")
             .field("tag", &self.tag)
+            .field("name", &self.name)
             .field("children", &self.children)
             .finish_non_exhaustive()
     }
@@ -32,5 +35,16 @@ impl BuiltNode {
     /// calls this for the type it expects.
     pub fn downcast_ref<T: 'static>(&self) -> Option<&T> {
         self.value.downcast_ref::<T>()
+    }
+
+    /// The first node in this subtree (itself included, depth-first)
+    /// whose `x:Name` is `name`.
+    pub fn find_named(&self, name: &str) -> Option<&BuiltNode> {
+        if self.name.as_deref() == Some(name) {
+            return Some(self);
+        }
+        self.children
+            .iter()
+            .find_map(|child| child.find_named(name))
     }
 }

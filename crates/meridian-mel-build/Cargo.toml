@@ -1,0 +1,11 @@
+[package]
+name = "meridian-mel-build"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Build-time .mel generator: turns each .mel document into a generated <name>.g.rs (x:Name ids, typed builder, code-behind aliases) that a code-behind pulls in with meridian_sdk::mel_include!. Used from build.rs; see ADR 017."
+
+[dependencies]
+meridian-dsl-core = { workspace = true }
