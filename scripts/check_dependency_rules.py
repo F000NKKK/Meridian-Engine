@@ -76,7 +76,6 @@ ALLOWED = {
     "meridian-physics-core": {
         "meridian-gac-core",
         "meridian-numeric-core",
-        "meridian-ecs-core",
         "meridian-resource-core",
     },
     "meridian-audio-core": {
@@ -131,8 +130,6 @@ PENDING = {
     ("meridian-graphics-core", "meridian-gac-compute"): "migration pending (wave 5)",
     ("meridian-graphics-core", "meridian-compute-runtime"): "migration pending (wave 5)",
     ("meridian-audio-core", "meridian-audio-driver"): "migration pending (wave 5)",
-    ("meridian-physics-core", "meridian-gac-compute"): "migration pending (wave 5)",
-    ("meridian-physics-core", "meridian-compute-runtime"): "migration pending (wave 5)",
     ("meridian-compute-runtime", "meridian-compute-driver"): "migration pending (wave 5)",
     ("meridian-asset-core", "meridian-platform-core"): "migration pending (wave 5)",
     ("meridian-compute-runtime", "meridian-task-core"): "migration pending (wave 6)",

@@ -1370,9 +1370,6 @@ name = "meridian-physics-core"
 version = "0.25.0"
 dependencies = [
  "criterion",
- "meridian-compute-runtime",
- "meridian-ecs-core",
- "meridian-gac-compute",
  "meridian-gac-core",
  "meridian-numeric-core",
  "meridian-resource-core",
