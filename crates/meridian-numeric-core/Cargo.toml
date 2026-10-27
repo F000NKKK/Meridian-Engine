@@ -16,3 +16,9 @@ substrate-data = { workspace = true, optional = true }
 
 [features]
 data = ["dep:substrate-data"]
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+proptest = "1"

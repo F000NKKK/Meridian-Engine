@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted
+Superseded by [ADR 019](019-ports-in-domain-drivers-as-adapters.md):
+the driver/core split stays, the edge direction is inverted (domain and
+application crates own the ports, driver crates implement them).
 
 ## Context
 

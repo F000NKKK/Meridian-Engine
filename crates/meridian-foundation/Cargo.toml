@@ -17,3 +17,6 @@ file-logging = ["dep:tokio"]
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["time", "fs", "io-util"] }
+
+[lints]
+workspace = true

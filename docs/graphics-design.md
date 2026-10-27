@@ -10,8 +10,11 @@ RHI (Render Hardware Interface); `graphics-driver` *is* that layer under a
 different name — not a separate crate to add later. Concrete backends
 (`vulkan-driver`, `dx12-driver`, `metal-driver`) are expected to become
 their own crates implementing `graphics-driver`'s abstraction, without
-`graphics-core` ever changing — see
-[ADR 005](adr/005-driver-core-separation.md). No backend crate exists yet;
+`graphics-core` ever changing. The dependency direction is being inverted
+([ADR 019](adr/019-ports-in-domain-drivers-as-adapters.md), wave 5):
+`graphics-core` will own the ports (mesh/texture stores, frame recording)
+and `graphics-driver` will implement them; until then the
+`graphics-core → graphics-driver` edge is pending migration. No backend crate exists yet;
 adding one is out of scope until there's a concrete backend to build (see
 [roadmap.md](roadmap.md)).
 
@@ -118,10 +121,10 @@ ADR 001) — so a 2D scene is *not* a parallel 2D math stack (no separate
 `Motor3` frames; what differs is the camera and the conventions layered
 on top:
 
-- **`Scene3D`** — the world: perspective (or orthographic) [`Camera`],
+- **`Scene3d`** — the world: perspective (or orthographic) [`Camera`],
   entities at arbitrary `Motor3` frames, frustum culling, lights,
   depth-tested.
-- **`Scene2D`** — a plane: entities constrained to the local `z = 0`
+- **`Scene2d`** — a plane: entities constrained to the local `z = 0`
   plane of the scene (position = `x`/`y` of the frame's translation,
   rotation = rotation about the plane normal, the remaining `Motor3`
   degrees of freedom simply unused), rendered with an orthographic
@@ -133,20 +136,20 @@ on top:
   decides.
 
 A frame renders an ordered list of **views** — each view is one scene +
-one camera + one target. The common compositions: `[Scene3D]` (a pure 3D
-game), `[Scene2D]` (a pure 2D game), `[Scene3D, Scene2D-as-UI-overlay]`
+one camera + one target. The common compositions: `[Scene3d]` (a pure 3D
+game), `[Scene2d]` (a pure 2D game), `[Scene3d, Scene2d-as-UI-overlay]`
 (the usual case). Views later in the list draw over earlier ones.
 
 ### UI is a role, not a third scene kind
 
 UI does not get its own rendering vocabulary. A UI is either:
 
-- **Screen-space UI (2D)** — a `Scene2D` whose orthographic camera is
+- **Screen-space UI (2D)** — a `Scene2d` whose orthographic camera is
   derived from the surface size (units = logical pixels, origin
   top-left, `y` down — the convention every windowing/UI system shares),
   composed as the last view of the frame, undepthed, drawn over the 3D
   world. This is the HUD/menu case.
-- **World-space UI (3D)** — renderables *inside* the `Scene3D` whose
+- **World-space UI (3D)** — renderables *inside* the `Scene3d` whose
   content happens to be interface (a health bar above a unit, a control
   panel in a cockpit/VR): a quad at a `Motor3` frame like any other
   mesh, optionally flagged `billboard` (re-oriented to face the camera
@@ -157,7 +160,7 @@ UI does not get its own rendering vocabulary. A UI is either:
 What UI adds over plain scenes is *content*, not rendering: widgets,
 layout, text, input routing. All of that is deliberately out of
 `graphics-core` — `ui-core` ([ADR 018](adr/018-ui-architecture.md)) consumes this vocabulary (it emits
-`Scene2D`/`Scene3D` renderables) the same way `physics-core` consumes
+`Scene2d`/`Scene3d` renderables) the same way `physics-core` consumes
 `gac-core` shapes. Text/font rendering (glyph atlases, shaping) is its
 own future decision with its own ADR; nothing in this vocabulary blocks
 on it — a text run will extract to textured quads like everything else.
@@ -179,16 +182,16 @@ All CPU-side, plain data, in `graphics-core`:
   `Point { position, color, intensity, range }`. First lighting model is
   Blinn-Phong forward; PBR is a material/shader upgrade later, not a
   vocabulary change.
-- **`Renderable3D`** — `{ mesh, material, frame: Motor3, billboard:
+- **`Renderable3d`** — `{ mesh, material, frame: Motor3, billboard:
   bool }`; **`Sprite`** (the 2D renderable) — `{ texture, source_rect,
   size, tint, frame: Motor3, layer: i32 }`.
-- **`Scene3D`** — `{ camera: Camera, renderables: Vec<Renderable3D>,
-  lights: Vec<Light> }`; **`Scene2D`** — `{ camera: Camera2D, sprites:
-  Vec<Sprite> }` where `Camera2D` is a thin orthographic wrapper
+- **`Scene3d`** — `{ camera: Camera, renderables: Vec<Renderable3d>,
+  lights: Vec<Light> }`; **`Scene2d`** — `{ camera: Camera2d, sprites:
+  Vec<Sprite> }` where `Camera2d` is a thin orthographic wrapper
   (`from_surface_size` for pixel-space UI, `from_world_extent` for 2D
   gameplay).
 - **`FrameScene`** — the per-frame extraction output: an ordered
-  `Vec<View>` where `View` is `Three(Scene3D)` or `Two(Scene2D)`.
+  `Vec<View>` where `View` is `Three(Scene3d)` or `Two(Scene2d)`.
   Frame-scoped plain data, rebuilt every frame (extraction output, ADR
   004's data-oriented stance) — *not* a retained scene graph.
 
@@ -229,14 +232,14 @@ driver.
 1. **Done.** Vocabulary + `FrameScene` + extraction + culling — CPU-only,
    fully tested without a GPU (`extract_scene3d`/`cull_scene3d` in
    `scene.rs`).
-2. **Done.** Submission bridge over `graphics-driver` (`submission.rs`):
+2. **Done.** Submission bridge over `graphics-driver` (`submission/`):
    `MeshRegistry`/`MaterialRegistry`/`TextureRegistry` (handle-addressed,
    ADR 002-compliant), `SceneRenderer::prepare`/`draw`/`submit_scene3d`
-   turning a culled `Scene3D` into real draw calls. Texture upload from
-   `asset-core::ImageData` is real: `gpu-driver` gained
+   turning a culled `Scene3d` into real draw calls. Texture upload from
+   `asset-core::ImageAsset` is real: `gpu-driver` gained
    `Device::write_texture`/`create_sampler`/`create_texture_bind_group`,
    `graphics-driver` gained the matching `create_texture_2d`/
-   `create_textured_bind_group` passthroughs, and `submission.rs` picks
+   `create_textured_bind_group` passthroughs, and `submission/` picks
    between two unlit pipelines per renderable — `TEXTURED_SHADER_WGSL`
    (samples `Material::albedo` when it resolves in the `TextureRegistry`)
    or `UNLIT_SHADER_WGSL` (flat `base_color_factor` otherwise). Still
@@ -261,12 +264,12 @@ driver.
    pattern) and the GPU-compute audit under real load are still open,
    unblocked by the texture path landing but not yet done.
 3. **Done, core lighting; material handling partially open.**
-   `submission.rs` gained Blinn-Phong forward lighting: `Scene3D` now
+   `submission/` gained Blinn-Phong forward lighting: `Scene3d` now
    carries `ambient: [f32; 3]`, and every renderable's family (colored/
    textured) crosses with lit/unlit into four main pipelines —
    `lit_shader_wgsl()`/`lit_textured_shader_wgsl()` shade against
-   `Scene3D::lights` (directional + point, capped at `MAX_LIGHTS = 4`,
-   extra lights dropped and logged) and `Scene3D::ambient`; the existing
+   `Scene3d::lights` (directional + point, capped at `MAX_LIGHTS = 4`,
+   extra lights dropped and logged) and `Scene3d::ambient`; the existing
    `UNLIT_SHADER_WGSL`/`TEXTURED_SHADER_WGSL` stay for `Material::unlit`.
    `Material::emissive` bakes into every vertex regardless of family and
    feeds bloom's bright-pass mask (see next). Meshes now carry per-vertex

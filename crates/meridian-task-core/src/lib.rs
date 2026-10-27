@@ -1,5 +1,8 @@
 //! Job graph scheduler: worker threads, dependency tracking and parallel frame execution.
 //!
+//! Layer: infrastructure (adapter); bounded context: runtime
+//! (`craftbook.toml`, docs/context-map.md).
+//!
 //! Systems declare a job's dependencies when adding it to a [`JobGraph`];
 //! [`Scheduler::run`] derives execution order from that graph rather than
 //! the caller hand-sequencing calls, and runs independent branches (see
@@ -8,6 +11,8 @@
 //! ready-queue behind one mutex, not per-worker lock-free deques — see
 //! "Implementation note" on [`Scheduler`] for why that's a deliberate
 //! first step, not the final design.
+
+#![forbid(unsafe_code)]
 
 use std::collections::VecDeque;
 use std::sync::{Condvar, Mutex};
@@ -25,9 +30,19 @@ struct JobEntry {
     dependencies: Vec<JobId>,
 }
 
+impl std::fmt::Debug for JobEntry {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("JobEntry")
+            .field("name", &self.name)
+            .field("has_action", &self.action.is_some())
+            .field("dependencies", &self.dependencies)
+            .finish()
+    }
+}
+
 /// A dependency-ordered set of jobs for one frame. Build with
 /// [`add_job`](Self::add_job), then hand to [`Scheduler::run`].
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct JobGraph {
     jobs: Vec<JobEntry>,
 }
@@ -166,7 +181,9 @@ fn worker_loop(
 ) {
     loop {
         let job_index = {
-            let mut guard = state.lock().unwrap();
+            let mut guard = state
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             loop {
                 if let Some(i) = guard.ready.pop_front() {
                     break Some(i);
@@ -174,7 +191,9 @@ fn worker_loop(
                 if guard.remaining == 0 {
                     break None;
                 }
-                guard = cvar.wait(guard).unwrap();
+                guard = cvar
+                    .wait(guard)
+                    .unwrap_or_else(std::sync::PoisonError::into_inner);
             }
         };
 
@@ -182,12 +201,17 @@ fn worker_loop(
             break;
         };
 
-        let action = actions.lock().unwrap()[i].take();
+        let action = actions
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)[i]
+            .take();
         if let Some(action) = action {
             action();
         }
 
-        let mut guard = state.lock().unwrap();
+        let mut guard = state
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         let newly_ready: Vec<usize> = std::mem::take(&mut guard.dependents[i])
             .into_iter()
             .filter(|&d| {

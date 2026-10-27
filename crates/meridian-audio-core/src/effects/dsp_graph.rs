@@ -8,6 +8,14 @@ pub struct DspGraph {
     nodes: Vec<Box<dyn DspNode>>,
 }
 
+impl std::fmt::Debug for DspGraph {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DspGraph")
+            .field("node_count", &self.nodes.len())
+            .finish()
+    }
+}
+
 impl DspGraph {
     pub fn new() -> Self {
         Self::default()

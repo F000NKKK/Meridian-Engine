@@ -9,3 +9,6 @@ description = "Generic tag/attribute/children text parser underlying the SDK's e
 
 [dependencies]
 meridian-foundation = { workspace = true }
+
+[lints]
+workspace = true

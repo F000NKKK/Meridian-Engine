@@ -16,3 +16,14 @@ substrate-data = { workspace = true, optional = true }
 
 [features]
 data = ["dep:substrate-data", "meridian-numeric-core/data"]
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+criterion = { version = "0.8", default-features = false }
+proptest = "1"
+
+[[bench]]
+name = "gac_core"
+harness = false

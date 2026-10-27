@@ -15,3 +15,10 @@ crossbeam-channel = { workspace = true }
 
 [dev-dependencies]
 tokio = { workspace = true }
+
+[features]
+# Tests that need a real GPU or audio device; CI has neither (docs/adr/020).
+hw-tests = []
+
+[lints]
+workspace = true

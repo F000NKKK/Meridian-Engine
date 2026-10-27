@@ -16,6 +16,7 @@ use crate::paths::asset_path;
 /// post-mortem still captures exactly what went wrong; this isn't a
 /// silent dead end, just a real one an example can't meaningfully
 /// recover from (there is no scene to fall back to).
+#[must_use]
 pub fn load_dsl_scene(relative_path: &str, registry: &DslRegistry) -> BuiltNode {
     let path = asset_path(relative_path);
     let source = std::fs::read_to_string(&path).unwrap_or_else(|e| {
@@ -32,6 +33,7 @@ pub fn load_dsl_scene(relative_path: &str, registry: &DslRegistry) -> BuiltNode 
 /// repeating `node.children.iter().find_map(|c| c.downcast_ref::<T>())`
 /// at every call site that just wants "does this entity have a
 /// `<Transform>`/`<Mesh>`/etc." without caring which position it's in.
+#[must_use]
 pub fn find_child<T: 'static>(node: &BuiltNode) -> Option<&T> {
     node.children
         .iter()

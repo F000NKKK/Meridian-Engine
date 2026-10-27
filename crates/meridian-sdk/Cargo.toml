@@ -31,3 +31,6 @@ meridian-ui-core = { workspace = true }
 # `meridian-foundation` directly.
 [features]
 file-logging = ["meridian-foundation/file-logging"]
+
+[lints]
+workspace = true

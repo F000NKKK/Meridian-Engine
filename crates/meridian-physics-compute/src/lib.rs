@@ -8,6 +8,9 @@
 //! it — see that crate's own doc comment) rather than growing
 //! `compute-runtime` itself or reaching into `compute-driver` directly.
 //!
+//! Layer: infrastructure (adapter); bounded context: physics
+//! (`craftbook.toml`, docs/context-map.md).
+//!
 //! [`generic`] builds the per-particle CSR spring adjacency
 //! ([`generic::build_adjacency`]) `float`/`fixed` both dispatch from —
 //! topology extraction has no float/fixed distinction of its own. The
@@ -21,22 +24,9 @@
 //! WGSL has no fixed-point type; the two shader programs are structurally
 //! different, not two copies of the same one.
 //!
-//! Both kernels mirror `SoftBodyIntegrator::step`'s *semantics* exactly
-//! (same force-accumulation-then-integrate-then-collide structure, same
-//! per-spring formulas — see each module's doc comment for the
-//! particle-centric adjacency reformulation that makes this
-//! race-condition-free without atomics) but only the `fixed` kernel
-//! promises bit-exact reproducibility against the CPU path; `float`'s
-//! GPU/CPU results agree numerically, not bit-for-bit (GPU float
-//! summation order can differ from the CPU's, the same reason `Fixed`
-//! exists at all — see `meridian_numeric_core::Fixed`'s doc comment).
-//!
-//! Like [`meridian_gac_compute::fixed_wgsl`], buffers (topology,
-//! positions, velocities) are rebuilt every [`float::SoftBodyGpuKernel::step`]/
-//! [`fixed::FixedSoftBodyGpuKernel::step`] call rather than persisted
-//! across steps — a real, deliberately-deferred gap (see
-//! `meridian_compute_runtime`'s `HybridKernel` module doc for the same
-//! tradeoff acknowledged there), not an oversight.
+//! Design notes: docs/notes/meridian-physics-compute.md (`lib`).
+
+#![forbid(unsafe_code)]
 
 //! [`rigid_body`], [`broad_phase`], [`narrow_phase`] and
 //! [`constraint_solver`] are a third, independent kind of work this
@@ -80,4 +70,5 @@ pub mod fixed;
 pub mod float;
 pub mod generic;
 pub mod narrow_phase;
+mod readback;
 pub mod rigid_body;

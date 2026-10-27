@@ -214,7 +214,7 @@ identified by leading magic bytes (`AudioFormat::detect` /
 `AnyAudioDecoder`), never by file extension — the concrete asset that
 justified the external codec crates is `examples/assets/audio/`; see
 [ADR 013](adr/013-compressed-audio-codecs.md). Audio decoding lives in
-the `audio/` barrel module (`wav`/`compressed_audio`/`audio_streaming`),
+the `audio/` barrel module (`wav`/`compressed`/`streaming`),
 and `open_audio(bytes, &DecodeStrategy)` is its thin loading interface:
 full decode vs. incremental streaming resolved entirely by
 configuration (force either, or `Auto` by estimated decoded size), with
@@ -470,7 +470,7 @@ just isn't `physic_figures`' driver anymore, since a single fixed
 physics step is `Runtime`'s job now that `Runtime` has the API for it.
 
 **Shadow mapping and hemisphere ambient are real now, not future
-work.** `Scene3D::ambient_ground`/`ambient_sky` replace the old flat
+work.** `Scene3d::ambient_ground`/`ambient_sky` replace the old flat
 `ambient` fill — a two-color hemisphere gradient lerped by each
 fragment's world-normal.y, a disclosed lightweight step toward real
 image-based lighting (a full convolved-cubemap IBL pipeline is still
@@ -510,11 +510,31 @@ shape) while the `FlyCamera` pose doubles as the shared `audio-core`
 listener (same local-forward-`+X` `Motor3` convention), so panning and
 distance attenuation track the camera live; `physic_figures` runs the
 same shapes as real `physics-core` rigid bodies settling onto a
-textured floor, sharing `meridian_sdk::scene::GraphicsBase` with
+textured floor, sharing `meridian_sdk::scene::GraphicsSession` with
 `magic_figures`. Every crate not named above
 has a real, tested implementation; see each crate's own section above
 for specifics. This staged order is intentional — see "Why implementation
 is deliberately last" below.
+
+## Craftbook migration
+
+The workspace is moving to the Craftbook standard in waves (plan and
+measurements: Craftbook's `adoption/meridian-engine.md`; decisions:
+[ADR 019](adr/019-ports-in-domain-drivers-as-adapters.md),
+[ADR 020](adr/020-craftbook-adoption.md)). Progress is measured by the
+committed baselines, which only shrink: `.craftcheck-baseline`,
+`.craftcheck-deps-baseline`, `.clippy-backlog`, and `PENDING` in
+`scripts/check_dependency_rules.py`.
+
+- Wave 0 (gates): lint set, `craftbook.toml`, baselines, CI workflow,
+  `hw-tests` feature, glossary and context map — done.
+- Waves 1–3 (hygiene, wiring-only `lib.rs`, splitting the largest files,
+  long and wide functions, `proptest` for `numeric-core`/`gac-core`,
+  `criterion` benches for the four `perf` crates) — done, except the
+  files and functions that wave 4 rewrites anyway (`gac-core`
+  `generic.rs`/`float_ga`/`fixed_ga`, `physics-compute`, `soft_body`).
+  Waves 4–7 (float/fixed layout, inverting the
+  driver edges, runtime/composition root, crate renames) follow.
 
 ## Why implementation is deliberately last
 
@@ -644,8 +664,8 @@ Ordered roughly by "blocks everything else" first; item 4 is done, the
 rest are not started.
 
 1. **Per-instance vertex rebaking, every frame, is the sharpest wall.**
-   `graphics-core::submission::bake_draw_buffers` reuploads a fresh
-   vertex buffer for *every* `Renderable3D` on *every*
+   `graphics-core::submission::draw_buffers` reuploads a fresh
+   vertex buffer for *every* `Renderable3d` on *every*
    `SceneRenderer::prepare` call, whether or not that instance moved
    since the last frame (see that function's own doc comment — "correct
    now, batch later" was an explicit, disclosed trade-off, not an
@@ -751,7 +771,7 @@ rest are not started.
    WPF-style element tree, typed properties, measure/arrange layout
    (`Border`, `StackPanel`, `DockPanel`, `Grid`, `TextBlock`) and hit
    testing, tested without a GPU. Still missing: extraction to
-   `Scene2D`, text rendering, input routing and controls, styles and
+   `Scene2d`, text rendering, input routing and controls, styles and
    templates. Markup literals (`"Auto"`, `"2*"`, `"4,2"`) parse through
    `PropertyType::parse`.
 8. **Asset pipeline stops at static meshes.** `asset-core::ObjDecoder`

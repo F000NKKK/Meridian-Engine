@@ -576,7 +576,7 @@ impl Face {
 /// procedural-mesh path, ... — the same "one primitive, reused, not
 /// duplicated per consumer" reasoning as [`Aabb`]/[`Sphere`]/[`Shape`]
 /// above. This is deliberately *not* the same type as
-/// `asset-core::MeshData`: that type is always `f32`, always
+/// `asset-core::MeshAsset`: that type is always `f32`, always
 /// pre-triangulated, decoded-from-file-bytes data already shaped for GPU
 /// upload (see that crate's own module doc and
 /// [dependency-rules.md](../../../docs/dependency-rules.md) rule 4);

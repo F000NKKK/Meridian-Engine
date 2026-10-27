@@ -107,7 +107,13 @@ why physics and rendering need selective ticks rather than one
   [`docs/threading-model.md`](docs/threading-model.md) — per-subsystem design
 - [`docs/roadmap.md`](docs/roadmap.md) — current state and implementation
   order
+- [`docs/glossary.md`](docs/glossary.md),
+  [`docs/context-map.md`](docs/context-map.md) — the words of each bounded
+  context and how the contexts relate
 - [`docs/adr/`](docs/adr/) — architecture decision records
+
+Rust code follows [Craftbook](https://github.com/F000NKKK/craftbook); the
+layer of each crate is declared in [`craftbook.toml`](craftbook.toml).
 
 ## Building
 
@@ -115,10 +121,15 @@ why physics and rendering need selective ticks rather than one
 ./build.sh build              # whole workspace
 ./build.sh test                # cargo test --workspace
 ./build.sh check-deps          # verify the crate graph matches docs/dependency-rules.md
+./build.sh clippy-backlog      # clippy warnings may not exceed .clippy-backlog
 ./build.sh run magic_figures -- --foo bar  # run an example, forwarding args
 ./build.sh list-examples
 ./build.sh clean
 ```
+
+Building needs ALSA headers on Linux (`libasound2-dev`). Tests that need a
+real GPU or audio device are behind the `hw-tests` feature:
+`cargo test --workspace --all-features`.
 
 See `examples/examples/` for example programs (standard Cargo `[[example]]`
 convention).

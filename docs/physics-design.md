@@ -10,8 +10,9 @@ belong to `physics-core`. This is a narrower scope than the
 BVH/spatial-hashing are how physics *reasons about space*, not how it
 *executes work*, so they stay in `physics-core` even though they're
 "low-level" in the algorithmic sense. See
-[ADR 005](adr/005-driver-core-separation.md) and
-[dependency-rules.md](dependency-rules.md) rule 2.
+[dependency-rules.md](dependency-rules.md) rule 9. `physics-core` does not
+depend on `physics-driver` (the edge was never used and is removed); the
+driver is deleted in wave 5 ([ADR 019](adr/019-ports-in-domain-drivers-as-adapters.md)).
 
 `physics-core`'s whole engine — `RigidBody`, `ColliderShape`, `Contact`,
 `BroadPhase`, `NarrowPhase`, `ConstraintSolver`, `Integrator` — is written

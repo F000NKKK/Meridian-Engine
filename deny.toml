@@ -1,0 +1,43 @@
+# Craftbook cargo-deny baseline. Copy to the workspace root as deny.toml.
+[graph]
+all-features = true
+
+[advisories]
+version = 2
+yanked = "deny"
+# Transitive, no fixed release: ttf-parser comes in through winit 0.30
+# (sctk-adwaita -> ab_glyph). Revisit when winit is upgraded (ADR 010).
+ignore = [
+    { id = "RUSTSEC-2026-0192", reason = "unmaintained ttf-parser via winit 0.30; no maintained release yet" },
+]
+
+[licenses]
+version = 2
+# Permissive licences only; add a licence here by Craftbook PR, not locally.
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "Unicode-3.0",
+    "Unicode-DFS-2016",
+    "CC0-1.0",
+    "MPL-2.0",
+]
+confidence-threshold = 0.9
+
+# The workspace's own crates carry the project's licence (it may be AGPL or
+# commercial); only third-party crates are checked.
+[licenses.private]
+ignore = true
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"

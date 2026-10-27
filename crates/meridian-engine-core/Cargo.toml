@@ -20,3 +20,6 @@ meridian-audio-core = { workspace = true }
 meridian-asset-core = { workspace = true }
 meridian-compute-runtime = { workspace = true }
 meridian-physics-compute = { workspace = true }
+
+[lints]
+workspace = true

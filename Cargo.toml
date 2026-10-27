@@ -111,3 +111,44 @@ substrate-data = { git = "https://github.com/F000NKKK/substrate-data", rev = "30
 [profile.release]
 lto = true
 codegen-units = 1
+# Craftbook workspace lint set (templates/workspace-lints.toml).
+# Wave 0 sets every lint that already fires to "warn": that is the backlog,
+# counted in .clippy-backlog, which may only shrink. Lints raised back to
+# "deny" are the ones the tree already satisfies.
+[workspace.lints.rust]
+missing_docs = "warn" # backlog: deny in Craftbook
+missing_debug_implementations = "deny"
+unsafe_code = "deny"
+unreachable_pub = "warn"
+unused_qualifications = "warn"
+elided_lifetimes_in_paths = "warn"
+
+[workspace.lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+too_many_lines = "warn" # backlog: deny in Craftbook
+too_many_arguments = "warn" # backlog: deny in Craftbook
+excessive_nesting = "warn" # backlog: deny in Craftbook
+cognitive_complexity = "deny"
+fn_params_excessive_bools = "deny"
+struct_excessive_bools = "deny"
+module_name_repetitions = "warn"
+unwrap_used = "deny"
+panic = "warn" # backlog: deny in Craftbook
+todo = "deny"
+unreachable = "warn" # backlog: deny in Craftbook
+unimplemented = "deny"
+dbg_macro = "deny"
+print_stdout = "warn" # backlog: deny in Craftbook
+print_stderr = "warn" # backlog: deny in Craftbook
+allow_attributes = "deny"
+allow_attributes_without_reason = "deny"
+undocumented_unsafe_blocks = "deny"
+wildcard_imports = "deny"
+let_underscore_must_use = "deny"
+let_underscore_untyped = "warn"
+missing_errors_doc = "warn" # backlog: deny in Craftbook
+missing_panics_doc = "warn" # backlog: deny in Craftbook
+mod_module_files = "allow"
+self_named_module_files = "deny"
+large_types_passed_by_value = "warn"
+shadow_unrelated = "warn"

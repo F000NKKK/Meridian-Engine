@@ -63,16 +63,7 @@ fn write_report(
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_secs())
         .unwrap_or(0);
-    // A per-process counter keeps names unique even when several
-    // panics land within the same second (e.g. across threads).
-    static REPORT_INDEX: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
-    let index = REPORT_INDEX.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-    let path = config.directory.join(format!(
-        "crash-{}-{unix_seconds}-{index}.txt",
-        config.app_name
-    ));
-
-    let mut file = std::fs::File::create(&path)?;
+    let (mut file, path) = create_report_file(config, unix_seconds)?;
     writeln!(file, "==== Meridian Engine crash report ====")?;
     writeln!(file, "app:       {}", config.app_name)?;
     writeln!(file, "time:      {unix_seconds} (unix seconds)")?;
@@ -104,6 +95,30 @@ fn write_report(
     Ok(path)
 }
 
+/// Creates the report file, taking the first free `crash-<app>-<time>-<n>.txt`
+/// name so that several panics within one second never overwrite each other.
+fn create_report_file(
+    config: &CrashReportConfig,
+    unix_seconds: u64,
+) -> std::io::Result<(std::fs::File, PathBuf)> {
+    let mut index = 0_u32;
+    loop {
+        let path = config.directory.join(format!(
+            "crash-{}-{unix_seconds}-{index}.txt",
+            config.app_name
+        ));
+        match std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&path)
+        {
+            Ok(file) => return Ok((file, path)),
+            Err(err) if err.kind() == std::io::ErrorKind::AlreadyExists => index += 1,
+            Err(err) => return Err(err),
+        }
+    }
+}
+
 /// The panic payload as text — `&str` and `String` payloads cover
 /// everything `panic!`/`assert!` produce.
 fn panic_message(panic_info: &std::panic::PanicHookInfo<'_>) -> String {
@@ -126,7 +141,9 @@ mod tests {
     #[test]
     fn a_panicking_thread_produces_a_report_file() {
         let dir = std::env::temp_dir().join(format!("meridian-crash-test-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
+        if dir.exists() {
+            std::fs::remove_dir_all(&dir).unwrap();
+        }
 
         install(CrashReportConfig::new("crash-test").with_directory(&dir));
 
@@ -151,6 +168,6 @@ mod tests {
         // other tests sharing the global ring, so no line assertion.
         assert!(content.contains("---- recent log"));
 
-        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 }

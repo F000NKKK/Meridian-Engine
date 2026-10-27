@@ -12,6 +12,7 @@ description: Preserve Meridian-Engine geometric algebra semantics. Use when edit
 3. Keep `gac-core` pure math: no GPU, compute-runtime, platform, scheduler, or target-feature dispatch decisions.
 4. Put batched execution in `meridian-gac-compute`, not in `gac-core`.
 5. Add tests against independent oracles where possible, such as Rodrigues rotation or direct scalar formulas, not only project self-consistency.
+6. Float/fixed code is one directory per concept (`rotor/{mod,float,fixed}.rs`, ADR 020 D5); do not add to `generic.rs`/`float_ga.rs`/`fixed_ga.rs`.
 
 ## Validation
 

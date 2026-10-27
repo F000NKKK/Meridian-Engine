@@ -8,3 +8,13 @@ repository.workspace = true
 description = "Frame/persistent arenas, resource pools and generational handles; minimizes dynamic allocation across the engine."
 
 [dependencies]
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+criterion = { version = "0.8", default-features = false }
+
+[[bench]]
+name = "memory_core"
+harness = false

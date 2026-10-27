@@ -1,5 +1,8 @@
 //! Low-level audio device abstraction: output streams, buffers and platform audio backends.
 //!
+//! Layer: infrastructure (adapter); bounded context: audio
+//! (`craftbook.toml`, docs/context-map.md).
+//!
 //! Real, backed by `cpal` — the same class of decision as `wgpu` for GPU
 //! and `winit` for windowing: hand-writing FFI to ALSA/PulseAudio/WASAPI/
 //! CoreAudio would be a multi-month undertaking with three or more
@@ -13,21 +16,9 @@
 //! crate) knows about spatial panning, mixing, and DSP. This crate never
 //! depends on `audio-core`.
 //!
-//! **Stream model**: CPAL uses a callback-driven model — the audio
-//! hardware calls a user-provided function on a real-time audio thread to
-//! fill an output buffer. This crate bridges that into a push-based model
-//! suitable for a game engine: [`AudioStream::push_samples`] is called
-//! from the main/game thread to write interleaved float samples into an
-//! internal ring buffer, and the CPAL callback drains that ring buffer.
-//! This decouples the game's audio processing rate from the hardware's
-//! buffer request rate — the game can push a full frame's worth of audio
-//! at once, and the hardware drains it in smaller chunks.
-//!
-//! **Async on genuine I/O**: [`AudioDevice::new`] is a real `async fn`
-//! (enumerating audio devices is an OS/driver handshake with unbounded
-//! completion time, matching the same policy as
-//! `graphics-driver::Device::new` — see ADR 009). Stream creation and
-//! sample pushing are synchronous (bounded, local work).
+//! Design notes: docs/notes/meridian-audio-driver.md (`lib`).
+
+#![forbid(unsafe_code)]
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -103,6 +94,15 @@ pub struct AudioStream {
     _error_flag: Arc<AtomicBool>,
 }
 
+impl std::fmt::Debug for AudioStream {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AudioStream")
+            .field("capacity", &self.capacity)
+            .field("config", &self.config)
+            .finish_non_exhaustive()
+    }
+}
+
 impl AudioStream {
     /// Returns the stream's configuration.
     pub fn config(&self) -> AudioStreamConfig {
@@ -119,9 +119,11 @@ impl AudioStream {
     /// Samples outside `[-1.0, 1.0]` will clip on output.
     pub fn push_samples(&self, samples: &[f32]) {
         for &sample in samples {
-            // Ignore the error — if the stream was dropped, the receiver
-            // is disconnected and we just stop pushing.
-            let _ = self.sample_tx.send(sample);
+            // A send error means the stream was dropped and the receiver
+            // is disconnected: there is nobody left to play the rest.
+            if self.sample_tx.send(sample).is_err() {
+                break;
+            }
         }
     }
 
@@ -174,7 +176,7 @@ impl AudioDevice {
     /// empty, the device doesn't support anything close to `config`.
     pub fn supported_output_configs(
         &self,
-        config: &AudioStreamConfig,
+        config: AudioStreamConfig,
     ) -> Result<Vec<cpal::SupportedStreamConfig>, AudioDeviceError> {
         let supported = self
             .device
@@ -198,15 +200,12 @@ impl AudioDevice {
         Ok(candidates)
     }
 
-    /// Opens an audio output stream with the given configuration. The
-    /// returned [`AudioStream`] can receive samples via
-    /// [`AudioStream::push_samples`] from any thread.
-    ///
-    /// This is synchronous (bounded, local work — configuring a stream
-    /// doesn't wait on I/O once the device is known).
-    pub fn open_stream(&self, config: AudioStreamConfig) -> Result<AudioStream, AudioDeviceError> {
-        let supported = self.supported_output_configs(&config)?;
-        let resolved = supported
+    /// The supported hardware config whose channel count matches `config`.
+    fn resolve_output_config(
+        &self,
+        config: AudioStreamConfig,
+    ) -> Result<cpal::SupportedStreamConfig, AudioDeviceError> {
+        self.supported_output_configs(config)?
             .into_iter()
             .find(|c| c.channels() == config.channels)
             .ok_or_else(|| {
@@ -214,21 +213,20 @@ impl AudioDevice {
                     "no supported config for {} Hz, {} channels",
                     config.sample_rate, config.channels
                 ))
-            })?;
+            })
+    }
+
+    /// Opens an audio output stream with the given configuration. The
+    /// returned [`AudioStream`] can receive samples via
+    /// [`AudioStream::push_samples`] from any thread.
+    ///
+    /// This is synchronous (bounded, local work — configuring a stream
+    /// doesn't wait on I/O once the device is known).
+    pub fn open_stream(&self, config: AudioStreamConfig) -> Result<AudioStream, AudioDeviceError> {
+        let resolved = self.resolve_output_config(config)?;
 
         let channels = config.channels as usize;
-
-        let hw_buffer_frames = match *resolved.buffer_size() {
-            cpal::SupportedBufferSize::Range { min, max } => 1024u32.clamp(min.max(1), max.max(1)),
-            cpal::SupportedBufferSize::Unknown => 1024,
-        }
-        .max(256);
-
-        let ring_frames = config
-            .buffer_frames
-            .unwrap_or(hw_buffer_frames * 4)
-            .max(hw_buffer_frames * 2);
-        let ring_capacity = ring_frames as usize * channels;
+        let ring_capacity = ring_capacity(config, &resolved);
 
         let (sample_tx, sample_rx) = crossbeam_channel::bounded::<f32>(ring_capacity);
         let error_flag = Arc::new(AtomicBool::new(false));
@@ -240,31 +238,29 @@ impl AudioDevice {
             buffer_size: cpal::BufferSize::Default,
         };
 
+        if resolved.sample_format() != cpal::SampleFormat::F32 {
+            return Err(AudioDeviceError::UnsupportedConfig(
+                "only f32 sample format is supported".to_string(),
+            ));
+        }
         let mut anti_click = AntiClick::new(channels);
-        let stream = match resolved.sample_format() {
-            cpal::SampleFormat::F32 => self
-                .device
-                .build_output_stream(
-                    stream_config,
-                    move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
-                        for (index, output_sample) in data.iter_mut().enumerate() {
-                            *output_sample =
-                                anti_click.process(sample_rx.try_recv().ok(), index % channels);
-                        }
-                    },
-                    move |err| {
-                        meridian_foundation::log_error!("audio stream error: {err}");
-                        err_flag.store(true, Ordering::SeqCst);
-                    },
-                    None,
-                )
-                .map_err(|e| AudioDeviceError::StreamError(e.to_string()))?,
-            _ => {
-                return Err(AudioDeviceError::UnsupportedConfig(
-                    "only f32 sample format is supported".to_string(),
-                ));
-            }
-        };
+        let stream = self
+            .device
+            .build_output_stream(
+                stream_config,
+                move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
+                    for (index, output_sample) in data.iter_mut().enumerate() {
+                        *output_sample =
+                            anti_click.process(sample_rx.try_recv().ok(), index % channels);
+                    }
+                },
+                move |err| {
+                    meridian_foundation::log_error!("audio stream error: {err}");
+                    err_flag.store(true, Ordering::SeqCst);
+                },
+                None,
+            )
+            .map_err(|e| AudioDeviceError::StreamError(e.to_string()))?;
 
         stream
             .play()
@@ -278,6 +274,21 @@ impl AudioDevice {
             _error_flag: error_flag,
         })
     }
+}
+
+/// Samples the ring buffer holds: at least two hardware buffers, four by
+/// default, unless the caller asked for a size.
+fn ring_capacity(config: AudioStreamConfig, resolved: &cpal::SupportedStreamConfig) -> usize {
+    let hw_buffer_frames = match *resolved.buffer_size() {
+        cpal::SupportedBufferSize::Range { min, max } => 1024u32.clamp(min.max(1), max.max(1)),
+        cpal::SupportedBufferSize::Unknown => 1024,
+    }
+    .max(256);
+    let ring_frames = config
+        .buffer_frames
+        .unwrap_or(hw_buffer_frames * 4)
+        .max(hw_buffer_frames * 2);
+    ring_frames as usize * config.channels as usize
 }
 
 /// Keeps the output waveform continuous when the ring buffer starves.
@@ -360,7 +371,7 @@ mod tests {
         };
 
         // Steady loud signal, then sudden starvation, then recovery —
-        // the exact sequence that used to click.
+        // the sequence that clicks without the declicker.
         for _ in 0..64 {
             track(anti.process(Some(0.9), 0), &mut max_step);
         }
@@ -399,6 +410,7 @@ mod tests {
         assert_eq!(anti.process(Some(-0.321), 1), -0.321);
     }
 
+    #[cfg(feature = "hw-tests")]
     async fn device_or_skip() -> Option<AudioDevice> {
         match AudioDevice::new().await {
             Ok(device) => Some(device),
@@ -409,6 +421,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "hw-tests")]
     #[tokio::test]
     async fn device_reports_a_name() {
         let Some(device) = device_or_skip().await else {
@@ -419,19 +432,21 @@ mod tests {
         eprintln!("audio device: {name}");
     }
 
+    #[cfg(feature = "hw-tests")]
     #[tokio::test]
     async fn device_reports_supported_configs() {
         let Some(device) = device_or_skip().await else {
             return;
         };
         let config = AudioStreamConfig::default();
-        let configs = device.supported_output_configs(&config).unwrap();
+        let configs = device.supported_output_configs(config).unwrap();
         assert!(
             !configs.is_empty(),
             "device should support at least one config near 48kHz stereo"
         );
     }
 
+    #[cfg(feature = "hw-tests")]
     #[tokio::test]
     async fn open_and_close_stream() {
         let Some(device) = device_or_skip().await else {
@@ -443,6 +458,7 @@ mod tests {
         assert_eq!(stream.config().channels, 2);
     }
 
+    #[cfg(feature = "hw-tests")]
     #[tokio::test]
     async fn push_samples_does_not_panic() {
         let Some(device) = device_or_skip().await else {
@@ -455,6 +471,7 @@ mod tests {
         std::thread::sleep(std::time::Duration::from_millis(50));
     }
 
+    #[cfg(feature = "hw-tests")]
     #[tokio::test]
     async fn available_capacity_reflects_buffer_size() {
         let Some(device) = device_or_skip().await else {

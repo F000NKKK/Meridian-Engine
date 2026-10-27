@@ -1,0 +1,282 @@
+# Meridian-Engine layer map: current crate names, intended layers.
+# Each crate is mapped to the layer it is meant to be in, so `craftcheck deps`
+# reports where today's code breaks it (baseline: .craftcheck-deps-baseline).
+# Target crate names and the migration waves: Craftbook adoption/meridian-engine.md,
+# decisions: docs/adr/019-ports-in-domain-drivers-as-adapters.md and
+# docs/adr/020-craftbook-adoption.md. Contexts and edges: docs/context-map.md.
+# scripts/check_dependency_rules.py reads the layers below (one source).
+
+[[crate]]
+name = "meridian-foundation"
+layer = "shared-kernel"
+context = "diagnostics"
+
+[[crate]]
+name = "meridian-numeric-core"
+layer = "shared-kernel"
+context = "geometry"
+
+[[crate]]
+name = "meridian-gac-core"
+layer = "shared-kernel"
+context = "geometry"
+profile = "perf"
+
+[[crate]]
+name = "meridian-memory-core"
+layer = "shared-kernel"
+context = "identity"
+profile = "perf"
+
+[[crate]]
+name = "meridian-resource-core"
+layer = "shared-kernel"
+context = "identity"
+
+[[crate]]
+name = "meridian-ecs-core"
+layer = "shared-kernel"
+context = "entity"
+profile = "perf"
+
+[[crate]]
+name = "meridian-task-core"
+layer = "infra"
+context = "runtime"
+
+[[crate]]
+name = "meridian-platform-core"
+layer = "infra"
+context = "platform"
+
+[[crate]]
+name = "meridian-gpu-driver"
+layer = "infra"
+context = "compute"
+
+[[crate]]
+name = "meridian-compute-driver"
+layer = "infra"
+context = "compute"
+
+[[crate]]
+name = "meridian-compute-runtime"
+layer = "app"
+context = "compute"
+
+[[crate]]
+name = "meridian-gac-compute"
+layer = "infra"
+context = "geometry"
+
+[[crate]]
+name = "meridian-asset-core"
+layer = "domain"
+context = "assets"
+
+[[crate]]
+name = "meridian-graphics-core"
+layer = "domain"
+context = "rendering"
+
+[[crate]]
+name = "meridian-graphics-driver"
+layer = "infra"
+context = "rendering"
+
+[[crate]]
+name = "meridian-physics-core"
+layer = "domain"
+context = "physics"
+profile = "perf"
+
+[[crate]]
+name = "meridian-physics-driver"
+layer = "infra"
+context = "physics"
+
+[[crate]]
+name = "meridian-physics-compute"
+layer = "infra"
+context = "physics"
+
+[[crate]]
+name = "meridian-audio-core"
+layer = "domain"
+context = "audio"
+
+[[crate]]
+name = "meridian-audio-driver"
+layer = "infra"
+context = "audio"
+
+[[crate]]
+name = "meridian-engine-core"
+layer = "app"
+context = "runtime"
+
+[[crate]]
+name = "meridian-dsl-core"
+layer = "shared-kernel"
+context = "scene-markup"
+
+[[crate]]
+name = "meridian-dsl-macros"
+layer = "interface"
+context = "scene-markup"
+
+[[crate]]
+name = "meridian-sdk"
+layer = "interface"
+context = "runtime"
+
+[[crate]]
+name = "meridian-examples"
+layer = "interface"
+context = "runtime"
+
+[[crate]]
+name = "magic_figures"
+layer = "interface"
+context = "runtime"
+
+[[crate]]
+name = "physic_figures"
+layer = "interface"
+context = "runtime"
+
+[[crate]]
+name = "meridian-ui-core"
+layer = "domain"
+context = "ui"
+
+[[crate]]
+name = "meridian-mel-build"
+layer = "infra"
+context = "ui"
+
+[[crate]]
+name = "meridian-scene"
+layer = "infra"
+context = "data"
+
+[[crate]]
+name = "meridian-editor-protocol"
+layer = "infra"
+context = "editor"
+
+[[context_edge]]
+from = "physics"
+to = "geometry"
+relation = "shared-kernel"
+
+[[context_edge]]
+from = "rendering"
+to = "geometry"
+relation = "shared-kernel"
+
+[[context_edge]]
+from = "audio"
+to = "geometry"
+relation = "shared-kernel"
+
+[[context_edge]]
+from = "rendering"
+to = "assets"
+relation = "published-language"
+
+[[context_edge]]
+from = "audio"
+to = "assets"
+relation = "published-language"
+
+[[context_edge]]
+from = "physics"
+to = "compute"
+relation = "customer-supplier"
+
+[[context_edge]]
+from = "rendering"
+to = "compute"
+relation = "customer-supplier"
+
+[[context_edge]]
+from = "geometry"
+to = "compute"
+relation = "customer-supplier"
+
+[[context_edge]]
+from = "runtime"
+to = "physics"
+relation = "customer-supplier"
+
+[[context_edge]]
+from = "runtime"
+to = "audio"
+relation = "customer-supplier"
+
+[[context_edge]]
+from = "runtime"
+to = "rendering"
+relation = "customer-supplier"
+
+[[context_edge]]
+from = "runtime"
+to = "platform"
+relation = "customer-supplier"
+
+[[context_edge]]
+from = "runtime"
+to = "assets"
+relation = "customer-supplier"
+
+[[context_edge]]
+from = "runtime"
+to = "compute"
+relation = "customer-supplier"
+
+[[context_edge]]
+from = "scene-markup"
+to = "runtime"
+relation = "acl"
+
+# Adapters use the platform context's OS services (window handle, capability
+# report, dynamic loading). Customer-supplier: platform publishes, adapters consume.
+[[context_edge]]
+from = "rendering"
+to = "platform"
+relation = "customer-supplier"
+
+[[context_edge]]
+from = "compute"
+to = "platform"
+relation = "customer-supplier"
+
+[[context_edge]]
+from = "audio"
+to = "platform"
+relation = "customer-supplier"
+
+[[context_edge]]
+from = "physics"
+to = "platform"
+relation = "customer-supplier"
+
+[[exempt]]
+path = "crates/meridian-foundation/src/logging.rs"
+reason = "process logger: the one allowed global (ch. 4 §4.7); its tokio file I/O still moves to an adapter (D7)"
+
+[[context_edge]]
+from = "editor"
+to = "data"
+relation = "customer-supplier"
+
+[[context_edge]]
+from = "runtime"
+to = "ui"
+relation = "customer-supplier"
+
+[[context_edge]]
+from = "runtime"
+to = "scene-markup"
+relation = "customer-supplier"

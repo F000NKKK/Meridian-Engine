@@ -9,3 +9,6 @@ description = "Resource identity: typed handles, versioning, lifetime and depend
 
 [dependencies]
 meridian-memory-core = { workspace = true }
+
+[lints]
+workspace = true

@@ -5,7 +5,7 @@
 //! once, no matter how many times an application asks for it).
 //!
 //! **Layering, explicitly:** `asset-core` only decodes bytes into
-//! CPU-side data (`ImageData`/`MeshData`) — it has no idea what a path,
+//! CPU-side data (`ImageAsset`/`MeshAsset`) — it has no idea what a path,
 //! a cache, or a GPU handle is (rule 4: asset-core stays a decoder,
 //! never a manager). `resource-core`'s generational handles are what
 //! `MeshRegistry`/`TextureRegistry` (in `graphics-core`) already build
@@ -19,7 +19,7 @@
 use std::collections::{HashMap, VecDeque};
 
 use meridian_asset_core::{
-    AnyImageDecoder, AudioAsset, DecodeStrategy, Decoder, ImageData, ObjDecoder,
+    AnyImageDecoder, AudioAsset, DecodeStrategy, Decoder, ImageAsset, ObjDecoder,
     StreamingAudioDecoder, open_audio,
 };
 use meridian_graphics_core::{
@@ -37,7 +37,8 @@ use meridian_graphics_driver::Device;
 /// the one that owns the asset directory; a caller with assets under
 /// its own crate joins `env!("CARGO_MANIFEST_DIR")` itself before
 /// calling this.
-pub fn load_image_asset(path: &str) -> ImageData {
+#[must_use]
+pub fn load_image_asset(path: &str) -> ImageAsset {
     let bytes = std::fs::read(path).unwrap_or_else(|e| panic!("failed to read asset {path}: {e}"));
     AnyImageDecoder
         .decode(&bytes)
@@ -94,6 +95,7 @@ fn compute_smooth_normals(positions: &[[f32; 3]], indices: &[u32]) -> Vec<[f32; 
 /// meshes, since a track carries its own playback cursor and two
 /// listeners of the same file need two independent cursors, not one
 /// shared handle.
+#[derive(Debug)]
 pub enum AudioTrack {
     Memory {
         mono: Vec<f32>,
@@ -130,28 +132,35 @@ impl AudioTrack {
                         chunk.push(sample);
                         continue;
                     }
-                    match decoder.next_block() {
-                        Ok(Some(block)) => {
-                            for frame in block.chunks_exact(*channels) {
-                                let sum: f32 = frame.iter().map(|&s| s as f32 / 32768.0).sum();
-                                queue.push_back(sum / *channels as f32);
-                            }
-                        }
-                        Ok(None) => {
-                            if decoder.rewind().is_err() {
-                                chunk.resize(frames, 0.0);
-                                break;
-                            }
-                        }
-                        Err(_) => {
-                            chunk.resize(frames, 0.0);
-                            break;
-                        }
+                    if !refill_queue(decoder, *channels, queue) {
+                        chunk.resize(frames, 0.0);
+                        break;
                     }
                 }
             }
         }
         chunk
+    }
+}
+
+/// Decodes the next block into `queue` as mono samples, rewinding at the
+/// end of the stream. `false` when the stream failed, so the caller pads
+/// with silence.
+fn refill_queue(
+    decoder: &mut StreamingAudioDecoder,
+    channels: usize,
+    queue: &mut VecDeque<f32>,
+) -> bool {
+    match decoder.next_block() {
+        Ok(Some(block)) => {
+            for frame in block.chunks_exact(channels) {
+                let sum: f32 = frame.iter().map(|&s| f32::from(s) / 32768.0).sum();
+                queue.push_back(sum / channels as f32);
+            }
+            true
+        }
+        Ok(None) => decoder.rewind().is_ok(),
+        Err(_) => false,
     }
 }
 
@@ -175,7 +184,7 @@ pub fn load_audio_track(path: &str) -> Result<(AudioTrack, u32), String> {
                 .samples
                 .chunks_exact(channels)
                 .map(|frame| {
-                    frame.iter().map(|&s| s as f32 / 32768.0).sum::<f32>() / channels as f32
+                    frame.iter().map(|&s| f32::from(s) / 32768.0).sum::<f32>() / channels as f32
                 })
                 .collect();
             let fade = (sample_rate as usize / 100).min(mono.len() / 2);
@@ -197,7 +206,7 @@ pub fn load_audio_track(path: &str) -> Result<(AudioTrack, u32), String> {
 }
 
 /// Path-keyed cache over texture/mesh loading — an application (or
-/// [`crate::scene::GraphicsBase`], which owns one) calls
+/// [`crate::scene::GraphicsSession`], which owns one) calls
 /// [`load_texture`](Self::load_texture)/[`load_mesh_obj`](Self::load_mesh_obj)
 /// as many times as it wants for the same path (a texture shared by
 /// several materials, a mesh instanced by several entities); only the
@@ -209,6 +218,7 @@ pub struct AssetCache {
 }
 
 impl AssetCache {
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }

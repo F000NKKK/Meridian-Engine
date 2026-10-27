@@ -8,3 +8,6 @@ repository.workspace = true
 description = "Job graph scheduler: worker threads and dependency tracking for parallel frame execution."
 
 [dependencies]
+
+[lints]
+workspace = true

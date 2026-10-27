@@ -10,3 +10,6 @@ description = "OS abstraction: window, input, filesystem, time, threading and dy
 [dependencies]
 meridian-foundation = { workspace = true }
 winit = { workspace = true }
+
+[lints]
+workspace = true

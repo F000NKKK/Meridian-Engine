@@ -62,6 +62,7 @@ pub struct SoftBody<F: GaFlavor> {
 }
 
 impl<F: GaFlavor> SoftBody<F> {
+    #[must_use]
     pub fn particle_count(&self) -> usize {
         self.positions.len()
     }
@@ -153,7 +154,10 @@ impl<F: GaFlavor> SoftBodyIntegrator<F> {
 /// springs pull against) — pinning it instead (`inverse_mass = 0`) is a
 /// reasonable alternative a caller can build directly via [`SoftBody`]'s
 /// fields if a stiffer-feeling ball is wanted.
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "replaced by an options/value type in Craftbook migration wave 3"
+)]
 pub fn icosphere_soft_body<F: GaFlavor>(
     center: F::Vector,
     radius: F::Scalar,

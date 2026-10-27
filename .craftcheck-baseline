@@ -1,0 +1,148 @@
+crates/meridian-asset-core/Cargo.toml	R801	meridian-asset-core	1
+crates/meridian-asset-core/src/audio/compressed.rs	C101		1
+crates/meridian-asset-core/src/audio/compressed.rs	C108	AnyAudioDecoder	1
+crates/meridian-asset-core/src/audio/compressed.rs	C108	AudioFormat	1
+crates/meridian-asset-core/src/audio/compressed.rs	C108	FlacDecoder	1
+crates/meridian-asset-core/src/audio/compressed.rs	C108	Mp3Decoder	1
+crates/meridian-asset-core/src/audio/compressed.rs	C108	OpusDecoder	1
+crates/meridian-asset-core/src/audio/compressed.rs	C108	VorbisDecoder	1
+crates/meridian-asset-core/src/audio/wav.rs	C108	WavDecoder	1
+crates/meridian-asset-core/src/image/bmp.rs	C108	BmpDecoder	1
+crates/meridian-audio-core/Cargo.toml	R801	meridian-audio-core	1
+crates/meridian-audio-core/src/effects/binaural/mod.rs	C101		1
+crates/meridian-audio-core/src/effects/binaural/mod.rs	C108	BinauralConfig	1
+crates/meridian-audio-core/src/effects/binaural/mod.rs	C108	BinauralRenderer	1
+crates/meridian-audio-core/src/effects/low_pass.rs	C108	LowPassFilter	1
+crates/meridian-audio-core/src/effects/medium.rs	C108	AcousticMedium	1
+crates/meridian-audio-core/src/speaker_layout.rs	C101		1
+crates/meridian-audio-core/src/tests.rs	C101		1
+crates/meridian-audio-core/src/tests.rs	D305		7
+crates/meridian-audio-driver/Cargo.toml	R801	meridian-audio-driver	1
+crates/meridian-audio-driver/src/lib.rs	C101		1
+crates/meridian-compute-driver/Cargo.toml	R801	meridian-compute-driver	1
+crates/meridian-compute-runtime/Cargo.toml	R801	meridian-compute-runtime	1
+crates/meridian-dsl-core/Cargo.toml	R801	meridian-dsl-core	1
+crates/meridian-dsl-core/src/parse/parser/mod.rs	C101		1
+crates/meridian-dsl-core/src/tag/dsl_registry/mod.rs	S701		1
+crates/meridian-dsl-macros/Cargo.toml	R801	meridian-dsl-macros	1
+crates/meridian-ecs-core/Cargo.toml	R801	meridian-ecs-core	1
+crates/meridian-ecs-core/src/world.rs	C101		1
+crates/meridian-editor-protocol/Cargo.toml	R801	meridian-editor-protocol	1
+crates/meridian-editor-protocol/src/version.rs	C108	ProtocolVersion	1
+crates/meridian-engine-core/Cargo.toml	R801	meridian-engine-core	1
+crates/meridian-foundation/Cargo.toml	R801	meridian-foundation	1
+crates/meridian-foundation/src/crash_reporting.rs	C108	CrashReportConfig	1
+crates/meridian-foundation/src/crash_reporting.rs	S701		1
+crates/meridian-gac-compute/Cargo.toml	R801	meridian-gac-compute	1
+crates/meridian-gac-compute/src/fixed_wgsl/arithmetic_lib.rs	C101		1
+crates/meridian-gac-compute/src/fixed_wgsl/tests.rs	C101		1
+crates/meridian-gac-core/Cargo.toml	R801	meridian-gac-core	1
+crates/meridian-gac-core/src/fixed_ga/mod.rs	C101		1
+crates/meridian-gac-core/src/fixed_ga/mod.rs	D305		3
+crates/meridian-gac-core/src/float_ga/mod.rs	C101		1
+crates/meridian-gac-core/src/float_ga/mod.rs	D305		3
+crates/meridian-gac-core/src/float_ga/tests.rs	C101		1
+crates/meridian-gac-core/src/generic.rs	C101		1
+crates/meridian-gpu-driver/Cargo.toml	R801	meridian-gpu-driver	1
+crates/meridian-graphics-core/Cargo.toml	R801	meridian-graphics-core	1
+crates/meridian-graphics-core/src/bloom/pass.rs	C101		1
+crates/meridian-graphics-core/src/mesh_handle.rs	C108	MeshMarker	1
+crates/meridian-graphics-core/src/scene.rs	C101		1
+crates/meridian-graphics-core/src/scene.rs	C108	BlendMode	1
+crates/meridian-graphics-core/src/scene.rs	C108	Camera2d	1
+crates/meridian-graphics-core/src/scene.rs	C108	FrameScene	1
+crates/meridian-graphics-core/src/scene.rs	C108	Light	1
+crates/meridian-graphics-core/src/scene.rs	C108	Material	1
+crates/meridian-graphics-core/src/scene.rs	C108	MaterialMarker	1
+crates/meridian-graphics-core/src/scene.rs	C108	Mesh	1
+crates/meridian-graphics-core/src/scene.rs	C108	MeshRenderer	1
+crates/meridian-graphics-core/src/scene.rs	C108	Renderable3d	1
+crates/meridian-graphics-core/src/scene.rs	C108	Scene2d	1
+crates/meridian-graphics-core/src/scene.rs	C108	Scene3d	1
+crates/meridian-graphics-core/src/scene.rs	C108	Sprite	1
+crates/meridian-graphics-core/src/scene.rs	C108	View	1
+crates/meridian-graphics-core/src/shader_handle.rs	C108	ShaderMarker	1
+crates/meridian-graphics-core/src/submission/scene_renderer.rs	C101		1
+crates/meridian-graphics-core/src/submission/tests.rs	C101		1
+crates/meridian-graphics-core/src/texture_handle.rs	C108	TextureMarker	1
+crates/meridian-graphics-driver/Cargo.toml	R801	meridian-graphics-driver	1
+crates/meridian-mel-build/Cargo.toml	R801	meridian-mel-build	1
+crates/meridian-mel-build/src/binding/property_path.rs	S701		1
+crates/meridian-mel-build/src/generated_module.rs	S701		1
+crates/meridian-mel-build/src/ui_bindings.rs	S701		1
+crates/meridian-mel-build/src/ui_build.rs	S701		1
+crates/meridian-memory-core/Cargo.toml	R801	meridian-memory-core	1
+crates/meridian-numeric-core/Cargo.toml	R801	meridian-numeric-core	1
+crates/meridian-numeric-core/src/fixed.rs	C101		1
+crates/meridian-physics-compute/Cargo.toml	R801	meridian-physics-compute	1
+crates/meridian-physics-compute/src/broad_phase.rs	C108	BroadPhasePairsKernel	1
+crates/meridian-physics-compute/src/constraint_solver.rs	C108	ConstraintSolverBatchKernel	1
+crates/meridian-physics-compute/src/fixed/mod.rs	C101		1
+crates/meridian-physics-compute/src/fixed/mod.rs	C108	FixedSoftBodyGpuKernel	1
+crates/meridian-physics-compute/src/float/mod.rs	C101		1
+crates/meridian-physics-compute/src/float/mod.rs	C108	BroadPhaseGpuKernel	1
+crates/meridian-physics-compute/src/float/mod.rs	C108	SoftBodyGpuKernel	1
+crates/meridian-physics-compute/src/generic.rs	C108	Adjacency	1
+crates/meridian-physics-compute/src/narrow_phase/mod.rs	C108	GenerateContactsKernel	1
+crates/meridian-physics-compute/src/narrow_phase/mod.rs	C108	NarrowPhaseTestPairKernel	1
+crates/meridian-physics-compute/src/rigid_body.rs	C108	RigidBodyIntegratorKernel	1
+crates/meridian-physics-core/Cargo.toml	R801	meridian-physics-core	1
+crates/meridian-physics-core/src/float/tests.rs	C101		1
+crates/meridian-physics-core/src/generic/cuboid_contact.rs	C101		1
+crates/meridian-physics-driver/Cargo.toml	R801	meridian-physics-driver	1
+crates/meridian-platform-core/Cargo.toml	R801	meridian-platform-core	1
+crates/meridian-platform-core/src/capabilities.rs	C108	BackendCapabilities	1
+crates/meridian-platform-core/src/capabilities.rs	C108	CpuCapabilities	1
+crates/meridian-platform-core/src/capabilities.rs	C108	GpuCapabilities	1
+crates/meridian-platform-core/src/input.rs	C108	InputState	1
+crates/meridian-platform-core/src/input.rs	C108	KeyCode	1
+crates/meridian-platform-core/src/input.rs	C108	MouseButton	1
+crates/meridian-platform-core/src/time.rs	C108	Clock	1
+crates/meridian-platform-core/src/window.rs	C108	AppHandler	1
+crates/meridian-resource-core/Cargo.toml	R801	meridian-resource-core	1
+crates/meridian-scene/Cargo.toml	R801	meridian-scene	1
+crates/meridian-scene/src/load/pending_entity.rs	C108	ComponentsDraft	1
+crates/meridian-scene/src/transform_form.rs	C108	TransformCodec	1
+crates/meridian-sdk/Cargo.toml	R801	meridian-sdk	1
+crates/meridian-sdk/src/assets.rs	C101		1
+crates/meridian-sdk/src/assets.rs	C108	AssetCache	1
+crates/meridian-sdk/src/assets.rs	C108	AudioTrack	1
+crates/meridian-sdk/src/assets.rs	S701		5
+crates/meridian-sdk/src/camera/mod.rs	C108	FlyCamera	1
+crates/meridian-sdk/src/camera/tests.rs	C101		1
+crates/meridian-sdk/src/dsl.rs	C108	Entity	1
+crates/meridian-sdk/src/dsl.rs	C108	Material	1
+crates/meridian-sdk/src/dsl.rs	C108	Mesh	1
+crates/meridian-sdk/src/dsl.rs	C108	RigidBody	1
+crates/meridian-sdk/src/dsl.rs	C108	Scene	1
+crates/meridian-sdk/src/dsl.rs	C108	Transform	1
+crates/meridian-sdk/src/render.rs	C108	RenderStage	1
+crates/meridian-sdk/src/scene.rs	C101		1
+crates/meridian-sdk/src/scene.rs	C108	GraphicsSession	1
+crates/meridian-task-core/Cargo.toml	R801	meridian-task-core	1
+crates/meridian-ui-core/Cargo.toml	R801	meridian-ui-core	1
+crates/meridian-ui-core/src/error.rs	C108	UiError	1
+crates/meridian-ui-core/src/layout/fixed_advance.rs	C108	FixedAdvanceText	1
+crates/meridian-ui-core/src/layout/grid/cells.rs	C108	Cell	1
+crates/meridian-ui-core/src/layout/grid/mod.rs	C103	fn arrange	1
+crates/meridian-ui-core/src/layout/grid/mod.rs	C103	fn definitions	1
+crates/meridian-ui-core/src/layout/grid/mod.rs	C103	fn measure	1
+crates/meridian-ui-core/src/layout/grid/mod.rs	C103	fn offered	1
+crates/meridian-ui-core/src/layout/grid/mod.rs	C103	fn placed_children	1
+crates/meridian-ui-core/src/node.rs	C108	ElementKind	1
+crates/meridian-ui-core/src/node.rs	C108	NodeId	1
+crates/meridian-ui-core/src/properties/mod.rs	C103	const ALL	1
+crates/meridian-ui-core/src/properties/mod.rs	C103	fn by_name	1
+crates/meridian-ui-core/src/properties/mod.rs	C103	fn meta	1
+crates/meridian-ui-core/src/property/definition.rs	C108	Invalidates	1
+crates/meridian-ui-core/src/property/definition.rs	C108	Property	1
+crates/meridian-ui-core/src/property/definition.rs	C108	PropertyMeta	1
+crates/meridian-ui-core/src/property/kind.rs	C108	PropertyType	1
+crates/meridian-ui-core/src/property/literal/number.rs	S702		2
+crates/meridian-ui-core/src/tree/change.rs	C108	ChangeSource	1
+crates/meridian-ui-core/src/tree/values.rs	N203	get_or_default	1
+examples/Cargo.toml	R801	meridian-examples	1
+examples/examples/magic_figures/shape_spec.rs	S702		3
+examples/examples/physic_figures/render_entity.rs	S702		2
+examples/examples/physic_figures/scene_entity.rs	S702		6
+examples/src/paths.rs	S701		1

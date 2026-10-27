@@ -1,6 +1,6 @@
 //! Scene vocabulary and per-frame extraction — see docs/graphics-design.md
 //! for the accepted design this module implements: one spatial model
-//! (`Motor3`) shared by [`Scene3D`] (the world) and [`Scene2D`] (a
+//! (`Motor3`) shared by [`Scene3d`] (the world) and [`Scene2d`] (a
 //! layer-sorted plane; UI is a role played by either, not a third kind).
 //!
 //! Everything a renderable references is a typed `resource-core` handle
@@ -18,6 +18,7 @@ use meridian_resource_core::ResourceId;
 use crate::{Frustum, MeshHandle, TextureHandle};
 
 /// Typed identity for a material — see the module doc's handle note.
+#[derive(Debug)]
 pub struct MaterialMarker;
 pub type MaterialHandle = ResourceId<MaterialMarker>;
 
@@ -68,7 +69,7 @@ pub struct Mesh {
     pub bounds: Aabb,
 }
 
-/// A light contributing to a [`Scene3D`]. First model is Blinn-Phong
+/// A light contributing to a [`Scene3d`]. First model is Blinn-Phong
 /// forward shading; a PBR upgrade changes the shader, not this
 /// vocabulary (see docs/graphics-design.md).
 #[derive(Debug, Clone, Copy)]
@@ -90,7 +91,7 @@ pub enum Light {
 
 /// One 3D-scene instance: a mesh drawn with a material at a world frame.
 #[derive(Debug, Clone)]
-pub struct Renderable3D {
+pub struct Renderable3d {
     pub mesh: MeshHandle,
     pub material: MaterialHandle,
     pub frame: Motor3,
@@ -111,7 +112,7 @@ pub struct Renderable3D {
     pub casts_shadow: bool,
 }
 
-/// Attaches a [`Renderable3D`] (minus its frame, which comes from the
+/// Attaches a [`Renderable3d`] (minus its frame, which comes from the
 /// entity's own [`Transform`]) to an ECS entity — [`extract_scene3d`]'s
 /// input component.
 #[derive(Debug, Clone, Copy)]
@@ -123,7 +124,7 @@ pub struct MeshRenderer {
 
 impl Component for MeshRenderer {}
 
-/// A textured quad in a [`Scene2D`]. `frame`'s translation supplies the
+/// A textured quad in a [`Scene2d`]. `frame`'s translation supplies the
 /// quad's `x`/`y`; the remaining `Motor3` degrees of freedom (z, the
 /// rotation axes other than the plane normal) are simply unused — see
 /// the module doc's "one spatial model" note.
@@ -142,18 +143,18 @@ pub struct Sprite {
     pub layer: i32,
 }
 
-/// An orthographic camera for [`Scene2D`] — no perspective, no frustum,
+/// An orthographic camera for [`Scene2d`] — no perspective, no frustum,
 /// just the visible rectangle. [`from_surface_size`](Self::from_surface_size)
 /// is the screen-space-UI camera (pixel units, `y` down, origin
 /// top-left); [`from_world_extent`](Self::from_world_extent) is the
 /// world-space-2D-gameplay camera (centered, `y` up).
 #[derive(Debug, Clone, Copy, Default)]
-pub struct Camera2D {
+pub struct Camera2d {
     /// `[left, right, bottom, top]`.
     pub extents: [f32; 4],
 }
 
-impl Camera2D {
+impl Camera2d {
     pub fn from_world_extent(width: f32, height: f32) -> Self {
         Self {
             extents: [-width / 2.0, width / 2.0, -height / 2.0, height / 2.0],
@@ -167,7 +168,7 @@ impl Camera2D {
     }
 }
 
-/// The world: a camera, its visible [`Renderable3D`]s, and the lights
+/// The world: a camera, its visible [`Renderable3d`]s, and the lights
 /// shading them. `ambient_ground`/`ambient_sky` are a two-color
 /// hemisphere fill (lerped by each fragment's world-space normal.y in
 /// [`crate::submission`]'s shared shading code) — a lightweight,
@@ -179,9 +180,9 @@ impl Camera2D {
 /// shadows — see [`crate::submission::SceneRenderer::render_shadow_pass`]'s
 /// own doc comment for the fixed-volume shadow map this feeds.
 #[derive(Debug, Clone)]
-pub struct Scene3D {
+pub struct Scene3d {
     pub camera: crate::Camera,
-    pub renderables: Vec<Renderable3D>,
+    pub renderables: Vec<Renderable3d>,
     pub lights: Vec<Light>,
     /// Ambient color a downward-facing surface (`normal.y = -1`)
     /// receives — the color light bouncing off the ground would be.
@@ -191,7 +192,7 @@ pub struct Scene3D {
     pub ambient_sky: [f32; 3],
 }
 
-impl Default for Scene3D {
+impl Default for Scene3d {
     fn default() -> Self {
         Self {
             camera: crate::Camera::default(),
@@ -208,18 +209,18 @@ impl Default for Scene3D {
 
 /// A layer-sorted plane: an orthographic camera and its [`Sprite`]s.
 #[derive(Debug, Clone, Default)]
-pub struct Scene2D {
-    pub camera: Camera2D,
+pub struct Scene2d {
+    pub camera: Camera2d,
     pub sprites: Vec<Sprite>,
 }
 
-/// One entry in a [`FrameScene`]'s view list — a `Scene3D` or a
-/// `Scene2D`, drawn in list order (later views draw over earlier ones;
+/// One entry in a [`FrameScene`]'s view list — a `Scene3d` or a
+/// `Scene2d`, drawn in list order (later views draw over earlier ones;
 /// see the module doc's UI-overlay composition).
 #[derive(Debug, Clone)]
 pub enum View {
-    Three(Scene3D),
-    Two(Scene2D),
+    Three(Scene3d),
+    Two(Scene2d),
 }
 
 /// What one frame's extraction produces: an ordered list of views ready
@@ -236,27 +237,27 @@ impl FrameScene {
     }
 
     /// The common single-3D-view case (no UI overlay).
-    pub fn single_3d(scene: Scene3D) -> Self {
+    pub fn single_3d(scene: Scene3d) -> Self {
         Self {
             views: vec![View::Three(scene)],
         }
     }
 }
 
-/// Extracts a [`Scene3D`] from `world`: every entity with both a
-/// [`Transform`] and a [`MeshRenderer`] becomes a [`Renderable3D`] at
+/// Extracts a [`Scene3d`] from `world`: every entity with both a
+/// [`Transform`] and a [`MeshRenderer`] becomes a [`Renderable3d`] at
 /// its transform's frame. `ecs-core` never learns about any of this —
 /// the join happens here, in `graphics-core`, per dependency-rules
 /// rule 6 (ECS stays generic and data-oriented).
 ///
 /// Lights aren't extracted yet (no light component exists); callers add
 /// them to the returned scene directly until one does.
-pub fn extract_scene3d(world: &World, camera: crate::Camera) -> Scene3D {
+pub fn extract_scene3d(world: &World, camera: crate::Camera) -> Scene3d {
     let renderables = world
         .query::<MeshRenderer>()
         .filter_map(|(entity, renderer)| {
             let transform = world.get::<Transform>(entity)?;
-            Some(Renderable3D {
+            Some(Renderable3d {
                 mesh: renderer.mesh,
                 material: renderer.material,
                 frame: transform.motor,
@@ -265,10 +266,10 @@ pub fn extract_scene3d(world: &World, camera: crate::Camera) -> Scene3D {
             })
         })
         .collect();
-    Scene3D {
+    Scene3d {
         camera,
         renderables,
-        ..Scene3D::default()
+        ..Scene3d::default()
     }
 }
 
@@ -316,17 +317,17 @@ pub fn world_space_bounds(bounds: &Aabb, frame: &Motor3) -> Aabb {
 
 /// Frustum-culls `scene`'s renderables against `frustum`, using
 /// `mesh_bounds` to look up each renderable's local-space bounds (a
-/// caller-supplied lookup rather than a field on [`Renderable3D`] itself
+/// caller-supplied lookup rather than a field on [`Renderable3d`] itself
 /// — the scene only names a [`MeshHandle`]; resolving it to a [`Mesh`]'s
 /// bounds is whatever registry owns loaded meshes, not this function's
 /// business). A renderable whose mesh isn't found is kept (fail open:
 /// an unresolvable bounds check must not silently make something
 /// disappear).
 pub fn cull_scene3d(
-    scene: &Scene3D,
+    scene: &Scene3d,
     frustum: &Frustum,
     mesh_bounds: impl Fn(MeshHandle) -> Option<Aabb>,
-) -> Vec<Renderable3D> {
+) -> Vec<Renderable3d> {
     scene
         .renderables
         .iter()
@@ -402,23 +403,23 @@ mod tests {
 
     #[test]
     fn cull_scene3d_drops_renderables_outside_the_frustum() {
-        let ahead = Renderable3D {
+        let ahead = Renderable3d {
             mesh: MeshHandle::new(meridian_memory_core::Handle::default()),
             material: MaterialHandle::new(meridian_memory_core::Handle::default()),
             frame: Motor3::translation(Vec3::new(10.0, 0.0, 0.0)),
             billboard: false,
             casts_shadow: true,
         };
-        let behind = Renderable3D {
+        let behind = Renderable3d {
             mesh: MeshHandle::new(meridian_memory_core::Handle::default()),
             material: MaterialHandle::new(meridian_memory_core::Handle::default()),
             frame: Motor3::translation(Vec3::new(-10.0, 0.0, 0.0)),
             billboard: false,
             casts_shadow: true,
         };
-        let scene = Scene3D {
+        let scene = Scene3d {
             renderables: vec![ahead.clone(), behind],
-            ..Scene3D::default()
+            ..Scene3d::default()
         };
 
         let unit_cube = Aabb {
@@ -433,16 +434,16 @@ mod tests {
 
     #[test]
     fn cull_scene3d_keeps_renderables_with_unresolvable_bounds() {
-        let renderable = Renderable3D {
+        let renderable = Renderable3d {
             mesh: MeshHandle::new(meridian_memory_core::Handle::default()),
             material: MaterialHandle::new(meridian_memory_core::Handle::default()),
             frame: Motor3::translation(Vec3::new(-10.0, 0.0, 0.0)),
             billboard: false,
             casts_shadow: true,
         };
-        let scene = Scene3D {
+        let scene = Scene3d {
             renderables: vec![renderable],
-            ..Scene3D::default()
+            ..Scene3d::default()
         };
 
         let visible = cull_scene3d(&scene, &forward_frustum(), |_| None);

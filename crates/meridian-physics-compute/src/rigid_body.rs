@@ -70,7 +70,10 @@ where
     /// call — an unintegrated copy of [`bodies`](Self::bodies) if
     /// `dispatch` hasn't run yet.
     pub fn results(&self) -> Vec<RigidBody<F>> {
-        self.results.lock().unwrap().clone()
+        self.results
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .clone()
     }
 }
 
@@ -93,7 +96,9 @@ where
             let mut body = self.bodies[i];
             self.integrator
                 .step(std::slice::from_mut(&mut body), self.dt);
-            self.results.lock().unwrap()[i] = body;
+            self.results
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)[i] = body;
         });
     }
 }
