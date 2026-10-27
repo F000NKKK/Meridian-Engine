@@ -5,9 +5,9 @@
 //! data-oriented layout is provisional until a benchmark justifies it
 //! (ADR 020 D8).
 //!
-//! Real, tested physics pipeline: `BroadPhase` (naive O(n²) AABB sweep —
-//! a spatial hash/BVH is a later optimization once profiling calls for
-//! it, same policy as `task-core`'s scheduler), `NarrowPhase`
+//! Real, tested physics pipeline: `BroadPhase` (x-axis sweep-and-prune
+//! over AABBs — a grid/BVH is a later step for dense scenes where many
+//! bodies share the same x range), `NarrowPhase`
 //! (sphere-sphere, sphere-cuboid, and cuboid-cuboid via SAT — the two
 //! `ColliderShape` variants that exist so far), `ConstraintSolver`
 //! (impulse-based, linear *and* angular, with positional correction

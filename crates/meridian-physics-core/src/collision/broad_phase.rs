@@ -37,20 +37,26 @@ pub(crate) fn aabb_of<F: GaFlavor>(body: &RigidBody<F>) -> Aabb<F> {
     }
 }
 
-/// A broad-phase acceleration structure (BVH, spatial hash, ...). Owned
-/// here, not in `physics-driver` — see docs/physics-design.md. Currently a
-/// naive O(n²) AABB sweep.
+/// Broad phase: sweep-and-prune over the x axis. Bodies are sorted by AABB
+/// minimum x, and each body is only tested against the following bodies
+/// whose minimum x still lies inside its own x extent, so cost scales with
+/// bodies that are near each other along x rather than with all pairs.
+/// Needs only ordering and comparison from the scalar, so it behaves
+/// identically for the float and the fixed-point flavor. Output is the same
+/// set, in the same ascending `(i, j)` order, as an exhaustive O(n²) sweep.
 #[derive(Debug)]
 pub struct BroadPhase<F: GaFlavor> {
     pairs: Vec<(usize, usize)>,
-    _flavor: core::marker::PhantomData<F>,
+    aabbs: Vec<Aabb<F>>,
+    order: Vec<usize>,
 }
 
 impl<F: GaFlavor> Default for BroadPhase<F> {
     fn default() -> Self {
         Self {
             pairs: Vec::new(),
-            _flavor: core::marker::PhantomData,
+            aabbs: Vec::new(),
+            order: Vec::new(),
         }
     }
 }
@@ -62,17 +68,40 @@ impl<F: GaFlavor> BroadPhase<F> {
     }
 
     /// Returns index pairs into `bodies` whose AABBs overlap — candidates
-    /// for narrow-phase, not confirmed contacts.
+    /// for narrow-phase, not confirmed contacts — as `(i, j)` with `i < j`,
+    /// sorted ascending.
     pub fn find_candidate_pairs(&mut self, bodies: &[RigidBody<F>]) -> &[(usize, usize)] {
         self.pairs.clear();
-        let aabbs: Vec<Aabb<F>> = bodies.iter().map(aabb_of).collect();
-        for i in 0..bodies.len() {
-            for j in (i + 1)..bodies.len() {
-                if aabbs[i].overlaps(&aabbs[j]) {
-                    self.pairs.push((i, j));
+        self.aabbs.clear();
+        self.aabbs.extend(bodies.iter().map(aabb_of));
+        self.order.clear();
+        self.order.extend(0..bodies.len());
+        let aabbs = &self.aabbs;
+        self.order.sort_by(|&a, &b| {
+            aabbs[a]
+                .min
+                .x()
+                .partial_cmp(&aabbs[b].min.x())
+                .unwrap_or(core::cmp::Ordering::Equal)
+        });
+        self.sweep();
+        self.pairs.sort_unstable();
+        &self.pairs
+    }
+
+    /// Walks the x-sorted order, testing each body against the later ones
+    /// that start before it ends along x.
+    fn sweep(&mut self) {
+        for (rank, &i) in self.order.iter().enumerate() {
+            let reach = self.aabbs[i].max.x();
+            for &j in &self.order[rank + 1..] {
+                if self.aabbs[j].min.x() > reach {
+                    break;
+                }
+                if self.aabbs[i].overlaps(&self.aabbs[j]) {
+                    self.pairs.push((i.min(j), i.max(j)));
                 }
             }
         }
-        &self.pairs
     }
 }

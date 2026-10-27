@@ -32,7 +32,7 @@ Skills that apply: `meridian-subsystem-core-keeper`,
 
 - `cargo test -p meridian-physics-core -p meridian-physics-driver
   -p meridian-physics-compute`: 55 tests, all green.
-- Shapes: sphere and cuboid. Broad phase: naive O(n²) AABB sweep. Narrow
+- Shapes: sphere and cuboid. Broad phase: x-axis sweep-and-prune. Narrow
   phase: sphere-sphere, sphere-cuboid, cuboid-cuboid SAT with up to 4-point
   face manifolds. Solver: sequential impulses with split velocity/position
   passes and a restitution threshold. Integrator: semi-implicit Euler with
@@ -69,8 +69,10 @@ a task.
 
 ### Features
 
-5. **Spatial broad phase** (roadmap gap 3): uniform grid keyed to chunk
-   size or a BVH, so cost scales with nearby bodies. Needed for voxel and
+5. **Spatial broad phase** (roadmap gap 3): x-axis sweep-and-prune is in
+   (cost scales with bodies close along x); still open: a uniform grid
+   keyed to chunk size or a BVH for scenes where many bodies share an x
+   range, and an incremental update for mostly-static worlds. Needed for voxel and
    factory scenes with thousands of static colliders. Add static/sleeping
    body support alongside it.
 6. **More shapes**: capsule, convex hull, then triangle mesh and heightfield
