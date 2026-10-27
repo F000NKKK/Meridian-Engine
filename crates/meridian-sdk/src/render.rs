@@ -10,10 +10,10 @@
 //! `build_scene` closure reads (typically the physics stage), and
 //! `Runtime::tick` guarantees it never runs before that state is ready.
 
-use meridian_engine_core::Stage;
-use meridian_graphics_core::Scene3d;
-use meridian_platform_core::Window;
+use meridian_platform_winit::Window;
 use meridian_rendering_app::FrameOutcome;
+use meridian_rendering_domain::Scene3d;
+use meridian_runtime_app::Stage;
 
 use crate::scene::GraphicsSession;
 
@@ -39,10 +39,10 @@ pub fn render_frame(
 
 /// A [`Stage`] that owns a [`GraphicsSession`] and presents a frame every
 /// tick: `build_scene` reads whatever it needs from the
-/// [`Shared`](meridian_engine_core::Shared) handles it captured (typically
+/// [`Shared`](meridian_runtime_app::Shared) handles it captured (typically
 /// the physics bodies of a physics-driven scene) and returns the
 /// [`Scene3d`] to draw — the same
-/// split `meridian_engine_core::PhysicsStepStage` makes between "what
+/// split `meridian_runtime_app::PhysicsStepStage` makes between "what
 /// runs" (this type, generic over any scene-building closure) and "when
 /// it runs" (wherever an application registers it via
 /// `Runtime::add_stage`, with whatever dependencies it declares).

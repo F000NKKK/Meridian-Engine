@@ -1,6 +1,6 @@
 //! Opens audio bytes under a decode strategy.
 
-use meridian_asset_core::DecodeError;
+use meridian_asset_domain::DecodeError;
 
 use super::{AudioAsset, DecodeMode, DecodeStrategy, StreamingAudioDecoder};
 

@@ -5,12 +5,12 @@ Rendering use cases and the ports to the GPU: `FrameRecorder`, `TextureStore` an
 **Layer and context:** application · rendering
 
 - **For:** the ports `FrameRecorder`, `TextureStore` and `MeshStore` (declared by the layer that needs them, ADR 019), `MeshRegistry` as a `MeshStore`, and fakes plus contract suites under the `testing` feature.
-- **Not for:** the scene, materials, meshes or handles: those are `meridian-graphics-core`. Pipelines and recording are `meridian-graphics-driver`, which implements the ports.
+- **Not for:** the scene, materials, meshes or handles: those are `meridian-rendering-domain`. Pipelines and recording are `meridian-rendering-wgpu`, which implements the ports.
 
 ## Usage
 
 ```rust
-use meridian_graphics_core::{MeshRegistry, MeshSource};
+use meridian_rendering_domain::{MeshRegistry, MeshSource};
 use meridian_rendering_app::MeshStore;
 
 let mut meshes = MeshRegistry::new();
@@ -32,8 +32,8 @@ assert!(meshes.get(handle).is_some());
 
 ## Depends on / used by
 
-- Depends on: [`meridian-asset-core`](../meridian-asset-core), [`meridian-graphics-core`](../meridian-graphics-core), [`meridian-memory-core`](../meridian-memory-core)
-- Used by: [`meridian-graphics-driver`](../meridian-graphics-driver), [`meridian-sdk`](../meridian-sdk)
+- Depends on: [`meridian-asset-domain`](../meridian-asset-domain), [`meridian-rendering-domain`](../meridian-rendering-domain), [`meridian-memory`](../meridian-memory)
+- Used by: [`meridian-rendering-wgpu`](../meridian-rendering-wgpu), [`meridian-sdk`](../meridian-sdk)
 
 ## License
 

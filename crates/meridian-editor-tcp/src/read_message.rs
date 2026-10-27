@@ -2,14 +2,14 @@
 
 use std::io::ErrorKind;
 
-use meridian_editor_protocol::FrameError;
+use meridian_editor_domain::FrameError;
 use substrate_data::Schema;
 use substrate_data::io::{Len, MAX_FRAME};
 use tokio::io::{AsyncRead, AsyncReadExt};
 
 /// The next message; `None` where the stream ends cleanly between frames.
 ///
-/// The async twin of `meridian_editor_protocol::read_message`, with one
+/// The async twin of `meridian_editor_domain::read_message`, with one
 /// difference: a stream cut inside the 4-byte length is
 /// [`FrameError::Truncated`] here (the synchronous `read_frame_bytes` reads
 /// it as a clean end).

@@ -1,6 +1,6 @@
 //! Audio that is either fully decoded or a stream.
 
-use meridian_asset_core::AudioClip;
+use meridian_asset_domain::AudioClip;
 
 use super::StreamingAudioDecoder;
 

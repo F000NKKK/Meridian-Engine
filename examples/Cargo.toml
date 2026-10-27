@@ -14,7 +14,7 @@ meridian-sdk = { workspace = true }
 tokio = { workspace = true }
 
 [build-dependencies]
-meridian-mel-build = { workspace = true }
+meridian-ui-mel = { workspace = true }
 
 [[example]]
 name = "magic_figures"

@@ -1,6 +1,6 @@
 //! The physics world state the runtime steps each frame.
 
-use meridian_physics_core::{BroadPhase, ConstraintSolver, Integrator, NarrowPhase, RigidBody};
+use meridian_physics_domain::{BroadPhase, ConstraintSolver, Integrator, NarrowPhase, RigidBody};
 
 /// Velocity-relaxation pass count for [`SequentialStepper`](crate::SequentialStepper) — chosen
 /// because a box/pyramid face-face manifold (up to 4 points) needs several

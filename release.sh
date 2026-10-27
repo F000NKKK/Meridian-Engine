@@ -27,9 +27,9 @@
 # поведение: бампаем/публикуем вслепую, без обращения к crates.io).
 #
 # Примеры:
-#   ./release.sh meridian-gac-core --minor        # каскад: gac-core → ecs-core → ... → engine-core
-#   ./release.sh meridian-engine-core --patch     # patch: ссылки совместимы, каскада нет
-#   ./release.sh meridian-gac-core                # без бампа: публикует v текущую, если ещё не на crates.io
+#   ./release.sh meridian-gac --minor        # каскад: gac-core → ecs-core → ... → engine-core
+#   ./release.sh meridian-runtime-app --patch     # patch: ссылки совместимы, каскада нет
+#   ./release.sh meridian-gac                # без бампа: публикует v текущую, если ещё не на crates.io
 #   ./release.sh --publish-all                    # весь воркспейс как есть, публикует неопубликованное
 #   ./release.sh --publish-all --patch            # patch-бамп + публикация всех крейтов
 #

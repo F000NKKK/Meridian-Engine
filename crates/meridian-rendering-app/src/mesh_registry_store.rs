@@ -1,6 +1,6 @@
 //! `MeshRegistry` as a [`MeshStore`].
 
-use meridian_graphics_core::{MeshHandle, MeshRegistry, MeshRegistryError, MeshSource};
+use meridian_rendering_domain::{MeshHandle, MeshRegistry, MeshRegistryError, MeshSource};
 
 use crate::MeshStore;
 

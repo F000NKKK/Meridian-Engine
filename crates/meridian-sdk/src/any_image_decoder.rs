@@ -1,6 +1,6 @@
 //! Decodes any image format the engine ships, chosen by magic bytes.
 
-use meridian_asset_core::{BmpDecoder, DecodeError, Decoder, ImageAsset, ImageFormat};
+use meridian_asset_domain::{BmpDecoder, DecodeError, Decoder, ImageAsset, ImageFormat};
 use meridian_asset_png::PngDecoder;
 
 /// The sniffing front door for images: [`ImageFormat::detect`] on the

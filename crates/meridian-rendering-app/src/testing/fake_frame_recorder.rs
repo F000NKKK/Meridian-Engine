@@ -73,11 +73,11 @@ mod tests {
     #[test]
     fn counts_presented_frames() {
         let mut recorder = FakeFrameRecorder::new(8, 8);
-        let scene = meridian_graphics_core::scene::Scene3d::default();
+        let scene = meridian_rendering_domain::scene::Scene3d::default();
         let request = FrameRequest {
             scene: &scene,
-            meshes: &meridian_graphics_core::MeshRegistry::new(),
-            materials: &meridian_graphics_core::MaterialRegistry::new(),
+            meshes: &meridian_rendering_domain::MeshRegistry::new(),
+            materials: &meridian_rendering_domain::MaterialRegistry::new(),
             clear_color: [0.0; 4],
         };
         assert_eq!(recorder.record_frame(&request), FrameOutcome::Presented);

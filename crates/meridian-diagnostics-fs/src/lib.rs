@@ -3,7 +3,7 @@
 //! Layer: infrastructure; bounded context: diagnostics (`craftbook.toml`,
 //! docs/context-map.md).
 //!
-//! The kernel (`meridian-foundation`) formats lines and declares the
+//! The kernel (`meridian-diagnostics`) formats lines and declares the
 //! `LogSink` port; [`FileLog`] implements it with a buffered writer thread,
 //! and [`install_crash_hook`] writes a post-mortem when a thread panics. The
 //! composition root decides to start them (ADR 020 D7).

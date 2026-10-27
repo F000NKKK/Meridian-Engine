@@ -5,7 +5,7 @@
 //! docs/context-map.md).
 //!
 //! The ports are declared here, by the layer that needs them (ADR 019); the
-//! `wgpu` adapter (`meridian-graphics-driver`) implements them. Fakes and
+//! `wgpu` adapter (`meridian-rendering-wgpu`) implements them. Fakes and
 //! contract suites are in [`testing`] behind the `testing` feature.
 
 #![doc = include_str!("../README.md")]

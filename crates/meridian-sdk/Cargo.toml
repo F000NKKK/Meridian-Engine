@@ -9,29 +9,29 @@ description = "Single application-facing entry point: re-exports everything an a
 readme = "README.md"
 
 [dependencies]
-meridian-foundation = { workspace = true }
-meridian-gac-core = { workspace = true }
-meridian-platform-core = { workspace = true }
-meridian-asset-core = { workspace = true }
+meridian-diagnostics = { workspace = true }
+meridian-gac = { workspace = true }
+meridian-platform-winit = { workspace = true }
+meridian-asset-domain = { workspace = true }
 meridian-asset-png = { workspace = true }
 meridian-asset-symphonia = { workspace = true }
-meridian-graphics-driver = { workspace = true }
+meridian-rendering-wgpu = { workspace = true }
 meridian-rendering-app = { workspace = true }
-meridian-graphics-core = { workspace = true }
-meridian-physics-core = { workspace = true }
-meridian-audio-core = { workspace = true }
+meridian-rendering-domain = { workspace = true }
+meridian-physics-domain = { workspace = true }
+meridian-audio-domain = { workspace = true }
 meridian-audio-app = { workspace = true }
-meridian-audio-driver = { workspace = true }
+meridian-audio-cpal = { workspace = true }
 meridian-diagnostics-fs = { workspace = true }
-meridian-engine-core = { workspace = true }
+meridian-runtime-app = { workspace = true }
 meridian-physics-app = { workspace = true }
-meridian-physics-compute = { workspace = true }
-meridian-task-core = { workspace = true }
-meridian-compute-driver = { workspace = true }
-meridian-compute-runtime = { workspace = true }
-meridian-dsl-core = { workspace = true }
-meridian-dsl-macros = { workspace = true }
-meridian-ui-core = { workspace = true }
+meridian-physics-wgpu = { workspace = true }
+meridian-runtime-threads = { workspace = true }
+meridian-compute-wgpu = { workspace = true }
+meridian-compute-app = { workspace = true }
+meridian-markup = { workspace = true }
+meridian-markup-macros = { workspace = true }
+meridian-ui-domain = { workspace = true }
 
 [dev-dependencies]
 png = { workspace = true }

@@ -8,7 +8,7 @@ use crate::PhysicsSubsystem;
 ///
 /// The runtime owns the *when*; an implementation owns the *how*:
 /// [`SequentialStepper`](crate::SequentialStepper) is a plain CPU loop,
-/// and `meridian-physics-compute` implements the same contract with
+/// and `meridian-physics-wgpu` implements the same contract with
 /// batched compute kernels. Every implementation must pass
 /// [`testing::run_stepper_contract`](crate::testing).
 pub trait PhysicsStepper: Send {

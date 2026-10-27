@@ -9,10 +9,10 @@ description = "Audio use cases and the ports to the outside world: the AudioSink
 readme = "README.md"
 
 [dependencies]
-meridian-audio-core = { workspace = true }
+meridian-audio-domain = { workspace = true }
 
 [dev-dependencies]
-meridian-gac-core = { workspace = true }
+meridian-gac = { workspace = true }
 
 [features]
 # The fake `AudioSink` and its contract suite, for adapters' own tests (Craftbook 8.4).

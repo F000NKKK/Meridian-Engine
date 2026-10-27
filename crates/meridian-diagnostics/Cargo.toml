@@ -1,0 +1,12 @@
+[package]
+name = "meridian-diagnostics"
+version = "0.7.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Zero-dependency foundational types shared workspace-wide: error conventions, the log kernel and its LogSink port, feature-detection primitives."
+readme = "README.md"
+
+[lints]
+workspace = true

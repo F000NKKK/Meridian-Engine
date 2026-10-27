@@ -25,7 +25,7 @@ pub(crate) async fn clean_old_logs(config: &FileLogConfig) {
             .is_some_and(|age| age > retention);
         if old_enough && let Err(err) = tokio::fs::remove_file(entry.path()).await {
             // Retention is best effort: a file we cannot delete stays.
-            meridian_foundation::log_warn!("file logging: cannot remove old log {name}: {err}");
+            meridian_diagnostics::log_warn!("file logging: cannot remove old log {name}: {err}");
         }
     }
 }

@@ -2,7 +2,7 @@
 //!
 //! When anything panics, a report lands in the configured directory with the
 //! panic message and location, a captured backtrace, the tail of the unified
-//! log (`meridian_foundation::logging::recent_lines`) and basic build/OS
+//! log (`meridian_diagnostics::logging::recent_lines`) and basic build/OS
 //! identification. The previous hook still runs afterwards, so the normal
 //! stderr panic output is unchanged.
 
@@ -61,7 +61,7 @@ fn write_report(
     writeln!(file)?;
 
     writeln!(file, "---- recent log (oldest first) ----")?;
-    for line in meridian_foundation::logging::recent_lines() {
+    for line in meridian_diagnostics::logging::recent_lines() {
         writeln!(file, "{line}")?;
     }
     Ok(path)

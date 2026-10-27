@@ -80,16 +80,16 @@ Treat `docs/dependency-rules.md` as enforceable. In particular:
   depend on the crate owning the port and implement it. Edges listed as
   pending migration in `scripts/check_dependency_rules.py` only shrink.
 - A driver never depends on another subsystem's driver or domain.
-- Keep `meridian-gac-core` pure math; no GPU knowledge or compute-runtime edge.
-- Keep `meridian-compute-runtime` generic; no `Motor3`, particles, rigid bodies
+- Keep `meridian-gac` pure math; no GPU knowledge or compute-app edge.
+- Keep `meridian-compute-app` generic; no `Motor3`, particles, rigid bodies
   or other domain-shaped algorithms/buffers in it.
-- Put batched GAC compute in `meridian-gac-compute`, not in `gac-core` or
-  `compute-runtime`.
-- Keep `asset-core` limited to loading/decoding CPU-side data; no asset manager,
+- Put batched GAC compute in `meridian-gac-wgpu`, not in `gac` or
+  `compute-app`.
+- Keep `asset-domain` limited to loading/decoding CPU-side data; no asset manager,
   cache manager, resource manager, handles, or lifetime policy.
-- Keep `resource-core` limited to identity/versioning/dependency topology; no
+- Keep `resource` limited to identity/versioning/dependency topology; no
   resource lifetime policy or manager service.
-- Keep cross-subsystem coordination in `engine-core`, not in ad hoc dependencies
+- Keep cross-subsystem coordination in `runtime-app`, not in ad hoc dependencies
   between domain crates.
 
 Run `./build.sh check-deps` after any dependency or crate-boundary change.
@@ -136,7 +136,7 @@ Workflow:
 
 ### `meridian-gac-math-keeper`
 
-Use for: `crates/meridian-gac-core/**`, transform code, physics rotation,
+Use for: `crates/meridian-gac/**`, transform code, physics rotation,
 spatial audio positioning, camera transforms, and any `Motor3`/`Rotor`/
 `Bivector3` use.
 
@@ -147,12 +147,12 @@ Workflow:
    are bivectors when physics/rotation semantics require it.
 3. Add tests against an independent oracle where possible, not just
    self-consistency between project functions.
-4. Keep CPU feature detection/SIMD dispatch outside `gac-core`; use
-   `numeric-core` or compute adapter crates instead.
+4. Keep CPU feature detection/SIMD dispatch outside `gac`; use
+   `numeric` or compute adapter crates instead.
 
 ### `meridian-data-oriented-ecs-keeper`
 
-Use for: `crates/meridian-ecs-core/**` and components/query/storage changes.
+Use for: `crates/meridian-ecs/**` and components/query/storage changes.
 
 Workflow:
 
@@ -165,39 +165,39 @@ Workflow:
 
 ### `meridian-resource-lifetime-keeper`
 
-Use for: `crates/meridian-memory-core/**`, `crates/meridian-resource-core/**`,
-`crates/meridian-asset-core/**`, handle types, pools, decoders and dependency
+Use for: `crates/meridian-memory/**`, `crates/meridian-resource/**`,
+`crates/meridian-asset-domain/**`, handle types, pools, decoders and dependency
 tracking.
 
 Workflow:
 
 1. Read `docs/memory-model.md`, ADR 002, ADR 003 and ADR 006.
-2. Keep memory handles generic in `memory-core` and resource identities typed in
-   `resource-core`.
-3. Keep decoded CPU data in `asset-core`; mint handles outside `asset-core`.
+2. Keep memory handles generic in `memory` and resource identities typed in
+   `resource`.
+3. Keep decoded CPU data in `asset-domain`; mint handles outside `asset-domain`.
 4. Do not add managers or singletons.
 5. Test stale handles, generation bumps, dependency cycles and malformed asset
    inputs.
 
 ### `meridian-compute-driver-keeper`
 
-Use for: `crates/meridian-compute-driver/**`,
-`crates/meridian-compute-runtime/**`, `crates/meridian-gac-compute/**`, GPU/SIMD
+Use for: `crates/meridian-compute-wgpu/**`,
+`crates/meridian-compute-app/**`, `crates/meridian-gac-wgpu/**`, GPU/SIMD
 dispatch, buffers, kernels and scheduling integration.
 
 Workflow:
 
 1. Read ADR 007 and `docs/threading-model.md`.
-2. Keep `compute-runtime` about dispatch mechanics only.
-3. Put domain kernels in adapter crates (`gac-compute` now; future
+2. Keep `compute-app` about dispatch mechanics only.
+3. Put domain kernels in adapter crates (`gac-wgpu` now; future
    `*-compute` crates only when concrete need exists).
 4. Do not duplicate general task scheduling inside compute runtime; use
-   `task-core` boundaries intentionally.
+   `runtime-threads` boundaries intentionally.
 5. Test both small batches and batches large enough to exercise parallel paths.
 
 ### `meridian-subsystem-core-keeper`
 
-Use for: `graphics-core`, `physics-core`, `audio-core`, and their design docs.
+Use for: `rendering-domain`, `physics-domain`, `audio-domain`, and their design docs.
 
 Workflow:
 
@@ -205,13 +205,13 @@ Workflow:
 2. Keep domain algorithms in `*-core`, not in `*-driver`.
 3. Declare what the core needs from hardware as a port; its driver
    implements it (ADR 019). Never add an edge from a core to a driver.
-4. Use `compute-runtime`/adapter crates for compute work.
+4. Use `compute-app`/adapter crates for compute work.
 5. Add tests around domain invariants: collision pairs, render graph ordering,
    mixer spatial behavior, etc.
 
 ### `meridian-engine-integration-keeper`
 
-Use for: `crates/meridian-engine-core/**`, examples, frame scheduling,
+Use for: `crates/meridian-runtime-app/**`, examples, frame scheduling,
 cross-subsystem orchestration.
 
 Workflow:
@@ -228,7 +228,7 @@ Workflow:
 
 Keep changes coherent. If code and docs both need updates, commit them
 together. Use commit messages that name the affected boundary or subsystem
-(e.g. `gac-core`, `ecs-core`, `docs`). Do not leave workspace status dirty
+(e.g. `gac`, `ecs`, `docs`). Do not leave workspace status dirty
 unless explicitly asked.
 
 Do not add the AI agent as a co-author of a commit. Commit messages must not
@@ -244,22 +244,22 @@ Craftbook §1.3–1.4. When a concept has a float (`f32`/`Scalar`) flavor and a
 `rotor/fixed.rs`, plus item-named files for logic shared by both flavors.
 The split is symmetric: never float code loose next to a `fixed` module.
 `lib.rs` is wiring only, and `generic.rs` is not a file name. Wave 4 of
-the Craftbook migration converted `gac-core` (`rotor/`, `motor/`, `vector/`,
-`volume/`, ...), `physics-core` (`collision/`, `dynamics/`, `soft_body/`) and
-`physics-compute` (`soft_body/`, `broad_phase/`) to this layout; follow it.
+the Craftbook migration converted `gac` (`rotor/`, `motor/`, `vector/`,
+`volume/`, ...), `physics-domain` (`collision/`, `dynamics/`, `soft_body/`) and
+`physics-wgpu` (`soft_body/`, `broad_phase/`) to this layout; follow it.
 
 **Default to generic (or thin wrappers over one generic implementation),
 not disclosed duplication.** Full duplication (writing the float and fixed
 versions of a type/algorithm twice, even if "disclosed" with matching doc
 comments) is justified *only* when a genuine external constraint makes
 genericity impossible or unsafe — the one known case in this workspace is
-`gac-core::Motor3`/`Vec3`/`Bivector3`/`Rotor`: `meridian-gac-compute`
+`gac::Motor3`/`Vec3`/`Bivector3`/`Rotor`: `meridian-gac-wgpu`
 dispatches them to GPU, GPUs have no real `i64` support and are
 `f32`-native, so a GPU-dispatchable type has to stay concretely `f32`
 regardless of how the CPU-side type is parameterized (see
 [ADR 008](docs/adr/008-fixed-point-determinism.md)). Absent a constraint
 like that, write the algorithm/type once, generic over a trait describing
-what it needs from "a GA flavor" (see `meridian_gac_core::GaFlavor` and
+what it needs from "a GA flavor" (see `meridian_gac::GaFlavor` and
 its component traits), and make `float.rs`/`fixed.rs` thin — type aliases
 and flavor-marker impls, not a second copy of the logic. Before
 duplicating float/fixed code, check whether the thing being duplicated
@@ -269,13 +269,13 @@ not, genericize instead.
 ## Do not drag another crate's logic into your own
 
 If a piece of logic conceptually belongs to another crate (geometry
-belongs to `gac-core`, not to whichever crate needed it first; dispatch
-mechanics belong to `compute-runtime`, not to a domain crate), depend on
+belongs to `gac`, not to whichever crate needed it first; dispatch
+mechanics belong to `compute-app`, not to a domain crate), depend on
 that crate and reuse its implementation — do not hand-roll a local copy
 inside the crate that merely *consumes* it. This applies even under time
-pressure or when the "local copy" looks small: `physics-core` reinventing
+pressure or when the "local copy" looks small: `physics-domain` reinventing
 sphere-overlap math or bounding-box structs instead of using
-`gac-core::Aabb`/`Shape` is the concrete case this rule was written after
+`gac::Aabb`/`Shape` is the concrete case this rule was written after
 catching. When in doubt about which crate owns a piece of logic, check
 `docs/dependency-rules.md` and the crate's own top-of-file doc comment
 before writing new code, not after.
@@ -287,7 +287,7 @@ This is an async-native engine: `tokio` is the workspace's async runtime
 genuine I/O — completion time that is unbounded and determined by
 something outside this process (an OS/driver handshake, a GPU/device
 queue, a filesystem, a network peer): the textbook definition, not
-"talks to an external system's *type*." `meridian-graphics-driver::Device::new`/
+"talks to an external system's *type*." `meridian-rendering-wgpu::Device::new`/
 `read_buffer` are the concrete precedent. Recording/allocation/validation
 calls with bounded, effectively-instant local cost stay plain synchronous
 functions — `create_buffer`, `write_buffer`, `CommandBuffer::submit`, and

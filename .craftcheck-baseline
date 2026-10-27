@@ -1,63 +1,59 @@
-crates/meridian-audio-core/src/effects/binaural/mod.rs	C101		1
-crates/meridian-audio-core/src/effects/binaural/mod.rs	C108	BinauralConfig	1
-crates/meridian-audio-core/src/effects/binaural/mod.rs	C108	BinauralRenderer	1
-crates/meridian-audio-core/src/effects/low_pass.rs	C108	LowPassFilter	1
-crates/meridian-audio-core/src/effects/medium.rs	C108	AcousticMedium	1
-crates/meridian-audio-core/src/speaker_layout.rs	C101		1
-crates/meridian-audio-core/src/tests.rs	C101		1
-crates/meridian-audio-core/src/tests.rs	D305		7
-crates/meridian-audio-driver/src/lib.rs	C101		1
-crates/meridian-dsl-core/src/parse/parser/mod.rs	C101		1
-crates/meridian-dsl-core/src/tag/dsl_registry/mod.rs	S701		1
-crates/meridian-ecs-core/src/world.rs	C101		1
-crates/meridian-editor-protocol/src/version.rs	C108	ProtocolVersion	1
-crates/meridian-gac-compute/src/fixed_wgsl/arithmetic_lib.rs	C101		1
-crates/meridian-gac-compute/src/fixed_wgsl/tests.rs	C101		1
-crates/meridian-graphics-core/src/fly/tests.rs	C101		1
-crates/meridian-graphics-core/src/mesh_handle.rs	C108	MeshMarker	1
-crates/meridian-graphics-core/src/scene.rs	C101		1
-crates/meridian-graphics-core/src/scene.rs	C108	BlendMode	1
-crates/meridian-graphics-core/src/scene.rs	C108	Camera2d	1
-crates/meridian-graphics-core/src/scene.rs	C108	FrameScene	1
-crates/meridian-graphics-core/src/scene.rs	C108	Light	1
-crates/meridian-graphics-core/src/scene.rs	C108	Material	1
-crates/meridian-graphics-core/src/scene.rs	C108	MaterialMarker	1
-crates/meridian-graphics-core/src/scene.rs	C108	Mesh	1
-crates/meridian-graphics-core/src/scene.rs	C108	MeshRenderer	1
-crates/meridian-graphics-core/src/scene.rs	C108	Renderable3d	1
-crates/meridian-graphics-core/src/scene.rs	C108	Scene2d	1
-crates/meridian-graphics-core/src/scene.rs	C108	Scene3d	1
-crates/meridian-graphics-core/src/scene.rs	C108	Sprite	1
-crates/meridian-graphics-core/src/scene.rs	C108	View	1
-crates/meridian-graphics-core/src/shader_handle.rs	C108	ShaderMarker	1
-crates/meridian-graphics-core/src/texture_handle.rs	C108	TextureMarker	1
-crates/meridian-graphics-driver/src/bloom/pass.rs	C101		1
-crates/meridian-graphics-driver/src/submission/scene_renderer.rs	C101		1
-crates/meridian-mel-build/src/binding/property_path.rs	S701		1
-crates/meridian-mel-build/src/generated_module.rs	S701		1
-crates/meridian-mel-build/src/ui_bindings.rs	S701		1
-crates/meridian-mel-build/src/ui_build.rs	S701		1
-crates/meridian-numeric-core/src/fixed.rs	C101		1
-crates/meridian-physics-compute/src/broad_phase/float.rs	C108	BroadPhaseGpuKernel	1
-crates/meridian-physics-compute/src/broad_phase/pairs.rs	C108	BroadPhasePairsKernel	1
-crates/meridian-physics-compute/src/constraint_solver.rs	C108	ConstraintSolverBatchKernel	1
-crates/meridian-physics-compute/src/narrow_phase/mod.rs	C108	GenerateContactsKernel	1
-crates/meridian-physics-compute/src/narrow_phase/mod.rs	C108	NarrowPhaseTestPairKernel	1
-crates/meridian-physics-compute/src/rigid_body.rs	C108	RigidBodyIntegratorKernel	1
-crates/meridian-physics-compute/src/soft_body/csr.rs	C108	Adjacency	1
-crates/meridian-physics-compute/src/soft_body/fixed.rs	C108	FixedSoftBodyGpuKernel	1
-crates/meridian-physics-compute/src/soft_body/float.rs	C108	SoftBodyGpuKernel	1
-crates/meridian-physics-core/src/collision/cuboid_contact.rs	C101		1
-crates/meridian-platform-core/src/capabilities.rs	C108	BackendCapabilities	1
-crates/meridian-platform-core/src/capabilities.rs	C108	CpuCapabilities	1
-crates/meridian-platform-core/src/capabilities.rs	C108	GpuCapabilities	1
-crates/meridian-platform-core/src/input.rs	C108	InputState	1
-crates/meridian-platform-core/src/input.rs	C108	KeyCode	1
-crates/meridian-platform-core/src/input.rs	C108	MouseButton	1
-crates/meridian-platform-core/src/time.rs	C108	Clock	1
-crates/meridian-platform-core/src/window.rs	C108	AppHandler	1
-crates/meridian-scene/src/load/pending_entity.rs	C108	ComponentsDraft	1
-crates/meridian-scene/src/transform_form.rs	C108	TransformCodec	1
+crates/meridian-audio-cpal/src/lib.rs	C101		1
+crates/meridian-audio-domain/src/effects/binaural/mod.rs	C101		1
+crates/meridian-audio-domain/src/effects/binaural/mod.rs	C108	BinauralConfig	1
+crates/meridian-audio-domain/src/effects/binaural/mod.rs	C108	BinauralRenderer	1
+crates/meridian-audio-domain/src/effects/low_pass.rs	C108	LowPassFilter	1
+crates/meridian-audio-domain/src/effects/medium.rs	C108	AcousticMedium	1
+crates/meridian-audio-domain/src/speaker_layout.rs	C101		1
+crates/meridian-audio-domain/src/tests.rs	C101		1
+crates/meridian-audio-domain/src/tests.rs	D305		7
+crates/meridian-data-substrate/src/load/pending_entity.rs	C108	ComponentsDraft	1
+crates/meridian-data-substrate/src/transform_form.rs	C108	TransformCodec	1
+crates/meridian-ecs/src/world.rs	C101		1
+crates/meridian-editor-domain/src/version.rs	C108	ProtocolVersion	1
+crates/meridian-gac-wgpu/src/fixed_wgsl/arithmetic_lib.rs	C101		1
+crates/meridian-gac-wgpu/src/fixed_wgsl/tests.rs	C101		1
+crates/meridian-markup/src/parse/parser/mod.rs	C101		1
+crates/meridian-markup/src/tag/dsl_registry/mod.rs	S701		1
+crates/meridian-numeric/src/fixed.rs	C101		1
+crates/meridian-physics-domain/src/collision/cuboid_contact.rs	C101		1
+crates/meridian-physics-wgpu/src/broad_phase/float.rs	C108	BroadPhaseGpuKernel	1
+crates/meridian-physics-wgpu/src/broad_phase/pairs.rs	C108	BroadPhasePairsKernel	1
+crates/meridian-physics-wgpu/src/constraint_solver.rs	C108	ConstraintSolverBatchKernel	1
+crates/meridian-physics-wgpu/src/narrow_phase/mod.rs	C108	GenerateContactsKernel	1
+crates/meridian-physics-wgpu/src/narrow_phase/mod.rs	C108	NarrowPhaseTestPairKernel	1
+crates/meridian-physics-wgpu/src/rigid_body.rs	C108	RigidBodyIntegratorKernel	1
+crates/meridian-physics-wgpu/src/soft_body/csr.rs	C108	Adjacency	1
+crates/meridian-physics-wgpu/src/soft_body/fixed.rs	C108	FixedSoftBodyGpuKernel	1
+crates/meridian-physics-wgpu/src/soft_body/float.rs	C108	SoftBodyGpuKernel	1
+crates/meridian-platform-winit/src/capabilities.rs	C108	BackendCapabilities	1
+crates/meridian-platform-winit/src/capabilities.rs	C108	CpuCapabilities	1
+crates/meridian-platform-winit/src/capabilities.rs	C108	GpuCapabilities	1
+crates/meridian-platform-winit/src/input.rs	C108	InputState	1
+crates/meridian-platform-winit/src/input.rs	C108	KeyCode	1
+crates/meridian-platform-winit/src/input.rs	C108	MouseButton	1
+crates/meridian-platform-winit/src/time.rs	C108	Clock	1
+crates/meridian-platform-winit/src/window.rs	C108	AppHandler	1
+crates/meridian-rendering-domain/src/fly/tests.rs	C101		1
+crates/meridian-rendering-domain/src/mesh_handle.rs	C108	MeshMarker	1
+crates/meridian-rendering-domain/src/scene.rs	C101		1
+crates/meridian-rendering-domain/src/scene.rs	C108	BlendMode	1
+crates/meridian-rendering-domain/src/scene.rs	C108	Camera2d	1
+crates/meridian-rendering-domain/src/scene.rs	C108	FrameScene	1
+crates/meridian-rendering-domain/src/scene.rs	C108	Light	1
+crates/meridian-rendering-domain/src/scene.rs	C108	Material	1
+crates/meridian-rendering-domain/src/scene.rs	C108	MaterialMarker	1
+crates/meridian-rendering-domain/src/scene.rs	C108	Mesh	1
+crates/meridian-rendering-domain/src/scene.rs	C108	MeshRenderer	1
+crates/meridian-rendering-domain/src/scene.rs	C108	Renderable3d	1
+crates/meridian-rendering-domain/src/scene.rs	C108	Scene2d	1
+crates/meridian-rendering-domain/src/scene.rs	C108	Scene3d	1
+crates/meridian-rendering-domain/src/scene.rs	C108	Sprite	1
+crates/meridian-rendering-domain/src/scene.rs	C108	View	1
+crates/meridian-rendering-domain/src/shader_handle.rs	C108	ShaderMarker	1
+crates/meridian-rendering-domain/src/texture_handle.rs	C108	TextureMarker	1
+crates/meridian-rendering-wgpu/src/bloom/pass.rs	C101		1
+crates/meridian-rendering-wgpu/src/submission/scene_renderer.rs	C101		1
 crates/meridian-sdk/src/assets.rs	C101		1
 crates/meridian-sdk/src/assets.rs	C108	AssetCache	1
 crates/meridian-sdk/src/assets.rs	C108	AudioTrack	1
@@ -71,26 +67,30 @@ crates/meridian-sdk/src/dsl.rs	C108	Transform	1
 crates/meridian-sdk/src/render.rs	C108	RenderStage	1
 crates/meridian-sdk/src/scene.rs	C101		1
 crates/meridian-sdk/src/scene.rs	C108	GraphicsSession	1
-crates/meridian-ui-core/src/error.rs	C108	UiError	1
-crates/meridian-ui-core/src/layout/fixed_advance.rs	C108	FixedAdvanceText	1
-crates/meridian-ui-core/src/layout/grid/cells.rs	C108	Cell	1
-crates/meridian-ui-core/src/layout/grid/mod.rs	C103	fn arrange	1
-crates/meridian-ui-core/src/layout/grid/mod.rs	C103	fn definitions	1
-crates/meridian-ui-core/src/layout/grid/mod.rs	C103	fn measure	1
-crates/meridian-ui-core/src/layout/grid/mod.rs	C103	fn offered	1
-crates/meridian-ui-core/src/layout/grid/mod.rs	C103	fn placed_children	1
-crates/meridian-ui-core/src/node.rs	C108	ElementKind	1
-crates/meridian-ui-core/src/node.rs	C108	NodeId	1
-crates/meridian-ui-core/src/properties/mod.rs	C103	const ALL	1
-crates/meridian-ui-core/src/properties/mod.rs	C103	fn by_name	1
-crates/meridian-ui-core/src/properties/mod.rs	C103	fn meta	1
-crates/meridian-ui-core/src/property/definition.rs	C108	Invalidates	1
-crates/meridian-ui-core/src/property/definition.rs	C108	Property	1
-crates/meridian-ui-core/src/property/definition.rs	C108	PropertyMeta	1
-crates/meridian-ui-core/src/property/kind.rs	C108	PropertyType	1
-crates/meridian-ui-core/src/property/literal/number.rs	S702		2
-crates/meridian-ui-core/src/tree/change.rs	C108	ChangeSource	1
-crates/meridian-ui-core/src/tree/values.rs	N203	get_or_default	1
+crates/meridian-ui-domain/src/error.rs	C108	UiError	1
+crates/meridian-ui-domain/src/layout/fixed_advance.rs	C108	FixedAdvanceText	1
+crates/meridian-ui-domain/src/layout/grid/cells.rs	C108	Cell	1
+crates/meridian-ui-domain/src/layout/grid/mod.rs	C103	fn arrange	1
+crates/meridian-ui-domain/src/layout/grid/mod.rs	C103	fn definitions	1
+crates/meridian-ui-domain/src/layout/grid/mod.rs	C103	fn measure	1
+crates/meridian-ui-domain/src/layout/grid/mod.rs	C103	fn offered	1
+crates/meridian-ui-domain/src/layout/grid/mod.rs	C103	fn placed_children	1
+crates/meridian-ui-domain/src/node.rs	C108	ElementKind	1
+crates/meridian-ui-domain/src/node.rs	C108	NodeId	1
+crates/meridian-ui-domain/src/properties/mod.rs	C103	const ALL	1
+crates/meridian-ui-domain/src/properties/mod.rs	C103	fn by_name	1
+crates/meridian-ui-domain/src/properties/mod.rs	C103	fn meta	1
+crates/meridian-ui-domain/src/property/definition.rs	C108	Invalidates	1
+crates/meridian-ui-domain/src/property/definition.rs	C108	Property	1
+crates/meridian-ui-domain/src/property/definition.rs	C108	PropertyMeta	1
+crates/meridian-ui-domain/src/property/kind.rs	C108	PropertyType	1
+crates/meridian-ui-domain/src/property/literal/number.rs	S702		2
+crates/meridian-ui-domain/src/tree/change.rs	C108	ChangeSource	1
+crates/meridian-ui-domain/src/tree/values.rs	N203	get_or_default	1
+crates/meridian-ui-mel/src/binding/property_path.rs	S701		1
+crates/meridian-ui-mel/src/generated_module.rs	S701		1
+crates/meridian-ui-mel/src/ui_bindings.rs	S701		1
+crates/meridian-ui-mel/src/ui_build.rs	S701		1
 examples/examples/magic_figures/shape_spec.rs	S702		3
 examples/examples/physic_figures/render_entity.rs	S702		2
 examples/examples/physic_figures/scene_entity.rs	S702		6

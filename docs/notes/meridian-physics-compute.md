@@ -1,4 +1,4 @@
-# `meridian-physics-compute` design notes
+# `meridian-physics-wgpu` design notes
 
 Rationale moved out of the module docs (Craftbook ch. 5 §5.2: a `//!` is at
 most 30 lines). Each section belongs to the module named in its heading.
@@ -13,13 +13,13 @@ race-condition-free without atomics) but only the `fixed` kernel
 promises bit-exact reproducibility against the CPU path; `float`'s
 GPU/CPU results agree numerically, not bit-for-bit (GPU float
 summation order can differ from the CPU's, the same reason `Fixed`
-exists at all — see `meridian_numeric_core::Fixed`'s doc comment).
+exists at all — see `meridian_numeric::Fixed`'s doc comment).
 
-Like [`meridian_gac_compute::fixed_wgsl`], buffers (topology,
+Like [`meridian_gac_wgpu::fixed_wgsl`], buffers (topology,
 positions, velocities) are rebuilt every [`soft_body::float::SoftBodyGpuKernel::step`]/
 [`soft_body::fixed::FixedSoftBodyGpuKernel::step`] call rather than persisted
 across steps — a real, deliberately-deferred gap (see
-`meridian_compute_runtime`'s `HybridKernel` module doc for the same
+`meridian_compute_app`'s `HybridKernel` module doc for the same
 tradeoff acknowledged there), not an oversight.
 
 ## `constraint_solver`
@@ -60,7 +60,7 @@ exist to arbitrate).
 
 Each half-edge also encodes, in `neighbor`'s top bit, whether *this*
 particle is the original [`Spring`](
-meridian_physics_core::soft_body::spring::Spring)'s `a` or
+meridian_physics_domain::soft_body::spring::Spring)'s `a` or
 `b` endpoint (see [`decode_neighbor`]) — not a topology detail, a
 numerical-correctness one. `Fixed::mul`'s `>>16` truncation rounds
 toward negative infinity, so `fixed_mul(-p, q)` is *not* always

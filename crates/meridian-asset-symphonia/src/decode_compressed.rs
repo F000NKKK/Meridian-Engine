@@ -1,6 +1,6 @@
 //! Whole-track decoding of the compressed formats.
 
-use meridian_asset_core::{AudioClip, AudioFormat, DecodeError};
+use meridian_asset_domain::{AudioClip, AudioFormat, DecodeError};
 use symphonia::core::codecs::audio::AudioDecoderOptions;
 use symphonia::core::formats::probe::Hint;
 use symphonia::core::formats::{FormatOptions, TrackType};

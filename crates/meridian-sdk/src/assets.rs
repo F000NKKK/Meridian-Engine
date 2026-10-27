@@ -18,12 +18,12 @@
 
 use std::collections::{HashMap, VecDeque};
 
-use meridian_asset_core::{Decoder, ImageAsset, ObjDecoder};
+use meridian_asset_domain::{Decoder, ImageAsset, ObjDecoder};
 use meridian_asset_symphonia::{AudioAsset, DecodeStrategy, StreamingAudioDecoder, open_audio};
-use meridian_graphics_core::{
+use meridian_rendering_app::{MeshStore, TextureStore};
+use meridian_rendering_domain::{
     MeshHandle, MeshRegistryError, MeshSource, TextureHandle, smooth_normals,
 };
-use meridian_rendering_app::{MeshStore, TextureStore};
 
 use crate::any_image_decoder::AnyImageDecoder;
 

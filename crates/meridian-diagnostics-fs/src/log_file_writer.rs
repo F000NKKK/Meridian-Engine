@@ -3,7 +3,7 @@
 use std::path::PathBuf;
 use std::sync::mpsc::{Receiver, Sender};
 
-use meridian_foundation::LogLevel;
+use meridian_diagnostics::LogLevel;
 
 use crate::FileLogConfig;
 use crate::log_retention::clean_old_logs;
@@ -24,7 +24,7 @@ pub(crate) fn run(config: FileLogConfig, rx: &Receiver<Message>) {
     {
         Ok(runtime) => runtime,
         Err(err) => {
-            meridian_foundation::log_error!(
+            meridian_diagnostics::log_error!(
                 "file logging disabled: failed to start tokio runtime: {err}"
             );
             return;
@@ -57,7 +57,7 @@ impl LogFileWriter {
     /// Prints why and returns `None` when the file cannot be created.
     async fn open(config: FileLogConfig) -> Option<Self> {
         if let Err(err) = tokio::fs::create_dir_all(&config.directory).await {
-            meridian_foundation::log_error!(
+            meridian_diagnostics::log_error!(
                 "file logging disabled: cannot create {}: {err}",
                 config.directory.display()
             );
@@ -79,7 +79,7 @@ impl LogFileWriter {
                 last_cleanup: std::time::Instant::now(),
             }),
             Err(err) => {
-                meridian_foundation::log_error!(
+                meridian_diagnostics::log_error!(
                     "file logging disabled: cannot create {}: {err}",
                     path.display()
                 );
@@ -105,7 +105,7 @@ impl LogFileWriter {
             Err(std::sync::mpsc::RecvTimeoutError::Timeout) => self.idle().await,
             Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
                 if let Err(err) = self.flush().await {
-                    meridian_foundation::log_warn!(
+                    meridian_diagnostics::log_warn!(
                         "file logging: final flush of {} failed: {err}",
                         self.path.display()
                     );
@@ -114,7 +114,7 @@ impl LogFileWriter {
             }
         };
         if let Err(err) = written {
-            meridian_foundation::log_error!(
+            meridian_diagnostics::log_error!(
                 "file logging disabled: write to {} failed: {err}",
                 self.path.display()
             );

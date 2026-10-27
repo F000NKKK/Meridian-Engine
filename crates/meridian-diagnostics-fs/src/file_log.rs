@@ -3,8 +3,8 @@
 use std::sync::Arc;
 use std::sync::mpsc::{self, Sender};
 
-use meridian_foundation::LogLevel;
-use meridian_foundation::logging::{LogSink, install_sink};
+use meridian_diagnostics::LogLevel;
+use meridian_diagnostics::logging::{LogSink, install_sink};
 
 use crate::FileLogConfig;
 use crate::log_file_writer::{self, Message};
@@ -49,7 +49,7 @@ impl FileLog {
         // Either error means the writer thread has stopped, after saying
         // why; there is nothing left to wait for.
         if self.sender.send(Message::Flush(done_sender)).is_ok() && done_receiver.recv().is_err() {
-            meridian_foundation::log_warn!("log flush incomplete: the file writer stopped");
+            meridian_diagnostics::log_warn!("log flush incomplete: the file writer stopped");
         }
     }
 }

@@ -1,6 +1,6 @@
 //! The behaviour every [`MeshStore`](crate::MeshStore) must have.
 
-use meridian_graphics_core::{MeshRegistryError, MeshSource};
+use meridian_rendering_domain::{MeshRegistryError, MeshSource};
 
 use crate::MeshStore;
 

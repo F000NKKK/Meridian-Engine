@@ -3,7 +3,7 @@
 //! build here, with its file, line and column.
 
 fn main() {
-    if let Err(error) = meridian_mel_build::compile_dir("assets/scenes") {
+    if let Err(error) = meridian_ui_mel::compile_dir("assets/scenes") {
         panic!("{error}");
     }
 }

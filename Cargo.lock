@@ -1123,17 +1123,17 @@ dependencies = [
 ]
 
 [[package]]
-name = "meridian-asset-core"
+name = "meridian-asset-domain"
 version = "0.13.0"
 dependencies = [
- "meridian-foundation",
+ "meridian-diagnostics",
 ]
 
 [[package]]
 name = "meridian-asset-png"
 version = "0.1.0"
 dependencies = [
- "meridian-asset-core",
+ "meridian-asset-domain",
  "png",
 ]
 
@@ -1141,7 +1141,7 @@ dependencies = [
 name = "meridian-asset-symphonia"
 version = "0.1.0"
 dependencies = [
- "meridian-asset-core",
+ "meridian-asset-domain",
  "symphonia",
  "symphonia-adapter-libopus",
 ]
@@ -1150,64 +1150,161 @@ dependencies = [
 name = "meridian-audio-app"
 version = "0.1.0"
 dependencies = [
- "meridian-audio-core",
- "meridian-gac-core",
+ "meridian-audio-domain",
+ "meridian-gac",
 ]
 
 [[package]]
-name = "meridian-audio-core"
-version = "0.19.0"
-dependencies = [
- "meridian-gac-core",
-]
-
-[[package]]
-name = "meridian-audio-driver"
+name = "meridian-audio-cpal"
 version = "0.12.0"
 dependencies = [
  "cpal",
  "crossbeam-channel",
  "meridian-audio-app",
- "meridian-audio-core",
- "meridian-foundation",
- "meridian-platform-core",
+ "meridian-audio-domain",
+ "meridian-diagnostics",
+ "meridian-platform-winit",
  "tokio",
 ]
 
 [[package]]
-name = "meridian-compute-driver"
-version = "0.18.0"
+name = "meridian-audio-domain"
+version = "0.19.0"
 dependencies = [
- "meridian-compute-runtime",
- "meridian-gpu-driver",
- "meridian-platform-core",
- "tokio",
+ "meridian-gac",
 ]
 
 [[package]]
-name = "meridian-compute-runtime"
+name = "meridian-compute-app"
 version = "0.20.0"
 dependencies = [
  "tokio",
 ]
 
 [[package]]
-name = "meridian-diagnostics-fs"
-version = "0.1.0"
+name = "meridian-compute-wgpu"
+version = "0.18.0"
 dependencies = [
- "meridian-foundation",
+ "meridian-compute-app",
+ "meridian-gpu-wgpu",
+ "meridian-platform-winit",
  "tokio",
 ]
 
 [[package]]
-name = "meridian-dsl-core"
+name = "meridian-data-substrate"
 version = "0.1.0"
 dependencies = [
- "meridian-foundation",
+ "meridian-ecs",
+ "meridian-gac",
+ "substrate-data",
+ "thiserror 2.0.21",
 ]
 
 [[package]]
-name = "meridian-dsl-macros"
+name = "meridian-diagnostics"
+version = "0.7.0"
+
+[[package]]
+name = "meridian-diagnostics-fs"
+version = "0.1.0"
+dependencies = [
+ "meridian-diagnostics",
+ "tokio",
+]
+
+[[package]]
+name = "meridian-ecs"
+version = "0.15.0"
+dependencies = [
+ "criterion",
+ "meridian-gac",
+ "meridian-memory",
+]
+
+[[package]]
+name = "meridian-editor-app"
+version = "0.1.0"
+dependencies = [
+ "meridian-data-substrate",
+ "meridian-ecs",
+ "meridian-editor-domain",
+ "substrate-data",
+]
+
+[[package]]
+name = "meridian-editor-domain"
+version = "0.1.0"
+dependencies = [
+ "meridian-data-substrate",
+ "meridian-ecs",
+ "substrate-data",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "meridian-editor-tcp"
+version = "0.1.0"
+dependencies = [
+ "meridian-data-substrate",
+ "meridian-ecs",
+ "meridian-editor-app",
+ "meridian-editor-domain",
+ "substrate-data",
+ "thiserror 2.0.21",
+ "tokio",
+]
+
+[[package]]
+name = "meridian-examples"
+version = "0.1.0"
+dependencies = [
+ "meridian-sdk",
+ "meridian-ui-mel",
+ "tokio",
+]
+
+[[package]]
+name = "meridian-gac"
+version = "0.12.0"
+dependencies = [
+ "criterion",
+ "meridian-numeric",
+ "proptest",
+ "substrate-data",
+]
+
+[[package]]
+name = "meridian-gac-wgpu"
+version = "0.23.0"
+dependencies = [
+ "meridian-compute-app",
+ "meridian-compute-wgpu",
+ "meridian-gac",
+ "meridian-gpu-wgpu",
+ "meridian-numeric",
+ "tokio",
+]
+
+[[package]]
+name = "meridian-gpu-wgpu"
+version = "0.8.0"
+dependencies = [
+ "meridian-diagnostics",
+ "meridian-platform-winit",
+ "tokio",
+ "wgpu",
+]
+
+[[package]]
+name = "meridian-markup"
+version = "0.1.0"
+dependencies = [
+ "meridian-diagnostics",
+]
+
+[[package]]
+name = "meridian-markup-macros"
 version = "0.1.0"
 dependencies = [
  "proc-macro-crate",
@@ -1217,154 +1314,17 @@ dependencies = [
 ]
 
 [[package]]
-name = "meridian-ecs-core"
-version = "0.15.0"
-dependencies = [
- "criterion",
- "meridian-gac-core",
- "meridian-memory-core",
-]
-
-[[package]]
-name = "meridian-editor-host"
-version = "0.1.0"
-dependencies = [
- "meridian-ecs-core",
- "meridian-editor-protocol",
- "meridian-scene",
- "substrate-data",
-]
-
-[[package]]
-name = "meridian-editor-protocol"
-version = "0.1.0"
-dependencies = [
- "meridian-ecs-core",
- "meridian-scene",
- "substrate-data",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "meridian-editor-tcp"
-version = "0.1.0"
-dependencies = [
- "meridian-ecs-core",
- "meridian-editor-host",
- "meridian-editor-protocol",
- "meridian-scene",
- "substrate-data",
- "thiserror 2.0.21",
- "tokio",
-]
-
-[[package]]
-name = "meridian-engine-core"
-version = "0.31.0"
-dependencies = [
- "meridian-compute-runtime",
- "meridian-foundation",
- "meridian-gac-core",
- "meridian-physics-app",
- "meridian-physics-core",
-]
-
-[[package]]
-name = "meridian-examples"
-version = "0.1.0"
-dependencies = [
- "meridian-mel-build",
- "meridian-sdk",
- "tokio",
-]
-
-[[package]]
-name = "meridian-foundation"
-version = "0.7.0"
-
-[[package]]
-name = "meridian-gac-compute"
-version = "0.23.0"
-dependencies = [
- "meridian-compute-driver",
- "meridian-compute-runtime",
- "meridian-gac-core",
- "meridian-gpu-driver",
- "meridian-numeric-core",
- "tokio",
-]
-
-[[package]]
-name = "meridian-gac-core"
-version = "0.12.0"
-dependencies = [
- "criterion",
- "meridian-numeric-core",
- "proptest",
- "substrate-data",
-]
-
-[[package]]
-name = "meridian-gpu-driver"
-version = "0.8.0"
-dependencies = [
- "meridian-foundation",
- "meridian-platform-core",
- "tokio",
- "wgpu",
-]
-
-[[package]]
-name = "meridian-graphics-core"
-version = "0.26.0"
-dependencies = [
- "criterion",
- "meridian-ecs-core",
- "meridian-foundation",
- "meridian-gac-core",
- "meridian-memory-core",
- "meridian-resource-core",
- "tokio",
-]
-
-[[package]]
-name = "meridian-graphics-driver"
-version = "0.18.0"
-dependencies = [
- "meridian-asset-core",
- "meridian-foundation",
- "meridian-gac-core",
- "meridian-gpu-driver",
- "meridian-graphics-core",
- "meridian-memory-core",
- "meridian-platform-core",
- "meridian-rendering-app",
- "tokio",
- "wgpu",
-]
-
-[[package]]
-name = "meridian-mel-build"
-version = "0.1.0"
-dependencies = [
- "meridian-dsl-core",
- "meridian-ui-core",
- "substrate-data",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "meridian-memory-core"
+name = "meridian-memory"
 version = "0.8.0"
 dependencies = [
  "criterion",
 ]
 
 [[package]]
-name = "meridian-numeric-core"
+name = "meridian-numeric"
 version = "0.8.0"
 dependencies = [
- "meridian-foundation",
+ "meridian-diagnostics",
  "proptest",
  "substrate-data",
 ]
@@ -1373,41 +1333,41 @@ dependencies = [
 name = "meridian-physics-app"
 version = "0.1.0"
 dependencies = [
- "meridian-gac-core",
- "meridian-physics-core",
+ "meridian-gac",
+ "meridian-physics-domain",
 ]
 
 [[package]]
-name = "meridian-physics-compute"
+name = "meridian-physics-domain"
+version = "0.25.0"
+dependencies = [
+ "criterion",
+ "meridian-gac",
+ "meridian-numeric",
+ "meridian-resource",
+]
+
+[[package]]
+name = "meridian-physics-wgpu"
 version = "0.6.0"
 dependencies = [
- "meridian-compute-driver",
- "meridian-compute-runtime",
- "meridian-foundation",
- "meridian-gac-compute",
- "meridian-gac-core",
- "meridian-gpu-driver",
- "meridian-numeric-core",
+ "meridian-compute-app",
+ "meridian-compute-wgpu",
+ "meridian-diagnostics",
+ "meridian-gac",
+ "meridian-gac-wgpu",
+ "meridian-gpu-wgpu",
+ "meridian-numeric",
  "meridian-physics-app",
- "meridian-physics-core",
+ "meridian-physics-domain",
  "tokio",
 ]
 
 [[package]]
-name = "meridian-physics-core"
-version = "0.25.0"
-dependencies = [
- "criterion",
- "meridian-gac-core",
- "meridian-numeric-core",
- "meridian-resource-core",
-]
-
-[[package]]
-name = "meridian-platform-core"
+name = "meridian-platform-winit"
 version = "0.12.0"
 dependencies = [
- "meridian-foundation",
+ "meridian-diagnostics",
  "winit",
 ]
 
@@ -1415,84 +1375,124 @@ dependencies = [
 name = "meridian-rendering-app"
 version = "0.1.0"
 dependencies = [
- "meridian-asset-core",
- "meridian-graphics-core",
- "meridian-memory-core",
+ "meridian-asset-domain",
+ "meridian-memory",
+ "meridian-rendering-domain",
 ]
 
 [[package]]
-name = "meridian-resource-core"
+name = "meridian-rendering-domain"
+version = "0.26.0"
+dependencies = [
+ "criterion",
+ "meridian-diagnostics",
+ "meridian-ecs",
+ "meridian-gac",
+ "meridian-memory",
+ "meridian-resource",
+ "tokio",
+]
+
+[[package]]
+name = "meridian-rendering-wgpu"
+version = "0.18.0"
+dependencies = [
+ "meridian-asset-domain",
+ "meridian-diagnostics",
+ "meridian-gac",
+ "meridian-gpu-wgpu",
+ "meridian-memory",
+ "meridian-platform-winit",
+ "meridian-rendering-app",
+ "meridian-rendering-domain",
+ "tokio",
+ "wgpu",
+]
+
+[[package]]
+name = "meridian-resource"
 version = "0.8.0"
 dependencies = [
- "meridian-memory-core",
+ "meridian-memory",
 ]
 
 [[package]]
-name = "meridian-scene"
-version = "0.1.0"
+name = "meridian-runtime-app"
+version = "0.31.0"
 dependencies = [
- "meridian-ecs-core",
- "meridian-gac-core",
- "substrate-data",
- "thiserror 2.0.21",
+ "meridian-compute-app",
+ "meridian-diagnostics",
+ "meridian-gac",
+ "meridian-physics-app",
+ "meridian-physics-domain",
+]
+
+[[package]]
+name = "meridian-runtime-threads"
+version = "0.7.0"
+dependencies = [
+ "criterion",
+ "meridian-runtime-app",
 ]
 
 [[package]]
 name = "meridian-sdk"
 version = "0.5.0"
 dependencies = [
- "meridian-asset-core",
+ "meridian-asset-domain",
  "meridian-asset-png",
  "meridian-asset-symphonia",
  "meridian-audio-app",
- "meridian-audio-core",
- "meridian-audio-driver",
- "meridian-compute-driver",
- "meridian-compute-runtime",
+ "meridian-audio-cpal",
+ "meridian-audio-domain",
+ "meridian-compute-app",
+ "meridian-compute-wgpu",
+ "meridian-diagnostics",
  "meridian-diagnostics-fs",
- "meridian-dsl-core",
- "meridian-dsl-macros",
- "meridian-engine-core",
- "meridian-foundation",
- "meridian-gac-core",
- "meridian-graphics-core",
- "meridian-graphics-driver",
+ "meridian-gac",
+ "meridian-markup",
+ "meridian-markup-macros",
  "meridian-physics-app",
- "meridian-physics-compute",
- "meridian-physics-core",
- "meridian-platform-core",
+ "meridian-physics-domain",
+ "meridian-physics-wgpu",
+ "meridian-platform-winit",
  "meridian-rendering-app",
- "meridian-task-core",
- "meridian-ui-core",
+ "meridian-rendering-domain",
+ "meridian-rendering-wgpu",
+ "meridian-runtime-app",
+ "meridian-runtime-threads",
+ "meridian-ui-domain",
  "png",
 ]
 
 [[package]]
-name = "meridian-task-core"
-version = "0.7.0"
-dependencies = [
- "criterion",
- "meridian-engine-core",
-]
-
-[[package]]
-name = "meridian-ui-core"
+name = "meridian-ui-domain"
 version = "0.1.0"
 dependencies = [
- "meridian-foundation",
- "meridian-memory-core",
+ "meridian-diagnostics",
+ "meridian-memory",
  "thiserror 2.0.21",
 ]
 
 [[package]]
-name = "meridian-ui-render"
+name = "meridian-ui-mel"
 version = "0.1.0"
 dependencies = [
- "meridian-gac-core",
- "meridian-graphics-core",
- "meridian-memory-core",
- "meridian-resource-core",
- "meridian-ui-core",
+ "meridian-markup",
+ "meridian-ui-domain",
+ "substrate-data",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "meridian-ui-scene2d"
+version = "0.1.0"
+dependencies = [
+ "meridian-gac",
+ "meridian-memory",
+ "meridian-rendering-domain",
+ "meridian-resource",
+ "meridian-ui-domain",
 ]
 
 [[package]]

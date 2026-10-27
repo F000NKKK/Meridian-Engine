@@ -1,7 +1,7 @@
 //! Maps the window's input state onto a free-fly camera's controls.
 
-use meridian_graphics_core::FlyControls;
-use meridian_platform_core::{InputState, KeyCode};
+use meridian_platform_winit::{InputState, KeyCode};
+use meridian_rendering_domain::FlyControls;
 
 /// This frame's [`FlyControls`] from `input`: WASD to move, Space and
 /// Ctrl for up and down, Shift to boost, and the device-relative mouse

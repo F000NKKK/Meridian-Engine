@@ -9,7 +9,7 @@ description = "Compressed-audio adapter for asset-core: MP3, OGG/Vorbis, FLAC an
 readme = "README.md"
 
 [dependencies]
-meridian-asset-core = { workspace = true }
+meridian-asset-domain = { workspace = true }
 symphonia = { workspace = true }
 symphonia-adapter-libopus = { workspace = true }
 

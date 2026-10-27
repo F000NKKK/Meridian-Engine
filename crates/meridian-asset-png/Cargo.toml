@@ -9,7 +9,7 @@ description = "PNG adapter for asset-core: decodes PNG bytes to RGBA8 on the png
 readme = "README.md"
 
 [dependencies]
-meridian-asset-core = { workspace = true }
+meridian-asset-domain = { workspace = true }
 png = { workspace = true }
 
 [lints]

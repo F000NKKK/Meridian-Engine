@@ -1,6 +1,6 @@
 //! Tests of this module.
 
-use meridian_asset_core::{Decoder, WavDecoder};
+use meridian_asset_domain::{Decoder, WavDecoder};
 
 use super::*;
 

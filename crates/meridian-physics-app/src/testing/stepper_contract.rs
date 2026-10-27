@@ -1,7 +1,7 @@
 //! What every physics stepper must satisfy.
 
-use meridian_gac_core::{Motor3, Vec3};
-use meridian_physics_core::{ColliderShape, ConstraintSolver, RigidBody};
+use meridian_gac::{Motor3, Vec3};
+use meridian_physics_domain::{ColliderShape, ConstraintSolver, RigidBody};
 
 use crate::{PhysicsStepper, PhysicsSubsystem};
 

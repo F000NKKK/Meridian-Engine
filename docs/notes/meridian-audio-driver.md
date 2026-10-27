@@ -1,4 +1,4 @@
-# `meridian-audio-driver` design notes
+# `meridian-audio-cpal` design notes
 
 Rationale moved out of the module docs (Craftbook ch. 5 §5.2: a `//!` is at
 most 30 lines). Each section belongs to the module named in its heading.
@@ -18,5 +18,5 @@ at once, and the hardware drains it in smaller chunks.
 **Async on genuine I/O**: [`AudioDevice::new`] is a real `async fn`
 (enumerating audio devices is an OS/driver handshake with unbounded
 completion time, matching the same policy as
-`graphics-driver::Device::new` — see ADR 009). Stream creation and
+`rendering-wgpu::Device::new` — see ADR 009). Stream creation and
 sample pushing are synchronous (bounded, local work).
