@@ -115,7 +115,8 @@ the prior art to copy from is Yog-Mod-Loader's `.yui` -> `.g.rs` pipeline
    ADR 009, belongs in the host, not in mel-build), `x:Bind` expressions
    (they are compiled code-behind, so a changed binding needs a rebuild),
    and subtree rebuilds that keep unchanged `NodeId`s.
-9. **Host API and script language.** One trait-based host API for all
+9. **Host API and script language** (options compared against Yog's
+   `.ys` in [ADR 022](../adr/022-mel-script-language.md)). One trait-based host API for all
    code-behind backends; then the own `.mel` script language
    (domain-blind lexer/parser/interpreter, `Fixed` path for fixed-step
    logic); then WASM.
