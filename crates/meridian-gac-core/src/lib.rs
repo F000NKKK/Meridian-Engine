@@ -22,7 +22,7 @@
 //! something forbidden here).
 //!
 //! Design notes: docs/notes/meridian-gac-core.md (`lib`).
-
+#![doc = include_str!("../README.md")]
 #![forbid(unsafe_code)]
 
 #[cfg(feature = "data")]

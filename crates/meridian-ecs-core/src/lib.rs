@@ -19,7 +19,7 @@
 //! genuinely harder, `unsafe`-adjacent problem — deferred until there's a
 //! system that actually needs it, not built speculatively. See
 //! docs/ecs-design.md.
-
+#![doc = include_str!("../README.md")]
 #![forbid(unsafe_code)]
 
 mod archetype;

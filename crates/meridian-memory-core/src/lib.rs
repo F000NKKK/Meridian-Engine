@@ -7,7 +7,7 @@
 //!
 //! See docs/memory-model.md for the three allocation strategies this crate
 //! covers and why handles replace `Arc<T>` for resource lifetime.
-
+#![doc = include_str!("../README.md")]
 #![forbid(unsafe_code)]
 
 /// A generational index into a resource pool slot. Plain, `Copy`,

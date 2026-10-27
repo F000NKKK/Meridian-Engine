@@ -6,6 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 description = "Zero-dependency foundational types shared workspace-wide: error conventions, unified logging, crash reporting, feature-detection primitives."
+readme = "README.md"
 
 [dependencies]
 tokio = { workspace = true, features = ["time", "fs", "io-util"], optional = true }

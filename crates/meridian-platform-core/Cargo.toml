@@ -6,6 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 description = "OS abstraction: window, input, filesystem, time, threading and dynamic library loading."
+readme = "README.md"
 
 [dependencies]
 meridian-foundation = { workspace = true }

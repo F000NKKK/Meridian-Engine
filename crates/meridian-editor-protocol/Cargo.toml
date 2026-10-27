@@ -6,6 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 description = "The messages between a running Meridian game and its editor (Meridian IDLE): typed requests, responses and events as Substrate Data frames, append-only."
+readme = "README.md"
 
 [dependencies]
 meridian-ecs-core = { workspace = true }

@@ -5,6 +5,8 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
+description = "Example programs (magic_figures, physic_figures) and the shared plumbing they use; not published."
+readme = "README.md"
 publish = false
 
 [dependencies]

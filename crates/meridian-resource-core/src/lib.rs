@@ -8,7 +8,7 @@
 //! topology of declared dependencies between resources a caller already
 //! owns elsewhere; it never owns a resource's data or decides when it's
 //! freed.
-
+#![doc = include_str!("../README.md")]
 #![forbid(unsafe_code)]
 
 use core::marker::PhantomData;

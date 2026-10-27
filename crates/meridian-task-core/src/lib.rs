@@ -11,7 +11,7 @@
 //! ready-queue behind one mutex, not per-worker lock-free deques — see
 //! "Implementation note" on [`Scheduler`] for why that's a deliberate
 //! first step, not the final design.
-
+#![doc = include_str!("../README.md")]
 #![forbid(unsafe_code)]
 
 use std::collections::VecDeque;
