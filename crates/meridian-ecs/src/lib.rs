@@ -23,6 +23,7 @@
 
 mod archetype;
 mod column;
+mod commands;
 mod component;
 mod entity;
 mod entity_location;
@@ -35,6 +36,7 @@ mod world;
 
 use archetype::Archetype;
 use column::{AnyColumn, Column};
+pub use commands::Commands;
 pub use component::Component;
 pub use entity::Entity;
 use entity_location::EntityLocation;

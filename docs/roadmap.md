@@ -692,8 +692,9 @@ the rest are not started.
    ("every entity with `Conveyor` *and* `ItemSlot` *and* `Position`").
    Elements can also be `Option<&T>`/`Option<&mut T>` and the
    `With<T>`/`Without<T>` filters, and a `Changed<T>` filter fed by a world
-   clock (per-archetype-column granularity). Not built yet: parallel
-   iteration and deferred entity commands.
+   clock (per-archetype-column granularity). `Commands` record spawn,
+   despawn, insert and remove during iteration and apply them afterwards.
+   Not built yet: parallel iteration.
 3. **`physics-domain::BroadPhase` is x-axis sweep-and-prune** (first
    step, done): `find_candidate_pairs` sorts AABBs by minimum x and only
    tests bodies that overlap along x, returning the same pairs in the same

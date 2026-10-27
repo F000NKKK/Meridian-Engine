@@ -191,3 +191,47 @@ fn component_types_is_none_for_a_dead_entity() {
     world.despawn(e);
     assert_eq!(world.component_types(e), None);
 }
+
+#[test]
+fn commands_apply_structural_changes_recorded_during_a_query() {
+    let mut world = World::new();
+    let doomed = world.spawn();
+    world.insert(doomed, Position(0.0, 0.0));
+    let kept = world.spawn();
+    world.insert(kept, Position(5.0, 0.0));
+
+    let mut commands = Commands::new();
+    for (entity, position) in world.query::<Position>() {
+        if position.0 == 0.0 {
+            commands.despawn(entity);
+        } else {
+            commands.insert(entity, Velocity(1.0, 1.0));
+        }
+    }
+    commands.spawn(|spawned_in, entity| {
+        spawned_in.insert(entity, Position(9.0, 9.0));
+    });
+    assert_eq!(commands.len(), 3);
+    assert!(world.is_alive(doomed), "nothing happens before apply");
+
+    commands.apply(&mut world);
+
+    assert!(commands.is_empty());
+    assert!(!world.is_alive(doomed));
+    assert_eq!(world.get::<Velocity>(kept), Some(&Velocity(1.0, 1.0)));
+    assert_eq!(world.query::<Position>().count(), 2);
+}
+
+#[test]
+fn commands_run_in_order_and_skip_dead_entities() {
+    let mut world = World::new();
+    let e = world.spawn();
+    let mut commands = Commands::new();
+    commands.insert(e, Position(1.0, 1.0));
+    commands.remove::<Position>(e);
+    commands.despawn(e);
+    commands.insert(e, Velocity(2.0, 2.0));
+    commands.apply(&mut world);
+    assert!(!world.is_alive(e));
+    assert_eq!(world.query::<Velocity>().count(), 0);
+}
