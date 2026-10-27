@@ -25,7 +25,7 @@ let registry = dsl::default_registry();
 
 ## Depends on / used by
 
-- Depends on: [`meridian-asset-core`](../meridian-asset-core), [`meridian-audio-core`](../meridian-audio-core), [`meridian-dsl-core`](../meridian-dsl-core), [`meridian-dsl-macros`](../meridian-dsl-macros), [`meridian-engine-core`](../meridian-engine-core), [`meridian-foundation`](../meridian-foundation), [`meridian-gac-core`](../meridian-gac-core), [`meridian-graphics-core`](../meridian-graphics-core), [`meridian-graphics-driver`](../meridian-graphics-driver), [`meridian-physics-core`](../meridian-physics-core), [`meridian-platform-core`](../meridian-platform-core), [`meridian-task-core`](../meridian-task-core), [`meridian-ui-core`](../meridian-ui-core)
+- Depends on: [`meridian-asset-core`](../meridian-asset-core), [`meridian-audio-core`](../meridian-audio-core), [`meridian-dsl-core`](../meridian-dsl-core), [`meridian-dsl-macros`](../meridian-dsl-macros), [`meridian-engine-core`](../meridian-engine-core), [`meridian-foundation`](../meridian-foundation), [`meridian-gac-core`](../meridian-gac-core), [`meridian-graphics-core`](../meridian-graphics-core), [`meridian-graphics-driver`](../meridian-graphics-driver), [`meridian-physics-core`](../meridian-physics-core), [`meridian-platform-core`](../meridian-platform-core), [`meridian-ui-core`](../meridian-ui-core)
 - Used by: [`meridian-examples`](../../examples)
 
 ## License

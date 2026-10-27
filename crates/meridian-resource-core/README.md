@@ -25,7 +25,7 @@ assert!(graph.depends_on(material.handle, texture.handle));
 ## Depends on / used by
 
 - Depends on: [`meridian-memory-core`](../meridian-memory-core)
-- Used by: [`meridian-audio-core`](../meridian-audio-core), [`meridian-graphics-core`](../meridian-graphics-core), [`meridian-physics-core`](../meridian-physics-core)
+- Used by: [`meridian-graphics-core`](../meridian-graphics-core), [`meridian-physics-core`](../meridian-physics-core)
 
 ## License
 
