@@ -1,275 +1,27 @@
-//! Windowed-app rendering scaffolding: mesh builders (sphere/cube/
-//! pyramid/ground, each producing a real `graphics-core::MeshSource` —
-//! positions, normals, UVs, indices — not raw bytes, all procedural, no
-//! file I/O — see [`crate::assets`] for loading meshes/textures *from*
-//! files) and the `SceneRenderer`/`BloomPass`/registry/asset-cache
-//! bundle ([`GraphicsSession`]) an application builds once. No application
-//! hand-rolls a pipeline or vertex buffer itself — that's exactly what
-//! `graphics-core`'s submission bridge exists to replace (see
-//! docs/graphics-design.md).
+//! The windowed application's graphics session: the wgpu recorder, the
+//! registries and the asset cache an application builds once. The mesh
+//! builders it used to hold are `meridian_graphics_core`'s `shapes`; the
+//! per-frame logic is `meridian_rendering_app::RenderSession`.
 
-use meridian_gac_core::icosphere;
-use meridian_graphics_core::{
-    MaterialRegistry, MeshHandle, MeshRegistry, MeshSource, TextureHandle,
-};
+use meridian_graphics_core::{MeshHandle, TextureHandle};
 use meridian_graphics_driver::{Device, GpuFrameRecorder, Surface};
-use meridian_rendering_app::FrameRecorder;
+use meridian_rendering_app::RenderSession;
 
 use crate::assets::AssetCache;
 
-/// Builds a [`MeshSource`] for an icosphere of the given `radius`,
-/// centered at its own local origin (world placement is
-/// `Renderable3d::frame`'s job — `Motor3` has no scale component, so
-/// radius has to be baked into the mesh itself, not applied per
-/// instance). Normals are the unit-length vertex directions, UVs an
-/// equirectangular projection.
-#[must_use]
-pub fn icosphere_mesh_source(subdivisions: u32, radius: f32) -> MeshSource {
-    let mesh = icosphere(subdivisions);
-    let positions: Vec<[f32; 3]> = mesh
-        .vertices
-        .iter()
-        .map(|v| [v.x * radius, v.y * radius, v.z * radius])
-        .collect();
-    let normals: Vec<[f32; 3]> = mesh.vertices.iter().map(|v| [v.x, v.y, v.z]).collect();
-    let uvs: Vec<[f32; 2]> = mesh
-        .vertices
-        .iter()
-        .map(|v| {
-            let n = v.normalize();
-            let u = 0.5 + n.z.atan2(n.x) / std::f32::consts::TAU;
-            let v = 0.5 - n.y.asin() / std::f32::consts::PI;
-            [u, v]
-        })
-        .collect();
-    let mut indices = Vec::new();
-    for face in &mesh.faces {
-        for (a, b, c) in face.triangles() {
-            indices.push(a as u32);
-            indices.push(b as u32);
-            indices.push(c as u32);
-        }
-    }
-    MeshSource {
-        positions,
-        normals,
-        uvs,
-        indices,
-    }
-}
-
-type CubeFace = ([f32; 3], [f32; 3], [f32; 3], [f32; 3], [f32; 3]);
-
-const CUBE_FACES: [CubeFace; 6] = [
-    // (normal, corner00, corner10, corner11, corner01) — CCW as seen
-    // from outside the cube along `normal`.
-    (
-        [1.0, 0.0, 0.0],
-        [1.0, -1.0, -1.0],
-        [1.0, -1.0, 1.0],
-        [1.0, 1.0, 1.0],
-        [1.0, 1.0, -1.0],
-    ),
-    (
-        [-1.0, 0.0, 0.0],
-        [-1.0, -1.0, 1.0],
-        [-1.0, -1.0, -1.0],
-        [-1.0, 1.0, -1.0],
-        [-1.0, 1.0, 1.0],
-    ),
-    (
-        [0.0, 1.0, 0.0],
-        [-1.0, 1.0, -1.0],
-        [1.0, 1.0, -1.0],
-        [1.0, 1.0, 1.0],
-        [-1.0, 1.0, 1.0],
-    ),
-    (
-        [0.0, -1.0, 0.0],
-        [-1.0, -1.0, 1.0],
-        [1.0, -1.0, 1.0],
-        [1.0, -1.0, -1.0],
-        [-1.0, -1.0, -1.0],
-    ),
-    // +Z and -Z: reversed corner order relative to the naive pattern
-    // above — these two were the ones caught inside-out (verified by
-    // computing cross(edge1, edge2)·normal by hand for all six faces;
-    // only +Z/-Z came out negative with the naive order).
-    (
-        [0.0, 0.0, 1.0],
-        [-1.0, -1.0, 1.0],
-        [-1.0, 1.0, 1.0],
-        [1.0, 1.0, 1.0],
-        [1.0, -1.0, 1.0],
-    ),
-    (
-        [0.0, 0.0, -1.0],
-        [1.0, -1.0, -1.0],
-        [1.0, 1.0, -1.0],
-        [-1.0, 1.0, -1.0],
-        [-1.0, -1.0, -1.0],
-    ),
-];
-
-/// A cube with half-extent `half_extent`, one set of 4 vertices per face
-/// so each face gets its own flat normal and a full `[0,1]` UV. Winding
-/// verified per-face (not just assumed from a formula) — every face's
-/// `cross(edge1, edge2)` must point along its own outward normal for
-/// `graphics-driver`'s `FrontFace::Ccw` + back-face culling to actually
-/// draw it, and a mirrored-looking cube (some faces visible only from
-/// inside) is exactly what one flipped face produces.
-#[must_use]
-pub fn cube_mesh_source(half_extent: f32) -> MeshSource {
-    let mut positions = Vec::new();
-    let mut normals = Vec::new();
-    let mut uvs = Vec::new();
-    let mut indices = Vec::new();
-    for (normal, c00, c10, c11, c01) in CUBE_FACES {
-        let base = positions.len() as u32;
-        for corner in [c00, c10, c11, c01] {
-            positions.push(corner.map(|c| c * half_extent));
-            normals.push(normal);
-        }
-        uvs.extend_from_slice(&[[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]]);
-        indices.extend_from_slice(&[base, base + 2, base + 1, base, base + 3, base + 2]);
-    }
-    MeshSource {
-        positions,
-        normals,
-        uvs,
-        indices,
-    }
-}
-
-/// A square-based pyramid: base half-extent `base_half_extent`, apex
-/// `height` above the base, centered on the base's own middle (so a
-/// `Renderable3d::frame` translation places the base center, not the
-/// centroid). Flat per-face normals (5 faces: 1 base quad + 4 triangular
-/// sides), windings verified the same way as [`cube_mesh_source`]'s —
-/// see that function's doc comment for why this matters.
-#[must_use]
-pub fn pyramid_mesh_source(base_half_extent: f32, height: f32) -> MeshSource {
-    let base = [
-        [-base_half_extent, 0.0, -base_half_extent],
-        [base_half_extent, 0.0, -base_half_extent],
-        [base_half_extent, 0.0, base_half_extent],
-        [-base_half_extent, 0.0, base_half_extent],
-    ];
-    let apex = [0.0f32, height, 0.0];
-
-    let mut positions = Vec::new();
-    let mut normals = Vec::new();
-    let mut uvs = Vec::new();
-    let mut indices = Vec::new();
-
-    // Base quad, normal -Y, triangles (0,1,2)/(0,2,3).
-    {
-        let base_idx = positions.len() as u32;
-        for corner in base {
-            positions.push(corner);
-            normals.push([0.0, -1.0, 0.0]);
-        }
-        uvs.extend_from_slice(&[[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]]);
-        indices.extend_from_slice(&[
-            base_idx,
-            base_idx + 1,
-            base_idx + 2,
-            base_idx,
-            base_idx + 2,
-            base_idx + 3,
-        ]);
-    }
-
-    // Four triangular sides: (base[i], apex, base[i+1]) — verified
-    // outward-facing winding, see the module-level comment above.
-    let side_uvs = [[0.0, 0.0], [0.5, 1.0], [1.0, 0.0]];
-    for i in 0..4 {
-        let b0 = base[i];
-        let b1 = base[(i + 1) % 4];
-        let normal = triangle_normal(b0, apex, b1);
-        let base_idx = positions.len() as u32;
-        for corner in [b0, apex, b1] {
-            positions.push(corner);
-            normals.push(normal);
-        }
-        uvs.extend_from_slice(&side_uvs);
-        indices.extend_from_slice(&[base_idx, base_idx + 1, base_idx + 2]);
-    }
-
-    MeshSource {
-        positions,
-        normals,
-        uvs,
-        indices,
-    }
-}
-
-/// The unit normal of triangle `(origin, towards, then)`: the cross
-/// product of the edges `origin -> towards` and `origin -> then`.
-fn triangle_normal(origin: [f32; 3], towards: [f32; 3], then: [f32; 3]) -> [f32; 3] {
-    let edge1 = [
-        towards[0] - origin[0],
-        towards[1] - origin[1],
-        towards[2] - origin[2],
-    ];
-    let edge2 = [
-        then[0] - origin[0],
-        then[1] - origin[1],
-        then[2] - origin[2],
-    ];
-    normalize([
-        edge1[1] * edge2[2] - edge1[2] * edge2[1],
-        edge1[2] * edge2[0] - edge1[0] * edge2[2],
-        edge1[0] * edge2[1] - edge1[1] * edge2[0],
-    ])
-}
-
-fn normalize(v: [f32; 3]) -> [f32; 3] {
-    let len = (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt().max(1e-8);
-    [v[0] / len, v[1] / len, v[2] / len]
-}
-
-/// A flat quad in the local `y = 0` plane, `half_size` from center to
-/// edge, its UVs tiled `uv_tiles` times across — the floor's mesh, with
-/// world placement left to `Renderable3d::frame`.
-#[must_use]
-pub fn ground_mesh_source(half_size: f32, uv_tiles: f32) -> MeshSource {
-    MeshSource {
-        positions: vec![
-            [-half_size, 0.0, -half_size],
-            [half_size, 0.0, -half_size],
-            [half_size, 0.0, half_size],
-            [-half_size, 0.0, half_size],
-        ],
-        normals: vec![[0.0, 1.0, 0.0]; 4],
-        uvs: vec![
-            [0.0, 0.0],
-            [uv_tiles, 0.0],
-            [uv_tiles, uv_tiles],
-            [0.0, uv_tiles],
-        ],
-        // Winding front-facing from +Y — verified the same way as
-        // `cube_mesh_source`'s faces.
-        indices: vec![0, 2, 1, 0, 3, 2],
-    }
-}
-
-/// What a windowed application builds once: the GPU recorder (device,
-/// swapchain, renderer, bloom, textures), empty mesh and material registries to
-/// fill, and the asset cache.
+/// What a windowed application builds once: a [`RenderSession`] over the wgpu
+/// [`GpuFrameRecorder`] (device, swapchain, renderer, bloom, textures, plus the
+/// mesh and material registries to fill) and the asset cache.
 ///
 /// Constructed from an already-open `Device`/`Surface` (the windowed handshake
 /// itself stays in the application's own `on_ready`, the only place that needs
-/// to name `winit`/`wgpu`-adjacent types at all). Drawing goes through
-/// [`FrameRecorder`] on [`gpu`](Self::gpu); loading goes through the cache's
+/// to name `winit`/`wgpu`-adjacent types at all). Loading goes through the
 /// forwarding methods [`load_texture`](Self::load_texture) and
 /// [`load_mesh_obj`](Self::load_mesh_obj), whose decode/cache/register logic
 /// lives in [`crate::assets`].
 #[derive(Debug)]
 pub struct GraphicsSession {
-    pub gpu: GpuFrameRecorder,
-    pub meshes: MeshRegistry,
-    pub materials: MaterialRegistry,
+    pub render: RenderSession<GpuFrameRecorder>,
     pub assets: AssetCache,
 }
 
@@ -297,29 +49,22 @@ impl GraphicsSession {
         height: u32,
         shadow_map_size: u32,
     ) -> Self {
+        let recorder =
+            GpuFrameRecorder::with_shadow_map_size(device, surface, width, height, shadow_map_size);
         Self {
-            gpu: GpuFrameRecorder::with_shadow_map_size(
-                device,
-                surface,
-                width,
-                height,
-                shadow_map_size,
-            ),
-            meshes: MeshRegistry::new(),
-            materials: MaterialRegistry::new(),
+            render: RenderSession::new(recorder),
             assets: AssetCache::new(),
         }
     }
 
-    /// Rebuilds every size-dependent piece after a window resize — see
-    /// [`FrameRecorder::resize`].
+    /// Rebuilds every size-dependent piece after a window resize.
     pub fn resize(&mut self, width: u32, height: u32) {
-        self.gpu.resize(width, height);
+        self.render.resize(width, height);
     }
 
     /// Forwards to [`AssetCache::load_texture`].
     pub fn load_texture(&mut self, path: &str) -> TextureHandle {
-        self.assets.load_texture(&mut self.gpu, path)
+        self.assets.load_texture(&mut self.render.recorder, path)
     }
 
     /// Forwards to [`AssetCache::load_mesh_obj`].
@@ -328,6 +73,6 @@ impl GraphicsSession {
     ///
     /// The file's read, decode or mesh-validation error, as text.
     pub fn load_mesh_obj(&mut self, path: &str) -> Result<MeshHandle, String> {
-        self.assets.load_mesh_obj(&mut self.meshes, path)
+        self.assets.load_mesh_obj(&mut self.render.meshes, path)
     }
 }

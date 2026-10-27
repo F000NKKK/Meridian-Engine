@@ -22,16 +22,16 @@
 
 mod any_image_decoder;
 pub mod assets;
-pub mod camera;
 pub mod dsl;
+mod fly_controls;
 pub mod render;
 mod runtime;
 pub mod scene;
 
 pub use any_image_decoder::AnyImageDecoder;
 pub use assets::{AssetCache, AudioTrack, load_audio_track, load_image_asset};
-pub use camera::{FlyCamera, look_at_rotor};
 pub use dsl::dsl_core;
+pub use fly_controls::fly_controls;
 pub use meridian_asset_core::{Decoder, ImageAsset};
 pub use meridian_asset_png::PngDecoder;
 pub use meridian_asset_symphonia::{
@@ -67,12 +67,14 @@ pub use meridian_foundation::{
 pub use meridian_gac_core::{Aabb, Bivector3, Motor3, Projection, Rotor, Vec3};
 // -- meridian-graphics-core: scene/material/lighting/submission --
 pub use meridian_graphics_core::{
-    Camera, Frustum, Light, Material, MaterialHandle, MaterialRegistry, MeshHandle, MeshRegistry,
-    MeshSource, Renderable3d, Scene2d, Scene3d, TextureHandle,
+    Camera, FlyCamera, FlyControls, Frustum, Light, Material, MaterialHandle, MaterialRegistry,
+    MeshHandle, MeshRegistry, MeshSource, Renderable3d, Scene2d, Scene3d, TextureHandle,
+    cube_mesh_source, ground_mesh_source, icosphere_mesh_source, look_at_rotor,
+    pyramid_mesh_source, smooth_normals,
 };
 // -- meridian-rendering-app: the GPU ports --
 pub use meridian_rendering_app::{
-    FrameOutcome, FrameRecorder, FrameRequest, MeshStore, TextureStore,
+    FrameOutcome, FrameRecorder, FrameRequest, MeshStore, RenderSession, TextureStore,
 };
 // -- meridian-graphics-driver: the GPU device a windowed app opens once --
 pub use meridian_graphics_driver::{
@@ -93,7 +95,4 @@ pub use meridian_platform_core::{
 pub use meridian_ui_core as ui_core;
 pub use render::{RenderStage, render_frame};
 pub use runtime::parallel_runtime;
-pub use scene::{
-    GraphicsSession, cube_mesh_source, ground_mesh_source, icosphere_mesh_source,
-    pyramid_mesh_source,
-};
+pub use scene::GraphicsSession;

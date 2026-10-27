@@ -13,14 +13,13 @@
 use meridian_engine_core::Stage;
 use meridian_graphics_core::Scene3d;
 use meridian_platform_core::Window;
-use meridian_rendering_app::{FrameOutcome, FrameRecorder, FrameRequest};
+use meridian_rendering_app::FrameOutcome;
 
 use crate::scene::GraphicsSession;
 
 /// Renders one frame of `scene` into `base`'s surface through its
-/// [`FrameRecorder`]: shadow pass, main pass, bloom, present (see
-/// `GpuFrameRecorder::record_frame`). A lost swapchain reconfigures the surface
-/// to `window`'s size and skips the frame (the recorder logs it); a presented
+/// `RenderSession`: shadow pass, main pass, bloom, present. A lost swapchain
+/// reconfigures the surface to `window`'s size and skips the frame; a presented
 /// frame ends with `window.request_redraw()`, so a caller only needs to call this
 /// once per redraw, last. [`RenderStage`] is this function wrapped as a `Stage`,
 /// for a caller driving everything through `Runtime::tick`; call this directly
@@ -32,16 +31,9 @@ pub fn render_frame(
     clear_color: [f64; 4],
     window: &Window,
 ) {
-    let request = FrameRequest {
-        scene,
-        meshes: &base.meshes,
-        materials: &base.materials,
-        clear_color,
-    };
-    match base.gpu.record_frame(&request) {
-        FrameOutcome::Presented => window.request_redraw(),
-        FrameOutcome::TargetUnavailable => base.resize(window.width(), window.height()),
-        _ => {}
+    let size = (window.width(), window.height());
+    if base.render.render(scene, clear_color, size) == FrameOutcome::Presented {
+        window.request_redraw();
     }
 }
 

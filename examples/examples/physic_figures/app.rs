@@ -5,7 +5,8 @@ use std::sync::{Arc, Mutex};
 use meridian_examples::paths::asset_path;
 use meridian_sdk::{
     AppHandler, Camera, Device, FlyCamera, GraphicsSession, InputState, KeyCode, Light, Material,
-    Motor3, RenderStage, Renderable3d, RigidBody, Scene3d, StageId, Vec3, Window, look_at_rotor,
+    Motor3, RenderStage, Renderable3d, RigidBody, Scene3d, StageId, Vec3, Window, fly_controls,
+    look_at_rotor,
 };
 
 use crate::{
@@ -52,12 +53,13 @@ impl App {
 /// Registers `entity`'s texture, material and mesh.
 fn render_entity(base: &mut GraphicsSession, entity: &SceneEntity) -> RenderEntity {
     let texture = base.load_texture(&asset_path(&entity.texture));
-    let material = base.materials.register(Material {
+    let material = base.render.materials.register(Material {
         albedo: Some(texture),
         base_color_factor: [1.0, 1.0, 1.0, 1.0],
         ..Default::default()
     });
     let mesh = base
+        .render
         .meshes
         .register(mesh_source_for(entity))
         .unwrap_or_else(|e| panic!("{} mesh must be valid: {e}", entity.mesh_shape));
@@ -152,7 +154,7 @@ impl AppHandler for App {
         let frame_dt = (now - self.last_frame).as_secs_f32().min(0.1);
         self.last_frame = now;
         if self.cursor_grabbed {
-            self.camera.update(input, frame_dt);
+            self.camera.update(&fly_controls(input), frame_dt);
         }
 
         self.physics.step(frame_dt);

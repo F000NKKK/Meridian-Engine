@@ -1,6 +1,4 @@
-//! A free-fly camera — extracted from `lib.rs` so the camera logic and
-//! tests are their own file, keeping `lib.rs` focused on the rendering
-//! scaffolding both windowed examples share.
+//! A free-fly camera.
 //!
 //! The camera uses `gac-core`'s local-forward `+X` convention (see
 //! [`look_at_rotor`] and [`FlyCamera::yaw`]'s own doc) and composes its
@@ -8,9 +6,9 @@
 //! avoiding the roll problem [`look_at_rotor`] has when pitch changes.
 
 use meridian_gac_core::{Motor3, Vec3};
-use meridian_graphics_core::Camera;
-pub use meridian_graphics_core::look_at_rotor;
-use meridian_platform_core::{InputState, KeyCode};
+
+use super::FlyControls;
+use crate::{Camera, look_at_rotor};
 
 /// A free-fly camera: WASD to move (relative to the way it's currently
 /// looking, not world axes), Space/Ctrl for up/down, mouse to look
@@ -50,16 +48,14 @@ impl FlyCamera {
         }
     }
 
-    /// Advances the camera by one frame of `input`/`dt`. Call once per
-    /// `on_redraw`, after computing `dt` and before building this
-    /// frame's [`Camera`] via [`Self::camera`]. Reads
-    /// [`InputState::raw_mouse_delta`] (device-relative motion, not
-    /// cursor-position-based) so this keeps working once the caller
-    /// grabs the cursor via `Window::set_cursor_grabbed(true)` in
-    /// `on_ready` (the expected setup — see this type's own doc comment)
-    /// — a locked cursor stops generating position deltas entirely.
-    pub fn update(&mut self, input: &InputState, dt: f32) {
-        let (dx, dy) = input.raw_mouse_delta();
+    /// Advances the camera by one frame of `controls`/`dt`. Call once per
+    /// redraw, after computing `dt` and before building this frame's
+    /// [`Camera`] via [`Self::camera`]. `controls.look` is device-relative
+    /// mouse motion, not cursor-position-based, so it keeps working once the
+    /// caller grabs the cursor — a locked cursor stops generating position
+    /// deltas entirely.
+    pub fn update(&mut self, controls: &FlyControls, dt: f32) {
+        let (dx, dy) = controls.look;
         self.yaw += dx * self.look_sensitivity;
         self.pitch = (self.pitch - dy * self.look_sensitivity).clamp(
             -core::f32::consts::FRAC_PI_2 + 0.01,
@@ -71,26 +67,26 @@ impl FlyCamera {
         let forward_horiz = Vec3::new(cy, 0.0, sy);
         let right = Vec3::new(-sy, 0.0, cy);
         let mut movement = Vec3::ZERO;
-        if input.is_key_down(KeyCode::W) {
+        if controls.forward {
             movement = movement + forward_horiz;
         }
-        if input.is_key_down(KeyCode::S) {
+        if controls.backward {
             movement = movement - forward_horiz;
         }
-        if input.is_key_down(KeyCode::D) {
+        if controls.right {
             movement = movement + right;
         }
-        if input.is_key_down(KeyCode::A) {
+        if controls.left {
             movement = movement - right;
         }
-        if input.is_key_down(KeyCode::Space) {
+        if controls.up {
             movement = movement + Vec3::Y;
         }
-        if input.is_key_down(KeyCode::ControlLeft) {
+        if controls.down {
             movement = movement - Vec3::Y;
         }
         if movement.length() > 1e-5 {
-            let speed = if input.is_key_down(KeyCode::ShiftLeft) {
+            let speed = if controls.boost {
                 self.move_speed * 3.0
             } else {
                 self.move_speed
@@ -118,7 +114,7 @@ impl FlyCamera {
     /// keep the rotor consistent with the ad‑hoc `forward_horiz` basis
     /// used in [`Self::update`] (which follows a conventional right-handed
     /// +X‑toward‑+Z yaw).
-    fn rotor(&self) -> meridian_gac_core::Rotor {
+    pub(super) fn rotor(&self) -> meridian_gac_core::Rotor {
         use meridian_gac_core::Rotor;
         let yaw_rotor = Rotor::from_axis_angle(Vec3::Y, -self.yaw);
         let right_after_yaw = yaw_rotor.transform_vector(Vec3::Z);
@@ -139,6 +135,3 @@ impl FlyCamera {
         }
     }
 }
-
-#[cfg(test)]
-mod tests;
