@@ -82,8 +82,8 @@ change that closed them.
 3. **ECS change detection and entity commands.** Change detection is
    **done**: a world clock and per-archetype-column ticks with a `Changed<T>`
    filter, so rendering can skip unchanged instance batches (feeds roadmap
-   "Scaling" item 1). Still open: deferred spawn/despawn/insert during
-   iteration (command buffer).
+   "Scaling" item 1). Deferred `Commands` (spawn/despawn/insert/remove
+   recorded during iteration, applied after) are **done** too.
 4. **Persistence hooks.** Roadmap "Scaling" item 5. Core side: component
    enumeration per entity (**done**: `World::component_types(entity)`,
    sorted `TypeId`s; the stable-name registry and serializers are the

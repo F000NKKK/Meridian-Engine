@@ -48,6 +48,16 @@ absent rows yield `None`) and the zero-sized filters `With<T>` / `Without<T>`,
 which constrain the archetype without borrowing a column, so `With<T>` next
 to `&mut T` is not an alias. Not built yet: parallel iteration.
 
+### Deferred commands
+
+A query holds the world borrowed, so a loop cannot spawn, despawn or change an
+entity's component set. `Commands` is a plain value (no global, no hidden
+queue in `World`): the loop records `spawn` / `despawn` / `insert` / `remove`
+into it and the owner calls `commands.apply(&mut world)` after the loop.
+Commands run in recorded order; one that targets a dead entity does nothing.
+A deferred spawn hands a closure the new entity and the world, since the
+entity id does not exist before `apply`.
+
 ### Change detection
 
 The world has a clock (`World::tick`, `advance_tick`). Every column
