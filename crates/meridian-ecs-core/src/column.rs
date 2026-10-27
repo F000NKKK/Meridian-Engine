@@ -2,7 +2,7 @@
 
 use std::any::Any;
 
-use crate::Component;
+use crate::{Component, Tick};
 
 /// A type-erased `SoA` column, downcast back to `Column<T>` by every
 /// operation that needs the concrete type. Object-safe by hand (`Any`
@@ -25,9 +25,13 @@ pub(crate) trait AnyColumn: Send {
     /// Drops `row` without moving it anywhere (the component isn't in the
     /// destination archetype's signature).
     fn swap_remove_erased(&mut self, row: usize);
+    /// The tick of the last change to this column's rows.
+    fn changed(&self) -> Tick;
+    fn mark_changed(&mut self, at: Tick);
 }
 
-pub(crate) struct Column<T>(pub(crate) Vec<T>);
+/// The rows and the tick they last changed at.
+pub(crate) struct Column<T>(pub(crate) Vec<T>, pub(crate) Tick);
 
 impl<T: Component> AnyColumn for Column<T> {
     fn as_any(&self) -> &dyn Any {
@@ -37,7 +41,7 @@ impl<T: Component> AnyColumn for Column<T> {
         self
     }
     fn new_same_type(&self) -> Box<dyn AnyColumn> {
-        Box::new(Column::<T>(Vec::new()))
+        Box::new(Column::<T>(Vec::new(), Tick::ZERO))
     }
     fn move_row_to(&mut self, row: usize, dest: &mut dyn AnyColumn) {
         let value = self.0.swap_remove(row);
@@ -49,5 +53,11 @@ impl<T: Component> AnyColumn for Column<T> {
     }
     fn swap_remove_erased(&mut self, row: usize) {
         self.0.swap_remove(row);
+    }
+    fn changed(&self) -> Tick {
+        self.1
+    }
+    fn mark_changed(&mut self, at: Tick) {
+        self.1 = at;
     }
 }

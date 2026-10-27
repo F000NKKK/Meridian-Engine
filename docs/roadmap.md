@@ -691,8 +691,9 @@ the rest are not started.
    and `query_many_mut` take tuples of two to four `&T`/`&mut T`
    ("every entity with `Conveyor` *and* `ItemSlot` *and* `Position`").
    Elements can also be `Option<&T>`/`Option<&mut T>` and the
-   `With<T>`/`Without<T>` filters. Not built yet: parallel iteration and
-   change detection.
+   `With<T>`/`Without<T>` filters, and a `Changed<T>` filter fed by a world
+   clock (per-archetype-column granularity). Not built yet: parallel
+   iteration and deferred entity commands.
 3. **`physics-core::BroadPhase` is x-axis sweep-and-prune** (first
    step, done): `find_candidate_pairs` sorts AABBs by minimum x and only
    tests bodies that overlap along x, returning the same pairs in the same

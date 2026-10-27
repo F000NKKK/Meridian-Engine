@@ -48,6 +48,25 @@ absent rows yield `None`) and the zero-sized filters `With<T>` / `Without<T>`,
 which constrain the archetype without borrowing a column, so `With<T>` next
 to `&mut T` is not an alias. Not built yet: parallel iteration.
 
+### Change detection
+
+The world has a clock (`World::tick`, `advance_tick`). Every column
+remembers the tick it last changed at, and `Changed<T>` is a filter element
+that keeps an archetype only if its `T` column changed at or after the `since`
+tick given to `query_many_since` / `query_many_mut_since`. A system keeps the
+value `advance_tick` returned when it last finished and passes it as `since`:
+its own writes carry an earlier tick, so it does not see them back, and a write
+by anything that ran after it is never missed (the comparison is "at or
+after").
+
+The granularity is the archetype column, not the row, on purpose: it is what a
+renderer needs to skip whole unchanged instance batches, and it costs one
+`Tick` per column. A write to one entity's `T` marks every entity of that
+archetype's `T` column. Marked as changed: `insert` (overwrite or a new
+archetype), `remove`, `despawn`, `get_mut`, `query_mut`, and the columns behind
+`&mut` / `Option<&mut>` elements of `query_many_mut` as soon as they are handed
+out, whether or not the loop writes. Shared queries never mark anything.
+
 ## What this crate is not
 
 It does not know about frames, rendering, physics, or the application main
