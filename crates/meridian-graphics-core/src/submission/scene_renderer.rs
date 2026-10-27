@@ -23,7 +23,7 @@ use crate::scene::{Light, Renderable3d, Scene3d};
 /// [`crate::bloom::BloomPass`] draws through are *not* owned here — they
 /// render into `BloomPass`'s own offscreen texture, whose format is
 /// `BloomPass`'s to pick, not something this type should guess at (see
-/// `bloom.rs`'s module doc and `uniform_buffer`(Self::uniform_buffer)).
+/// `bloom.rs`'s module doc and [`uniform_buffer`](Self::uniform_buffer)).
 #[derive(Debug)]
 pub struct SceneRenderer {
     colored_unlit_pipeline: RenderPipeline,

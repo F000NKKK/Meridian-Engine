@@ -120,7 +120,7 @@ impl VectorLike for FixedVec3 {
 }
 
 /// A single point, treated as a degenerate shape — see
-/// `float_ga`'s matching impl for why this is concrete, not a blanket
+/// the float flavor's matching impl for why this is concrete, not a blanket
 /// impl in `lib.rs`.
 impl Shape<FixedFlavor> for FixedVec3 {
     fn support(&self, _direction: FixedVec3) -> FixedVec3 {

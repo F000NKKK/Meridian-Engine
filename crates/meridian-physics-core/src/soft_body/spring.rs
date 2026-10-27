@@ -3,7 +3,7 @@
 use meridian_gac_core::GaFlavor;
 
 /// A structural or volume-preserving connection between two particles in
-/// a [`SoftBody`], by index into its `positions`/`velocities`/
+/// a [`SoftBody`](super::mass_spring::SoftBody), by index into its `positions`/`velocities`/
 /// `inverse_masses`.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Spring<F: GaFlavor> {

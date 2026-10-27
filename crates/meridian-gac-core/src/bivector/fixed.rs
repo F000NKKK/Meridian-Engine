@@ -10,7 +10,7 @@ use crate::flavor::fixed::FIXED_EPSILON;
 use crate::rotor::fixed::FixedRotor;
 use crate::vector::fixed::FixedVec3;
 
-/// Mirrors [`crate::float_ga::Bivector3`] — see that type's doc comment
+/// Mirrors [`crate::Bivector3`] — see that type's doc comment
 /// for why angular quantities are bivectors, not vectors.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct FixedBivector3 {

@@ -1,9 +1,9 @@
 //! A single mesh face.
 
 /// A single mesh face: the ordered vertex indices of a polygon (not
-/// necessarily a triangle — arbitrary point count) into some [`Mesh`]'s
+/// necessarily a triangle — arbitrary point count) into some [`Mesh`](crate::Mesh)'s
 /// `vertices`. Scalar-flavor-independent (indices are plain `usize`), so
-/// this lives once, not once per [`GaFlavor`] the way [`Mesh`] itself
+/// this lives once, not once per [`GaFlavor`](crate::GaFlavor) the way [`Mesh`](crate::Mesh) itself
 /// does (it holds flavor-typed vertex positions).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Face {

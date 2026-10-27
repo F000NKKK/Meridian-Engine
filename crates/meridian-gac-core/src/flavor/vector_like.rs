@@ -5,7 +5,7 @@ use core::ops::{Add, Mul, Neg, Sub};
 use super::ScalarLike;
 
 /// A 3D vector type usable generically — implemented for
-/// [`crate::float_ga::Vec3`] and [`crate::fixed_ga::FixedVec3`]. See [`ScalarLike`]'s
+/// [`crate::Vec3`] and [`crate::FixedVec3`]. See [`ScalarLike`]'s
 /// doc comment for why every method is a thin forward, not a
 /// reimplementation.
 pub trait VectorLike:

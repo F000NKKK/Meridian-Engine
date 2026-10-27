@@ -5,8 +5,8 @@ use core::ops::{Add, Mul, Sub};
 use super::{RotorLike, ScalarLike, VectorLike};
 
 /// A rotation-generator bivector type usable generically —
-/// implemented for [`crate::float_ga::Bivector3`] and
-/// [`crate::fixed_ga::FixedBivector3`].
+/// implemented for [`crate::Bivector3`] and
+/// [`crate::FixedBivector3`].
 pub trait BivectorLike:
     Copy
     + core::fmt::Debug

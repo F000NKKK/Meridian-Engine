@@ -7,7 +7,7 @@ use crate::flavor::{GaFlavor, ScalarLike, VectorLike};
 /// meaning of its own, shared by every subsystem that needs a cheap
 /// overlap/culling test (`physics-core`'s broad phase, `graphics-core`'s
 /// frustum culling, ...). The axis-aligned of the two box variants — see
-/// [`Obb`] for the oriented one; a cube is either with equal extents on
+/// [`Obb`](crate::Obb) for the oriented one; a cube is either with equal extents on
 /// every axis, not a separate type.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Aabb<F: GaFlavor> {
@@ -52,7 +52,7 @@ impl<F: GaFlavor> Shape<F> for Aabb<F> {
     /// Picks the corner furthest along `direction` per axis independently
     /// — this is the exact "positive vertex" trick frustum/AABB tests use
     /// by hand; expressing it as a support function is what lets the same
-    /// trick generalize to [`ConvexVolume::intersects`] for every shape.
+    /// trick generalize to [`ConvexVolume::intersects`](crate::ConvexVolume::intersects) for every shape.
     fn support(&self, direction: F::Vector) -> F::Vector {
         F::Vector::new(
             if direction.x() >= F::Scalar::ZERO {

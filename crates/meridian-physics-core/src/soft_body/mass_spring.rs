@@ -8,7 +8,7 @@ use super::spring::Spring;
 /// [`crate::dynamics::RigidBody`], a soft body's "shape" *is* its particle
 /// positions, not a fixed collider transformed by one frame) connected by
 /// [`Spring`]s. `inverse_masses[i] <= 0` pins particle `i` in place
-/// (never moved by [`SoftBodyIntegrator::step`]) — the same "static via
+/// (never moved by [`SoftBodyIntegrator::step`](super::time_step::SoftBodyIntegrator::step)) — the same "static via
 /// zero/negative inverse mass" convention
 /// [`crate::dynamics::RigidBody::inverse_mass`] uses.
 #[derive(Debug, Clone)]

@@ -24,7 +24,7 @@ pub trait ScalarLike:
     const ONE: Self;
     /// A small tolerance for degenerate (near-zero) guards — the same
     /// role `meridian_numeric_core::EPSILON` plays for `f32` and
-    /// `fixed_ga`'s own internal tolerance plays for `Fixed`.
+    /// the fixed flavor's own internal tolerance plays for `Fixed`.
     const EPSILON: Self;
     /// The largest finite representable value — used as a "no candidate
     /// yet" sentinel by algorithms that scan for a minimum (e.g. SAT's

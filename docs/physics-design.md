@@ -16,9 +16,9 @@ driver is deleted in wave 5 ([ADR 019](adr/019-ports-in-domain-drivers-as-adapte
 
 `physics-core`'s whole engine — `RigidBody`, `ColliderShape`, `Contact`,
 `BroadPhase`, `NarrowPhase`, `ConstraintSolver`, `Integrator` — is written
-**once**, in `src/generic.rs`, generic over
-`meridian_gac_core::generic::GaFlavor`. Unlike `gac-core::Motor3`/`Vec3`
-(concretely duplicated between `float_ga`/`fixed_ga` because
+**once**, in `src/collision/` and `src/dynamics/`, generic over
+`meridian_gac_core::GaFlavor`. Unlike `gac-core::Motor3`/`Vec3`
+(concretely duplicated between their `float.rs`/`fixed.rs` because
 `meridian-gac-compute` dispatches them to a GPU with no real `i64`),
 nothing in this engine has a GPU-dispatch constraint of its own — broad
 phase, narrow phase, constraint solving and integration are the same
@@ -214,12 +214,12 @@ Real, via `physics-core::fixed` — see
 [ADR 008](adr/008-fixed-point-determinism.md) for the full decision.
 `fixed::RigidBody`/`fixed::Integrator`/`fixed::ConstraintSolver`/
 `fixed::BroadPhase`/`fixed::NarrowPhase` are thin `FixedFlavor` aliases
-over the exact same generic engine (`src/generic.rs`) `float::RigidBody`/
-etc. alias with `FloatFlavor` — built on `gac-core::fixed_ga` (`Fixed`,
-Q16.16) instead of `float_ga` (`f32`) via the `GaFlavor` trait, a
+over the exact same generic engine (`src/collision/`, `src/dynamics/`) `float::RigidBody`/
+etc. alias with `FloatFlavor` — built on `gac-core`'s `Fixed*` types (`Fixed`,
+Q16.16) instead of the float ones (`f32`) via the `GaFlavor` trait, a
 genuinely separate, opt-in pipeline, not a mode flag on the default
 types. `fixed::BroadPhase` builds its `Aabb<FixedFlavor>`s from
-`gac-core::generic` the same way `float::BroadPhase` builds
+`gac-core::volume` the same way `float::BroadPhase` builds
 `Aabb<FloatFlavor>`s — geometry is `gac-core`'s job regardless of scalar
 flavor, not reimplemented per consumer (see docs/gac-design.md). Because
 the engine is generic rather than hand-duplicated, sphere-sphere,

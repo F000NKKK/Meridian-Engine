@@ -3,7 +3,7 @@
 use super::{RotorLike, ScalarLike, VectorLike};
 
 /// A rigid-motion (rotation + translation) type usable generically —
-/// implemented for [`crate::float_ga::Motor3`] and [`crate::fixed_ga::FixedMotor3`].
+/// implemented for [`crate::Motor3`] and [`crate::FixedMotor3`].
 pub trait MotorLike: Copy + core::fmt::Debug {
     type Scalar: ScalarLike;
     type Vector: VectorLike<Scalar = Self::Scalar>;

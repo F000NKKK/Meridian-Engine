@@ -184,10 +184,10 @@ Craftbook §1.3–1.4. When a concept has a float (`f32`/`Scalar`) flavor and a
 `rotor/mod.rs` (wiring only: `mod` and `pub use`), `rotor/float.rs`,
 `rotor/fixed.rs`, plus item-named files for logic shared by both flavors.
 The split is symmetric: never float code loose next to a `fixed` module.
-`lib.rs` is wiring only, and `generic.rs` is not a file name. Today's
-`gac-core` (`generic.rs`/`float_ga.rs`/`fixed_ga.rs`), `physics-core`,
-`physics-compute` and `soft_body` still use the old per-crate trio; wave 4
-of the Craftbook migration converts them — do not add to the old layout.
+`lib.rs` is wiring only, and `generic.rs` is not a file name. Wave 4 of
+the Craftbook migration converted `gac-core` (`rotor/`, `motor/`, `vector/`,
+`volume/`, ...), `physics-core` (`collision/`, `dynamics/`, `soft_body/`) and
+`physics-compute` (`soft_body/`, `broad_phase/`) to this layout; follow it.
 
 **Default to generic (or thin wrappers over one generic implementation),
 not disclosed duplication.** Full duplication (writing the float and fixed

@@ -3,7 +3,7 @@
 use super::{ScalarLike, VectorLike};
 
 /// A pure-rotation type usable generically — implemented for
-/// [`crate::float_ga::Rotor`] and [`crate::fixed_ga::FixedRotor`].
+/// [`crate::Rotor`] and [`crate::FixedRotor`].
 pub trait RotorLike: Copy + core::fmt::Debug {
     type Scalar: ScalarLike;
     type Vector: VectorLike<Scalar = Self::Scalar>;

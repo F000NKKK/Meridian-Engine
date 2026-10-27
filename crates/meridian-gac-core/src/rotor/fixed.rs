@@ -9,7 +9,7 @@ use crate::multivector::fixed::FixedMultivector;
 use crate::multivector::float::Multivector;
 use crate::vector::fixed::FixedVec3;
 
-/// Mirrors [`crate::float_ga::Rotor`].
+/// Mirrors [`crate::Rotor`].
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct FixedRotor(pub FixedMultivector);
 

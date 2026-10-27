@@ -5,10 +5,10 @@ use crate::flavor::{GaFlavor, ScalarLike, VectorLike};
 
 /// A half-space `normal . p + d >= 0` — a point satisfying this is on the
 /// plane's "inside". Another plain geometric primitive with no domain
-/// meaning of its own (`graphics-core`'s `Frustum`/[`ConvexVolume`] is a
+/// meaning of its own (`graphics-core`'s `Frustum`/[`ConvexVolume`](crate::ConvexVolume) is a
 /// handful of these; a future physics ground plane or clipping pass would
 /// be another consumer), so it lives here rather than being redefined per
-/// subsystem — see [`Aabb`]'s doc comment for the same reasoning.
+/// subsystem — see [`Aabb`](crate::Aabb)'s doc comment for the same reasoning.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Plane<F: GaFlavor> {
     pub normal: F::Vector,
@@ -44,8 +44,8 @@ impl<F: GaFlavor> Plane<F> {
     /// distance, i.e. iff even its best-case point — the one farthest
     /// *along* the normal, `shape.support(normal)` — is still outside; if
     /// that best-case point is inside, the shape can't be fully excluded.
-    /// Generic over any [`Shape`], not just [`Aabb`] — this is what makes
-    /// [`ConvexVolume::intersects`] work for every shape without the
+    /// Generic over any [`Shape`], not just [`Aabb`](crate::Aabb) — this is what makes
+    /// [`ConvexVolume::intersects`](crate::ConvexVolume::intersects) work for every shape without the
     /// plane needing to know what kind of shape it's testing.
     pub fn contains<S: Shape<F>>(&self, shape: &S) -> bool {
         self.distance(shape.support(self.normal)) >= F::Scalar::ZERO

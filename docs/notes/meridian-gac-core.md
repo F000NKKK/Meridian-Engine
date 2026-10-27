@@ -7,36 +7,36 @@ most 30 lines). Each section belongs to the module named in its heading.
 
 Everything else — geometric primitives (`Aabb`, `Sphere`, `Obb`,
 `Cone`, `Plane`, `Shape`, `ConvexVolume`, `Projection`, `Frame`) —
-lives in [`generic`], written **once**, generic over `GaFlavor`,
-because none of it has `float_ga`/`fixed_ga`'s Motor3-specific
+lives in the `volume`, `projection`, `mesh` and `motor` modules, written **once**, generic over `GaFlavor`,
+because none of it has the float/fixed `Motor3`-specific
 GPU-dispatch constraint: an AABB overlap test or a projection matrix
 derivation is the same sequence of operations regardless of which
 scalar type it runs on, so duplicating it would just be maintenance
 risk for no reason (see `CLAUDE.md`'s "Float/Fixed branching" rule).
-`float_ga`/`fixed_ga` each expose thin type aliases
-(`float_ga::Aabb = generic::Aabb<FloatFlavor>`,
-`fixed_ga::FixedAabb = generic::Aabb<FixedFlavor>`, ...) so existing
+each concept's `float.rs`/`fixed.rs` exposes thin type aliases
+(`volume::float::Aabb = volume::Aabb<FloatFlavor>`,
+`volume::fixed::FixedAabb = volume::Aabb<FixedFlavor>`, ...) so existing
 call sites don't need to think about the generic parameter at all —
 only code that wants to *be* generic over the flavor (like
-`physics-core`'s engine) reaches into `generic` directly.
+`physics-core`'s engine) reaches into those modules directly.
 
 See docs/gac-design.md and
 [ADR 001](../adr/001-geometric-algebra-as-spatial-model.md).
 
-## `fixed_ga`
+## `flavor`
 
 This is deterministic-simulation opt-in, not the default —
-`float_ga`'s `Motor3` (`f32`) remains the everyday, GPU-dispatchable
+the float `Motor3` (`f32`) remains the everyday, GPU-dispatchable
 pose type for everything else (rendering, ECS, audio, and
 `physics-core`'s own default `float::RigidBody`). But it's *usable by
 any crate* that needs CPU-deterministic geometry (`physics-core`'s
 `fixed::RigidBody` today, potentially a deterministic `graphics-core`
 CPU path or a large precise CPU/GPU-emulated simulation later) —
 that reusability is exactly why the primitives below live here in
-`gac-core`, not inside `physics-core`, the same reason `float_ga`'s
+`gac-core`, not inside `physics-core`, the same reason the float
 primitives aren't `physics-core`-local either. `physics-core`'s own
 engine (`RigidBody`/`BroadPhase`/`NarrowPhase`/`ConstraintSolver`/
 `Integrator`) goes a step further: it has no GPU-dispatch constraint
 of its own at all, so it's written once, generic over
-`crate::generic::GaFlavor`, rather than duplicated like `float_ga`/
-`fixed_ga` are here.
+`crate::flavor::GaFlavor`, rather than duplicated like the float and fixed
+algebra types are here.

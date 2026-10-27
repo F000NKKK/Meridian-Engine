@@ -12,7 +12,7 @@ use crate::multivector::float::Multivector;
 use crate::rotor::fixed::FixedRotor;
 use crate::vector::fixed::FixedVec3;
 
-/// Mirrors [`crate::float_ga::Motor3`].
+/// Mirrors [`crate::Motor3`].
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct FixedMotor3(pub FixedMultivector);
 
@@ -64,7 +64,7 @@ impl FixedMotor3 {
         FixedVec3::new(-r.0[blade::E023], r.0[blade::E013], -r.0[blade::E012])
     }
 
-    /// Mirrors [`crate::float_ga::Motor3::transform_vector`]: the
+    /// Mirrors [`crate::Motor3::transform_vector`]: the
     /// rotation-only action on a direction, computed as
     /// `transform_point(v) - transform_point(ZERO)` so translation
     /// cancels out exactly.

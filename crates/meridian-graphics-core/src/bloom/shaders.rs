@@ -25,7 +25,7 @@ fn vs_main(@builtin(vertex_index) index: u32) -> VsOut {
 }
 "#;
 
-/// A 5-tap separable Gaussian blur (the classic LearnOpenGL weights),
+/// A 5-tap separable Gaussian blur (the classic `LearnOpenGL` weights),
 /// applied along `u.direction` — call once with a horizontal direction,
 /// once with vertical, ping-ponging the source/destination textures, for
 /// a full 2D blur at roughly half the cost of a naive 2D kernel.

@@ -43,7 +43,7 @@ impl Rotor {
 
     /// Composes two rotations: `self` applied first, then `rhs` — i.e.
     /// `rhs.compose(self)` in row-vector convention, `self` in column-
-    /// vector/geometric-product convention. Matches [`Motor3::compose`].
+    /// vector/geometric-product convention. Matches [`Motor3::compose`](crate::Motor3::compose).
     pub fn compose(self, rhs: Rotor) -> Rotor {
         Rotor(rhs.0 * self.0)
     }

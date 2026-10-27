@@ -6,9 +6,9 @@ use crate::flavor::GaFlavor;
 /// An indexed polygon mesh: vertex positions (in some [`GaFlavor`]) plus
 /// face topology (flavor-independent). Shared by any subsystem that
 /// needs mesh data as *geometry* — `physics-core`'s soft-body particle/
-/// spring setup ([`icosphere`] specifically), a future `graphics-core`
+/// spring setup ([`icosphere`](crate::icosphere) specifically), a future `graphics-core`
 /// procedural-mesh path, ... — the same "one primitive, reused, not
-/// duplicated per consumer" reasoning as [`Aabb`]/[`Sphere`]/[`Shape`]
+/// duplicated per consumer" reasoning as [`Aabb`](crate::Aabb)/[`Sphere`](crate::Sphere)/[`Shape`](crate::Shape)
 /// above. This is deliberately *not* the same type as
 /// `asset-core::MeshAsset`: that type is always `f32`, always
 /// pre-triangulated, decoded-from-file-bytes data already shaped for GPU

@@ -4,7 +4,7 @@ use super::Shape;
 use crate::flavor::{GaFlavor, MotorLike, ScalarLike, VectorLike};
 
 /// An oriented (rotated) box — the other of the two box variants; see
-/// [`Aabb`] for the axis-aligned one. A cube is either with equal
+/// [`Aabb`](crate::Aabb) for the axis-aligned one. A cube is either with equal
 /// `half_extents` on every axis, not a separate type. Position *and*
 /// orientation are one `frame: F::Motor`, not a separate center/rotation
 /// pair — the same convention every rigid pose in the workspace uses

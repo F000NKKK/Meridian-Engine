@@ -9,7 +9,7 @@ use crate::rotor::fixed::FixedRotor;
 use crate::vector::fixed::FixedVec3;
 
 /// A small tolerance a few Q16.16 steps above zero, used the same way
-/// [`meridian_numeric_core::EPSILON`] is used in [`crate::float_ga`] —
+/// [`meridian_numeric_core::EPSILON`] is used in the float flavor —
 /// degenerate (near-zero-length) vector/bivector guards.
 pub(crate) const FIXED_EPSILON: Fixed = Fixed::from_bits(4); // 4 / 65536 ~= 6.1e-5
 

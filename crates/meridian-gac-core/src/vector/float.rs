@@ -10,7 +10,7 @@ use crate::flavor::float::FloatFlavor;
 use crate::volume::Shape;
 
 /// A plain 3D Euclidean vector — the ergonomic type most call sites use
-/// (points, directions, axes, translations); [`Multivector`]/[`Motor3`]
+/// (points, directions, axes, translations); [`Multivector`](crate::Multivector)/[`Motor3`](crate::Motor3)
 /// are the machinery underneath, not the day-to-day API.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Vec3 {
