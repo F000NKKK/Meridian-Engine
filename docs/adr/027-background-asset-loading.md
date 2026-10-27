@@ -43,7 +43,8 @@ result. A running read is not interrupted.
 
 **D4 — `tokio` stays for the network.** A future HTTP source is another
 `ByteSource` adapter that may use `tokio` inside; the port and the loader do
-not change. The rule in CLAUDE.md ("`async fn` only for genuine I/O") stands.
+not change ([ADR 028](028-http-asset-source.md) built it blocking, without
+`tokio`). The rule in CLAUDE.md ("`async fn` only for genuine I/O") stands.
 
 **D5 — lifetime stays elsewhere.** The loader hands back decoded CPU data. It
 does not register ids or decide how long the data lives; that is `resource`.

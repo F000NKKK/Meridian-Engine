@@ -1,7 +1,9 @@
 //! GPU buffers baked for one frame's draws.
 
 use meridian_gac::Vec3;
+use meridian_rendering_domain::DrawState;
 
+use super::main_pipelines::PipelineKey;
 use super::{DrawKind, DrawRequest, SceneRenderer};
 use crate::{Buffer, BufferUsage, Device, SampledTexture, Texture};
 
@@ -22,6 +24,23 @@ pub struct DrawBuffers {
     pub(crate) lit: bool,
     pub(crate) casts_shadow: bool,
     pub(crate) kind: DrawKind,
+    /// How this draw composites; picks its pipeline and its place in the
+    /// frame's draw order.
+    pub(crate) state: DrawState,
+    /// Where the renderable's origin sits in the world; translucent draws
+    /// are ordered by their distance from the camera.
+    pub(crate) origin: Vec3,
+}
+
+impl DrawBuffers {
+    /// The main pipeline this entry draws with.
+    pub(crate) fn pipeline_key(&self) -> PipelineKey {
+        PipelineKey {
+            textured: matches!(self.kind, DrawKind::Textured { .. }),
+            lit: self.lit,
+            state: self.state,
+        }
+    }
 }
 
 /// Transforms the request's local-space positions/normals by its frame,
@@ -46,12 +65,13 @@ pub(crate) fn bake_draw_buffers(
     let index_buffer = device.create_buffer(index_bytes.len(), BufferUsage::Index);
     device.write_buffer(&index_buffer, &index_bytes);
     let lit = !request.material.unlit;
+    let state = DrawState::of(request.material);
 
     let (vertex_bytes, kind) = match request.albedo {
         Some(texture) => (
             textured_vertex_bytes(request),
             DrawKind::Textured {
-                bind_group: textured_bind_group(device, renderer, texture, lit),
+                bind_group: textured_bind_group(device, renderer, texture, lit, state),
             },
         ),
         None => (colored_vertex_bytes(request), DrawKind::Colored),
@@ -65,6 +85,8 @@ pub(crate) fn bake_draw_buffers(
         lit,
         casts_shadow: request.casts_shadow,
         kind,
+        state,
+        origin: request.frame.transform_point(Vec3::ZERO),
     }
 }
 
@@ -87,49 +109,69 @@ fn push_world_vertex(bytes: &mut Vec<u8>, request: &DrawRequest<'_>, index: usiz
     );
 }
 
-/// Position, normal, tint and emissive per vertex (52 bytes).
-fn colored_vertex_bytes(request: &DrawRequest<'_>) -> Vec<u8> {
+/// Appends the material's shininess and specular strength.
+fn push_gloss(bytes: &mut Vec<u8>, request: &DrawRequest<'_>) {
+    push_f32s(
+        bytes,
+        &[request.material.shininess, request.material.specular],
+    );
+}
+
+/// Position, normal, tint, emissive and gloss per vertex (60 bytes).
+pub(super) fn colored_vertex_bytes(request: &DrawRequest<'_>) -> Vec<u8> {
     let count = request.mesh.positions.len().min(request.mesh.normals.len());
-    let mut bytes = Vec::with_capacity(count * 52);
+    let mut bytes = Vec::with_capacity(count * 60);
     for index in 0..count {
         push_world_vertex(&mut bytes, request, index);
         push_f32s(&mut bytes, &request.material.base_color_factor);
         push_f32s(&mut bytes, &request.material.emissive);
+        push_gloss(&mut bytes, request);
     }
     bytes
 }
 
-/// Position, normal, UV, tint and emissive per vertex (60 bytes).
-fn textured_vertex_bytes(request: &DrawRequest<'_>) -> Vec<u8> {
+/// Position, normal, UV, tint, emissive and gloss per vertex (68 bytes).
+pub(super) fn textured_vertex_bytes(request: &DrawRequest<'_>) -> Vec<u8> {
     let mesh = request.mesh;
     let count = mesh
         .positions
         .len()
         .min(mesh.normals.len())
         .min(mesh.uvs.len());
-    let mut bytes = Vec::with_capacity(count * 60);
+    let mut bytes = Vec::with_capacity(count * 68);
     for index in 0..count {
         push_world_vertex(&mut bytes, request, index);
         push_f32s(&mut bytes, &mesh.uvs[index]);
         push_f32s(&mut bytes, &request.material.base_color_factor);
         push_f32s(&mut bytes, &request.material.emissive);
+        push_gloss(&mut bytes, request);
     }
     bytes
 }
 
-/// A fresh bind group naming `texture`. Lit textured draws need the shadow
-/// map/sampler in their bind group too (see `lit_textured_shader_wgsl`'s
-/// bindings 3/4); unlit ignores lighting entirely, so its bind group stays
-/// the plain 3-binding shape.
+/// A fresh bind group naming `texture`, made against the pipeline `state`
+/// and `lit` select (a bind group only fits its own pipeline). Lit textured
+/// draws need the shadow map/sampler in their bind group too (see
+/// `lit_textured_shader_wgsl`'s bindings 3/4); unlit ignores lighting
+/// entirely, so its bind group stays the plain 3-binding shape.
 fn textured_bind_group(
     device: &Device,
     renderer: &SceneRenderer,
     texture: &Texture,
     lit: bool,
+    state: DrawState,
 ) -> crate::BindGroup {
+    let pipeline = &renderer
+        .pipelines
+        .get(PipelineKey {
+            textured: true,
+            lit,
+            state,
+        })
+        .pipeline;
     if lit {
         device.create_textured_shadow_bind_group(
-            &renderer.textured_lit_pipeline,
+            pipeline,
             &renderer.uniform_buffer,
             SampledTexture {
                 texture,
@@ -142,7 +184,7 @@ fn textured_bind_group(
         )
     } else {
         device.create_textured_bind_group(
-            &renderer.textured_unlit_pipeline,
+            pipeline,
             &renderer.uniform_buffer,
             texture,
             &renderer.sampler,

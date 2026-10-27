@@ -8,12 +8,14 @@
 //!
 //! Design notes: docs/notes/meridian-rendering-domain.md (`submission`).
 
+mod draw_order;
 mod registries;
 mod shadows;
 #[cfg(test)]
 mod tests;
 mod view_uniforms;
 
+pub use draw_order::{DrawState, OrderedDraw, order_draws};
 pub use registries::*;
 pub use shadows::*;
 pub use view_uniforms::ViewUniforms;

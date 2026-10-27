@@ -6,14 +6,17 @@
 //! buffers and records the passes.
 //!
 //! Mesh/material/texture identity is handle-based, never a raw index or a
-//! driver object (ADR 002); four pipelines are chosen per renderable at bake
-//! time: textured vs flat colour crossed with lit vs `Material::unlit`.
+//! driver object (ADR 002); sixteen pipelines are chosen per renderable at bake
+//! time: textured vs flat colour, lit vs `Material::unlit`, and the four
+//! `DrawState`s (opaque, translucent, and the two on-top states).
 //!
 //! Design notes: docs/notes/meridian-rendering-domain.md (`submission`).
 
 mod draw_buffers;
 mod draw_kind;
+mod draw_ordering;
 mod draw_request;
+mod main_pipelines;
 mod prepared_scene;
 mod registries;
 mod scene_assets;
@@ -29,6 +32,7 @@ mod vertex_layout;
 pub use draw_buffers::DrawBuffers;
 pub(crate) use draw_buffers::bake_draw_buffers;
 pub(crate) use draw_kind::DrawKind;
+pub(crate) use draw_ordering::draw_order;
 pub(crate) use draw_request::DrawRequest;
 pub use prepared_scene::PreparedScene;
 pub use registries::TextureRegistry;
