@@ -11,15 +11,16 @@
 //! Layer: infrastructure (adapter); bounded context: physics
 //! (`craftbook.toml`, docs/context-map.md).
 //!
-//! [`generic`] builds the per-particle CSR spring adjacency
-//! ([`generic::build_adjacency`]) `float`/`fixed` both dispatch from —
+//! [`soft_body::csr`] builds the per-particle CSR spring adjacency
+//! ([`soft_body::csr::build_adjacency`]) `soft_body::float`/
+//! `soft_body::fixed` both dispatch from —
 //! topology extraction has no float/fixed distinction of its own. The
 //! GPU kernels themselves are *not* thin aliases over one generic
 //! implementation, unlike most float/fixed splits in this workspace
 //! (CLAUDE.md's "Float/Fixed branching" rule): this is a genuine
 //! GPU-dispatch constraint, the same one that keeps `gac-core::Motor3`
-//! concretely `f32` — [`float`]'s WGSL kernel uses native `f32` GPU
-//! arithmetic directly, while [`fixed`]'s kernel emulates Q16.16 (via
+//! concretely `f32` — [`soft_body::float`]'s WGSL kernel uses native `f32` GPU
+//! arithmetic directly, while [`soft_body::fixed`]'s kernel emulates Q16.16 (via
 //! `meridian_gac_compute::fixed_wgsl::FIXED_ARITHMETIC_LIB_WGSL`) since
 //! WGSL has no fixed-point type; the two shader programs are structurally
 //! different, not two copies of the same one.
@@ -43,7 +44,7 @@
 //! [`narrow_phase::GenerateContactsKernel`] handles that with a
 //! fixed-size-per-pair output slot capped at
 //! [`narrow_phase::MAX_CONTACTS_PER_PAIR`] (matching
-//! `physics-core::generic::face_manifold`'s own point cap) rather than
+//! `physics-core::collision::face_manifold`'s own point cap) rather than
 //! a true dynamic prefix-sum — see that module's own doc comment.
 //! [`constraint_solver`] is the hardest of the five (each contact
 //! mutates two bodies, so naive parallelism races) — see that module's
@@ -51,7 +52,7 @@
 //! sequential Gauss-Seidel solver's result exactly, not just
 //! approximately.
 //!
-//! **[`float::BroadPhaseGpuKernel`] is the first of these five with a
+//! **[`broad_phase::float::BroadPhaseGpuKernel`] is the first of these five with a
 //! real WGSL shader behind it** — the concrete start of turning "batched
 //! through `compute-runtime`'s CPU backend" into "literally
 //! GPU-executing." It only takes on the broad-phase overlap test itself
@@ -66,9 +67,7 @@
 
 pub mod broad_phase;
 pub mod constraint_solver;
-pub mod fixed;
-pub mod float;
-pub mod generic;
 pub mod narrow_phase;
 mod readback;
 pub mod rigid_body;
+pub mod soft_body;

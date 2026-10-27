@@ -1,6 +1,13 @@
-//! Tests of this module.
+//! Tests of the `Fixed` soft-body GPU kernel.
 
-use super::*;
+use meridian_compute_runtime::ComputeContext;
+use meridian_gac_core::volume::Plane;
+use meridian_gac_core::{FixedFlavor, FixedVec3};
+use meridian_numeric_core::Fixed;
+use meridian_physics_core::soft_body::fixed::FixedSoftBody;
+
+use crate::soft_body::csr::build_adjacency;
+use crate::soft_body::fixed::FixedSoftBodyGpuKernel;
 use meridian_physics_core::soft_body::fixed::{
     FixedSoftBodyIntegrator, FixedSoftBodyMaterial, FixedSpringTuning, fixed_icosphere_soft_body,
 };
@@ -73,16 +80,7 @@ async fn gpu_step_matches_cpu_step_bit_exact() {
     let dt = Fixed::from_num(1.0 / 240.0);
 
     for step in 0..60 {
-        kernel
-            .step(
-                &context,
-                &mut gpu_body,
-                integrator.gravity,
-                integrator.ground,
-                integrator.restitution,
-                dt,
-            )
-            .await;
+        kernel.step(&context, &mut gpu_body, &integrator, dt).await;
         integrator.step(&mut cpu_body, dt);
 
         for (idx, (g, c)) in gpu_body
@@ -123,7 +121,7 @@ fn gpu_body_adjacency_degree(body: &FixedSoftBody, particle: usize) -> usize {
 /// Pure-Rust replica of the GPU kernel's per-particle gather
 /// algorithm (no WGSL, no GPU) — proves the *reformulation itself*
 /// (independent of its WGSL/GPU execution) is bit-exact with
-/// `FixedSoftBodyIntegrator::step`. See `crate::generic`'s module doc
+/// `FixedSoftBodyIntegrator::step`. See `crate::soft_body::csr`'s module doc
 /// for why this needs the `is_a`-conditional canonical direction:
 /// recomputing direction/`total` per endpoint diverges by one raw bit
 /// at step 48, and this test is the regression test for that.
@@ -145,7 +143,7 @@ fn rust_gather_step(
         let start = adjacency.offsets[i] as usize;
         let end = adjacency.offsets[i + 1] as usize;
         for e in start..end {
-            let (j, is_a) = crate::generic::decode_neighbor(adjacency.neighbor[e]);
+            let (j, is_a) = crate::soft_body::csr::decode_neighbor(adjacency.neighbor[e]);
             let delta = if is_a {
                 body.positions[j] - body.positions[i]
             } else {

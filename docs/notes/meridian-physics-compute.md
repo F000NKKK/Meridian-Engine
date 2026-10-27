@@ -16,8 +16,8 @@ summation order can differ from the CPU's, the same reason `Fixed`
 exists at all — see `meridian_numeric_core::Fixed`'s doc comment).
 
 Like [`meridian_gac_compute::fixed_wgsl`], buffers (topology,
-positions, velocities) are rebuilt every [`float::SoftBodyGpuKernel::step`]/
-[`fixed::FixedSoftBodyGpuKernel::step`] call rather than persisted
+positions, velocities) are rebuilt every [`soft_body::float::SoftBodyGpuKernel::step`]/
+[`soft_body::fixed::FixedSoftBodyGpuKernel::step`] call rather than persisted
 across steps — a real, deliberately-deferred gap (see
 `meridian_compute_runtime`'s `HybridKernel` module doc for the same
 tradeoff acknowledged there), not an oversight.
@@ -56,7 +56,7 @@ better *safely*, at zero extra `unsafe`, only because coloring
 already proves the disjointness a per-body lock would otherwise
 exist to arbitrate).
 
-## `generic`
+## `soft_body::csr`
 
 Each half-edge also encodes, in `neighbor`'s top bit, whether *this*
 particle is the original [`Spring`](
@@ -80,4 +80,4 @@ canonical `a`-to-`b` direction and `total` (via `is_a`-conditional
 subtraction order, still exact), and only the non-`a` endpoint
 negates the finished `total` vector — an exact negation, never a
 multiply — reproducing `SoftBodyIntegrator::step` bit-for-bit. See
-[`crate::fixed`]'s kernel for where this canonicalization happens.
+[`crate::soft_body::fixed`]'s kernel for where this canonicalization happens.

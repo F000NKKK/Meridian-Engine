@@ -50,17 +50,15 @@ crates/meridian-mel-build/src/generated_module.rs	S701		1
 crates/meridian-mel-build/src/ui_bindings.rs	S701		1
 crates/meridian-mel-build/src/ui_build.rs	S701		1
 crates/meridian-numeric-core/src/fixed.rs	C101		1
-crates/meridian-physics-compute/src/broad_phase.rs	C108	BroadPhasePairsKernel	1
+crates/meridian-physics-compute/src/broad_phase/float.rs	C108	BroadPhaseGpuKernel	1
+crates/meridian-physics-compute/src/broad_phase/pairs.rs	C108	BroadPhasePairsKernel	1
 crates/meridian-physics-compute/src/constraint_solver.rs	C108	ConstraintSolverBatchKernel	1
-crates/meridian-physics-compute/src/fixed/mod.rs	C101		1
-crates/meridian-physics-compute/src/fixed/mod.rs	C108	FixedSoftBodyGpuKernel	1
-crates/meridian-physics-compute/src/float/mod.rs	C101		1
-crates/meridian-physics-compute/src/float/mod.rs	C108	BroadPhaseGpuKernel	1
-crates/meridian-physics-compute/src/float/mod.rs	C108	SoftBodyGpuKernel	1
-crates/meridian-physics-compute/src/generic.rs	C108	Adjacency	1
 crates/meridian-physics-compute/src/narrow_phase/mod.rs	C108	GenerateContactsKernel	1
 crates/meridian-physics-compute/src/narrow_phase/mod.rs	C108	NarrowPhaseTestPairKernel	1
 crates/meridian-physics-compute/src/rigid_body.rs	C108	RigidBodyIntegratorKernel	1
+crates/meridian-physics-compute/src/soft_body/csr.rs	C108	Adjacency	1
+crates/meridian-physics-compute/src/soft_body/fixed.rs	C108	FixedSoftBodyGpuKernel	1
+crates/meridian-physics-compute/src/soft_body/float.rs	C108	SoftBodyGpuKernel	1
 crates/meridian-physics-core/src/collision/cuboid_contact.rs	C101		1
 crates/meridian-platform-core/src/capabilities.rs	C108	BackendCapabilities	1
 crates/meridian-platform-core/src/capabilities.rs	C108	CpuCapabilities	1

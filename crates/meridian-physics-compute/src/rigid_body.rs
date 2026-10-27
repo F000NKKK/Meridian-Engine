@@ -11,7 +11,7 @@
 //! split this crate's `float`/`fixed` soft-body kernels already exercise.
 //!
 //! **Generic over `F: GaFlavor`, not float/fixed-split**, unlike
-//! [`crate::float`]/[`crate::fixed`]: `Integrator::step` has no
+//! [`crate::soft_body::float`]/[`crate::soft_body::fixed`]: `Integrator::step` has no
 //! GPU-dispatch constraint of its own — it's a per-body loop of GA
 //! composition/exponential-map calls, the same reason `physics-core`'s
 //! own `Integrator` is written once and generic (see that crate's module

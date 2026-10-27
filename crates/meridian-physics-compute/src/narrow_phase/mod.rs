@@ -108,7 +108,7 @@ where
 /// the "per-pair count prefix-sum into a flattened output buffer"
 /// technique [`crate`]'s and docs/roadmap.md's own notes about batching
 /// `generate_contacts` describe, specialized to a fixed cap instead of a
-/// true dynamic prefix-sum, since `physics-core::generic::face_manifold`
+/// true dynamic prefix-sum, since `physics-core::collision::face_manifold`
 /// itself already hard-caps a box-box manifold at 4 points (`.take(4)`)
 /// — the same fixed-capacity-array approach `graphics-core::submission`'s
 /// `MAX_LIGHTS` uses for its own per-frame uniform array. A pair

@@ -1,5 +1,5 @@
 //! Per-particle spring adjacency — the data-prep step shared by
-//! [`crate::float`]/[`crate::fixed`]'s GPU kernels, generic over
+//! [`super::float`]/[`super::fixed`]'s GPU kernels, generic over
 //! `F: GaFlavor` since it's pure topology extraction (no arithmetic of
 //! its own, so no GPU-dispatch constraint forces it to be flavor-split —
 //! see [`crate`]'s own doc comment).
@@ -15,7 +15,7 @@
 //! particle `i`'s incident springs) so each GPU thread only ever *reads*
 //! its neighbors' old state and *writes* its own new state.
 //!
-//! Design notes: docs/notes/meridian-physics-compute.md (`generic`).
+//! Design notes: docs/notes/meridian-physics-compute.md (`soft_body`).
 
 use meridian_gac_core::{GaFlavor, ScalarLike};
 use meridian_physics_core::soft_body::mass_spring::SoftBody;
@@ -43,7 +43,7 @@ pub fn decode_neighbor(encoded: u32) -> (usize, bool) {
     ((encoded & !IS_A_BIT) as usize, encoded & IS_A_BIT != 0)
 }
 
-/// The CSR-encoded adjacency `crate::float`/`crate::fixed` upload as GPU
+/// The CSR-encoded adjacency `super::float`/`super::fixed` upload as GPU
 /// storage buffers. `rest_length`/`stiffness`/`damping` are duplicated
 /// per directed half-edge (once from each endpoint's perspective) so a
 /// GPU thread never needs to know which side of the original [`Spring`](

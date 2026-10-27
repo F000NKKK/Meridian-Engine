@@ -2,7 +2,7 @@
 clippy::assigning_clones	1
 clippy::case_sensitive_file_extension_comparisons	1
 clippy::cast_lossless	32
-clippy::cast_possible_truncation	77
+clippy::cast_possible_truncation	75
 clippy::cast_possible_wrap	4
 clippy::cast_precision_loss	41
 clippy::cast_sign_loss	8
@@ -18,7 +18,7 @@ clippy::manual_midpoint	2
 clippy::many_single_char_names	3
 clippy::map_unwrap_or	7
 clippy::missing_errors_doc	33
-clippy::missing_panics_doc	18
+clippy::missing_panics_doc	15
 clippy::module_name_repetitions	33
 clippy::must_use_candidate	283
 clippy::needless_raw_string_hashes	16
@@ -31,8 +31,8 @@ clippy::shadow_unrelated	11
 clippy::similar_names	5
 clippy::single_match_else	3
 clippy::struct_field_names	1
-clippy::too_many_arguments	4
-clippy::too_many_lines	6
+clippy::too_many_arguments	2
+clippy::too_many_lines	3
 clippy::trivially_copy_pass_by_ref	3
 clippy::unreachable	2
 clippy::unused_async	1
