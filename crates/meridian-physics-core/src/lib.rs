@@ -20,7 +20,7 @@
 //! instead of once).
 //!
 //! Design notes: docs/notes/meridian-physics-core.md (`lib`).
-
+#![doc = include_str!("../README.md")]
 #![forbid(unsafe_code)]
 
 pub mod fixed;

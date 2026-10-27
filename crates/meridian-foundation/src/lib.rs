@@ -9,7 +9,7 @@
 //! the diagnostics facilities are *why* they'd want to — every crate
 //! logs through the same sink, and one panic hook captures the whole
 //! process's post-mortem.
-
+#![doc = include_str!("../README.md")]
 #![forbid(unsafe_code)]
 
 pub mod crash_reporting;

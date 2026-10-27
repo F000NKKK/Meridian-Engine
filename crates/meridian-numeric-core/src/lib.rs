@@ -8,7 +8,7 @@
 //! deterministic opt-in path — see that module's doc comment for why it
 //! exists and when to reach for it). Both are re-exported at the crate
 //! root for convenience.
-
+#![doc = include_str!("../README.md")]
 #![forbid(unsafe_code)]
 
 pub mod fixed;

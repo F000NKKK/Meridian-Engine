@@ -6,6 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 description = "Low-level audio device abstraction: output streams, buffers and platform audio backends."
+readme = "README.md"
 
 [dependencies]
 meridian-foundation = { workspace = true }

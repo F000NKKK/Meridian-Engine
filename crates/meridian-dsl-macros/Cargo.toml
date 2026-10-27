@@ -6,6 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 description = "#[dsl_tag] attribute macro implementing meridian_dsl_core::DslTag for a struct — the code-generation half of the SDK's extensible scene DSL; see meridian-dsl-core for the trait and meridian-sdk::dsl for the registry it feeds."
+readme = "README.md"
 
 [lib]
 proc-macro = true

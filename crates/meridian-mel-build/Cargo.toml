@@ -6,6 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 description = "Build-time .mel generator: turns each .mel document into a generated <name>.g.rs (x:Name ids, typed builder, code-behind aliases) that a code-behind pulls in with meridian_sdk::mel_include!. Used from build.rs; see ADR 017."
+readme = "README.md"
 
 [dependencies]
 meridian-dsl-core = { workspace = true }

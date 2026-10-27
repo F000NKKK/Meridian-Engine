@@ -6,6 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 description = "Rigid body dynamics built on the GAC: broad/narrow phase collision, constraint solving and integration."
+readme = "README.md"
 
 [dependencies]
 meridian-gac-core = { workspace = true }

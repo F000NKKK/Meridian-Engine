@@ -18,7 +18,7 @@
 //! checker is satisfied without `unsafe`: an archetype's columns live in a
 //! `HashMap`, and `HashMap::get_disjoint_mut` hands out several `&mut`
 //! columns after checking their keys differ. See docs/ecs-design.md.
-
+#![doc = include_str!("../README.md")]
 #![forbid(unsafe_code)]
 
 mod archetype;

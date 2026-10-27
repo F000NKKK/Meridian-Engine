@@ -6,6 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 description = "Loading and decoding of images, meshes, audio, shaders and binary formats. Does not manage ownership or lifetime of loaded data."
+readme = "README.md"
 
 [dependencies]
 meridian-foundation = { workspace = true }

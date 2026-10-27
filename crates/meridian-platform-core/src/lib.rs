@@ -10,7 +10,7 @@
 //! [`dynamic_library`] (plugin/hot-reload loading).
 //!
 //! Design notes: docs/notes/meridian-platform-core.md (`lib`).
-
+#![doc = include_str!("../README.md")]
 #![expect(
     unsafe_code,
     reason = "dynamic_library wraps the OS loader (dlopen/LoadLibraryW) by FFI"

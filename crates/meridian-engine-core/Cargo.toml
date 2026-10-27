@@ -6,6 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 description = "Runtime: frame scheduler, event system, subsystem manager; ties every other crate into the main loop."
+readme = "README.md"
 
 [dependencies]
 meridian-foundation = { workspace = true }

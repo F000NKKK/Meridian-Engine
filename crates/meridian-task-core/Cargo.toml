@@ -6,6 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 description = "Job graph scheduler: worker threads and dependency tracking for parallel frame execution."
+readme = "README.md"
 
 [dependencies]
 
