@@ -5,8 +5,7 @@ use meridian_memory_core::ResourcePool;
 use super::Change;
 use super::element::Element;
 use super::pointer_state::PointerState;
-use crate::UiEvent;
-use crate::{ElementKind, NodeId, UiError};
+use crate::{ElementKind, NodeId, UiError, UiEvent};
 
 /// A retained element tree. Nodes live in a generational pool and refer to
 /// each other by [`NodeId`]; there are no references and no reference
