@@ -9,3 +9,10 @@ description = "Geometric Algebra Core — vectors, bivectors, multivectors, roto
 
 [dependencies]
 meridian-numeric-core = { workspace = true }
+# Substrate Data schemas for the GA types (`data` feature) — off by default,
+# like a `serde` feature: no math crate depends on the data library unless
+# an application asks. See docs/data-formats.md ("Math values").
+substrate-data = { workspace = true, optional = true }
+
+[features]
+data = ["dep:substrate-data", "meridian-numeric-core/data"]
