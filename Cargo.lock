@@ -1254,6 +1254,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "meridian-font-core"
+version = "0.1.0"
+dependencies = [
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "meridian-foundation"
 version = "0.7.0"
 dependencies = [

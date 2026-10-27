@@ -151,6 +151,11 @@ layer = "domain"
 context = "ui"
 
 [[crate]]
+name = "meridian-font-core"
+layer = "domain"
+context = "ui"
+
+[[crate]]
 name = "meridian-mel-build"
 layer = "infra"
 context = "ui"

@@ -2,7 +2,8 @@
 
 ## Status
 
-Proposed (2026-10-27). Nothing is implemented yet.
+Proposed (2026-10-27). Implemented so far: the TrueType parser and
+outlines (§2, §3); rasterizer, atlas and wiring (§4, §5, §7) follow.
 
 ## Context
 
@@ -18,8 +19,9 @@ shaping separate from rasterization), but is tied to Yog's graphics types.
 ## Decision
 
 **1. One new domain crate, `meridian-font-core`.** Pure CPU, no I/O, no
-`async`, no GPU. It depends on `foundation` only (`gac-core` is not needed:
-glyph geometry is 2D font units, not spatial algebra). It does not read
+`async`, no GPU. It depends on no workspace crate (`gac-core` is not needed: glyph
+geometry is 2D font units, not spatial algebra). It belongs to the `ui`
+context. It does not read
 files: callers pass bytes (`asset-core` or the game owns loading and
 lifetime, ADR 004/011).
 
@@ -70,6 +72,3 @@ shaper, or pack its own bitmaps into the atlas without using the rest.
 - We own the parser and rasterizer, which is a real maintenance cost
   (hinting, CFF and complex scripts are not free); the first version
   deliberately stops at Latin-style text.
-- The crate needs registering in `craftbook.toml` (domain layer, context
-  `rendering`'s published vocabulary or its own `text` context) and in
-  `dependency-rules.md` when it lands.

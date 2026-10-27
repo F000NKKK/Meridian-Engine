@@ -11,7 +11,7 @@ backlog; architecture decisions still go to `docs/adr/`, status to
 |---|---|---|
 | UI rendering vocabulary (screen-space = `Scene2D` with pixel `Camera2D`, world-space = `Renderable3D` with `billboard`/`always_on_top`) | `meridian-graphics-core` (`scene.rs`), [graphics-design.md](../graphics-design.md) "UI is a role, not a third scene kind" | Design accepted; `Scene2D`/`Sprite`/`Camera2D` exist; `always_on_top` and blend modes not acted on by the submission bridge yet |
 | Widgets, layout, focus, input routing | `meridian-ui-core`, [ADR 018](../adr/018-ui-architecture.md) | Element tree, typed properties, layout, hit testing, focus and input routing done; no controls or styles yet |
-| Text: fonts, shaping, glyph atlas | future crate, own ADR | Not started |
+| Text: fonts, shaping, glyph atlas | `meridian-font-core`, [ADR 023](../adr/023-own-font-stack.md) | TrueType parser and outlines done; rasterizer, atlas, shaping and text in `ui-render` not yet |
 | Pointer/keyboard input feeding UI | `meridian-platform-core::InputState` (consumer, not owner) | Key/mouse state exists; UI has its own `InputEvent`; the `platform-core` adapter that fills it is not written; no IME composition, no gamepad |
 | Editor / IDLE UX (inspector, scene tree, viewport gizmos) | Meridian IDLE app (owned by **team/ide**); engine side through the editor protocol in `docs/data-formats.md` / substrate-data | We own UX requirements and engine-side hooks, team/ide owns the app |
 | Tree to `Scene2d` | `meridian-ui-render`, [ADR 021](../adr/021-ui-extraction-and-extensibility.md) | `Background` fills extracted; text, borders, images, custom paint not yet; no sprite renderer consumes `Scene2d` |

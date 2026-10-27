@@ -277,6 +277,7 @@ bottom-up.
 - `meridian-dsl-core` -> `meridian-foundation`
 - `meridian-dsl-macros` -> (nothing; external `syn`/`quote`/`proc-macro-crate` only)
 - `meridian-mel-build` -> `meridian-dsl-core`, `meridian-ui-core`
+- `meridian-font-core` -> (no workspace crates)
 - `meridian-ui-core` -> `meridian-foundation`, `meridian-memory-core`
 - `meridian-ui-render` -> `meridian-gac-core`, `meridian-graphics-core`, `meridian-ui-core`
 - `meridian-sdk` -> `meridian-asset-core`, `meridian-audio-core`, `meridian-dsl-core`, `meridian-dsl-macros`, `meridian-engine-core`, `meridian-foundation`, `meridian-gac-core`, `meridian-graphics-core`, `meridian-graphics-driver`, `meridian-physics-core`, `meridian-platform-core`, `meridian-ui-core`

@@ -100,6 +100,7 @@ ALLOWED = {
     "meridian-dsl-core": {"meridian-foundation"},
     "meridian-dsl-macros": set(),
     "meridian-mel-build": {"meridian-dsl-core", "meridian-ui-core"},
+    "meridian-font-core": set(),
     "meridian-ui-core": {"meridian-foundation", "meridian-memory-core"},
     "meridian-ui-render": {
         "meridian-gac-core",
