@@ -1,0 +1,336 @@
+# Meridian-Engine layer map: current crate names, intended layers.
+# Each crate is mapped to the layer it is meant to be in, so `craftcheck deps`
+# reports where today's code breaks it (baseline: .craftcheck-deps-baseline).
+# Target crate names and the migration waves: Craftbook adoption/meridian-engine.md,
+# decisions: docs/adr/019-ports-in-domain-drivers-as-adapters.md and
+# docs/adr/020-craftbook-adoption.md. Contexts and edges: docs/context-map.md.
+# scripts/check_dependency_rules.py reads the layers below (one source).
+
+[[crate]]
+name = "meridian-diagnostics"
+layer = "shared-kernel"
+context = "diagnostics"
+
+[[crate]]
+name = "meridian-diagnostics-fs"
+layer = "infra"
+context = "diagnostics"
+
+[[crate]]
+name = "meridian-numeric"
+layer = "shared-kernel"
+context = "geometry"
+
+[[crate]]
+name = "meridian-gac"
+layer = "shared-kernel"
+context = "geometry"
+profile = "perf"
+
+[[crate]]
+name = "meridian-memory"
+layer = "shared-kernel"
+context = "identity"
+profile = "perf"
+
+[[crate]]
+name = "meridian-resource"
+layer = "shared-kernel"
+context = "identity"
+
+[[crate]]
+name = "meridian-ecs"
+layer = "shared-kernel"
+context = "entity"
+profile = "perf"
+
+[[crate]]
+name = "meridian-runtime-threads"
+layer = "infra"
+context = "runtime"
+
+[[crate]]
+name = "meridian-platform-winit"
+layer = "infra"
+context = "platform"
+
+[[crate]]
+name = "meridian-gpu-wgpu"
+layer = "infra"
+context = "compute"
+
+[[crate]]
+name = "meridian-compute-wgpu"
+layer = "infra"
+context = "compute"
+
+[[crate]]
+name = "meridian-compute-app"
+layer = "app"
+context = "compute"
+
+[[crate]]
+name = "meridian-gac-wgpu"
+layer = "infra"
+context = "geometry"
+
+[[crate]]
+name = "meridian-asset-domain"
+layer = "domain"
+context = "assets"
+
+[[crate]]
+name = "meridian-asset-png"
+layer = "infra"
+context = "assets"
+
+[[crate]]
+name = "meridian-asset-symphonia"
+layer = "infra"
+context = "assets"
+
+[[crate]]
+name = "meridian-rendering-domain"
+layer = "domain"
+context = "rendering"
+
+[[crate]]
+name = "meridian-rendering-app"
+layer = "app"
+context = "rendering"
+
+[[crate]]
+name = "meridian-rendering-wgpu"
+layer = "infra"
+context = "rendering"
+
+[[crate]]
+name = "meridian-physics-domain"
+layer = "domain"
+context = "physics"
+profile = "perf"
+
+[[crate]]
+name = "meridian-physics-app"
+layer = "app"
+context = "physics"
+
+[[crate]]
+name = "meridian-physics-wgpu"
+layer = "infra"
+context = "physics"
+
+[[crate]]
+name = "meridian-audio-domain"
+layer = "domain"
+context = "audio"
+
+[[crate]]
+name = "meridian-audio-app"
+layer = "app"
+context = "audio"
+
+[[crate]]
+name = "meridian-audio-cpal"
+layer = "infra"
+context = "audio"
+
+[[crate]]
+name = "meridian-runtime-app"
+layer = "app"
+context = "runtime"
+
+[[crate]]
+name = "meridian-markup"
+layer = "shared-kernel"
+context = "scene-markup"
+
+[[crate]]
+name = "meridian-markup-macros"
+layer = "interface"
+context = "scene-markup"
+
+[[crate]]
+name = "meridian-sdk"
+layer = "interface"
+context = "runtime"
+
+[[crate]]
+name = "meridian-examples"
+layer = "interface"
+context = "runtime"
+
+[[crate]]
+name = "magic_figures"
+layer = "interface"
+context = "runtime"
+
+[[crate]]
+name = "physic_figures"
+layer = "interface"
+context = "runtime"
+
+[[crate]]
+name = "meridian-ui-domain"
+layer = "domain"
+context = "ui"
+
+[[crate]]
+name = "meridian-ui-mel"
+layer = "infra"
+context = "ui"
+
+[[crate]]
+name = "meridian-ui-scene2d"
+layer = "infra"
+context = "ui"
+
+[[crate]]
+name = "meridian-data-substrate"
+layer = "infra"
+context = "data"
+
+[[crate]]
+name = "meridian-editor-domain"
+layer = "infra"
+context = "editor"
+
+# Infra, not app: the host answers in the protocol's terms, and an app crate may
+# not depend on infra (the protocol crate is infra, ADR 019). It is pure (no I/O).
+[[crate]]
+name = "meridian-editor-app"
+layer = "infra"
+context = "editor"
+
+[[crate]]
+name = "meridian-editor-tcp"
+layer = "infra"
+context = "editor"
+
+[[context_edge]]
+from = "physics"
+to = "geometry"
+relation = "shared-kernel"
+
+[[context_edge]]
+from = "rendering"
+to = "geometry"
+relation = "shared-kernel"
+
+[[context_edge]]
+from = "audio"
+to = "geometry"
+relation = "shared-kernel"
+
+[[context_edge]]
+from = "rendering"
+to = "assets"
+relation = "published-language"
+
+[[context_edge]]
+from = "audio"
+to = "assets"
+relation = "published-language"
+
+[[context_edge]]
+from = "physics"
+to = "compute"
+relation = "customer-supplier"
+
+[[context_edge]]
+from = "rendering"
+to = "compute"
+relation = "customer-supplier"
+
+[[context_edge]]
+from = "geometry"
+to = "compute"
+relation = "customer-supplier"
+
+[[context_edge]]
+from = "runtime"
+to = "physics"
+relation = "customer-supplier"
+
+[[context_edge]]
+from = "runtime"
+to = "audio"
+relation = "customer-supplier"
+
+[[context_edge]]
+from = "runtime"
+to = "rendering"
+relation = "customer-supplier"
+
+[[context_edge]]
+from = "runtime"
+to = "platform"
+relation = "customer-supplier"
+
+[[context_edge]]
+from = "runtime"
+to = "assets"
+relation = "customer-supplier"
+
+[[context_edge]]
+from = "runtime"
+to = "compute"
+relation = "customer-supplier"
+
+[[context_edge]]
+from = "scene-markup"
+to = "runtime"
+relation = "acl"
+
+# Adapters use the platform context's OS services (window handle, capability
+# report, dynamic loading). Customer-supplier: platform publishes, adapters consume.
+[[context_edge]]
+from = "rendering"
+to = "platform"
+relation = "customer-supplier"
+
+[[context_edge]]
+from = "compute"
+to = "platform"
+relation = "customer-supplier"
+
+[[context_edge]]
+from = "audio"
+to = "platform"
+relation = "customer-supplier"
+
+[[context_edge]]
+from = "physics"
+to = "platform"
+relation = "customer-supplier"
+
+[[exempt]]
+path = "crates/meridian-diagnostics/src/logging.rs"
+reason = "process logger: the one allowed global (ch. 4 §4.7); file output is the LogSink adapter meridian-diagnostics-fs (ADR 020 D7)"
+
+[[context_edge]]
+from = "editor"
+to = "data"
+relation = "customer-supplier"
+
+# ui-scene2d reads the UI tree and writes rendering-domain's Scene2d: ui is the
+# customer, rendering publishes the vocabulary (ADR 021).
+[[context_edge]]
+from = "ui"
+to = "rendering"
+relation = "customer-supplier"
+
+[[context_edge]]
+from = "runtime"
+to = "ui"
+relation = "customer-supplier"
+
+[[context_edge]]
+from = "runtime"
+to = "scene-markup"
+relation = "customer-supplier"
+
+[[context_edge]]
+from = "runtime"
+to = "diagnostics"
+relation = "customer-supplier"

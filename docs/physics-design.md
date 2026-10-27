@@ -1,24 +1,21 @@
-# Physics design — `meridian-physics-driver` + `meridian-physics-core`
+# Physics design — `meridian-physics-domain`
 
 ## The split
 
-`physics-driver` is execution only: memory backend, SIMD/GPU dispatch,
-synchronization. It owns **no** collision algorithms, no BVH, no
-broad-phase structure — those are domain logic, not execution backend, and
-belong to `physics-core`. This is a narrower scope than the
-`graphics-driver`/`audio-driver` pattern might suggest at first glance:
-BVH/spatial-hashing are how physics *reasons about space*, not how it
-*executes work*, so they stay in `physics-core` even though they're
-"low-level" in the algorithmic sense. See
-[ADR 005](adr/005-driver-core-separation.md) and
-[dependency-rules.md](dependency-rules.md) rule 2.
+Physics has no driver crate. BVH/spatial-hashing are how physics *reasons
+about space*, not how it *executes work*, so they are domain logic in
+`physics-domain`; batched execution is `physics-wgpu`'s job. See
+[dependency-rules.md](dependency-rules.md) rule 9. The unused
+`physics-driver` was deleted in wave 5
+([ADR 019](adr/019-ports-in-domain-drivers-as-adapters.md)); its CPU
+capability report is `platform-winit::CpuCapabilities`.
 
-`physics-core`'s whole engine — `RigidBody`, `ColliderShape`, `Contact`,
+`physics-domain`'s whole engine — `RigidBody`, `ColliderShape`, `Contact`,
 `BroadPhase`, `NarrowPhase`, `ConstraintSolver`, `Integrator` — is written
-**once**, in `src/generic.rs`, generic over
-`meridian_gac_core::generic::GaFlavor`. Unlike `gac-core::Motor3`/`Vec3`
-(concretely duplicated between `float_ga`/`fixed_ga` because
-`meridian-gac-compute` dispatches them to a GPU with no real `i64`),
+**once**, in `src/collision/` and `src/dynamics/`, generic over
+`meridian_gac::GaFlavor`. Unlike `gac::Motor3`/`Vec3`
+(concretely duplicated between their `float.rs`/`fixed.rs` because
+`meridian-gac-wgpu` dispatches them to a GPU with no real `i64`),
 nothing in this engine has a GPU-dispatch constraint of its own — broad
 phase, narrow phase, constraint solving and integration are the same
 sequence of operations regardless of scalar flavor. `src/float.rs` and
@@ -26,16 +23,16 @@ sequence of operations regardless of scalar flavor. `src/float.rs` and
 one engine, not a second copy of it (see CLAUDE.md's "Float/Fixed
 branching" rule and [ADR 008](adr/008-fixed-point-determinism.md)).
 `float`'s aliases are re-exported at the crate root, so
-`meridian_physics_core::RigidBody`/etc. resolve to the default `f32` path
+`meridian_physics_domain::RigidBody`/etc. resolve to the default `f32` path
 unchanged; `fixed`'s aliases are the deterministic path, see
 "Determinism" below.
 
-`physics-core` owns the actual simulation, including its own broad-phase.
+`physics-domain` owns the actual simulation, including its own broad-phase.
 Real, tested (not stub) as of this writing:
 
 ```text
 Geometry              Sphere, Cuboid (ColliderShape) — capsule/mesh later
-Broad Phase           Naive O(n²) AABB sweep — spatial hash/BVH once profiling calls for it
+Broad Phase           Sweep-and-prune on the x axis (same pairs, same order as the exhaustive sweep) — grid/BVH for dense scenes
 Narrow Phase          Sphere-sphere, sphere-cuboid, cuboid-cuboid (SAT) exact tests
 Constraint Solver     Impulse-based + positional correction against sinking,
                        resolve split into resolve_velocity/
@@ -44,16 +41,16 @@ Constraint Solver     Impulse-based + positional correction against sinking,
 Integration           Semi-implicit Euler
 ```
 
-`Aabb` (used by `BroadPhase`) is `gac-core`'s primitive, not a physics-local
+`Aabb` (used by `BroadPhase`) is `gac`'s primitive, not a physics-local
 type — see docs/gac-design.md. `ColliderShape::Sphere` still stores only a
 `radius` (its center comes from `RigidBody::frame`, so it isn't
-`gac-core::Sphere` itself, which pairs a radius with its own `center`).
+`gac::Sphere` itself, which pairs a radius with its own `center`).
 `ColliderShape::Cuboid` stores only `half_extents`; `RigidBody::as_obb`
-builds the world-space `gac-core::Obb` on demand from the body's own
+builds the world-space `gac::Obb` on demand from the body's own
 `frame` — no second orientation to keep in sync (see docs/gac-design.md's
 note on `Obb`'s `frame: Motor3` field).
 
-Narrow phase does *not* go through `gac-core`'s generic `Shape`/
+Narrow phase does *not* go through `gac`'s generic `Shape`/
 `ConvexVolume` machinery for collision detection itself (that machinery
 answers "is X inside this convex region", a boolean/containment question —
 narrow phase needs a contact point, normal *and* penetration depth, which
@@ -112,7 +109,7 @@ manifolds. Real impacts (well above the threshold) are unaffected.
 
 ```rust
 struct RigidBody {
-    frame: Motor3,   // from meridian-gac-core, shared with every other subsystem
+    frame: Motor3,   // from meridian-gac, shared with every other subsystem
     velocity: ...,
     mass: ...,
 }
@@ -124,36 +121,36 @@ rendering transform — both read the same `Motor3`.
 ## Collider/mesh handles
 
 Collision shapes referencing loaded mesh data go through
-`meridian-resource-core`'s handle types, not a physics-specific handle —
+`meridian-resource`'s handle types, not a physics-specific handle —
 see [memory-model.md](memory-model.md) and
 [ADR 006](adr/006-resource-core-separation.md).
 
 ## Compute
 
 Broad-phase and constraint solving are natural candidates for SIMD/GPU
-parallelism at scale. `physics-core` reaches that through
-`meridian-compute-runtime`, not by depending on `compute-driver` directly or
+parallelism at scale. `physics-domain` reaches that through
+`meridian-compute-app`, not by depending on `compute-wgpu` directly or
 building its own scheduler — see
 [dependency-rules.md](dependency-rules.md) rule 5. `BroadPhase`/
 `NarrowPhase`/`ConstraintSolver`/`Integrator` are still correct
-sequential CPU implementations in `physics-core` itself, called once per
+sequential CPU implementations in `physics-domain` itself, called once per
 pair/body — batching is an adapter-crate concern (rule 11), not
-something `physics-core` does itself. `Integrator` is batched now:
-`meridian-physics-compute::rigid_body::RigidBodyIntegratorKernel` runs
+something `physics-domain` does itself. `Integrator` is batched now:
+`meridian-physics-wgpu::rigid_body::RigidBodyIntegratorKernel` runs
 `Integrator::step` across many bodies through one `ComputeKernel`
-dispatch (the same shape `gac-compute::MotorTransformKernel` batches
+dispatch (the same shape `gac-wgpu::MotorTransformKernel` batches
 `Motor3` composition with), generic over `GaFlavor` and CPU-dispatched
 via `ComputeContext::parallel_for` — `Integrator::step` has no
 GPU-dispatch constraint of its own, so there's no WGSL kernel to write,
 unlike this crate's soft-body kernels. `NarrowPhase::test_pair` is
 batched too, the same way:
-`meridian-physics-compute::narrow_phase::NarrowPhaseTestPairKernel`
+`meridian-physics-wgpu::narrow_phase::NarrowPhaseTestPairKernel`
 tests many candidate pairs for exact overlap through one dispatch,
-mirroring `gac-compute::MotorComposeKernel`'s independent-pairs shape
+mirroring `gac-wgpu::MotorComposeKernel`'s independent-pairs shape
 (`test_pair` is one pair in, one `Option<Contact<F>>` out — a fixed 1:1
 shape, unlike `generate_contacts`' variable-size manifold output, see
 below). `BroadPhase::find_candidate_pairs` is batched too:
-`meridian-physics-compute::broad_phase::BroadPhasePairsKernel` tests
+`meridian-physics-wgpu::broad_phase::BroadPhasePairsKernel` tests
 every candidate pair's AABB overlap in parallel (reusing
 `RigidBody::aabb`/`Aabb::overlaps` directly, not re-deriving the bound),
 then filters the fixed-size overlap array down to survivors — same
@@ -170,7 +167,7 @@ same two bodies) would race, and would silently turn the solver's
 deliberately Gauss-Seidel sequential-relaxation behavior into Jacobi
 instead — a real numerical-behavior change, not just a performance
 change.
-`meridian-physics-compute::constraint_solver::ConstraintSolverBatchKernel`
+`meridian-physics-wgpu::constraint_solver::ConstraintSolverBatchKernel`
 fixes this with graph coloring
 (`constraint_solver::color_contacts`): contacts are partitioned into
 groups where no two contacts in the same group share a body, so a
@@ -182,15 +179,15 @@ sequential loop would have processed them — reproducing the exact
 Gauss-Seidel dependency chain. Proven bit-for-bit identical to the
 sequential `resolve_velocity`/`apply_positional_correction` loop across
 a real multi-point box-on-floor manifold, plus a 600-tick settling
-regression test (no bounce, no sinking) matching `engine-core`'s own
+regression test (no bounce, no sinking) matching `runtime-app`'s own
 sequential-solver test. `NarrowPhase::generate_contacts` — the
 variable-per-pair-manifold case — is batched too, and was in fact the
 first of the five pipeline steps done:
-`meridian-physics-compute::narrow_phase::GenerateContactsKernel` gives
+`meridian-physics-wgpu::narrow_phase::GenerateContactsKernel` gives
 each pair a fixed-size `[Option<Contact<F>>; MAX_CONTACTS_PER_PAIR]`
 output slot (`MAX_CONTACTS_PER_PAIR = 4`, matching
 `face_manifold`'s own `.take(4)` cap — the same fixed-capacity-array
-technique `graphics-core::submission`'s `MAX_LIGHTS` uses), flattened
+technique `rendering-domain::submission`'s `MAX_LIGHTS` uses), flattened
 back to pair order for the result, truncating with a logged warning
 only if a manifold ever exceeds the cap (which `face_manifold`
 currently guarantees it never does). A true dynamic prefix-sum into a
@@ -200,36 +197,30 @@ had to grow — a hypothetical future refinement, not a present gap. All
 five rigid-body pipeline steps (`Integrator`, `BroadPhase`, `NarrowPhase`'s
 two query shapes, `ConstraintSolver`) are batched now.
 
-`physics-driver`'s `PhysicsBackend` reports real CPU thread count (via
-`platform-core::DeviceCapabilities`, the same shared shape
-`compute-driver::ComputeCapabilities` uses) and `PhysicsSync` is a real
-monotonic generation counter consumers can poll to know physics has
-advanced — both implemented, neither wired into `physics-core`'s pipeline
-yet.
 
 ## Determinism
 
-Real, via `physics-core::fixed` — see
+Real, via `physics-domain::fixed` — see
 [ADR 008](adr/008-fixed-point-determinism.md) for the full decision.
 `fixed::RigidBody`/`fixed::Integrator`/`fixed::ConstraintSolver`/
 `fixed::BroadPhase`/`fixed::NarrowPhase` are thin `FixedFlavor` aliases
-over the exact same generic engine (`src/generic.rs`) `float::RigidBody`/
-etc. alias with `FloatFlavor` — built on `gac-core::fixed_ga` (`Fixed`,
-Q16.16) instead of `float_ga` (`f32`) via the `GaFlavor` trait, a
+over the exact same generic engine (`src/collision/`, `src/dynamics/`) `float::RigidBody`/
+etc. alias with `FloatFlavor` — built on `gac`'s `Fixed*` types (`Fixed`,
+Q16.16) instead of the float ones (`f32`) via the `GaFlavor` trait, a
 genuinely separate, opt-in pipeline, not a mode flag on the default
 types. `fixed::BroadPhase` builds its `Aabb<FixedFlavor>`s from
-`gac-core::generic` the same way `float::BroadPhase` builds
-`Aabb<FloatFlavor>`s — geometry is `gac-core`'s job regardless of scalar
+`gac::volume` the same way `float::BroadPhase` builds
+`Aabb<FloatFlavor>`s — geometry is `gac`'s job regardless of scalar
 flavor, not reimplemented per consumer (see docs/gac-design.md). Because
 the engine is generic rather than hand-duplicated, sphere-sphere,
 sphere-cuboid *and* cuboid-cuboid (SAT) narrow phase all work for
 `fixed::RigidBody` for free — there is no "sphere only" scope limit to
 track as follow-up, unlike the earlier hand-duplicated
-`physics-core::deterministic` module this replaced.
+`physics-domain::deterministic` module this replaced.
 `FixedMotor3::to_float_lossy` (called on `fixed::RigidBody::frame`)
-converts a pose to `gac-core::Motor3` for rendering/ECS/audio handoff — a
+converts a pose to `gac::Motor3` for rendering/ECS/audio handoff — a
 named, deliberate precision-changing cast (see docs/gac-design.md's
 "Cross-flavor interop" section), not a `From`/`Into` that would make the
 cast look free. Proven with an actual bit-exact reproducibility test (the
 same scenario run twice produces identical `Fixed` bit patterns, not just
-approximately equal floats) — `cargo test -p meridian-physics-core`.
+approximately equal floats) — `cargo test -p meridian-physics-domain`.

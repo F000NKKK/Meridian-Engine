@@ -1,0 +1,17 @@
+# Craftbook clippy thresholds (see rust/02-functions.md). Copy to the workspace root.
+too-many-lines-threshold = 50
+too-many-arguments-threshold = 5
+# Counts the impl / mod and the fn body as levels: 3 nested blocks in a
+# method or test, 4 in a free function.
+excessive-nesting-threshold = 5
+cognitive-complexity-threshold = 15
+max-fn-params-bools = 1
+max-struct-bools = 2
+trivial-copy-size-limit = 16
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+allow-panic-in-tests = true
+allow-print-in-tests = true
+allow-dbg-in-tests = true
+avoid-breaking-exported-api = false
+upper-case-acronyms-aggressive = true

@@ -7,6 +7,7 @@
 /// `meridian_sdk` deliberately don't assume any particular crate's
 /// manifest directory (they're a shared dependency of every
 /// application), so this join has to live at the call site.
+#[must_use]
 pub fn asset_path(relative: &str) -> String {
     format!("{}/{}", env!("CARGO_MANIFEST_DIR"), relative)
 }

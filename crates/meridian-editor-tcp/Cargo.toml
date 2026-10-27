@@ -1,0 +1,23 @@
+[package]
+name = "meridian-editor-tcp"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Serves the editor protocol to one editor over a local TCP connection: Substrate Data frames in and out, a RequestHandler in the middle."
+readme = "README.md"
+
+[dependencies]
+meridian-editor-app = { workspace = true }
+meridian-editor-domain = { workspace = true }
+substrate-data = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["net", "io-util"] }
+
+[dev-dependencies]
+meridian-ecs = { workspace = true }
+meridian-data-substrate = { workspace = true }
+
+[lints]
+workspace = true

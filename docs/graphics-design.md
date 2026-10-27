@@ -1,21 +1,23 @@
-# Graphics design — `meridian-graphics-driver` + `meridian-graphics-core`
+# Graphics design — `meridian-rendering-wgpu` + `meridian-rendering-domain`
 
 ## The split
 
-`graphics-driver` is the hardware abstraction — the engine's equivalent of a
+`rendering-wgpu` is the hardware abstraction — the engine's equivalent of a
 thin Vulkan/DX12/Metal wrapper: devices, command queues, buffers, textures,
 shaders, pipelines, synchronization. It has no concept of a scene, a
 material, or a camera. In other engines this role is sometimes called an
-RHI (Render Hardware Interface); `graphics-driver` *is* that layer under a
+RHI (Render Hardware Interface); `rendering-wgpu` *is* that layer under a
 different name — not a separate crate to add later. Concrete backends
 (`vulkan-driver`, `dx12-driver`, `metal-driver`) are expected to become
-their own crates implementing `graphics-driver`'s abstraction, without
-`graphics-core` ever changing — see
-[ADR 005](adr/005-driver-core-separation.md). No backend crate exists yet;
+their own crates implementing `rendering-wgpu`'s abstraction, without
+`rendering-domain` ever changing. The dependency direction is inverted
+([ADR 019](adr/019-ports-in-domain-drivers-as-adapters.md), [ADR 024](adr/024-wave-5-ports-and-adapters.md)):
+`rendering-app` owns the ports (mesh/texture stores, frame recording)
+and `rendering-wgpu` implements them; `rendering-domain` has no edge to it. No backend crate exists yet;
 adding one is out of scope until there's a concrete backend to build (see
 [roadmap.md](roadmap.md)).
 
-`graphics-core` is everything that *does* know about scenes:
+`rendering-domain` is everything that *does* know about scenes:
 
 ```text
 Render Graph        automatic pass ordering + resource dependency tracking  -- real
@@ -30,10 +32,10 @@ Post Processing      -- real (bloom); HDR/tone-mapping still open
 
 `Camera`, frustum culling, render graph pass ordering, scene extraction,
 lighting and the submission bridge are all real and tested (`cargo test
--p meridian-graphics-core`) — see "Implementation order" below for the
+-p meridian-rendering-domain`) — see "Implementation order" below for the
 step-by-step history and exactly what's still open (shadow mapping,
 per-material roughness/specular, blend-mode/`always_on_top` handling,
-HDR). `graphics-driver` is real too, both headless (`Device::new`) and
+HDR). `rendering-wgpu` is real too, both headless (`Device::new`) and
 windowed (`Device::new_windowed`, a real swapchain `Surface` —
 `Buffer`/`Texture`/`Shader`/compute `Pipeline`/`CommandBuffer` either
 way). `Animation` is the one row above with no work started yet — no
@@ -43,22 +45,22 @@ vocabulary, no scaffold.
 
 GPU pipelines take a classical column-major 4x4 matrix, not a `Motor3` —
 that's a hard constraint of how vertex shaders work, not a design choice.
-So `Camera` is the one place in `graphics-core` that converts:
+So `Camera` is the one place in `rendering-domain` that converts:
 
-- `Motor3::to_mat4` (in `gac-core` — pure bridging math, not a graphics
+- `Motor3::to_mat4` (in `gac` — pure bridging math, not a graphics
   concept, so it lives with the algebra it converts; see
   [gac-design.md](gac-design.md)) turns any `Motor3` into a homogeneous
   matrix by evaluating `transform_point` at the origin and each basis
   vector — exact, not a numerical approximation, since `transform_point` is
   already an affine map.
-- `graphics-core`'s local camera convention is forward `+X`, up `+Y`, right
-  `+Z` — the same listener-local convention `audio-core` already commits
+- `rendering-domain`'s local camera convention is forward `+X`, up `+Y`, right
+  `+Z` — the same listener-local convention `audio-domain` already commits
   to, reused here so a character's camera and ears agree on "forward"
-  without either subsystem inventing its own axis convention. `gac-core`
+  without either subsystem inventing its own axis convention. `gac`
   itself has no "forward" concept (see [gac-design.md](gac-design.md)), so
   this choice, and the fixed remap matrix that applies it
-  (`LOCAL_TO_VIEW_REMAP`), live in `graphics-core`.
-- `Projection::perspective`/`orthographic` (also in `gac-core`, since
+  (`LOCAL_TO_VIEW_REMAP`), live in `rendering-domain`.
+- `Projection::perspective`/`orthographic` (also in `gac`, since
   `Projection` is a documented core type — camera/projective mappings) build
   the view-to-clip matrix: column-major, column-vector convention, depth
   range `[0, 1]` (wgpu/DX12/Metal convention, not classic OpenGL's
@@ -74,17 +76,17 @@ API actually needs one, never stored as parallel state.
 
 ## Frustum culling
 
-`Frustum::from_view_projection` extracts six `gac-core::Plane` half-spaces
+`Frustum::from_view_projection` extracts six `gac::Plane` half-spaces
 from a view-projection matrix via the Gribb/Hartmann method (each plane's
 coefficients are a linear combination of the matrix's rows), then wraps
-them in a `gac-core::ConvexVolume`. Extracting exactly six planes from a
+them in a `gac::ConvexVolume`. Extracting exactly six planes from a
 `Projection` is what's camera-specific and stays here; the volume/shape
-math underneath it is generic and lives once in `gac-core` (see
+math underneath it is generic and lives once in `gac` (see
 docs/gac-design.md), so `Frustum::intersects` works against *any*
-`gac-core::Shape` — `Aabb`, `Sphere`, `Obb`, `Cone`, or a future one — not
+`gac::Shape` — `Aabb`, `Sphere`, `Obb`, `Cone`, or a future one — not
 just an AABB. `Frustum` itself owns nothing but the plane extraction; if a
 non-camera convex volume is ever needed (a spotlight's volume, a trigger
-region), it's `gac-core::ConvexVolume` directly, no `graphics-core`
+region), it's `gac::ConvexVolume` directly, no `rendering-domain`
 involvement required.
 
 ## Render graph over hand-ordered passes
@@ -93,11 +95,11 @@ Instead of a hardcoded `Shadow → Geometry → Lighting → Postprocess`
 sequence, passes declare their resource reads/writes
 (`RenderPass::reading`/`RenderPass::writing`, identified by an opaque
 per-graph `GraphResourceId` — transient and frame-scoped, not
-`resource-core`'s persistent `ResourceId`) and
+`resource`'s persistent `ResourceId`) and
 `RenderGraph::execution_order` derives execution order automatically: a
 producer always runs before every pass that reads what it wrote, using the
 same dependency-declared-not-hand-sequenced Kahn's-algorithm idea as
-`task-core`'s `JobGraph`, applied to resource conflicts instead of explicit
+`runtime-threads`'s `JobGraph`, applied to resource conflicts instead of explicit
 job dependencies. Two passes writing the same resource, or a read/write
 cycle, are rejected rather than silently guessed at. This is what allows
 adding a pass without manually re-threading every pass after it. Resource
@@ -118,10 +120,10 @@ ADR 001) — so a 2D scene is *not* a parallel 2D math stack (no separate
 `Motor3` frames; what differs is the camera and the conventions layered
 on top:
 
-- **`Scene3D`** — the world: perspective (or orthographic) [`Camera`],
+- **`Scene3d`** — the world: perspective (or orthographic) [`Camera`],
   entities at arbitrary `Motor3` frames, frustum culling, lights,
   depth-tested.
-- **`Scene2D`** — a plane: entities constrained to the local `z = 0`
+- **`Scene2d`** — a plane: entities constrained to the local `z = 0`
   plane of the scene (position = `x`/`y` of the frame's translation,
   rotation = rotation about the plane normal, the remaining `Motor3`
   degrees of freedom simply unused), rendered with an orthographic
@@ -133,20 +135,20 @@ on top:
   decides.
 
 A frame renders an ordered list of **views** — each view is one scene +
-one camera + one target. The common compositions: `[Scene3D]` (a pure 3D
-game), `[Scene2D]` (a pure 2D game), `[Scene3D, Scene2D-as-UI-overlay]`
+one camera + one target. The common compositions: `[Scene3d]` (a pure 3D
+game), `[Scene2d]` (a pure 2D game), `[Scene3d, Scene2d-as-UI-overlay]`
 (the usual case). Views later in the list draw over earlier ones.
 
 ### UI is a role, not a third scene kind
 
 UI does not get its own rendering vocabulary. A UI is either:
 
-- **Screen-space UI (2D)** — a `Scene2D` whose orthographic camera is
+- **Screen-space UI (2D)** — a `Scene2d` whose orthographic camera is
   derived from the surface size (units = logical pixels, origin
   top-left, `y` down — the convention every windowing/UI system shares),
   composed as the last view of the frame, undepthed, drawn over the 3D
   world. This is the HUD/menu case.
-- **World-space UI (3D)** — renderables *inside* the `Scene3D` whose
+- **World-space UI (3D)** — renderables *inside* the `Scene3d` whose
   content happens to be interface (a health bar above a unit, a control
   panel in a cockpit/VR): a quad at a `Motor3` frame like any other
   mesh, optionally flagged `billboard` (re-oriented to face the camera
@@ -156,17 +158,17 @@ UI does not get its own rendering vocabulary. A UI is either:
 
 What UI adds over plain scenes is *content*, not rendering: widgets,
 layout, text, input routing. All of that is deliberately out of
-`graphics-core` — a future `ui-core` consumes this vocabulary (it emits
-`Scene2D`/`Scene3D` renderables) the same way `physics-core` consumes
-`gac-core` shapes. Text/font rendering (glyph atlases, shaping) is its
+`rendering-domain` — `ui-domain` ([ADR 018](adr/018-ui-architecture.md)) consumes this vocabulary (it emits
+`Scene2d`/`Scene3d` renderables) the same way `physics-domain` consumes
+`gac` shapes. Text/font rendering (glyph atlases, shaping) is its
 own future decision with its own ADR; nothing in this vocabulary blocks
 on it — a text run will extract to textured quads like everything else.
 
 ### The types
 
-All CPU-side, plain data, in `graphics-core`:
+All CPU-side, plain data, in `rendering-domain`:
 
-- **`Mesh`** — a `MeshHandle` identity (resource-core) plus CPU-side
+- **`Mesh`** — a `MeshHandle` identity (resource) plus CPU-side
   layout info (vertex count, index count, bounds `Aabb` for culling).
   The actual GPU buffers live behind the submission bridge; `Mesh`
   never owns driver objects.
@@ -179,31 +181,31 @@ All CPU-side, plain data, in `graphics-core`:
   `Point { position, color, intensity, range }`. First lighting model is
   Blinn-Phong forward; PBR is a material/shader upgrade later, not a
   vocabulary change.
-- **`Renderable3D`** — `{ mesh, material, frame: Motor3, billboard:
+- **`Renderable3d`** — `{ mesh, material, frame: Motor3, billboard:
   bool }`; **`Sprite`** (the 2D renderable) — `{ texture, source_rect,
   size, tint, frame: Motor3, layer: i32 }`.
-- **`Scene3D`** — `{ camera: Camera, renderables: Vec<Renderable3D>,
-  lights: Vec<Light> }`; **`Scene2D`** — `{ camera: Camera2D, sprites:
-  Vec<Sprite> }` where `Camera2D` is a thin orthographic wrapper
+- **`Scene3d`** — `{ camera: Camera, renderables: Vec<Renderable3d>,
+  lights: Vec<Light> }`; **`Scene2d`** — `{ camera: Camera2d, sprites:
+  Vec<Sprite> }` where `Camera2d` is a thin orthographic wrapper
   (`from_surface_size` for pixel-space UI, `from_world_extent` for 2D
   gameplay).
 - **`FrameScene`** — the per-frame extraction output: an ordered
-  `Vec<View>` where `View` is `Three(Scene3D)` or `Two(Scene2D)`.
+  `Vec<View>` where `View` is `Three(Scene3d)` or `Two(Scene2d)`.
   Frame-scoped plain data, rebuilt every frame (extraction output, ADR
   004's data-oriented stance) — *not* a retained scene graph.
 
 ### Handles are the identity mechanism — 100% compliance target
 
 Everything a renderable references crosses the vocabulary by **typed
-`resource-core` handle** (`MeshHandle`, `TextureHandle`, and a new
+`resource` handle** (`MeshHandle`, `TextureHandle`, and a new
 `MaterialHandle`), never by value, index, or driver object — ADR 002 is
 a hard requirement of this design, not a suggestion. The submission
 bridge owns the handle→GPU-resource resolution, backed by
-`memory-core`'s generational pools (a stale handle after an asset
+`memory`'s generational pools (a stale handle after an asset
 reload resolves to "not resident", never to someone else's mesh — the
 exact bug class generational handles exist to kill). Existing spots
 where the workspace under-complies (examples holding raw
-`graphics-driver` buffers, `Material` embedding its texture reference
+`rendering-wgpu` buffers, `Material` embedding its texture reference
 directly) are acceptable *below* this vocabulary or *before* it lands,
 but the extract→cull→submit path itself ships handle-clean from day
 one, and the examples converge onto it in step 2 — driving the whole
@@ -213,14 +215,14 @@ exceptions.
 ### Extraction and ownership
 
 Persistent state stays where it already lives: the application/ECS owns
-entities (`Transform` + render components), `engine-core` orchestrates.
+entities (`Transform` + render components), `runtime-app` orchestrates.
 Per frame: **extract** (walk the ECS `World`, build `FrameScene` —
-`graphics-core` provides the component types and extraction functions;
-it may depend on `ecs-core` per the existing graph, and `ecs-core`
+`rendering-domain` provides the component types and extraction functions;
+it may depend on `ecs` per the existing graph, and `ecs`
 learns nothing about graphics, per rule 6) → **cull** (frustum vs.
 `Mesh` bounds for 3D; camera-rect vs. sprite bounds for 2D) →
 **submit** (the bridge turns the culled `FrameScene` into render-graph
-passes and `graphics-driver` draw calls). Extraction is pure
+passes and `rendering-wgpu` draw calls). Extraction is pure
 CPU-testable data flow; the bridge is the only place that touches the
 driver.
 
@@ -229,14 +231,14 @@ driver.
 1. **Done.** Vocabulary + `FrameScene` + extraction + culling — CPU-only,
    fully tested without a GPU (`extract_scene3d`/`cull_scene3d` in
    `scene.rs`).
-2. **Done.** Submission bridge over `graphics-driver` (`submission.rs`):
+2. **Done.** Submission bridge over `rendering-wgpu` (`submission/`):
    `MeshRegistry`/`MaterialRegistry`/`TextureRegistry` (handle-addressed,
    ADR 002-compliant), `SceneRenderer::prepare`/`draw`/`submit_scene3d`
-   turning a culled `Scene3D` into real draw calls. Texture upload from
-   `asset-core::ImageData` is real: `gpu-driver` gained
+   turning a culled `Scene3d` into real draw calls. Texture upload from
+   `asset-domain::ImageAsset` is real: `gpu-wgpu` gained
    `Device::write_texture`/`create_sampler`/`create_texture_bind_group`,
-   `graphics-driver` gained the matching `create_texture_2d`/
-   `create_textured_bind_group` passthroughs, and `submission.rs` picks
+   `rendering-wgpu` gained the matching `create_texture_2d`/
+   `create_textured_bind_group` passthroughs, and `submission/` picks
    between two unlit pipelines per renderable — `TEXTURED_SHADER_WGSL`
    (samples `Material::albedo` when it resolves in the `TextureRegistry`)
    or `UNLIT_SHADER_WGSL` (flat `base_color_factor` otherwise). Still
@@ -261,12 +263,12 @@ driver.
    pattern) and the GPU-compute audit under real load are still open,
    unblocked by the texture path landing but not yet done.
 3. **Done, core lighting; material handling partially open.**
-   `submission.rs` gained Blinn-Phong forward lighting: `Scene3D` now
+   `submission/` gained Blinn-Phong forward lighting: `Scene3d` now
    carries `ambient: [f32; 3]`, and every renderable's family (colored/
    textured) crosses with lit/unlit into four main pipelines —
    `lit_shader_wgsl()`/`lit_textured_shader_wgsl()` shade against
-   `Scene3D::lights` (directional + point, capped at `MAX_LIGHTS = 4`,
-   extra lights dropped and logged) and `Scene3D::ambient`; the existing
+   `Scene3d::lights` (directional + point, capped at `MAX_LIGHTS = 4`,
+   extra lights dropped and logged) and `Scene3d::ambient`; the existing
    `UNLIT_SHADER_WGSL`/`TEXTURED_SHADER_WGSL` stay for `Material::unlit`.
    `Material::emissive` bakes into every vertex regardless of family and
    feeds bloom's bright-pass mask (see next). Meshes now carry per-vertex
@@ -289,31 +291,53 @@ driver.
 4. `Runtime::tick` integration — **not** blocked on vocabulary anymore
    (steps 1-3 above cover it); blocked on an actual architecture
    decision instead, since presenting a frame needs a windowed
-   `Device`/`Surface` (driver state) and `engine-core` deliberately
-   never depends on `graphics-driver`. `magic_figures`/`physic_figures`
-   compose `graphics-core::SceneRenderer` directly against their own
+   `Device`/`Surface` (driver state) and `runtime-app` deliberately
+   never depends on `rendering-wgpu`. `magic_figures`/`physic_figures`
+   compose `rendering-domain::SceneRenderer` directly against their own
    `Device`/`Surface` inside their own `winit` event loop today, rather
    than through `Runtime::tick` — see docs/roadmap.md's
    `Runtime`-adoption entry for the current state of that decision.
-5. `ui-core` (widgets/layout/input) and text rendering — separate,
+5. **Done.** The 2D sprite path (`sprites/`): `batch_scene2d` culls a
+   `Scene2d` to its camera, orders sprites by `layer` (stable) and merges
+   consecutive same-texture sprites into `SpriteBatch`es (CPU only, tested
+   without a GPU); `SpriteRenderer::prepare`/`draw` upload and record them
+   with a no-depth, premultiplied-alpha pipeline
+   (`Device::create_premultiplied_alpha_pipeline`). Contract: camera units
+   in, `Sprite::frame` is the quad centre (rotation about the plane normal
+   turns it), `source_rect` is normalized, `tint` is straight RGBA and the
+   shader premultiplies. Plain colored rectangles use a 1x1 white texture
+   (`TextureRegistry::upload_solid`) and carry the color in `tint`.
+   **Raw path:** `SpriteBatch`/`SpriteVertex` are public, so custom drawing
+   builds triangle lists in camera units and calls `prepare` directly,
+   never going through `Sprite`. **Clipping:** `ClipSpan { layers, rect }`
+   clips a contiguous range of layers (a scroll viewer's content) to a
+   `ClipRect`; spans nest by intersection; `batch_scene2d_clipped` tags
+   batches and splits them at clip changes, `SpriteRenderer::draw` sets a
+   scissor per run (`ClipRect::to_scissor` rounds outward from camera units
+   to pixels, so `SpriteView` carries the target size). Clipping is
+   rectangular and axis-aligned in camera units; no rounded or rotated
+   clips. Still open: one bind group per run per
+   frame (no cache), no sprite atlas packing,
+   and `Motor3::transform_point` (about 350 ns) dominates batching cost.
+6. `ui-domain` (widgets/layout/input) and text rendering — separate,
    ADR-gated.
 
 ## GPU-driven rendering
 
 The long-term direction is minimizing CPU-side per-object work: the CPU
 prepares data, the GPU (via indirect draw, compute-based culling, and
-instancing) decides what actually gets drawn. This is why `graphics-core`
-depends on `meridian-compute-runtime` — GPU culling and compute-based
+instancing) decides what actually gets drawn. This is why `rendering-domain`
+depends on `meridian-compute-app` — GPU culling and compute-based
 visibility are compute workloads, not rendering-specific ones (see
 [dependency-rules.md](dependency-rules.md) rule 5).
 
 ## What this crate does not own
 
-Asset bytes and decoding belong to `asset-core`; `graphics-core` consumes
+Asset bytes and decoding belong to `asset-domain`; `rendering-domain` consumes
 already-decoded CPU-side representations and turns them into GPU resources
-via `graphics-driver`. It does not implement image/mesh decoders itself.
+via `rendering-wgpu`. It does not implement image/mesh decoders itself.
 
 `TextureHandle`, `MeshHandle`, `BufferHandle` and `ShaderHandle` are typed
-resource identities from `meridian-resource-core`, not ad hoc handles
+resource identities from `meridian-resource`, not ad hoc handles
 defined in this crate — see
 [ADR 006](adr/006-resource-core-separation.md).

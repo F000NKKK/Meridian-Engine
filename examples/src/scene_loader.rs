@@ -1,7 +1,7 @@
-//! Reading a `.mel` scene file into a built `meridian_sdk::dsl` tree —
-//! the read-file/parse/build sequence was identical between
-//! `physic_figures`/`magic_figures`; only the registry (which tags are
-//! known) and what each example does with the resulting tree differ.
+//! Reading a `.mel` scene file at run time into a built
+//! `meridian_sdk::dsl` tree (`physic_figures`), plus [`find_child`],
+//! shared by both examples. `magic_figures` instead uses the module
+//! `build.rs` generates from its `.mel` (ADR 017).
 
 use meridian_sdk::dsl::build_scene;
 use meridian_sdk::dsl::dsl_core::{BuiltNode, DslRegistry};
@@ -11,11 +11,12 @@ use crate::paths::asset_path;
 /// Reads `relative_path` (joined via [`asset_path`]) and builds it
 /// against `registry` in one call. A missing file or a malformed
 /// document logs via `log_error!` before panicking — every DSL error
-/// implements `meridian_foundation::EngineError` (see
-/// `meridian_sdk::dsl`'s own module doc), so `crash_reporting`'s
+/// implements `meridian_diagnostics::EngineError` (see
+/// `meridian_sdk::dsl`'s own module doc), so the crash hook's
 /// post-mortem still captures exactly what went wrong; this isn't a
 /// silent dead end, just a real one an example can't meaningfully
 /// recover from (there is no scene to fall back to).
+#[must_use]
 pub fn load_dsl_scene(relative_path: &str, registry: &DslRegistry) -> BuiltNode {
     let path = asset_path(relative_path);
     let source = std::fs::read_to_string(&path).unwrap_or_else(|e| {
@@ -32,6 +33,7 @@ pub fn load_dsl_scene(relative_path: &str, registry: &DslRegistry) -> BuiltNode 
 /// repeating `node.children.iter().find_map(|c| c.downcast_ref::<T>())`
 /// at every call site that just wants "does this entity have a
 /// `<Transform>`/`<Mesh>`/etc." without caring which position it's in.
+#[must_use]
 pub fn find_child<T: 'static>(node: &BuiltNode) -> Option<&T> {
     node.children
         .iter()
@@ -40,8 +42,9 @@ pub fn find_child<T: 'static>(node: &BuiltNode) -> Option<&T> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use meridian_sdk::dsl::dsl_tag;
+
+    use super::*;
 
     #[dsl_tag(name = "Widget")]
     #[derive(Debug, PartialEq)]

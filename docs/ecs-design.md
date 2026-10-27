@@ -1,4 +1,4 @@
-# ECS design — `meridian-ecs-core`
+# ECS design — `meridian-ecs`
 
 Data-oriented, archetype-based ECS. Not a framework for game logic — a
 storage and query mechanism, full stop.
@@ -26,22 +26,35 @@ rather than an array of `(Transform, Velocity)` structs. This is what makes
 a `Query<Transform>`/`QueryMut<Velocity>` a tight, SIMD-friendly,
 cache-friendly loop instead of a pointer-chasing walk.
 
-**`Query`/`QueryMut` iterate a single component type today, not a
-tuple.** A hypothetical `Query<(&Transform, &mut Velocity)>` needs to
-prove to the borrow checker that two different columns don't alias — a
-genuinely harder, `unsafe`-adjacent problem, deferred until a real
-system needs it rather than built speculatively (see the crate's own
-module doc). Existing consumers (e.g. `graphics-core::extract_scene3d`)
-join multiple single-component queries themselves — one `Query`/lookup
-per component type — rather than this crate offering a combined one.
+**Multi-component queries are `World::query_many` / `query_many_mut`.**
+They take a tuple of two to four `&T` / `&mut T` elements and yield
+`(Entity, (&A, &mut B, ..))` for every entity that has all of them:
+
+```rust
+for (_, (position, velocity)) in world.query_many_mut::<(&mut Position, &Velocity)>() {
+    position.0 += velocity.0;
+}
+```
+
+No `unsafe`. An archetype keeps its columns in a `HashMap`; one
+`iter_mut` pass over it hands each accessed column to exactly one tuple
+element, so the borrow checker is satisfied by the iterator, not by the
+crate. A tuple that names one component twice
+(`(&mut T, &T)`) would alias a column, so `query_many_mut` panics on it
+before iterating; `query_many` (shared `&World`, `&T` elements only) allows
+it. `Query`/`QueryMut` stay for the single-component case. Tuple elements may also be
+`Option<&T>` / `Option<&mut T>` (the archetype need not have the component;
+absent rows yield `None`) and the zero-sized filters `With<T>` / `Without<T>`,
+which constrain the archetype without borrowing a column, so `With<T>` next
+to `&mut T` is not an alias. Not built yet: parallel iteration.
 
 ## What this crate is not
 
 It does not know about frames, rendering, physics, or the application main
-loop. It must not depend on `engine-core`, `graphics-core`, `physics-core`,
-`audio-core`, or `asset-core` — see
+loop. It must not depend on `runtime-app`, `rendering-domain`, `physics-domain`,
+`audio-domain`, or `asset-domain` — see
 [dependency-rules.md](dependency-rules.md) rule 3. Its only dependencies are
-`memory-core` (for the underlying storage/handles) and `gac-core` (so that
+`memory` (for the underlying storage/handles) and `gac` (so that
 `Transform` can be a first-class, GAC-native component type rather than each
 subsystem defining its own).
 
@@ -55,7 +68,7 @@ can afford to be the more expensive one.
 
 ## Ownership boundary
 
-`ecs-core` never decides *when* an entity is destroyed or *what* an
+`ecs` never decides *when* an entity is destroyed or *what* an
 `AssetHandle` stored in a component points to — that's the application's
 call, consistent with the "no global managers" principle
 ([ADR 003](adr/003-no-global-managers.md)).

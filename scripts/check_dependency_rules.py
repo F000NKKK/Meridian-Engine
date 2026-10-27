@@ -1,113 +1,168 @@
 #!/usr/bin/env python3
-"""Architectural test: enforce docs/dependency-rules.md by whitelist.
+"""Architectural test: enforce docs/dependency-rules.md and ADR 019.
 
-Every internal (meridian-*) edge in the workspace must appear in ALLOWED
-below. This is deliberately an *exact* match, not a subset check: adding a
-new edge — even a legitimate one — must update this file and
-docs/dependency-rules.md in the same change, so the graph documented there
-never drifts from the graph that actually compiles.
+Two checks, both exact:
+
+1. Every internal (meridian-*) edge in the workspace appears in ALLOWED or
+   in PENDING below, and every edge listed there exists. Adding an edge, even
+   a legitimate one, updates this file and docs/dependency-rules.md in the
+   same change.
+2. Dependencies point inwards (ADR 019, Craftbook ch. 7 §7.3). Each crate's
+   layer comes from craftbook.toml, the one source of layers. An edge that
+   points outwards (domain -> infra, app -> infra, ...) is allowed only while
+   it is listed in PENDING with the wave that removes it; an edge in ALLOWED
+   must point inwards. PENDING may only shrink.
 
 Run: ./build.sh check-deps   (or: python3 scripts/check_dependency_rules.py)
 """
-import re
-import sys
 import glob
 import os
+import re
+import sys
+import tomllib
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# crate -> set of allowed direct meridian-* dependencies.
-# Keep in sync with the diagram + rules in docs/dependency-rules.md.
+# Which layers a crate of each layer may depend on (Craftbook ch. 7 §7.3,
+# the same table craftcheck deps uses).
+INWARD = {
+    "shared-kernel": {"shared-kernel"},
+    "domain": {"shared-kernel", "domain"},
+    "app": {"shared-kernel", "domain", "app"},
+    "infra": {"shared-kernel", "domain", "app", "infra"},
+    "interface": {"shared-kernel", "domain", "app", "infra", "interface"},
+}
+
+# crate -> direct meridian-* dependencies that follow the target direction.
 ALLOWED = {
-    "meridian-foundation": set(),
-    "meridian-numeric-core": {"meridian-foundation"},
-    "meridian-gac-core": {"meridian-numeric-core"},
-    "meridian-memory-core": set(),
-    "meridian-resource-core": {"meridian-memory-core"},
-    "meridian-task-core": set(),
-    "meridian-platform-core": {"meridian-foundation"},
-    "meridian-gpu-driver": {"meridian-foundation", "meridian-platform-core"},
-    "meridian-compute-driver": {"meridian-platform-core", "meridian-gpu-driver"},
-    "meridian-compute-runtime": {
-        "meridian-compute-driver",
-        "meridian-task-core",
-        "meridian-memory-core",
+    "meridian-diagnostics": set(),
+    "meridian-diagnostics-fs": {"meridian-diagnostics"},
+    "meridian-numeric": {"meridian-diagnostics"},
+    "meridian-gac": {"meridian-numeric"},
+    "meridian-memory": set(),
+    "meridian-resource": {"meridian-memory"},
+    "meridian-runtime-threads": {"meridian-runtime-app"},
+    "meridian-platform-winit": {"meridian-diagnostics"},
+    "meridian-gpu-wgpu": {"meridian-diagnostics", "meridian-platform-winit"},
+    "meridian-compute-wgpu": {
+        "meridian-platform-winit",
+        "meridian-gpu-wgpu",
+        "meridian-compute-app",
     },
-    "meridian-gac-compute": {
-        "meridian-gac-core",
-        "meridian-numeric-core",
-        "meridian-compute-runtime",
-        "meridian-gpu-driver",
+    "meridian-compute-app": set(),
+    "meridian-gac-wgpu": {
+        "meridian-gac",
+        "meridian-numeric",
+        "meridian-compute-app",
+        "meridian-compute-wgpu",
+        "meridian-gpu-wgpu",
     },
-    "meridian-ecs-core": {"meridian-memory-core", "meridian-gac-core"},
-    "meridian-asset-core": {"meridian-foundation", "meridian-platform-core"},
-    "meridian-graphics-driver": {"meridian-foundation", "meridian-platform-core", "meridian-gpu-driver"},
-    "meridian-audio-driver": {"meridian-foundation", "meridian-platform-core"},
-    "meridian-physics-driver": {"meridian-platform-core"},
-    "meridian-graphics-core": {
-        "meridian-foundation",
-        "meridian-gac-core",
-        "meridian-gac-compute",
-        "meridian-memory-core",
-        "meridian-ecs-core",
-        "meridian-asset-core",
-        "meridian-graphics-driver",
-        "meridian-compute-runtime",
-        "meridian-resource-core",
+    "meridian-ecs": {"meridian-memory", "meridian-gac"},
+    "meridian-asset-domain": {"meridian-diagnostics"},
+    "meridian-asset-png": {"meridian-asset-domain"},
+    "meridian-asset-symphonia": {"meridian-asset-domain"},
+    "meridian-rendering-wgpu": {
+        "meridian-diagnostics",
+        "meridian-platform-winit",
+        "meridian-gpu-wgpu",
+        "meridian-gac",
+        "meridian-rendering-domain",
+        "meridian-rendering-app",
+        "meridian-memory",
+        "meridian-asset-domain",
     },
-    "meridian-physics-compute": {
-        "meridian-foundation",
-        "meridian-physics-core",
-        "meridian-gac-core",
-        "meridian-gac-compute",
-        "meridian-compute-runtime",
-        "meridian-numeric-core",
-        "meridian-gpu-driver",
+    "meridian-audio-cpal": {
+        "meridian-diagnostics",
+        "meridian-platform-winit",
+        "meridian-audio-domain",
+        "meridian-audio-app",
     },
-    "meridian-physics-core": {
-        "meridian-gac-core",
-        "meridian-gac-compute",
-        "meridian-numeric-core",
-        "meridian-ecs-core",
-        "meridian-compute-runtime",
-        "meridian-physics-driver",
-        "meridian-resource-core",
+    "meridian-audio-app": {"meridian-audio-domain"},
+    "meridian-rendering-app": {
+        "meridian-rendering-domain",
+        "meridian-asset-domain",
+        "meridian-memory",
     },
-    "meridian-audio-core": {
-        "meridian-gac-core",
-        "meridian-audio-driver",
-        "meridian-resource-core",
+    "meridian-rendering-domain": {
+        "meridian-diagnostics",
+        "meridian-gac",
+        "meridian-memory",
+        "meridian-ecs",
+        "meridian-resource",
     },
-    "meridian-engine-core": {
-        "meridian-foundation",
-        "meridian-gac-core",
-        "meridian-memory-core",
-        "meridian-task-core",
-        "meridian-platform-core",
-        "meridian-ecs-core",
-        "meridian-graphics-core",
-        "meridian-physics-core",
-        "meridian-audio-core",
-        "meridian-asset-core",
-        "meridian-compute-runtime",
-        "meridian-physics-compute",
+    "meridian-physics-wgpu": {
+        "meridian-diagnostics",
+        "meridian-physics-domain",
+        "meridian-physics-app",
+        "meridian-gac",
+        "meridian-gac-wgpu",
+        "meridian-compute-app",
+        "meridian-compute-wgpu",
+        "meridian-numeric",
+        "meridian-gpu-wgpu",
     },
-    "meridian-dsl-core": {"meridian-foundation"},
-    "meridian-dsl-macros": set(),
+    "meridian-physics-domain": {
+        "meridian-gac",
+        "meridian-numeric",
+        "meridian-resource",
+    },
+    "meridian-audio-domain": {
+        "meridian-gac",
+    },
+    "meridian-runtime-app": {
+        "meridian-diagnostics",
+        "meridian-physics-app",
+        "meridian-compute-app",
+    },
+    "meridian-physics-app": {"meridian-physics-domain", "meridian-gac"},
+    "meridian-data-substrate": {"meridian-ecs", "meridian-gac"},
+    "meridian-editor-domain": {"meridian-ecs", "meridian-data-substrate"},
+    "meridian-editor-app": {
+        "meridian-ecs",
+        "meridian-editor-domain",
+        "meridian-data-substrate",
+    },
+    "meridian-editor-tcp": {"meridian-editor-app", "meridian-editor-domain"},
+    "meridian-markup": {"meridian-diagnostics"},
+    "meridian-markup-macros": set(),
+    "meridian-ui-mel": {"meridian-markup", "meridian-ui-domain"},
+    "meridian-ui-domain": {"meridian-diagnostics", "meridian-memory"},
+    "meridian-ui-scene2d": {
+        "meridian-gac",
+        "meridian-rendering-domain",
+        "meridian-ui-domain",
+    },
     "meridian-sdk": {
-        "meridian-foundation",
-        "meridian-gac-core",
-        "meridian-task-core",
-        "meridian-platform-core",
-        "meridian-asset-core",
-        "meridian-graphics-driver",
-        "meridian-graphics-core",
-        "meridian-physics-core",
-        "meridian-audio-core",
-        "meridian-engine-core",
-        "meridian-dsl-core",
-        "meridian-dsl-macros",
+        "meridian-diagnostics",
+        "meridian-gac",
+        "meridian-platform-winit",
+        "meridian-asset-domain",
+        "meridian-asset-png",
+        "meridian-asset-symphonia",
+        "meridian-rendering-wgpu",
+        "meridian-rendering-domain",
+        "meridian-physics-domain",
+        "meridian-audio-domain",
+        "meridian-audio-app",
+        "meridian-audio-cpal",
+        "meridian-rendering-app",
+        "meridian-diagnostics-fs",
+        "meridian-runtime-app",
+        "meridian-physics-app",
+        "meridian-physics-wgpu",
+        "meridian-runtime-threads",
+        "meridian-compute-wgpu",
+        "meridian-compute-app",
+        "meridian-markup",
+        "meridian-markup-macros",
+        "meridian-ui-domain",
     },
+}
+
+# (crate, dependency) -> the migration wave that removes the edge.
+# These edges point outwards and contradict ADR 019; they stay until that
+# wave inverts them. Never add to this table.
+PENDING = {
 }
 
 NAME_RE = re.compile(r'^name *= *"([^"]+)"', re.M)
@@ -131,10 +186,14 @@ def actual_deps():
     return found
 
 
-def main():
-    actual = actual_deps()
-    errors = []
+def layers():
+    with open(os.path.join(ROOT, "craftbook.toml"), "rb") as fh:
+        config = tomllib.load(fh)
+    return {crate["name"]: crate["layer"] for crate in config.get("crate", [])}
 
+
+def edge_errors(actual):
+    errors = []
     for crate, deps in sorted(actual.items()):
         allowed = ALLOWED.get(crate)
         if allowed is None:
@@ -143,20 +202,39 @@ def main():
                 f"— add one and document it in docs/dependency-rules.md"
             )
             continue
-        extra = deps - allowed
-        missing = allowed - deps
-        for dep in sorted(extra):
+        pending = {dep for (src, dep) in PENDING if src == crate}
+        for dep in sorted(deps - allowed - pending):
             errors.append(f"{crate} -> {dep}: undocumented edge (not in ALLOWED)")
-        for dep in sorted(missing):
+        for dep in sorted((allowed | pending) - deps):
             errors.append(
-                f"{crate} -> {dep}: documented in ALLOWED but missing from Cargo.toml"
+                f"{crate} -> {dep}: documented in ALLOWED/PENDING but missing from Cargo.toml"
             )
-
-    known = set(ALLOWED.keys())
-    stale = known - set(actual.keys())
-    for crate in sorted(stale):
+    for crate in sorted(set(ALLOWED) - set(actual)):
         errors.append(f"{crate}: listed in ALLOWED but crate no longer exists")
+    return errors
 
+
+def direction_errors(layer_of):
+    errors = []
+    edges = [(src, dep) for src, deps in ALLOWED.items() for dep in deps]
+    for src, dep in sorted(edges + list(PENDING)):
+        src_layer, dep_layer = layer_of.get(src), layer_of.get(dep)
+        if src_layer is None or dep_layer is None:
+            errors.append(f"{src} -> {dep}: crate missing from craftbook.toml's layer map")
+            continue
+        inward = dep_layer in INWARD[src_layer]
+        if (src, dep) in PENDING and inward:
+            errors.append(f"{src} -> {dep}: points inwards now; remove it from PENDING")
+        elif (src, dep) not in PENDING and not inward:
+            errors.append(
+                f"{src} -> {dep}: {src_layer} crate depends on {dep_layer} crate; "
+                f"dependencies point inwards (ADR 019)"
+            )
+    return errors
+
+
+def main():
+    errors = edge_errors(actual_deps()) + direction_errors(layers())
     if errors:
         print("dependency-rules violations:\n")
         for e in errors:
@@ -164,7 +242,10 @@ def main():
         print(f"\n{len(errors)} violation(s). See docs/dependency-rules.md.")
         return 1
 
-    print(f"OK: {len(actual)} crates match docs/dependency-rules.md.")
+    print(
+        f"OK: {len(ALLOWED)} crates match docs/dependency-rules.md; "
+        f"{len(PENDING)} outward edge(s) pending migration (ADR 019)."
+    )
     return 0
 
 

@@ -6,9 +6,8 @@
 //! copy-pasted twice: asset-path resolution ([`paths`]), reading a
 //! `.mel` scene file into a built DSL tree ([`scene_loader`]), and
 //! crash-reporting/logging bootstrap ([`app_main`]). The acquire/submit/
-//! present render-frame sequence used to live here too; it's
-//! `meridian_sdk::render_frame`/`meridian_sdk::RenderStage` now — real
-//! SDK-level plumbing any application needs, not example-specific.
+//! present render-frame sequence is SDK plumbing, not example code:
+//! `meridian_sdk::render_frame`/`meridian_sdk::RenderStage`.
 //!
 //! Each example still owns its own `App`/`AppHandler`, its own
 //! `on_ready`/`on_redraw` composition, and — for `magic_figures` — its
@@ -18,12 +17,15 @@
 //!
 //! **On the `.mel` extension:** scene files here are Meridian Engine
 //! Language documents — today just the tag/attribute DSL
-//! (`meridian_dsl_core`/`meridian_sdk::dsl`); the planned direction
-//! (see `docs/roadmap.md`) is a Razor-style extension where the same
-//! `.mel` file can embed real scripts alongside markup, edited and
-//! re-run without a Rust rebuild. Nothing here implements that yet —
+//! (`meridian_markup`/`meridian_sdk::dsl`); the planned direction
+//! (see `docs/adr/017-mel-markup-and-code-behind.md`) is WPF-style
+//! code-behind: the `.mel` file stays markup, names a code-behind type
+//! with `x:Class`/`x:ViewModel`, and wires it with events and compiled
+//! `{x:Bind}` bindings. Nothing here implements that yet —
 //! [`scene_loader::load_dsl_scene`] only parses the tag/attribute
 //! subset that exists today.
+
+#![forbid(unsafe_code)]
 
 pub mod app_main;
 pub mod paths;

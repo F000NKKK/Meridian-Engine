@@ -13,53 +13,65 @@ repository = "https://github.com/F000NKKK/Meridian-Engine"
 # repeating path/version — bump a version once here and it's correct both
 # for local builds (path) and for `cargo publish` (version).
 [workspace.dependencies]
-meridian-foundation = { path = "crates/meridian-foundation", version = "0.7" }
-meridian-numeric-core = { path = "crates/meridian-numeric-core", version = "0.8" }
-meridian-gac-core = { path = "crates/meridian-gac-core", version = "0.12" }
-meridian-memory-core = { path = "crates/meridian-memory-core", version = "0.8" }
-meridian-resource-core = { path = "crates/meridian-resource-core", version = "0.8" }
-meridian-task-core = { path = "crates/meridian-task-core", version = "0.7" }
-meridian-platform-core = { path = "crates/meridian-platform-core", version = "0.12" }
-meridian-gpu-driver = { path = "crates/meridian-gpu-driver", version = "0.8" }
-meridian-compute-driver = { path = "crates/meridian-compute-driver", version = "0.18" }
-meridian-compute-runtime = { path = "crates/meridian-compute-runtime", version = "0.20" }
-meridian-gac-compute = { path = "crates/meridian-gac-compute", version = "0.23" }
-meridian-asset-core = { path = "crates/meridian-asset-core", version = "0.13" }
-meridian-ecs-core = { path = "crates/meridian-ecs-core", version = "0.15" }
-meridian-graphics-driver = { path = "crates/meridian-graphics-driver", version = "0.18" }
-meridian-audio-driver = { path = "crates/meridian-audio-driver", version = "0.12" }
-meridian-graphics-core = { path = "crates/meridian-graphics-core", version = "0.26" }
-meridian-physics-driver = { path = "crates/meridian-physics-driver", version = "0.10" }
-meridian-physics-core = { path = "crates/meridian-physics-core", version = "0.25" }
-meridian-physics-compute = { path = "crates/meridian-physics-compute", version = "0.6" }
-meridian-audio-core = { path = "crates/meridian-audio-core", version = "0.19" }
-meridian-engine-core = { path = "crates/meridian-engine-core", version = "0.31" }
+meridian-diagnostics-fs = { path = "crates/meridian-diagnostics-fs", version = "0.1" }
+meridian-diagnostics = { path = "crates/meridian-diagnostics", version = "0.7" }
+meridian-numeric = { path = "crates/meridian-numeric", version = "0.8" }
+meridian-gac = { path = "crates/meridian-gac", version = "0.12" }
+meridian-memory = { path = "crates/meridian-memory", version = "0.8" }
+meridian-resource = { path = "crates/meridian-resource", version = "0.8" }
+meridian-runtime-threads = { path = "crates/meridian-runtime-threads", version = "0.7" }
+meridian-platform-winit = { path = "crates/meridian-platform-winit", version = "0.12" }
+meridian-gpu-wgpu = { path = "crates/meridian-gpu-wgpu", version = "0.8" }
+meridian-compute-wgpu = { path = "crates/meridian-compute-wgpu", version = "0.18" }
+meridian-compute-app = { path = "crates/meridian-compute-app", version = "0.20" }
+meridian-gac-wgpu = { path = "crates/meridian-gac-wgpu", version = "0.23" }
+meridian-asset-domain = { path = "crates/meridian-asset-domain", version = "0.13" }
+meridian-asset-png = { path = "crates/meridian-asset-png", version = "0.1" }
+meridian-asset-symphonia = { path = "crates/meridian-asset-symphonia", version = "0.1" }
+meridian-ecs = { path = "crates/meridian-ecs", version = "0.15" }
+meridian-rendering-wgpu = { path = "crates/meridian-rendering-wgpu", version = "0.18" }
+meridian-audio-cpal = { path = "crates/meridian-audio-cpal", version = "0.12" }
+meridian-rendering-domain = { path = "crates/meridian-rendering-domain", version = "0.26" }
+meridian-physics-domain = { path = "crates/meridian-physics-domain", version = "0.25" }
+meridian-physics-wgpu = { path = "crates/meridian-physics-wgpu", version = "0.6" }
+meridian-audio-app = { path = "crates/meridian-audio-app", version = "0.1" }
+meridian-rendering-app = { path = "crates/meridian-rendering-app", version = "0.1" }
+meridian-audio-domain = { path = "crates/meridian-audio-domain", version = "0.19" }
+meridian-runtime-app = { path = "crates/meridian-runtime-app", version = "0.31" }
+meridian-physics-app = { path = "crates/meridian-physics-app", version = "0.1" }
 meridian-sdk = { path = "crates/meridian-sdk", version = "0.5" }
-meridian-dsl-core = { path = "crates/meridian-dsl-core", version = "0.1" }
-meridian-dsl-macros = { path = "crates/meridian-dsl-macros", version = "0.1" }
+meridian-markup = { path = "crates/meridian-markup", version = "0.1" }
+meridian-markup-macros = { path = "crates/meridian-markup-macros", version = "0.1" }
+meridian-data-substrate = { path = "crates/meridian-data-substrate", version = "0.1" }
+meridian-editor-domain = { path = "crates/meridian-editor-domain", version = "0.1" }
+meridian-editor-app = { path = "crates/meridian-editor-app", version = "0.1" }
+meridian-editor-tcp = { path = "crates/meridian-editor-tcp", version = "0.1" }
+meridian-ui-domain = { path = "crates/meridian-ui-domain", version = "0.1" }
+meridian-ui-scene2d = { path = "crates/meridian-ui-scene2d", version = "0.1" }
+meridian-ui-mel = { path = "crates/meridian-ui-mel", version = "0.1" }
 
 # External dependencies shared by more than one crate go here too, same
 # reasoning: one place to bump a version instead of drifting per-crate
-# copies. `wgpu` is `graphics-driver`'s GPU backend — see docs/roadmap.md's
+# copies. `wgpu` is `rendering-wgpu`'s GPU backend — see docs/roadmap.md's
 # "Not yet decided" wgpu entry. `tokio` is this workspace's async runtime:
 # used wherever a crate has a genuine I/O operation (unbounded/externally-
 # determined completion time — an OS/driver handshake, waiting on
 # in-flight GPU work, eventually file/network I/O), not layered onto
 # bounded-cost local work (allocation, validation, recording) that would
-# gain nothing from being `async` — see `meridian-graphics-driver`'s
+# gain nothing from being `async` — see `meridian-rendering-wgpu`'s
 # module doc for the concrete first case (`Device::new`/`read_buffer`).
 wgpu = "30.0.0"
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros", "sync"] }
 
-# `winit` is `platform-core::Window`'s windowing backend — see
+# `winit` is `platform-winit::Window`'s windowing backend — see
 # docs/adr/010-windowing-via-winit.md. Pinned to the latest version whose
 # `raw-window-handle` matches `wgpu`'s own (both currently 0.6.x), since
 # that's what lets `Arc<winit::window::Window>` satisfy
-# `wgpu::Surface` creation without `graphics-driver` depending on `winit`
-# itself — see that ADR's "graphics-driver stays winit-agnostic" section.
+# `wgpu::Surface` creation without `rendering-wgpu` depending on `winit`
+# itself — see that ADR's "rendering-wgpu stays winit-agnostic" section.
 winit = "0.30.13"
 
-# `cpal` is `audio-driver`'s cross-platform audio output backend — the
+# `cpal` is `audio-cpal`'s cross-platform audio output backend — the
 # same class of decision as `wgpu` for GPU and `winit` for windowing:
 # hand-writing FFI to ALSA/PulseAudio/WASAPI/CoreAudio would be a
 # multi-month undertaking with three or more independent classes of
@@ -67,7 +79,12 @@ winit = "0.30.13"
 cpal = "0.18"
 crossbeam-channel = "0.5"
 
-# Compressed-audio decoding for `asset-core` — the same class of decision
+# `thiserror` derives `std::error::Error`/`Display` for the typed error
+# enums Craftbook requires of libraries (see `.claude/rules/craftbook.md`);
+# adopted crate by crate, starting with `meridian-ui-mel`.
+thiserror = "2"
+
+# Compressed-audio decoding for `asset-domain` — the same class of decision
 # as `cpal`/`winit`/`wgpu` (see docs/adr/013-compressed-audio-codecs.md):
 # hand-rolling an MP3/Vorbis/FLAC/Opus decoder is a multi-month DSP
 # undertaking per codec. `symphonia` is the pure-Rust ecosystem standard
@@ -79,7 +96,7 @@ crossbeam-channel = "0.5"
 symphonia = { version = "0.6", default-features = false, features = ["mp3", "ogg", "vorbis", "flac"] }
 symphonia-adapter-libopus = "0.3"
 
-# PNG decoding for `asset-core` — the same class of decision as the audio
+# PNG decoding for `asset-domain` — the same class of decision as the audio
 # codecs above: PNG's compressed data is DEFLATE (zlib), and hand-rolling
 # a correct DEFLATE decompressor is squarely a "multi-month, several
 # independent bug classes" undertaking, not the "small enough to own"
@@ -89,6 +106,55 @@ symphonia-adapter-libopus = "0.3"
 # single-format need.
 png = "0.18"
 
+# Every Meridian-owned data format (scenes, prefabs, saves, editor
+# messages) is Substrate Data — see docs/adr/016-data-formats-on-substrate-data.md.
+# `substrate-data` re-exports its `#[derive(Schema)]` (`substrate-data-derive`),
+# so this one entry is all a crate needs. Taken from crates.io; `0.2` takes
+# every compatible patch release. Used optionally (`data` feature) by
+# `numeric`/`gac`, and directly by `meridian-data-substrate`.
+substrate-data = "0.2"
+
 [profile.release]
 lto = true
 codegen-units = 1
+# Craftbook workspace lint set (templates/workspace-lints.toml).
+# Wave 0 sets every lint that already fires to "warn": that is the backlog,
+# counted in .clippy-backlog, which may only shrink. Lints raised back to
+# "deny" are the ones the tree already satisfies.
+[workspace.lints.rust]
+missing_docs = "warn" # backlog: deny in Craftbook
+missing_debug_implementations = "deny"
+unsafe_code = "deny"
+unreachable_pub = "warn"
+unused_qualifications = "warn"
+elided_lifetimes_in_paths = "warn"
+
+[workspace.lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+too_many_lines = "deny"
+too_many_arguments = "deny"
+excessive_nesting = "deny"
+cognitive_complexity = "deny"
+fn_params_excessive_bools = "deny"
+struct_excessive_bools = "deny"
+module_name_repetitions = "warn"
+unwrap_used = "deny"
+panic = "warn" # backlog: deny in Craftbook
+todo = "deny"
+unreachable = "warn" # backlog: deny in Craftbook
+unimplemented = "deny"
+dbg_macro = "deny"
+print_stdout = "warn" # backlog: deny in Craftbook
+print_stderr = "warn" # backlog: deny in Craftbook
+allow_attributes = "deny"
+allow_attributes_without_reason = "deny"
+undocumented_unsafe_blocks = "deny"
+wildcard_imports = "deny"
+let_underscore_must_use = "deny"
+let_underscore_untyped = "warn"
+missing_errors_doc = "warn" # backlog: deny in Craftbook
+missing_panics_doc = "warn" # backlog: deny in Craftbook
+mod_module_files = "allow"
+self_named_module_files = "deny"
+large_types_passed_by_value = "warn"
+shadow_unrelated = "warn"

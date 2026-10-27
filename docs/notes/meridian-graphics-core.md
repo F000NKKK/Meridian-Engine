@@ -1,0 +1,109 @@
+# `meridian-rendering-domain` design notes
+
+Rationale moved out of the module docs (Craftbook ch. 5 §5.2: a `//!` is at
+most 30 lines). Each section belongs to the module named in its heading.
+
+Wave 5 (ADR 019) moved the GPU-touching parts of `bloom`, `submission` and
+`sprites` (pipelines, shaders, baking and recording) to `meridian-rendering-wgpu`;
+the sections below describe them where they now live. `rendering-domain` keeps the
+scene, the registries, sprite batching, the shadow light and the ports.
+
+## `bloom`
+
+**Pipeline, once per frame a bloom-enabled view renders:**
+1. [`SceneRenderer::draw`] — the ordinary lit/unlit scene, straight
+into the real render target (swapchain or an offscreen color
+texture).
+2. [`BloomPass::apply`]'s bright pass — the *same* `DrawBuffers`
+redrawn through this module's own emissive-extraction pipelines
+(built here, not on `SceneRenderer` — see [`BloomPass::new`]'s doc
+comment for why) into an offscreen "bright" texture. A material
+with `emissive = [0,0,0]` (the default) contributes solid black
+here — harmless once additively composited in step 4 — so no
+per-material bloom flag or threshold is needed; `emissive` itself
+*is* the mask.
+3. Two blur passes (horizontal, then vertical — the standard
+separable-Gaussian trick: an `N*N` blur becomes two `N`-tap passes)
+ping-ponging between two same-sized offscreen textures, each a
+full-screen-triangle draw sampling the previous pass's texture.
+4. The composite pass: the blurred bright texture, scaled by
+[`BloomConfig::intensity`], additively blended onto the *same*
+view the main pass (step 1) already drew into — via
+`CommandBuffer::begin_render_pass_loaded`, which preserves existing
+contents instead of clearing them.
+
+**Deliberately not HDR.** Every offscreen texture here (bright/ping/
+pong) is [`ColorFormat::SrgbRgba8`], the same format `TextureRegistry`
+uses for uploaded textures — an emissive value is whatever a
+`Material` sets (no bloom-specific tone mapping or exposure control),
+clamped to `[0,1]` like every other color in this bridge. A true HDR
+pipeline (`Rgba16Float` intermediate targets, exposure/tone-mapping)
+is real future work if a scene ever needs emissive values above `1.0`
+to look right — it would only mean adding a variant to
+`rendering-wgpu::ColorFormat` and passing it through, not a redesign
+here; the visible glow this produces today does not depend on it.
+
+**Fixed at construction size**, matching the swapchain/target it was
+built for — resize by constructing a new [`BloomPass`] (cheap: a
+handful of small offscreen textures and three tiny pipelines), the
+same "rebuild on resize" pattern `DepthTexture` already uses in every
+windowed example.
+
+## `submission`
+
+**No per-instance uniform, no GPU-side instancing yet.** A render
+pass here has exactly one shared uniform buffer (view-projection,
+camera position, ambient, lights) per view — there is no dynamic-
+offset or per-draw uniform mechanism in `rendering-wgpu` today, and
+writing a *shared* uniform once per draw would race (every draw only
+executes once the whole command buffer is submitted, by which point
+the last write wins for *all* of them — the same footgun the
+soft-body examples' buffer-lifetime comments call out). So each
+[`Renderable3d`]'s world-space position/normal, its UV (if textured)
+and its material's tint/emissive are baked into a fresh vertex buffer
+at [`SceneRenderer::prepare`] time, once per instance, per frame —
+correct today, and exactly the CPU-side cost docs/graphics-design.md's
+"GPU-driven rendering" section already names as the long-term thing
+to fix via instancing/indirect draw. Per-textured-draw bind groups
+are similarly rebuilt every frame rather than cached per texture —
+the same "correct now, batch later" trade-off.
+
+**Lights are capped at [`MAX_LIGHTS`]** (a fixed-size WGSL uniform
+array, not a dynamically-sized storage buffer — keeping the uniform
+shape simple until a scene actually needs more): extra lights beyond
+the cap are dropped, logged once per [`SceneRenderer::prepare`] call
+via `meridian_diagnostics::log_warn!`, not silently ignored.
+
+## `sprites`
+
+The 2D path, split so the interesting half needs no GPU: `batch_scene2d`
+(cull to camera, stable sort by `layer`, merge consecutive same-texture
+sprites) is plain data in, plain data out; `SpriteRenderer` is the only
+part that touches `rendering-wgpu`.
+
+- **Why consecutive-only merging.** Painter's order is the contract
+  (`layer` = draw order), so batching may never move a sprite across a
+  differently-textured one. A UI that alternates textures pays one draw
+  per run; an atlas is the fix, not reordering.
+- **Why a non-indexed triangle list.** Six vertices per quad avoids the
+  `u16` index ceiling (`set_index_buffer_u16`) that a 16k-quad UI layer
+  would hit, at 50% more vertex bytes than an indexed quad.
+- **Why a per-prepare camera uniform.** `SceneRenderer` shares one
+  uniform across views (one renderer per view). The sprite renderer is
+  view-independent: each `PreparedSprites` owns its camera buffer, so two
+  `Scene2d` views in one frame cannot overwrite each other's camera.
+- **Two transforms per sprite.** The centre and the x half-axis; the y
+  half-axis is the x one turned a quarter turn, valid because a sprite
+  lives in the scene plane. `Motor3::transform_point` is the cost (see
+  `benches/sprite_batching.rs`).
+- **Clip spans by layer, not per sprite.** `Sprite` and `Scene2d` are
+  built as struct literals by `meridian-ui-scene2d`, so a clip field on
+  either would break it. A `ClipSpan` over a layer range matches how a
+  tree walk emits a container's content (one contiguous run) and keeps the
+  scene types unchanged. Batches merge only when texture and clip match.
+- **Scissor, not geometry clipping.** Quads are not cut; the scissor
+  rectangle (outward-rounded, clamped to the target) hides the rest.
+  Sprites fully outside their clip are dropped before upload.
+- **Premultiplied alpha.** Textures are straight RGBA8
+  (`asset-domain::ImageAsset`); the fragment shader multiplies by `tint` and
+  then by alpha, and the pipeline blends `src + dst * (1 - src.a)`.

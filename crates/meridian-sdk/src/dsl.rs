@@ -10,46 +10,14 @@
 //!
 //! ## The three layers
 //!
-//! - [`meridian_dsl_core`] (re-exported here as [`dsl_core`]) — the
-//!   domain-blind text parser (`<Tag attr="value">...</Tag>` ->
-//!   `Element`) plus [`dsl_core::DslTag`]/[`dsl_core::DslRegistry`], the
-//!   generic "typed thing buildable from attributes" machinery. Never
-//!   changes when a new tag is added.
-//! - [`dsl_tag`] (the `#[dsl_tag(name = "...")]` attribute macro,
-//!   re-exported from `meridian-dsl-macros`) — code generation: turn a
-//!   plain struct into a [`dsl_core::DslTag`] impl, one required
-//!   attribute per field (`Option<T>` fields are optional). This is how
-//!   a game adds `<MyGameSpecificWidget hp="100" />` without touching
-//!   this crate at all.
-//! - This module's own [`Scene`]/[`Entity`]/[`Mesh`]/[`Material`]/
-//!   [`RigidBody`]/[`Transform`] — built-in tags for the composition
-//!   primitives every application needs, registered by
-//!   [`default_registry`]. An application that doesn't want one of
-//!   these can build its own `DslRegistry` from scratch instead of
-//!   calling [`default_registry`].
-//!
-//! ## Scope, deliberately
-//!
-//! This DSL describes scene/entity composition only — no window title,
-//! no logging config, no crash-report directory (see the earlier design
-//! discussion that scoped this to Phase 1). An application still writes
-//! that part in plain Rust `main()`, same as today.
-//!
-//! Parse errors ([`dsl_core::ParseError`]) and tag-build errors
-//! ([`dsl_core::TagParseError`]) both implement
-//! `meridian_foundation::EngineError` (see that trait's own doc) — a
-//! caller that lets one propagate into a panic (rather than, say,
-//! falling back to an empty scene) gets it captured by
-//! `crash_reporting`'s post-mortem for free, same as every other engine
-//! error; nothing about this module is a silent dead end.
+//! Design notes: docs/notes/meridian-sdk.md (`dsl`).
 
+use dsl_core::{DslRegistry, TagParseError};
 /// The domain-blind parser and typed-tag machinery — see the module doc
 /// above for how this layers under [`dsl_tag`] and this module's
 /// built-in tags.
-pub use meridian_dsl_core as dsl_core;
-pub use meridian_dsl_macros::dsl_tag;
-
-use dsl_core::{DslRegistry, TagParseError};
+pub use meridian_markup as dsl_core;
+pub use meridian_markup_macros::dsl_tag;
 
 /// The document root — a plain container for [`Entity`] nodes, carrying
 /// no data of its own. Every DSL document this crate writes has one of
@@ -106,7 +74,7 @@ pub struct Material {
 /// axis — a floor slab and a cube prop need different aspect ratios, so
 /// this doesn't collapse to a single uniform `size` the way procedural
 /// `Mesh` shapes mostly do), `mass` of `0.0` meaning static/immovable,
-/// matching `physics-core::RigidBody`'s own convention.
+/// matching `physics-domain::RigidBody`'s own convention.
 #[dsl_tag(name = "RigidBody")]
 #[derive(Debug, Clone, PartialEq)]
 pub struct RigidBody {
@@ -140,6 +108,7 @@ pub struct Transform {
 /// let mut registry = default_registry();
 /// // registry.register::<MyGameSpecificWidget>();
 /// ```
+#[must_use]
 pub fn default_registry() -> DslRegistry {
     let mut registry = DslRegistry::new();
     registry.register::<Scene>();
@@ -159,6 +128,26 @@ pub fn default_registry() -> DslRegistry {
 pub fn build_scene(source: &str, registry: &DslRegistry) -> Result<dsl_core::BuiltNode, DslError> {
     let element = dsl_core::parse(source).map_err(DslError::Parse)?;
     registry.build(&element).map_err(DslError::Tag)
+}
+
+/// Pulls in the module `meridian-ui-mel` generated for a `.mel`
+/// document (ADR 017): `mel_include!("magic_figures")` includes
+/// `$OUT_DIR/mel/magic_figures.g.rs`, written by
+/// `meridian_ui_mel::compile_dir` in the crate's `build.rs`. Use it
+/// inside the code-behind module:
+///
+/// ```ignore
+/// mod scene {
+///     meridian_sdk::mel_include!("magic_figures");
+/// }
+/// let root = scene::build(&registry)?;
+/// let cube = scene::find(&root, scene::Name::Cube);
+/// ```
+#[macro_export]
+macro_rules! mel_include {
+    ($name:literal) => {
+        include!(concat!(env!("OUT_DIR"), "/mel/", $name, ".g.rs"));
+    };
 }
 
 /// Either half of what can go wrong turning DSL text into a built tree
@@ -181,7 +170,7 @@ impl std::fmt::Display for DslError {
 
 impl std::error::Error for DslError {}
 
-impl meridian_foundation::EngineError for DslError {}
+impl meridian_diagnostics::EngineError for DslError {}
 
 #[cfg(test)]
 mod tests {

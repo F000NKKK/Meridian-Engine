@@ -1,65 +1,64 @@
-# GAC design — `meridian-gac-core`
+# GAC design — `meridian-gac`
 
 The Geometric Algebra Core is the spatial-math foundation every other
 subsystem builds on. It plays the role glm/Eigen/DirectXMath play in other
 engines, but is built around geometric algebra (specifically PGA — projective
 geometric algebra — for 3D rigid transforms) instead of raw matrices.
 
-## `float_ga`, `fixed_ga`, and `generic`
+## Layout: one directory per concept
 
-Three modules. `float_ga` (`f32`, `Scalar` — the default; re-exported at
-the crate root, so `meridian_gac_core::Vec3`/`Motor3`/`Aabb`/etc. resolve
-to it unchanged) and `fixed_ga` (`Fixed`, Q16.16 fixed-point from
-`meridian-numeric-core` — deterministic, opt-in) each hold a concretely
-duplicated **algebra**: `Multivector`/`Vec3`/`Bivector3`/`Rotor`/`Motor3`
-in `float_ga`, `FixedMultivector`/`FixedVec3`/`FixedBivector3`/
-`FixedRotor`/`FixedMotor3` in `fixed_ga`. This pair *is* a deliberate,
-disclosed duplication — see [ADR 008](adr/008-fixed-point-determinism.md)
-for why a generic `Motor3<S>` wasn't used instead: `gac-compute`'s GPU
-dispatch path has no good answer for fixed-point regardless (GPUs are
-`f32`-native, no real `i64`), so the duplication a generic type would
-avoid still has to exist at the GPU-relevant instantiation site. The pure
-integer bitmask `blade` module (shared by both `Multivector` types — it
-doesn't depend on the scalar type at all) lives once at the crate root,
-not duplicated.
+`gac` has one directory per concept (`multivector/`, `vector/`,
+`bivector/`, `rotor/`, `motor/`, `volume/`, `projection/`, `mesh/`,
+`flavor/`, `blade/`), each with a wiring-only `mod.rs`, a `float.rs` and a
+`fixed.rs`, plus item-named files for logic shared by both flavors
+(ADR 020 D5). Everything public is re-exported at the crate root:
+`meridian_gac::Vec3`/`Motor3`/`Aabb`/etc. are the `float` flavor
+(`f32`, `Scalar` — the default, GPU-dispatchable), and the `Fixed*` names
+(`FixedVec3`, `FixedMotor3`, `FixedAabb`, ...) are the deterministic `fixed`
+flavor (`Fixed`, Q16.16 from `meridian-numeric`, opt-in).
+
+The **algebra** — `Multivector`/`Vec3`/`Bivector3`/`Rotor`/`Motor3` — is
+concretely duplicated between each concept's `float.rs` and `fixed.rs`. This
+is deliberate and disclosed: see [ADR 008](adr/008-fixed-point-determinism.md)
+for why a generic `Motor3<S>` wasn't used: `gac-wgpu`'s GPU dispatch path
+has no good answer for fixed-point regardless (GPUs are `f32`-native, no real
+`i64`), so the duplication a generic type would avoid still has to exist at
+the GPU-relevant instantiation site. The pure integer bitmask `blade`
+module and the geometric product's `basis_product` do not depend on the
+scalar type, so each exists once.
 
 Geometric **primitives** — `Aabb`/`Sphere`/`Obb`/`Cone`/`Plane`/`Shape`/
-`ConvexVolume`/`Projection`/`Frame` — have no such constraint: an AABB
-overlap test or a projection-matrix derivation is the same sequence of
-operations regardless of scalar type, so they're written **once**,
-generic over `generic::GaFlavor` (an associated-type bundle of
+`ConvexVolume` (`volume/`), `Projection` (`projection/`), `Frame`
+(`motor/`) and `Mesh`/`Face`/`icosphere` (`mesh/`) — have no such
+constraint: an AABB overlap test or a projection-matrix derivation is the
+same sequence of operations regardless of scalar type, so they're written
+**once**, generic over `flavor::GaFlavor` (an associated-type bundle of
 `ScalarLike`/`VectorLike`/`BivectorLike`/`RotorLike`/`MotorLike`, each a
-thin trait naming the operations generic code needs — implemented by
-forwarding to `float_ga`/`fixed_ga`'s own inherent methods, not
-reimplemented). `float_ga`/`fixed_ga` each expose thin type aliases over
-`generic`'s definitions (`float_ga::Aabb = generic::Aabb<FloatFlavor>`,
-`fixed_ga::FixedAabb = generic::Aabb<FixedFlavor>`, ...), so existing call
-sites don't need to think about the generic parameter — only code that
-wants to *be* generic over the flavor (like `physics-core`'s own engine;
-see docs/physics-design.md) reaches into `generic` directly. `generic` is
-deliberately its own module rather than living directly in `lib.rs`: a
-locally-defined item always shadows a same-named glob-imported item in
-Rust, so `Aabb<F>` at the crate root next to `pub use float_ga::*;` would
-silently shadow `float_ga::Aabb`'s re-export and break every existing
-unparameterized `meridian_gac_core::Aabb` call site — caught during the
-genericization pass, fixed by moving the generic definitions out of
-`lib.rs` into their own namespace. Neither flavor's primitives are
-`physics-core`-local or owned by whichever crate needed them first — a
-`Fixed`-based CPU-deterministic simulation for *any* subsystem
-(`graphics-core`, a large precise CPU/GPU-emulated simulation, not just
-`physics-core::fixed`) can reach for `fixed_ga`'s primitives directly, the
-same way any subsystem already reaches for `float_ga`'s. `Projection` has
-no meaningfully different `Fixed` behavior — it's generic like every
-other primitive here, but most consumers only ever build a `FloatFlavor`
-one, since a GPU pipeline needs `f32` uniforms regardless of which flavor
-computed the camera's pose (via `to_float_lossy`).
+thin trait naming the operations generic code needs, implemented by
+forwarding to the flavor types' own inherent methods). Each concept's
+`float.rs`/`fixed.rs` holds thin aliases over the generic definitions
+(`volume::float::Aabb = volume::Aabb<FloatFlavor>`,
+`volume::fixed::FixedAabb = volume::Aabb<FixedFlavor>`, ...), re-exported at
+the crate root, so call sites don't need to think about the generic
+parameter. Only code that wants to *be* generic over the flavor (like
+`physics-domain`'s engine; see docs/physics-design.md) names
+`meridian_gac::volume::Aabb` and friends. The generic definitions live
+in their concept module, not at the crate root, because a locally-defined
+item always shadows a same-named glob-imported item in Rust: `Aabb<F>` at
+the root would shadow the `Aabb` alias re-exported from `volume::float`.
+Neither flavor's primitives are `physics-domain`-local — a `Fixed`-based
+CPU-deterministic simulation for *any* subsystem can reach for the `Fixed*`
+types directly. `Projection` has no meaningfully different `Fixed`
+behavior; most consumers only build the `FloatFlavor` one, since a GPU
+pipeline needs `f32` uniforms regardless of which flavor computed the
+camera's pose (via `to_float_lossy`).
 
 ### Cross-flavor interop
 
 Both flavors implement the same method names (`dot`, `cross`, `length`,
 `normalize`, `compose`, `transform_point`, ...) by construction — `Fixed`
 implements the same arithmetic operators `f32` does (see
-`meridian-numeric-core`), so `fixed_ga` mirrors `float_ga` call-for-call.
+`meridian-numeric`), so each `fixed.rs` mirrors its `float.rs` call-for-call.
 Converting between them is a **named method, not `From`/`Into`**:
 `Vec3::to_fixed_lossy()` / `FixedVec3::to_float_lossy()` (and the same
 pair for `Bivector3`, `Rotor`, `Motor3`). `From`/`Into` would make a
@@ -79,7 +78,7 @@ Blade         // a single k-vector term (scalar, vector, bivector, ...)
 Rotor         // pure rotation
 Motor         // rotation + translation, composable
 Frame         // a named reference frame (origin + basis)
-Projection    // camera/projective mappings (float_ga only — GPU-bound)
+Projection    // camera/projective mappings (float only — GPU-bound)
 Aabb          // axis-aligned bounding box
 Sphere        // center + radius
 Obb           // oriented (rotated) box
@@ -90,8 +89,8 @@ Shape         // trait: any convex shape describable by a support function
 ```
 
 `Aabb`, `Sphere`, `Obb`, `Cone` and `Plane` are plain geometric primitives
-with no domain meaning of their own — `physics-core`'s broad phase and
-`graphics-core`'s frustum culling both need a bounding box, `physics-core`'s
+with no domain meaning of their own — `physics-domain`'s broad phase and
+`rendering-domain`'s frustum culling both need a bounding box, `physics-domain`'s
 collider shapes are a sphere and an oriented box, and a plane has no reason
 to be defined twice either. They live here rather than being redefined per
 subsystem, for the same reason `Vec3`/`Motor3` do (see "Consumers" below).
@@ -114,7 +113,7 @@ against that trait. A new shape (a capsule, a convex hull) only needs to
 implement `support`; every existing plane/volume test then works for it for
 free, and no existing code has to learn about the new shape.
 
-`ConvexVolume` generalizes `graphics-core`'s camera frustum (always exactly
+`ConvexVolume` generalizes `rendering-domain`'s camera frustum (always exactly
 six planes) to any number of planes, so it can describe any convex bounding
 region, not just a camera's view volume — see docs/graphics-design.md for
 how `Frustum` wraps it.
@@ -155,60 +154,60 @@ not an approximation), and `to_mat4` (the classical matrix form graphics
 APIs need — see docs/graphics-design.md). `Obb::support` uses
 `transform_vector` to rotate a query direction into the box's local space.
 
-## What lives outside `gac-core`
+## What lives outside `gac`
 
 Scalar types, SIMD dispatch and CPU feature detection are **not** here —
-they live in `meridian-numeric-core` (see
-[dependency-rules.md](dependency-rules.md) rule 6). `gac-core` consumes
-`numeric-core`'s scalar/SIMD abstractions; it does not define its own.
+they live in `meridian-numeric` (see
+[dependency-rules.md](dependency-rules.md) rule 6). `gac` consumes
+`numeric`'s scalar/SIMD abstractions; it does not define its own.
 
 ## Consumers
 
-`ecs-core` (as the `Transform` component), `physics-core` (rigid body
-frames), `graphics-core` (camera/object transforms), `audio-core` (listener/
-emitter frames), `gac-compute` (batch `Motor3` kernels — see below). None of
+`ecs` (as the `Transform` component), `physics-domain` (rigid body
+frames), `rendering-domain` (camera/object transforms), `audio-domain` (listener/
+emitter frames), `gac-wgpu` (batch `Motor3` kernels — see below). None of
 them re-derive spatial math independently — that duplication is exactly what
 this crate exists to prevent.
 
-## Batch execution via gac-compute, not gac-core
+## Batch execution via gac-wgpu, not gac
 
-`gac-core` defines what a `Motor3` *is*; it has no opinion about how a
+`gac` defines what a `Motor3` *is*; it has no opinion about how a
 million of them get transformed per frame, and it must never depend on
-`meridian-compute-runtime` or `meridian-compute-driver` to find out (rule 6).
-Symmetrically, `compute-runtime` must never depend on `gac-core` — it is a
+`meridian-compute-app` or `meridian-compute-wgpu` to find out (rule 6).
+Symmetrically, `compute-app` must never depend on `gac` — it is a
 generic CPU-SIMD/GPU dispatch runtime with no idea what a `Motor3` is (rule
 5). Neither crate should have to compromise that purity just to make batch
 transforms possible, so the batch path lives in a third crate,
-`meridian-gac-compute`, which depends on both (rule 10; see
+`meridian-gac-wgpu`, which depends on both (rule 10; see
 [ADR 007](adr/007-batch-transforms-via-compute.md)):
 
 ```text
                  Transform API (Motor3, Rotor, Frame)
                       |
-              meridian-gac-core          meridian-compute-runtime
+              meridian-gac          meridian-compute-app
                       |                            |
                       +-------------+--------------+
                                     |
-                          meridian-gac-compute
+                          meridian-gac-wgpu
                         MotorTransformKernel
                         MotorComposeKernel
                                     |
                           GPU / CPU-SIMD dispatch
-                             via compute-driver
+                             via compute-wgpu
                                     |
-                         physics-core, graphics-core
+                         physics-domain, rendering-domain
                                 (large batches)
 ```
 
 The diagram above is the batch path only. Small transform counts (gameplay
-code touching a handful of entities) skip `gac-compute` entirely and call
-`gac-core`'s `Motor3` math directly (`motor * local`) — that's still the
-cheapest path, and it never touches `compute-runtime`. `gac-compute`'s
-kernels exist for the batch case: `physics-core`/`graphics-core` hand a
+code touching a handful of entities) skip `gac-wgpu` entirely and call
+`gac`'s `Motor3` math directly (`motor * local`) — that's still the
+cheapest path, and it never touches `compute-app`. `gac-wgpu`'s
+kernels exist for the batch case: `physics-domain`/`rendering-domain` hand a
 `Vec<Motor3>` to `MotorTransformKernel`, and it dispatches through
-`compute-runtime` on whichever backend the scheduler picks. Either way the
-math is the same `Motor3` geometric product — `gac-core` and
-`compute-runtime` never have to know about each other for it to work.
+`compute-app` on whichever backend the scheduler picks. Either way the
+math is the same `Motor3` geometric product — `gac` and
+`compute-app` never have to know about each other for it to work.
 
 See [ADR 001](adr/001-geometric-algebra-as-spatial-model.md) for why PGA was
 chosen over quaternions + matrices.
