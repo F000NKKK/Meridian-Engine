@@ -3,26 +3,16 @@
 //! reads bytes the caller supplies, does no I/O and trusts nothing in
 //! them: malformed data is a [`FontError`], never a panic.
 
-mod advances;
-mod cmap;
-mod contour;
-mod directory;
-mod error;
-mod face;
-mod glyf;
+mod font_error;
+mod font_face;
+mod geometry;
 mod glyph_id;
-mod head;
-mod kerning;
-mod loca;
 mod outline;
-mod point;
 mod reader;
-mod segment;
+mod tables;
 
-pub use contour::Contour;
-pub use error::FontError;
-pub use face::FontFace;
+pub use font_error::FontError;
+pub use font_face::FontFace;
+pub use geometry::{Contour, Point, Segment};
 pub use glyph_id::GlyphId;
 pub use outline::Outline;
-pub use point::Point;
-pub use segment::Segment;

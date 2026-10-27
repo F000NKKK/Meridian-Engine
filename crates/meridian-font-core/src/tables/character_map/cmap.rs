@@ -1,11 +1,7 @@
 //! The `cmap` table: character to glyph.
 
-mod format12;
-mod format4;
-
-use format4::Format4;
-use format12::Format12;
-
+use super::format4::Format4;
+use super::format12::Format12;
 use crate::reader::Reader;
 use crate::{FontError, GlyphId};
 

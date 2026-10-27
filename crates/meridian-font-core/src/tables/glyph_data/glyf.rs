@@ -1,9 +1,6 @@
 //! The `glyf` table: glyph outlines.
 
-mod composite;
-mod contour_builder;
-mod simple;
-
+use super::{composite, simple};
 use crate::reader::Reader;
 use crate::{FontError, Outline};
 

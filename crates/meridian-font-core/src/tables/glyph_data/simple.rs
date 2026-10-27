@@ -1,6 +1,7 @@
 //! Simple glyphs: contours of flagged points.
 
-use super::contour_builder::{RawPoint, build};
+use super::contour_builder::build;
+use super::raw_point::RawPoint;
 use crate::reader::Reader;
 use crate::{FontError, Outline, Point};
 

@@ -1,13 +1,7 @@
 //! Turns TrueType's on/off-curve point loops into contours.
 
+use super::raw_point::RawPoint;
 use crate::{Contour, Point, Segment};
-
-/// A point of a TrueType contour.
-#[derive(Debug, Clone, Copy)]
-pub(super) struct RawPoint {
-    pub(super) at: Point,
-    pub(super) on_curve: bool,
-}
 
 /// One contour from its points. Consecutive off-curve points imply an
 /// on-curve point halfway between them; a loop with no on-curve point

@@ -1,11 +1,12 @@
 //! A parsed font face.
 
-use crate::cmap::Cmap;
-use crate::directory::Directory;
-use crate::glyf::Glyf;
-use crate::head::Header;
-use crate::kerning::Kerning;
-use crate::{FontError, GlyphId, Outline, advances, loca};
+use crate::tables::character_map::Cmap;
+use crate::tables::directory::Directory;
+use crate::tables::glyph_data::Glyf;
+use crate::tables::header::Header;
+use crate::tables::kerning::Kerning;
+use crate::tables::{advances, loca};
+use crate::{FontError, GlyphId, Outline};
 
 /// A TrueType face: metrics, character map and glyph outlines, all in
 /// font units. Parsing copies what it needs, so the face owns its data.
