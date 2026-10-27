@@ -122,6 +122,46 @@ must agree on the semantics, as Yog's backend and interpreter do.
   iterates. Craftbook limits apply (files at most 400 lines, one primary
   item per file, no `utils`).
 
+## What MEL takes from Yog Script
+
+Read in `yog-mod-loader/docs/design/ys.md` (2026-10-27). Carried over
+as the starting point, each to be fixed in the grammar document:
+
+- **Surface:** types first, `let` / `let mut`, `;`, PascalCase types and
+  members, camelCase locals, string interpolation `{expr}`, `switch`
+  expressions, records (`record Pos(i32 X, i32 Y, i32 Z)`), structs,
+  interfaces, generics with `where` constraints, extension members,
+  attributes.
+- **Ownership, written as C# writes it:** `T x` copy or `move x`,
+  `in T` (`&T`), `ref T` (`&mut T`), `out T`, `move T`; non-lexical
+  borrow rules; lifetimes elided at signatures and written (`'a`) only
+  where ambiguous; `ref struct` holds borrows; drop at scope end.
+  **Difference:** Yog keeps a GC beneath as a safety net because its JVM
+  backend needs one; MEL's primary target is Rust, where the same rules
+  map one to one onto `T`, `&T`, `&mut T` and `Drop`, so MEL has no GC.
+  Shared ownership is an explicit `Shared<T>` / `Weak<T>`.
+- **Failures:** `Result<T, E>` with `Ok`/`Err`, `try` (Rust's `?`) with
+  `From`-style error conversion, `Map`/`MapErr`/`AndThen`/`UnwrapOr`;
+  bugs are panics, there are no exceptions; a dropped `Result` warns.
+- **Enums with data:** `enum Mode { Idle, Charging(i32 Rate), Full }`,
+  case numbers for data-less cases, matched by exhaustive `switch`
+  patterns (`Mode.Charging(let r)`, guards with `when`, ranges, lists).
+- **Macros:** Rust-style declarative (`macro` with fragments) and
+  procedural macros written in MEL and run by the compile-time
+  evaluator; derives and attribute macros; expansion errors point at the
+  call. This is the evaluator's main job.
+- **Components and systems:** a `component` carries state and behaviour,
+  a `system` is a query over components. In the engine this maps to
+  `ecs-core` archetypes, so a system is a generated query, not a scan.
+- **Failure isolation:** a panicking handler is disabled and reported at
+  its `.mel` line; the frame goes on.
+- **Tooling:** `test` blocks, `tune` live values, diagnostics with stable
+  codes shared by CLI, build and editor.
+
+Left behind as game-specific: sides as types, Minecraft content kinds,
+`.yns` patches and class indexes, versions and `targets`. Sides may
+return as editor/runtime/server if the engine needs them.
+
 ## Consequences
 
 - A new crate family (`lang-core`, a Rust backend, later a WASM backend, a
