@@ -27,9 +27,9 @@
 # поведение: бампаем/публикуем вслепую, без обращения к crates.io).
 #
 # Примеры:
-#   ./release.sh meridian-gac-core --minor        # каскад: gac-core → ecs-core → ... → engine-core
-#   ./release.sh meridian-engine-core --patch     # patch: ссылки совместимы, каскада нет
-#   ./release.sh meridian-gac-core                # без бампа: публикует v текущую, если ещё не на crates.io
+#   ./release.sh meridian-gac --minor        # каскад: gac → ecs → ... → runtime-app
+#   ./release.sh meridian-runtime-app --patch     # patch: ссылки совместимы, каскада нет
+#   ./release.sh meridian-gac                # без бампа: публикует v текущую, если ещё не на crates.io
 #   ./release.sh --publish-all                    # весь воркспейс как есть, публикует неопубликованное
 #   ./release.sh --publish-all --patch            # patch-бамп + публикация всех крейтов
 #
@@ -43,8 +43,8 @@
 #
 # Какой бамп когда (человеческая дисциплина, скриптом не проверяется):
 #   --patch  — багфиксы, без изменения публичного API
-#   --minor  — завершённый функциональный этап (numeric-core, gac-core,
-#              ecs-core, ...) — то, ради чего вообще стоит делать релиз
+#   --minor  — завершённый функциональный этап (numeric, gac,
+#              ecs, ...) — то, ради чего вообще стоит делать релиз
 #   --major  — изменение публичной архитектуры (breaking change)
 # Не релизь просто чтобы был релиз — 19 релизов сейчас отражают 19 реально
 # завершённых этапов, не счётчик активности.

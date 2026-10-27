@@ -1,12 +1,12 @@
 # `.mel` events and commands
 
-Contract between the markup side (`meridian-mel-build`, team/scripting)
-and the event source (`meridian-ui-core`, team/ui-ux). It follows the
+Contract between the markup side (`meridian-ui-mel`, team/scripting)
+and the event source (`meridian-ui-domain`, team/ui-ux). It follows the
 WinUI 3 / MVVM model the owner chose (ADR 017, ADR 018): handlers are
 view-model methods bound with `x:Bind`, events are routed, and code-behind
 handlers stay optional. Implemented: the event attributes, `dispatch` and
-`Handled`/`IntoHandled` (ui-core); not yet: tunneling and commands. The event source (`UiEvent`, `UiTree::drain_events`, bubbling along
-`UiTree::ancestors`) exists since ui-core #35.
+`Handled`/`IntoHandled` (ui-domain); not yet: tunneling and commands. The event source (`UiEvent`, `UiTree::drain_events`, bubbling along
+`UiTree::ancestors`) exists since ui-domain #35.
 
 ## Markup
 
@@ -45,7 +45,7 @@ the elements on it that registered for that event's tag:
 
 - **Bubbling** (default): target first, then `tree.ancestors(target)`
   nearest first. Events that do not bubble (enter, leave, focus, per
-  ui-core) visit the target only.
+  ui-domain) visit the target only.
 - **Tunneling** (`preview_*` tags, later): root first, down to the
   target, before the bubbling pass of the same input.
 - A handler returning `Handled::Yes` stops the route; `fn(&mut self)`
@@ -62,7 +62,7 @@ bus (CLAUDE.md: no singleton managers).
 `ICommand` equivalent: the view model's `Command` has `execute(&mut self)`
 and `can_execute(&self) -> bool`; the generator applies `can_execute` to
 the element's `enabled` property in `apply_bindings` and runs `execute`
-on `click`. Deferred until ui-core has `enabled` and a `Button`.
+on `click`. Deferred until ui-domain has `enabled` and a `Button`.
 
 ## What ui-ux provides
 

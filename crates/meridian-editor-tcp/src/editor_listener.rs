@@ -2,7 +2,7 @@
 
 use std::net::{Ipv4Addr, SocketAddr};
 
-use meridian_editor_host::RequestHandler;
+use meridian_editor_app::RequestHandler;
 use tokio::net::TcpListener;
 
 use crate::{ServeError, serve_stream};

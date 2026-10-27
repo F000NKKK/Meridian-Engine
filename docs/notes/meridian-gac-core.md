@@ -1,4 +1,4 @@
-# `meridian-gac-core` design notes
+# `meridian-gac` design notes
 
 Rationale moved out of the module docs (Craftbook ch. 5 §5.2: a `//!` is at
 most 30 lines). Each section belongs to the module named in its heading.
@@ -18,7 +18,7 @@ each concept's `float.rs`/`fixed.rs` exposes thin type aliases
 `volume::fixed::FixedAabb = volume::Aabb<FixedFlavor>`, ...) so existing
 call sites don't need to think about the generic parameter at all —
 only code that wants to *be* generic over the flavor (like
-`physics-core`'s engine) reaches into those modules directly.
+`physics-domain`'s engine) reaches into those modules directly.
 
 See docs/gac-design.md and
 [ADR 001](../adr/001-geometric-algebra-as-spatial-model.md).
@@ -28,13 +28,13 @@ See docs/gac-design.md and
 This is deterministic-simulation opt-in, not the default —
 the float `Motor3` (`f32`) remains the everyday, GPU-dispatchable
 pose type for everything else (rendering, ECS, audio, and
-`physics-core`'s own default `float::RigidBody`). But it's *usable by
-any crate* that needs CPU-deterministic geometry (`physics-core`'s
-`fixed::RigidBody` today, potentially a deterministic `graphics-core`
+`physics-domain`'s own default `float::RigidBody`). But it's *usable by
+any crate* that needs CPU-deterministic geometry (`physics-domain`'s
+`fixed::RigidBody` today, potentially a deterministic `rendering-domain`
 CPU path or a large precise CPU/GPU-emulated simulation later) —
 that reusability is exactly why the primitives below live here in
-`gac-core`, not inside `physics-core`, the same reason the float
-primitives aren't `physics-core`-local either. `physics-core`'s own
+`gac`, not inside `physics-domain`, the same reason the float
+primitives aren't `physics-domain`-local either. `physics-domain`'s own
 engine (`RigidBody`/`BroadPhase`/`NarrowPhase`/`ConstraintSolver`/
 `Integrator`) goes a step further: it has no GPU-dispatch constraint
 of its own at all, so it's written once, generic over
