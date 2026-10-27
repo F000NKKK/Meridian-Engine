@@ -84,11 +84,13 @@ change that closed them.
    filter, so rendering can skip unchanged instance batches (feeds roadmap
    "Scaling" item 1). Deferred `Commands` (spawn/despawn/insert/remove
    recorded during iteration, applied after) are **done** too.
-4. **Persistence hooks.** Roadmap "Scaling" item 5. Core side: component
-   enumeration per entity (**done**: `World::component_types(entity)`,
-   sorted `TypeId`s; the stable-name registry and serializers are the
-   adapter's) and a world snapshot API; the format and `meridian-data-substrate`
-   belong to `team/data`.
+4. **Done: persistence hooks.** Roadmap "Scaling" item 5. Core side:
+   component enumeration per entity (`World::component_types(entity)`, sorted
+   `TypeId`s; the stable-name registry and serializers are the adapter's) and
+   an in-memory world snapshot (`World::snapshot(&Cloners)` / `restore`, with
+   entity generations; [ecs-design.md](../ecs-design.md#snapshots)). Agreed with
+   `team/data`: the on-disk format and `meridian-data-substrate` stay theirs
+   and need nothing more from `ecs`.
 5. **Done: persistent worker pool.** `Scheduler` spawns its workers once;
    `run` no longer spawns threads (1-job graph ~210 µs -> ~0.35 µs, 1 000-job
    chain 1.1 ms -> 0.33 ms, `cargo bench -p meridian-runtime-threads`). Work-stealing

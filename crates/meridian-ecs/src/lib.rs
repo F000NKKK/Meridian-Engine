@@ -22,19 +22,25 @@
 #![forbid(unsafe_code)]
 
 mod archetype;
+mod cloners;
 mod column;
 mod commands;
 mod component;
 mod entity;
 mod entity_location;
 mod query;
+mod snapshot_error;
+#[cfg(test)]
+mod snapshot_tests;
 #[cfg(test)]
 mod tests;
 mod tick;
 mod transform;
 mod world;
+mod world_snapshot;
 
 use archetype::Archetype;
+pub use cloners::Cloners;
 use column::{AnyColumn, Column};
 pub use commands::Commands;
 pub use component::Component;
@@ -44,6 +50,8 @@ pub use query::{
     Changed, Fetch, OptionalRows, Query, QueryMany, QueryManyMut, QueryMut, ReadFetch,
     ReadSelection, Selection, With, Without,
 };
+pub use snapshot_error::SnapshotError;
 pub use tick::Tick;
 pub use transform::Transform;
 pub use world::World;
+pub use world_snapshot::WorldSnapshot;

@@ -1237,6 +1237,7 @@ dependencies = [
  "criterion",
  "meridian-gac",
  "meridian-memory",
+ "thiserror 2.0.21",
 ]
 
 [[package]]

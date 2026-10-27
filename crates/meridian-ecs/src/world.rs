@@ -15,11 +15,11 @@ use crate::{
 /// other value, consistent with [ADR 003](../../../docs/adr/003-no-global-managers.md).
 #[derive(Debug)]
 pub struct World {
-    entities: ResourcePool<()>,
-    locations: HashMap<Entity, EntityLocation>,
-    archetypes: Vec<Archetype>,
-    archetype_lookup: HashMap<Vec<TypeId>, usize>,
-    tick: Tick,
+    pub(crate) entities: ResourcePool<()>,
+    pub(crate) locations: HashMap<Entity, EntityLocation>,
+    pub(crate) archetypes: Vec<Archetype>,
+    pub(crate) archetype_lookup: HashMap<Vec<TypeId>, usize>,
+    pub(crate) tick: Tick,
 }
 
 impl Default for World {
@@ -69,7 +69,7 @@ impl World {
     }
 
     /// Stamps every column of `archetype` as changed now.
-    fn mark_archetype(&mut self, archetype: usize) {
+    pub(crate) fn mark_archetype(&mut self, archetype: usize) {
         let now = self.tick;
         for column in self.archetypes[archetype].columns.values_mut() {
             column.mark_changed(now);
