@@ -22,9 +22,9 @@
 //! integrate" structure.
 
 use meridian_compute_runtime::ComputeContext;
+use meridian_gac_core::FloatFlavor;
 use meridian_gac_core::Vec3;
-use meridian_gac_core::float_ga::FloatFlavor;
-use meridian_gac_core::generic::Plane;
+use meridian_gac_core::volume::Plane;
 use meridian_gpu_driver::{BufferUsage, ComputePipeline};
 use meridian_physics_core::generic::RigidBody;
 use meridian_physics_core::soft_body::float_softbody::SoftBody;

@@ -2,7 +2,7 @@
 //! the default, everyday physics path. See `crate::generic`'s module doc
 //! for why this is just aliases, not a second copy of the engine.
 
-pub use meridian_gac_core::float_ga::FloatFlavor;
+pub use meridian_gac_core::FloatFlavor;
 
 pub type ColliderShape = crate::generic::ColliderShape<FloatFlavor>;
 pub type RigidBody = crate::generic::RigidBody<FloatFlavor>;

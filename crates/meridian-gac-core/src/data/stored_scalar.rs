@@ -2,7 +2,7 @@
 
 use substrate_data::Schema;
 
-use crate::generic::ScalarLike;
+use crate::flavor::ScalarLike;
 
 /// A component scalar of a stored GA value: `f32` or `Fixed`.
 pub(crate) trait StoredScalar: ScalarLike + Schema {

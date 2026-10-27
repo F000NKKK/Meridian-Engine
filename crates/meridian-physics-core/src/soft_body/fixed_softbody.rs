@@ -8,7 +8,7 @@
 //! `meridian_numeric_core::Fixed`'s own doc comment — so this needed no
 //! extra work beyond aliasing `generic_softbody<FixedFlavor>`.
 
-pub use meridian_gac_core::fixed_ga::FixedFlavor;
+pub use meridian_gac_core::FixedFlavor;
 
 pub type FixedSpring = super::generic_softbody::Spring<FixedFlavor>;
 pub type FixedSoftBody = super::generic_softbody::SoftBody<FixedFlavor>;
@@ -20,7 +20,7 @@ pub type FixedSoftBodyIntegrator = super::generic_softbody::SoftBodyIntegrator<F
 )]
 #[must_use]
 pub fn fixed_icosphere_soft_body(
-    center: meridian_gac_core::fixed_ga::FixedVec3,
+    center: meridian_gac_core::FixedVec3,
     radius: meridian_numeric_core::Fixed,
     subdivisions: u32,
     particle_mass: meridian_numeric_core::Fixed,
@@ -44,8 +44,8 @@ pub fn fixed_icosphere_soft_body(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use meridian_gac_core::fixed_ga::FixedVec3;
-    use meridian_gac_core::generic::Plane;
+    use meridian_gac_core::FixedVec3;
+    use meridian_gac_core::volume::Plane;
     use meridian_numeric_core::Fixed;
 
     fn fv3(x: f64, y: f64, z: f64) -> FixedVec3 {

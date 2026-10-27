@@ -17,7 +17,7 @@
 //!
 //! Design notes: docs/notes/meridian-physics-compute.md (`generic`).
 
-use meridian_gac_core::generic::{GaFlavor, ScalarLike};
+use meridian_gac_core::{GaFlavor, ScalarLike};
 use meridian_physics_core::soft_body::generic_softbody::SoftBody;
 
 /// `neighbor`'s top bit, set when this half-edge's owning particle is the
@@ -111,7 +111,7 @@ pub fn build_adjacency<F: GaFlavor>(body: &SoftBody<F>) -> Adjacency<F> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use meridian_gac_core::float_ga::FloatFlavor;
+    use meridian_gac_core::FloatFlavor;
     use meridian_physics_core::soft_body::float_softbody::icosphere_soft_body;
 
     #[test]

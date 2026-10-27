@@ -5,7 +5,7 @@
 //! are not stored.
 
 use crate::blade;
-use crate::generic::ScalarLike;
+use crate::flavor::ScalarLike;
 
 /// A rotor's stored components `[s, e23, e31, e12]`.
 pub(crate) fn rotor_components<S: ScalarLike>(m: &[S; 16]) -> [S; 4] {

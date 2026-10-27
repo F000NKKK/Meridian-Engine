@@ -1,4 +1,4 @@
-//! The fixed flavour: `Fixed` and [`crate::fixed_ga`]'s types bound to the
+//! The fixed flavour: `Fixed` and [`crate`]'s types bound to the
 //! generic stored forms (components are raw `Fixed` bits).
 
 use meridian_numeric_core::Fixed;
@@ -7,7 +7,7 @@ use substrate_data::schema::NamedType;
 
 use super::blades::{motor_components, motor_multivector, rotor_components, rotor_multivector};
 use super::{MotorBlades, MotorForm, StoredScalar};
-use crate::fixed_ga::{FixedBivector3, FixedMotor3, FixedMultivector, FixedRotor, FixedVec3};
+use crate::{FixedBivector3, FixedMotor3, FixedMultivector, FixedRotor, FixedVec3};
 
 impl StoredScalar for Fixed {
     fn same_bits(self, other: Self) -> bool {

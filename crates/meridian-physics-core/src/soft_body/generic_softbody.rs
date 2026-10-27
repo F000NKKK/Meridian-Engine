@@ -25,7 +25,9 @@
 //! (spheres/cuboids), not individual particles; a soft body's collision
 //! response is inherently per-particle.
 
-use meridian_gac_core::generic::{GaFlavor, Plane, ScalarLike, VectorLike, icosphere};
+use meridian_gac_core::mesh::icosphere;
+use meridian_gac_core::volume::Plane;
+use meridian_gac_core::{GaFlavor, ScalarLike, VectorLike};
 
 /// A structural or volume-preserving connection between two particles in
 /// a [`SoftBody`], by index into its `positions`/`velocities`/

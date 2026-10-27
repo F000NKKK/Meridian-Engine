@@ -3,7 +3,7 @@
 use substrate_data::schema::NamedType;
 
 use super::{MotorForm, StoredScalar};
-use crate::generic::{MotorLike, ScalarLike, VectorLike};
+use crate::flavor::{MotorLike, ScalarLike, VectorLike};
 
 /// A motor type whose rotor and translation vector are named types stored
 /// as component arrays, with its eight even components exposed — enough to

@@ -1,6 +1,6 @@
 //! A contact between two bodies.
 
-use meridian_gac_core::generic::{GaFlavor, ScalarLike, VectorLike};
+use meridian_gac_core::{GaFlavor, ScalarLike, VectorLike};
 
 /// A single narrow-phase contact between two colliders (indices into the
 /// same `&[RigidBody]` slice `BroadPhase`/`NarrowPhase` were given).

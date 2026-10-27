@@ -2,7 +2,7 @@
 
 use super::Contact;
 use super::RigidBody;
-use meridian_gac_core::generic::{BivectorLike, GaFlavor, MotorLike, ScalarLike, VectorLike};
+use meridian_gac_core::{BivectorLike, GaFlavor, MotorLike, ScalarLike, VectorLike};
 
 /// Resolves contacts into corrective linear *and* angular impulses
 /// (conserving momentum) plus a small positional correction so resting

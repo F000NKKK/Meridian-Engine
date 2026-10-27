@@ -1,14 +1,14 @@
-//! Tests of this module.
+//! Tests of the fixed-point flavor against the float oracle.
 
-use super::*;
-use crate::float_ga as float;
-use crate::generic::Shape as _;
+use meridian_numeric_core::Fixed;
+
+use crate::*;
 
 fn fv3(x: f64, y: f64, z: f64) -> FixedVec3 {
     FixedVec3::new(Fixed::from_num(x), Fixed::from_num(y), Fixed::from_num(z))
 }
 
-fn assert_fixed_vec3_approx(got: FixedVec3, want: float::Vec3) {
+fn assert_fixed_vec3_approx(got: FixedVec3, want: Vec3) {
     let tolerance = 1e-3; // CORDIC/multiply rounding through several ops.
     assert!(
         (got.x.to_num() - want.x as f64).abs() < tolerance
@@ -23,9 +23,9 @@ fn assert_fixed_vec3_approx(got: FixedVec3, want: float::Vec3) {
 
 #[test]
 fn fixed_translation_matches_float_ga_oracle() {
-    let t = float::Vec3::new(1.0, 2.0, 3.0);
-    let p = float::Vec3::new(5.0, -1.0, 0.5);
-    let want = float::Motor3::translation(t).transform_point(p);
+    let t = Vec3::new(1.0, 2.0, 3.0);
+    let p = Vec3::new(5.0, -1.0, 0.5);
+    let want = Motor3::translation(t).transform_point(p);
 
     let ft = fv3(1.0, 2.0, 3.0);
     let fp = fv3(5.0, -1.0, 0.5);
@@ -37,9 +37,9 @@ fn fixed_translation_matches_float_ga_oracle() {
 #[test]
 fn fixed_rotation_matches_float_ga_rodrigues_oracle() {
     let angle = 1.234_f32;
-    let axis = float::Vec3::new(0.0, 0.0, 1.0);
-    let p = float::Vec3::new(1.0, 0.0, 0.0);
-    let want = float::Rotor::from_axis_angle(axis, angle).transform_vector(p);
+    let axis = Vec3::new(0.0, 0.0, 1.0);
+    let p = Vec3::new(1.0, 0.0, 0.0);
+    let want = Rotor::from_axis_angle(axis, angle).transform_vector(p);
 
     let fangle = Fixed::from_num(angle as f64);
     let faxis = fv3(0.0, 0.0, 1.0);
@@ -51,10 +51,10 @@ fn fixed_rotation_matches_float_ga_rodrigues_oracle() {
 
 #[test]
 fn fixed_rotation_translation_composition_matches_float_ga_oracle() {
-    let rotor = float::Rotor::from_axis_angle(float::Vec3::new(0.0, 0.0, 1.0), 0.7);
-    let t = float::Vec3::new(3.0, -2.0, 1.0);
-    let p = float::Vec3::new(2.0, 1.0, 0.0);
-    let want = float::Motor3::from_rotation_translation(rotor, t).transform_point(p);
+    let rotor = Rotor::from_axis_angle(Vec3::new(0.0, 0.0, 1.0), 0.7);
+    let t = Vec3::new(3.0, -2.0, 1.0);
+    let p = Vec3::new(2.0, 1.0, 0.0);
+    let want = Motor3::from_rotation_translation(rotor, t).transform_point(p);
 
     let frotor = FixedRotor::from_axis_angle(fv3(0.0, 0.0, 1.0), Fixed::from_num(0.7));
     let ft = fv3(3.0, -2.0, 1.0);
@@ -99,9 +99,9 @@ fn fixed_aabb_support_matches_float_aabb_support() {
         min: fv3(-1.0, -2.0, -3.0),
         max: fv3(4.0, 5.0, 6.0),
     };
-    let aabb = float::Aabb {
-        min: float::Vec3::new(-1.0, -2.0, -3.0),
-        max: float::Vec3::new(4.0, 5.0, 6.0),
+    let aabb = Aabb {
+        min: Vec3::new(-1.0, -2.0, -3.0),
+        max: Vec3::new(4.0, 5.0, 6.0),
     };
     for direction in [fv3(1.0, 1.0, 1.0), fv3(-1.0, -1.0, -1.0)] {
         let got = faabb.support(direction).to_float_lossy();
@@ -165,7 +165,7 @@ fn fixed_convex_volume_generalizes_intersects_to_any_shape() {
 
 #[test]
 fn lossy_round_trip_preserves_value_within_precision() {
-    let v = float::Vec3::new(1.5, -2.25, 3.75);
+    let v = Vec3::new(1.5, -2.25, 3.75);
     let round_tripped = v.to_fixed_lossy().to_float_lossy();
     assert!((round_tripped.x - v.x).abs() < 1e-3);
     assert!((round_tripped.y - v.y).abs() < 1e-3);
@@ -175,7 +175,7 @@ fn lossy_round_trip_preserves_value_within_precision() {
 #[test]
 fn cross_type_add_matches_converting_first() {
     let a = fv3(1.0, 2.0, 3.0);
-    let b = float::Vec3::new(0.5, -1.0, 2.0);
+    let b = Vec3::new(0.5, -1.0, 2.0);
 
     let mixed = a + b;
     let converted_first = a + b.to_fixed_lossy();
@@ -188,11 +188,11 @@ fn cross_type_add_matches_converting_first() {
 
 #[test]
 fn motor_to_fixed_lossy_matches_transform_point_within_precision() {
-    let motor = float::Motor3::from_rotation_translation(
-        float::Rotor::from_axis_angle(float::Vec3::new(0.0, 0.0, 1.0), 0.6),
-        float::Vec3::new(2.0, -1.0, 3.0),
+    let motor = Motor3::from_rotation_translation(
+        Rotor::from_axis_angle(Vec3::new(0.0, 0.0, 1.0), 0.6),
+        Vec3::new(2.0, -1.0, 3.0),
     );
-    let p = float::Vec3::new(1.0, 1.0, 1.0);
+    let p = Vec3::new(1.0, 1.0, 1.0);
     let want = motor.transform_point(p);
     let got = motor.to_fixed_lossy().transform_point(p.to_fixed_lossy());
     assert!((got.x.to_num() as f32 - want.x).abs() < 1e-2);

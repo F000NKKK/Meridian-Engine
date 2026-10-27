@@ -7,7 +7,7 @@ clippy::cast_possible_wrap	4
 clippy::cast_precision_loss	41
 clippy::cast_sign_loss	8
 clippy::default_trait_access	2
-clippy::doc_markdown	7
+clippy::doc_markdown	6
 clippy::duration_suboptimal_units	1
 clippy::elidable_lifetime_names	1
 clippy::excessive_nesting	3
@@ -27,7 +27,7 @@ clippy::print_stderr	3
 clippy::print_stdout	1
 clippy::redundant_closure_for_method_calls	4
 clippy::return_self_not_must_use	50
-clippy::shadow_unrelated	12
+clippy::shadow_unrelated	11
 clippy::similar_names	5
 clippy::single_match_else	3
 clippy::struct_field_names	1
@@ -38,6 +38,6 @@ clippy::unreachable	2
 clippy::unused_async	1
 clippy::unused_self	5
 elided_lifetimes_in_paths	1
-missing_docs	706
+missing_docs	703
 unreachable_pub	12
-unused_qualifications	29
+unused_qualifications	8

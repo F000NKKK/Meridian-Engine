@@ -1,6 +1,6 @@
 //! The shape a rigid body collides with.
 
-use meridian_gac_core::generic::{GaFlavor, ScalarLike};
+use meridian_gac_core::{GaFlavor, ScalarLike};
 
 /// A collision shape. `Sphere` and `Cuboid` (`gac-core::Obb`'s
 /// half-extents, oriented by the owning `RigidBody`'s own `frame` — no

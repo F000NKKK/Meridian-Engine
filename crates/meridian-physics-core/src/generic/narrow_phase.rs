@@ -6,7 +6,7 @@ use super::RigidBody;
 use super::cuboid_vs_cuboid;
 use super::sphere_vs_cuboid;
 use super::sphere_vs_sphere;
-use meridian_gac_core::generic::{GaFlavor, ScalarLike};
+use meridian_gac_core::{GaFlavor, ScalarLike};
 
 /// Resolves candidate pairs from [`BroadPhase`](super::BroadPhase) into exact [`Contact`](super::Contact)s.
 #[derive(Debug)]

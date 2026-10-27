@@ -1,12 +1,12 @@
 //! Tests of this module.
 
 use meridian_compute_runtime::DispatchSize;
+use meridian_gac_core::FixedMotor3;
 use meridian_gac_core::Motor3;
-use meridian_gac_core::fixed_ga::FixedMotor3;
 
 use super::*;
 use meridian_compute_runtime::ComputeScheduler;
-use meridian_gac_core::fixed_ga::{FixedRotor, FixedVec3};
+use meridian_gac_core::{FixedRotor, FixedVec3};
 use meridian_gac_core::{Rotor, Vec3};
 use meridian_numeric_core::Fixed;
 use std::f32::consts::PI;

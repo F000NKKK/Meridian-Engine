@@ -1,6 +1,6 @@
 //! Tests of this module.
 
-use meridian_gac_core::float_ga::mat4_mul;
+use meridian_gac_core::mat4_mul;
 use meridian_gac_core::{Motor3, Projection, Vec3};
 
 use super::*;

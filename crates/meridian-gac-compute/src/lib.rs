@@ -25,7 +25,7 @@
 #![forbid(unsafe_code)]
 
 //! [`FixedMotorTransformKernel`]/[`FixedMotorComposeKernel`] are the same
-//! two kernels built on `gac-core::fixed_ga::FixedMotor3` instead —
+//! two kernels built on `gac-core::FixedMotor3` instead —
 //! deterministic, for `physics-core::fixed`-style consumers that need a
 //! batch path too. CPU vs. GPU dispatch is a *setting* a caller picks,
 //! not a type-level restriction this crate imposes (see

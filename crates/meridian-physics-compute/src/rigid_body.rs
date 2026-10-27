@@ -23,7 +23,7 @@
 use std::sync::Mutex;
 
 use meridian_compute_runtime::{ComputeContext, ComputeKernel, DispatchSize};
-use meridian_gac_core::generic::GaFlavor;
+use meridian_gac_core::GaFlavor;
 use meridian_physics_core::generic::{Integrator, RigidBody};
 
 /// Batch-integrates `bodies` by one timestep `dt`, sharing one
@@ -106,7 +106,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use meridian_gac_core::float_ga::FloatFlavor;
+    use meridian_gac_core::FloatFlavor;
     use meridian_gac_core::{Motor3, Vec3};
     use meridian_physics_core::generic::ColliderShape;
 

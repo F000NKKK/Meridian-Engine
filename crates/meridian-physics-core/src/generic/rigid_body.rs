@@ -2,9 +2,8 @@
 
 use super::ColliderShape;
 use super::aabb_of;
-use meridian_gac_core::generic::{
-    Aabb, BivectorLike, GaFlavor, MotorLike, Obb, ScalarLike, VectorLike,
-};
+use meridian_gac_core::volume::{Aabb, Obb};
+use meridian_gac_core::{BivectorLike, GaFlavor, MotorLike, ScalarLike, VectorLike};
 
 /// A simulated rigid body: spatial frame (shared with every other
 /// subsystem via the GAC) + linear and angular state. `mass <= 0` means

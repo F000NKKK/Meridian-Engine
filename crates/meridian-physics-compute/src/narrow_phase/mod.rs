@@ -27,7 +27,7 @@
 use std::sync::Mutex;
 
 use meridian_compute_runtime::{ComputeContext, ComputeKernel, DispatchSize};
-use meridian_gac_core::generic::GaFlavor;
+use meridian_gac_core::GaFlavor;
 use meridian_physics_core::generic::{Contact, NarrowPhase, RigidBody};
 
 /// Batch-tests `pairs` (indices into `bodies`, typically

@@ -19,8 +19,8 @@
 
 use meridian_compute_runtime::ComputeContext;
 use meridian_gac_compute::fixed_wgsl::FIXED_ARITHMETIC_LIB_WGSL;
-use meridian_gac_core::fixed_ga::{FixedFlavor, FixedVec3};
-use meridian_gac_core::generic::Plane;
+use meridian_gac_core::volume::Plane;
+use meridian_gac_core::{FixedFlavor, FixedVec3};
 use meridian_gpu_driver::{BufferUsage, ComputePipeline};
 use meridian_numeric_core::Fixed;
 use meridian_physics_core::soft_body::fixed_softbody::FixedSoftBody;
@@ -33,7 +33,7 @@ use crate::generic::build_adjacency;
 /// dist)`.
 const ONE_BITS: i32 = 65536;
 
-/// `meridian_gac_core::fixed_ga`'s own `FIXED_EPSILON` raw bits
+/// `meridian_gac_core::flavor::fixed`'s own `FIXED_EPSILON` raw bits
 /// (`Fixed::from_bits(4)`) — the same degenerate-length guard
 /// `SoftBodyIntegrator::step` uses via `F::Scalar::EPSILON`.
 const DIRECTION_EPSILON_BITS: i32 = 4;

@@ -11,12 +11,12 @@
 //! Nothing here changes how [`crate::float::RigidBody`]/
 //! [`crate::float::Integrator`]/etc. behave; it's a parallel API, not a
 //! mode switch on those types. Use
-//! [`meridian_gac_core::fixed_ga::FixedMotor3::to_float_lossy`] (and the
+//! [`meridian_gac_core::FixedMotor3::to_float_lossy`] (and the
 //! matching methods on `FixedVec3`/`FixedBivector3`) to hand a
 //! deterministically-computed pose off to rendering/ECS/audio, which
 //! stay entirely in `f32` regardless of which physics path produced it.
 
-pub use meridian_gac_core::fixed_ga::FixedFlavor;
+pub use meridian_gac_core::FixedFlavor;
 
 pub type ColliderShape = crate::generic::ColliderShape<FixedFlavor>;
 pub type RigidBody = crate::generic::RigidBody<FixedFlavor>;

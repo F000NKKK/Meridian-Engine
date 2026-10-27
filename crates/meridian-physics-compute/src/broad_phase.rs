@@ -5,7 +5,7 @@
 //! are covered by [`crate::rigid_body`]/[`crate::narrow_phase`]; this
 //! module and [`crate::constraint_solver`] close out the remaining two).
 //!
-//! **Reuses [`RigidBody::aabb`] and `gac_core::generic::Aabb::overlaps`
+//! **Reuses [`RigidBody::aabb`] and `gac_core::Aabb::overlaps`
 //! directly — does not reimplement the bounding-box math.** Per
 //! CLAUDE.md's "don't drag another crate's logic into your own" rule,
 //! bounding-box geometry belongs to `gac-core`, and which AABB a body
@@ -31,7 +31,7 @@
 use std::sync::Mutex;
 
 use meridian_compute_runtime::{ComputeContext, ComputeKernel, DispatchSize};
-use meridian_gac_core::generic::GaFlavor;
+use meridian_gac_core::GaFlavor;
 use meridian_physics_core::generic::RigidBody;
 
 /// Batch-tests every candidate pair `(i, j)`, `i < j`, among `bodies`
@@ -126,7 +126,7 @@ where
 mod tests {
     use super::*;
     use meridian_compute_runtime::DispatchSize;
-    use meridian_gac_core::float_ga::FloatFlavor;
+    use meridian_gac_core::FloatFlavor;
     use meridian_gac_core::{Motor3, Vec3};
     use meridian_physics_core::generic::{BroadPhase, ColliderShape};
 

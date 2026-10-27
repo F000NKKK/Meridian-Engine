@@ -3,7 +3,7 @@
 //! `crate::float`'s module doc for why this is just aliases, not a
 //! second copy of the engine.
 
-pub use meridian_gac_core::float_ga::FloatFlavor;
+pub use meridian_gac_core::FloatFlavor;
 
 pub type Spring = super::generic_softbody::Spring<FloatFlavor>;
 pub type SoftBody = super::generic_softbody::SoftBody<FloatFlavor>;

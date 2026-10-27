@@ -5,7 +5,8 @@ use super::RigidBody;
 use super::axis_x;
 use super::axis_y;
 use super::axis_z;
-use meridian_gac_core::generic::{Aabb, GaFlavor, Shape, VectorLike};
+use meridian_gac_core::volume::Aabb;
+use meridian_gac_core::{GaFlavor, Shape, VectorLike};
 
 /// Computes `body`'s world-space AABB — a free function (rather than a
 /// method) purely because it's called through `.map(aabb_of)` below;

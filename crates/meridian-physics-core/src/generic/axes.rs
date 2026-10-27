@@ -1,6 +1,6 @@
 //! Unit axes of a flavor's vector type.
 
-use meridian_gac_core::generic::{GaFlavor, ScalarLike, VectorLike};
+use meridian_gac_core::{GaFlavor, ScalarLike, VectorLike};
 
 pub(crate) fn axis_x<F: GaFlavor>() -> F::Vector {
     F::Vector::new(F::Scalar::ONE, F::Scalar::ZERO, F::Scalar::ZERO)

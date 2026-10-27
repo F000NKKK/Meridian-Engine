@@ -1,6 +1,6 @@
 //! A camera frame plus projection.
 
-use meridian_gac_core::float_ga::mat4_mul;
+use meridian_gac_core::mat4_mul;
 use meridian_gac_core::{Motor3, Projection, Rotor, Vec3};
 
 /// Remaps `gac-core`'s local camera axes (forward `+X`, up `+Y`, right
