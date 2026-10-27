@@ -125,3 +125,12 @@ fn stale_nodes_fail_property_access() {
     );
     assert_eq!(tree.get(node, WIDTH), Err(UiError::StaleNode(node)));
 }
+
+#[test]
+fn element_tags_round_trip_and_unknown_tags_are_none() {
+    for kind in ElementKind::ALL {
+        assert_eq!(ElementKind::from_tag(kind.tag()), Some(kind));
+    }
+    assert_eq!(ElementKind::from_tag("grid"), None);
+    assert_eq!(ElementKind::from_tag("Button"), None);
+}
