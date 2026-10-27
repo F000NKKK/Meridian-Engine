@@ -2,6 +2,7 @@
 
 use std::sync::Arc;
 
+use meridian_asset_core::DecodeError;
 use symphonia::core::codecs::audio::{AudioDecoder, AudioDecoderOptions};
 use symphonia::core::formats::probe::Hint;
 use symphonia::core::formats::{FormatOptions, FormatReader, TrackType};
@@ -9,7 +10,6 @@ use symphonia::core::io::MediaSourceStream;
 use symphonia::core::meta::MetadataOptions;
 
 use crate::codec_registry::codec_registry;
-use meridian_asset_core::DecodeError;
 
 /// An opened symphonia track: reader, decoder and the metadata the
 /// container declares (any of which may be missing).

@@ -1,7 +1,6 @@
 //! The port that keeps mesh sources addressable by handle.
 
-use meridian_graphics_core::MeshHandle;
-use meridian_graphics_core::{MeshRegistryError, MeshSource};
+use meridian_graphics_core::{MeshHandle, MeshRegistryError, MeshSource};
 
 /// Where mesh sources live, addressed by [`MeshHandle`]. A store validates a
 /// mesh when it takes it: a triangle list, at most `u16::MAX` vertices, and one

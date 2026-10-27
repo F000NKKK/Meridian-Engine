@@ -1,9 +1,8 @@
 //! An in-memory [`TextureStore`](crate::TextureStore).
 
 use meridian_asset_core::ImageAsset;
-use meridian_memory_core::ResourcePool;
-
 use meridian_graphics_core::TextureHandle;
+use meridian_memory_core::ResourcePool;
 
 use crate::TextureStore;
 

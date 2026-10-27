@@ -27,23 +27,23 @@ pub mod dsl;
 pub mod render;
 pub mod scene;
 
+// -- meridian-asset-core: decoding --
+pub use any_image_decoder::AnyImageDecoder;
 pub use assets::{AssetCache, AudioTrack, load_audio_track, load_image_asset};
 pub use camera::{FlyCamera, look_at_rotor};
 pub use dsl::dsl_core;
-// -- meridian-asset-core: decoding --
-pub use any_image_decoder::AnyImageDecoder;
 pub use meridian_asset_core::{Decoder, ImageAsset};
 pub use meridian_asset_png::PngDecoder;
 pub use meridian_asset_symphonia::{
     AnyAudioDecoder, AudioAsset, DecodeStrategy, StreamingAudioDecoder, open_audio,
 };
+// -- meridian-audio-app: the output port --
+pub use meridian_audio_app::AudioSink;
 // -- meridian-audio-core: spatial audio --
 pub use meridian_audio_core::{
     AcousticMedium, AttenuationModel, BinauralRenderer, Channel, Declicker, DspNode, Emitter,
     Listener, Mixer, SpeakerLayout,
 };
-// -- meridian-audio-app: the output port --
-pub use meridian_audio_app::AudioSink;
 // -- meridian-audio-driver: the platform audio adapter (composition root) --
 pub use meridian_audio_driver::{AudioStream, open_output};
 // -- meridian-compute-driver: the platform compute adapter (composition root) --
@@ -68,10 +68,6 @@ pub use meridian_graphics_core::{
     Camera, Frustum, Light, Material, MaterialHandle, MaterialRegistry, MeshHandle, MeshRegistry,
     MeshSource, Renderable3d, Scene2d, Scene3d, TextureHandle,
 };
-// -- meridian-rendering-app: the GPU ports --
-pub use meridian_rendering_app::{
-    FrameOutcome, FrameRecorder, FrameRequest, MeshStore, TextureStore,
-};
 // -- meridian-graphics-driver: the GPU device a windowed app opens once --
 pub use meridian_graphics_driver::{
     BloomPass, CommandBuffer, DEFAULT_SHADOW_MAP_SIZE, DepthTexture, Device, DeviceError,
@@ -85,6 +81,10 @@ pub use meridian_physics_core::{
 // -- meridian-platform-core: windowing, input, time --
 pub use meridian_platform_core::{
     AppHandler, Clock, InputState, KeyCode, MouseButton, Time, Window, run_windowed_app,
+};
+// -- meridian-rendering-app: the GPU ports --
+pub use meridian_rendering_app::{
+    FrameOutcome, FrameRecorder, FrameRequest, MeshStore, TextureStore,
 };
 /// The retained UI runtime (ADR 018); generated `.mel` glue names it
 /// through here.

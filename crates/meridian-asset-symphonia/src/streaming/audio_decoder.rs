@@ -2,8 +2,9 @@
 
 use std::sync::Arc;
 
-use super::{StreamBackend, open_symphonia};
 use meridian_asset_core::{AudioClip, AudioFormat, DecodeError, Decoder, WavDecoder};
+
+use super::{StreamBackend, open_symphonia};
 
 /// Incremental audio decoder: identifies the format by signature (never
 /// by extension), then yields interleaved-`i16` blocks of at most the
