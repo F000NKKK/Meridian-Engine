@@ -84,9 +84,15 @@ change that closed them.
 4. **Persistence hooks.** Roadmap "Scaling" item 5. Core side: component
    enumeration per entity (`World::component_types(entity)`) and a world
    snapshot API; the format and `meridian-scene` belong to `team/data`.
-5. **Work-stealing scheduler.** `task-core` uses one mutex-guarded ready
-   queue ([threading-model.md](../threading-model.md)). Replace with
-   per-worker deques once a benchmark shows contention.
+5. **Scheduler cost.** `task-core` uses one mutex-guarded ready queue and
+   spawns its worker threads on every `Scheduler::run`
+   ([threading-model.md](../threading-model.md)). Benchmark (4 workers, 4
+   cores, `cargo bench -p meridian-task-core`, 2026-10-27): a 1-job graph
+   costs ~210 µs (thread spawn), 10 000 tiny independent jobs ~7.8 ms
+   (~0.8 µs/job through the queue), a 1 000-job chain ~1.1 ms. The
+   per-run spawn is the larger cost for frame-sized graphs, so a
+   persistent worker pool comes before work-stealing deques; the public
+   `Scheduler::worker_count` field would have to become a method.
 6. **Asynchronous asset I/O.** `asset-core` decodes in-memory bytes only.
    File and network loading with tokio belongs in a loader layer above it
    (ADR 009), never inside the decoders.
