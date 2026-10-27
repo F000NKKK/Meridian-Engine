@@ -777,16 +777,17 @@ the rest are not started.
    lockstep-style sync, but the actual transport/replication layer is
    unstarted. This is its own multi-month subsystem, not an add-on to
    an existing crate.
-7. **UI framework: runtime and fill output started, text not.**
+7. **UI framework: runtime, fill and text output started.**
    `meridian-ui-domain` ([ADR 018](adr/018-ui-architecture.md)) has the
    WPF-style element tree, typed properties, measure/arrange layout
    (`Border`, `StackPanel`, `DockPanel`, `Grid`, `TextBlock`) and hit
    testing, focus and input routing (`handle_input`, `UiEvent`s, a
-   consumed/ignored outcome), tested without a GPU. Still missing:
-   `meridian-ui-scene2d` extracts `Background` fills to `Scene2d`
+   consumed/ignored outcome), tested without a GPU.
+   `meridian-ui-scene2d` extracts `Background` fills and `TextBlock` glyphs to `Scene2d`
    ([ADR 021](adr/021-ui-extraction-and-extensibility.md)); there is no
-   sprite renderer for `Scene2d` yet. Still missing: text rendering,
-   controls, styles and templates. Markup literals (`"Auto"`, `"2*"`, `"4,2"`) parse through
+   sprite renderer for `Scene2d` yet. `meridian-text-domain`
+   ([ADR 023](adr/023-own-font-stack.md)) parses TrueType, rasterizes and
+   atlases glyphs. Still missing: controls, styles and templates. Markup literals (`"Auto"`, `"2*"`, `"4,2"`) parse through
    `PropertyType::parse`.
 8. **Asset pipeline stops at static meshes.** `asset-domain::ObjDecoder`
    has no skeletal/skinning support and there's no animation system at

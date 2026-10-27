@@ -1466,6 +1466,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "meridian-text-domain"
+version = "0.1.0"
+dependencies = [
+ "meridian-text-domain",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "meridian-ui-domain"
 version = "0.1.0"
 dependencies = [
@@ -1492,7 +1500,9 @@ dependencies = [
  "meridian-memory",
  "meridian-rendering-domain",
  "meridian-resource",
+ "meridian-text-domain",
  "meridian-ui-domain",
+ "thiserror 2.0.21",
 ]
 
 [[package]]

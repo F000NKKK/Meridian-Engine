@@ -1,8 +1,11 @@
-# ADR 023: Our own font stack (`meridian-font-core`)
+# ADR 023: Our own font stack (`meridian-text-domain`)
 
 ## Status
 
-Proposed (2026-10-27). Nothing is implemented yet.
+Proposed (2026-10-27). Implemented: the TrueType parser and outlines
+(§2, §3), the rasterizer (§4), the atlas and cache (§5), the shaper (§6)
+and `ui-render`'s text extraction (§7). Not done: OpenType/CFF outlines,
+hinting, SDF, ligatures and complex scripts.
 
 ## Context
 
@@ -17,9 +20,10 @@ shaping separate from rasterization), but is tied to Yog's graphics types.
 
 ## Decision
 
-**1. One new domain crate, `meridian-font-core`.** Pure CPU, no I/O, no
-`async`, no GPU. It depends on `foundation` only (`gac-core` is not needed:
-glyph geometry is 2D font units, not spatial algebra). It does not read
+**1. One new domain crate, `meridian-text-domain`.** Pure CPU, no I/O, no
+`async`, no GPU. It depends on no workspace crate (`gac-core` is not needed: glyph
+geometry is 2D font units, not spatial algebra). It is the `text` context's domain crate (named
+`meridian-text-domain` by ADR 026; it started as `font-core`). It does not read
 files: callers pass bytes (`asset-core` or the game owns loading and
 lifetime, ADR 004/011).
 
@@ -52,9 +56,11 @@ through `resource-core` handles.
 **6. Shaping scope.** Left-to-right, one cluster per `char`, advance from
 `hmtx`, pair adjustment from `kern`, line breaks on `\n`. Ligatures,
 bidirectional text and complex scripts are out of scope until a concrete
-need; the `Shaper` is a trait so a game or a later crate can replace it.
+need; `shape` is a plain function returning public types (`ShapedRun`,
+`PlacedGlyph`); it becomes a trait when a second shaper exists, and a game
+can already bypass it by building a `ShapedRun` itself.
 
-**7. Wiring.** `ui-render` depends on `font-core`, implements
+**7. Wiring.** `ui-render` depends on `text-domain`, implements
 `TextMeasurer` over a `FontFace` (so layout and drawing share the same
 metrics), and extracts a `TextBlock` into one sprite per glyph using
 `Foreground` as the tint. `ui-core` stays free of fonts.
@@ -70,6 +76,3 @@ shaper, or pack its own bitmaps into the atlas without using the rest.
 - We own the parser and rasterizer, which is a real maintenance cost
   (hinting, CFF and complex scripts are not free); the first version
   deliberately stops at Latin-style text.
-- The crate needs registering in `craftbook.toml` (domain layer, context
-  `rendering`'s published vocabulary or its own `text` context) and in
-  `dependency-rules.md` when it lands.

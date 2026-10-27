@@ -171,6 +171,11 @@ layer = "interface"
 context = "runtime"
 
 [[crate]]
+name = "meridian-text-domain"
+layer = "domain"
+context = "text"
+
+[[crate]]
 name = "meridian-ui-domain"
 layer = "domain"
 context = "ui"
@@ -318,6 +323,13 @@ relation = "customer-supplier"
 [[context_edge]]
 from = "ui"
 to = "rendering"
+relation = "customer-supplier"
+
+# ui-scene2d lays out and draws text through text-domain's faces and glyph
+# atlas (ADR 023).
+[[context_edge]]
+from = "ui"
+to = "text"
 relation = "customer-supplier"
 
 [[context_edge]]
