@@ -75,6 +75,16 @@ layer = "domain"
 context = "assets"
 
 [[crate]]
+name = "meridian-asset-png"
+layer = "infra"
+context = "assets"
+
+[[crate]]
+name = "meridian-asset-symphonia"
+layer = "infra"
+context = "assets"
+
+[[crate]]
 name = "meridian-graphics-core"
 layer = "domain"
 context = "rendering"

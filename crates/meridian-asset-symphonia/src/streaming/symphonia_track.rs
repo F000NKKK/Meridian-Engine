@@ -8,8 +8,8 @@ use symphonia::core::formats::{FormatOptions, FormatReader, TrackType};
 use symphonia::core::io::MediaSourceStream;
 use symphonia::core::meta::MetadataOptions;
 
-use crate::DecodeError;
-use crate::audio::compressed::codec_registry;
+use crate::codec_registry::codec_registry;
+use meridian_asset_core::DecodeError;
 
 /// An opened symphonia track: reader, decoder and the metadata the
 /// container declares (any of which may be missing).

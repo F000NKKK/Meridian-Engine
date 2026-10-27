@@ -1,7 +1,7 @@
 //! The WGSL shader that extracts emissive light for bloom.
 
 /// Emissive-only extraction: ignores lighting/base color entirely and
-/// outputs just the baked-in emissive term — [`crate::bloom`]'s
+/// outputs just the baked-in emissive term — `crate::bloom`'s
 /// bright-pass input. Shares the *same* vertex buffer bytes as whichever
 /// main pipeline drew this instance (see `emissive_from_colored_layout`/
 /// `emissive_from_textured_layout`): a material with `emissive =

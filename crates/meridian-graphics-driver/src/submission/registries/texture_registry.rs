@@ -6,7 +6,7 @@ use meridian_memory_core::ResourcePool;
 use crate::{Device, Texture};
 
 /// GPU-resident textures, handle-addressed by [`TextureHandle`] — the
-/// registry a [`Material::albedo`](crate::scene::Material::albedo) resolves against. Upload happens once
+/// registry a `Material::albedo` resolves against. Upload happens once
 /// via [`upload`](Self::upload), from an already-decoded
 /// `asset-core::ImageAsset` (RGBA8) — this bridge does not decode image
 /// bytes itself, matching the crate's existing "decoding belongs to

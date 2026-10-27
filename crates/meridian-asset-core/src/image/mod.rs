@@ -1,25 +1,18 @@
-//! Image decoding, one file per format (barrel module):
+//! Image decoding that needs no codec library:
 //!
-//! - [`bmp`]: hand-rolled uncompressed BMP.
-//! - [`png_decoder`]: PNG via the `png` crate (ADR 013's
-//!   DEFLATE-is-too-big-to-hand-roll reasoning applies identically to
-//!   PNG's zlib-compressed data).
+//! - [`bmp_decoder`]: hand-rolled uncompressed BMP.
+//! - [`format`]: [`ImageFormat::detect`] identifies a format from its
+//!   leading magic bytes, never a file extension — the same rule
+//!   [`crate::audio::AudioFormat::detect`] follows for audio.
 //!
-//! [`ImageFormat::detect`]/[`AnyImageDecoder`] identify a format from its
-//! leading magic bytes, never a file extension — the same rule
-//! [`crate::audio::AudioFormat::detect`] follows for audio. JPEG is
-//! future work on the same when-a-concrete-asset-needs-it trigger; a
-//! future decoder gets its own file here, a re-export below, and a new
-//! [`ImageFormat`] variant.
+//! PNG (DEFLATE is too big to hand-roll, ADR 013) is the adapter crate
+//! `meridian-asset-png`; the composition root picks the decoder for a
+//! detected format.
 
-mod any_image_decoder;
-pub mod bmp;
+pub mod bmp_decoder;
 mod format;
-pub mod png_decoder;
 #[cfg(test)]
 mod tests;
 
-pub use any_image_decoder::AnyImageDecoder;
-pub use bmp::BmpDecoder;
+pub use bmp_decoder::BmpDecoder;
 pub use format::ImageFormat;
-pub use png_decoder::PngDecoder;

@@ -1,8 +1,7 @@
-//! PNG decoder via the `png` crate — see the `image` barrel module doc
-//! and docs/adr/013-compressed-audio-codecs.md for why PNG's DEFLATE
-//! payload isn't hand-rolled the way BMP is.
+//! PNG decoder via the `png` crate — see docs/adr/013-compressed-audio-codecs.md
+//! for why PNG's DEFLATE payload isn't hand-rolled the way BMP is.
 
-use crate::{DecodeError, Decoder, ImageAsset, need};
+use meridian_asset_core::{DecodeError, Decoder, ImageAsset};
 
 /// Decodes PNG (any color type/bit depth the `png` crate itself
 /// supports) into RGBA8, always — palette, grayscale and
@@ -16,7 +15,12 @@ impl Decoder<ImageAsset> for PngDecoder {
 
     fn decode(&self, bytes: &[u8]) -> Result<ImageAsset, DecodeError> {
         const SIGNATURE: [u8; 8] = [0x89, b'P', b'N', b'G', 0x0d, 0x0a, 0x1a, 0x0a];
-        need(bytes, SIGNATURE.len())?;
+        if bytes.len() < SIGNATURE.len() {
+            return Err(DecodeError::TooShort {
+                needed: SIGNATURE.len(),
+                got: bytes.len(),
+            });
+        }
         if bytes[..SIGNATURE.len()] != SIGNATURE {
             return Err(DecodeError::BadMagic {
                 expected: "\\x89PNG\\r\\n\\x1a\\n",
@@ -66,11 +70,10 @@ impl Decoder<ImageAsset> for PngDecoder {
         })
     }
 }
-/// Test-fixture builder shared with `image::mod`'s `AnyImageDecoder`
-/// tests — encodes a real PNG via the same `png` crate this decoder
+
+/// Test-fixture builder — encodes a real PNG via the same `png` crate this decoder
 /// wraps (hand-building valid DEFLATE-compressed bytes isn't practical
-/// the way hand-building BMP/OBJ bytes is — see the module doc's
-/// DEFLATE-is-too-big-to-hand-roll reasoning); this exercises *our*
+/// the way hand-building BMP/OBJ bytes is); this exercises *our*
 /// wiring and color-type conversion, not the `png` crate itself.
 #[cfg(test)]
 pub(crate) mod tests_support {

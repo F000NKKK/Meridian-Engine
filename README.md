@@ -58,7 +58,7 @@ crate has its own README.
 | [`meridian-graphics-core`](crates/meridian-graphics-core) | rendering | Render graph, scenes, culling, lighting, materials, camera, bloom |
 | [`meridian-physics-core`](crates/meridian-physics-core) | physics | Rigid bodies, collision, solver, integrator, soft bodies |
 | [`meridian-audio-core`](crates/meridian-audio-core) | audio | Spatial mixer, DSP graph, listener and emitters |
-| [`meridian-asset-core`](crates/meridian-asset-core) | assets | Decoders for images, meshes, audio and shaders |
+| [`meridian-asset-core`](crates/meridian-asset-core) | assets | `Decoder` port, CPU asset types and the pure BMP, WAV, OBJ and shader parsers |
 | [`meridian-ui-core`](crates/meridian-ui-core) | ui | WPF-style retained UI tree, layout, hit testing |
 
 **Application**
@@ -79,6 +79,8 @@ crate has its own README.
 | [`meridian-gpu-driver`](crates/meridian-gpu-driver) | compute | Shared `wgpu` device, buffers, shaders, compute pipelines |
 | [`meridian-compute-driver`](crates/meridian-compute-driver) | compute | CPU-SIMD and GPU compute dispatch |
 | [`meridian-graphics-driver`](crates/meridian-graphics-driver) | rendering | Graphics device, surfaces, render pipelines |
+| [`meridian-asset-png`](crates/meridian-asset-png) | assets | PNG decoder adapter on the `png` crate |
+| [`meridian-asset-symphonia`](crates/meridian-asset-symphonia) | assets | MP3, OGG/Vorbis, FLAC, OGG/Opus and streaming decoder adapter |
 | [`meridian-audio-driver`](crates/meridian-audio-driver) | audio | Audio output device via `cpal` |
 | [`meridian-gac-compute`](crates/meridian-gac-compute) | geometry | Batch `Motor3` kernels on CPU-SIMD and GPU |
 | [`meridian-physics-compute`](crates/meridian-physics-compute) | physics | Batched rigid-body and soft-body kernels |

@@ -5,7 +5,6 @@ crates/meridian-engine-core/Cargo.toml	L602	meridian-task-core	1
 crates/meridian-foundation/Cargo.toml	L604	tokio	1
 crates/meridian-foundation/src/crash_reporting.rs	L605	std::env	2
 crates/meridian-foundation/src/crash_reporting.rs	L605	std::fs	3
-crates/meridian-graphics-core/Cargo.toml	L603	meridian-asset-core	1
 crates/meridian-mel-build/Cargo.toml	L606		1
 crates/meridian-scene/Cargo.toml	L606		1
 crates/meridian-ui-core/Cargo.toml	L606		1

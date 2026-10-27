@@ -20,6 +20,7 @@
 
 #![forbid(unsafe_code)]
 
+mod any_image_decoder;
 pub mod assets;
 pub mod camera;
 pub mod dsl;
@@ -30,9 +31,11 @@ pub use assets::{AssetCache, AudioTrack, load_audio_track, load_image_asset};
 pub use camera::{FlyCamera, look_at_rotor};
 pub use dsl::dsl_core;
 // -- meridian-asset-core: decoding --
-pub use meridian_asset_core::{
-    AnyAudioDecoder, AnyImageDecoder, AudioAsset, DecodeStrategy, Decoder, ImageAsset,
-    StreamingAudioDecoder, open_audio,
+pub use any_image_decoder::AnyImageDecoder;
+pub use meridian_asset_core::{Decoder, ImageAsset};
+pub use meridian_asset_png::PngDecoder;
+pub use meridian_asset_symphonia::{
+    AnyAudioDecoder, AudioAsset, DecodeStrategy, StreamingAudioDecoder, open_audio,
 };
 // -- meridian-audio-core: spatial audio --
 pub use meridian_audio_core::{

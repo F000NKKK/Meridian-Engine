@@ -199,8 +199,8 @@ impl SceneRenderer {
     }
 
     /// The shadow-casting depth pass: finds `scene`'s first
-    /// [`Light::Directional`] (if any), builds its
-    /// [`directional_shadow_camera`](super::directional_shadow_camera), writes that light-space matrix
+    /// `Light::Directional` (if any), builds its
+    /// `directional_shadow_camera`, writes that light-space matrix
     /// into the (separate) shadow uniform buffer, bakes `scene`'s draw
     /// buffers (reused afterward by [`draw`](Self::draw) — never
     /// rebuilt), and records a depth-only pass into the internal shadow
@@ -212,7 +212,7 @@ impl SceneRenderer {
     /// finish, as its own pass, before the caller's main pass opens on
     /// the same `commands`).
     ///
-    /// No [`Light::Directional`] in `scene.lights`: still records an
+    /// No `Light::Directional` in `scene.lights`: still records an
     /// (empty-of-occluders-mattering) depth pass for consistency, and
     /// returns `shadow_caster = u32::MAX`, which `shade`'s lookup never
     /// matches — every light renders fully lit, the same as before

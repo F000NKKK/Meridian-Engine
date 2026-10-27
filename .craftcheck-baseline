@@ -1,12 +1,3 @@
-crates/meridian-asset-core/src/audio/compressed.rs	C101		1
-crates/meridian-asset-core/src/audio/compressed.rs	C108	AnyAudioDecoder	1
-crates/meridian-asset-core/src/audio/compressed.rs	C108	AudioFormat	1
-crates/meridian-asset-core/src/audio/compressed.rs	C108	FlacDecoder	1
-crates/meridian-asset-core/src/audio/compressed.rs	C108	Mp3Decoder	1
-crates/meridian-asset-core/src/audio/compressed.rs	C108	OpusDecoder	1
-crates/meridian-asset-core/src/audio/compressed.rs	C108	VorbisDecoder	1
-crates/meridian-asset-core/src/audio/wav.rs	C108	WavDecoder	1
-crates/meridian-asset-core/src/image/bmp.rs	C108	BmpDecoder	1
 crates/meridian-audio-core/src/effects/binaural/mod.rs	C101		1
 crates/meridian-audio-core/src/effects/binaural/mod.rs	C108	BinauralConfig	1
 crates/meridian-audio-core/src/effects/binaural/mod.rs	C108	BinauralRenderer	1

@@ -58,6 +58,8 @@ ALLOWED = {
     },
     "meridian-ecs-core": {"meridian-memory-core", "meridian-gac-core"},
     "meridian-asset-core": {"meridian-foundation"},
+    "meridian-asset-png": {"meridian-asset-core"},
+    "meridian-asset-symphonia": {"meridian-asset-core"},
     "meridian-graphics-driver": {
         "meridian-foundation",
         "meridian-platform-core",
@@ -85,7 +87,6 @@ ALLOWED = {
         "meridian-gac-core",
         "meridian-memory-core",
         "meridian-ecs-core",
-        "meridian-asset-core",
         "meridian-resource-core",
     },
     "meridian-physics-compute": {
@@ -136,6 +137,8 @@ ALLOWED = {
         "meridian-gac-core",
         "meridian-platform-core",
         "meridian-asset-core",
+        "meridian-asset-png",
+        "meridian-asset-symphonia",
         "meridian-graphics-driver",
         "meridian-graphics-core",
         "meridian-physics-core",

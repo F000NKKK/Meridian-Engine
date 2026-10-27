@@ -181,7 +181,7 @@ impl Camera2d {
 /// where no [`Light`] reaches; a scene with `lights` empty and both
 /// ambient colors zero renders pure black, same as a real unlit room.
 /// The first [`Light::Directional`] in `lights` (if any) casts real
-/// shadows — see [`crate::submission::SceneRenderer::render_shadow_pass`]'s
+/// shadows — see `SceneRenderer::render_shadow_pass` (in `meridian-graphics-driver`)'s
 /// own doc comment for the fixed-volume shadow map this feeds.
 #[derive(Debug, Clone)]
 pub struct Scene3d {

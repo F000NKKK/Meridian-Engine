@@ -1,7 +1,7 @@
 //! Audio that is either fully decoded or a stream.
 
 use super::StreamingAudioDecoder;
-use crate::AudioClip;
+use meridian_asset_core::AudioClip;
 
 /// What [`open_audio`](super::open_audio) produced: the whole track, or an incremental
 /// decoder to pull it from block by block.

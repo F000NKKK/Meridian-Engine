@@ -11,7 +11,7 @@ use crate::{Buffer, BufferUsage, Device, SampledTexture, Texture};
 /// done with them. This split exists because `RenderPass::set_vertex_buffer`
 /// borrows its buffer for the pass's lifetime — the same reason
 /// `soft_body_rubber_balls`'s own `ball_buffers` are built up front (see
-/// that example's module doc). [`crate::bloom`] redraws the same
+/// that example's module doc). `crate::bloom` redraws the same
 /// `vertex_buffer`/`index_buffer` through its own emissive-extraction
 /// pipeline, so both stay `pub(crate)`.
 #[derive(Debug)]

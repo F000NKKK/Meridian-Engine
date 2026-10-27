@@ -1127,7 +1127,21 @@ name = "meridian-asset-core"
 version = "0.13.0"
 dependencies = [
  "meridian-foundation",
+]
+
+[[package]]
+name = "meridian-asset-png"
+version = "0.1.0"
+dependencies = [
+ "meridian-asset-core",
  "png",
+]
+
+[[package]]
+name = "meridian-asset-symphonia"
+version = "0.1.0"
+dependencies = [
+ "meridian-asset-core",
  "symphonia",
  "symphonia-adapter-libopus",
 ]
@@ -1303,7 +1317,6 @@ name = "meridian-graphics-core"
 version = "0.26.0"
 dependencies = [
  "criterion",
- "meridian-asset-core",
  "meridian-ecs-core",
  "meridian-foundation",
  "meridian-gac-core",
@@ -1418,6 +1431,8 @@ name = "meridian-sdk"
 version = "0.5.0"
 dependencies = [
  "meridian-asset-core",
+ "meridian-asset-png",
+ "meridian-asset-symphonia",
  "meridian-audio-app",
  "meridian-audio-core",
  "meridian-audio-driver",
@@ -1434,6 +1449,7 @@ dependencies = [
  "meridian-platform-core",
  "meridian-rendering-app",
  "meridian-ui-core",
+ "png",
 ]
 
 [[package]]

@@ -22,7 +22,7 @@ two layers today is listed under the one it is moving to; Craftbook's
 | scene-markup | shared kernel / published language | `dsl-core` (kernel), `dsl-macros` (interface) | markup elements, tags, the tag registry |
 | platform | infrastructure | `platform-core` (infra) | window, input state, clock, CPU/GPU capabilities, dynamic libraries |
 | compute | application + adapters | `compute-runtime` (app), `compute-driver` (infra), `gpu-driver` (infra) | compute context, kernels, dispatch size, untyped buffers, GPU device |
-| assets | domain | `asset-core` (domain; codecs move to adapters in wave 5) | decoded images, meshes, audio, shader sources, decoders |
+| assets | domain | `asset-core` (domain: types, `Decoder` port, pure parsers), `asset-png`, `asset-symphonia` (infra: codec adapters) | decoded images, meshes, audio, shader sources, decoders |
 | rendering | domain + adapter | `graphics-core` (domain), `rendering-app` (app: ports `FrameRecorder`/`MeshStore`/`TextureStore`), `graphics-driver` (infra: wgpu recording, implements the ports) | scenes, cameras, lights, materials, render graph, frame submission |
 | physics | domain + adapters | `physics-core` (domain, perf), `physics-compute` (infra) | rigid bodies, colliders, contacts, solver, integrator, soft bodies |
 | audio | domain + adapter | `audio-core` (domain), `audio-app` (app: the `AudioSink` port), `audio-driver` (infra: cpal, implements it) | listener, emitters, speakers, mixer, DSP graph |
@@ -61,10 +61,6 @@ dependencies need one of these:
 `craftcheck deps` lists them; `.craftcheck-deps-baseline` holds the count and
 may only shrink.
 
-- `graphics-core → asset-core` is a domain-to-domain edge declared as a
-  published language; Craftbook requires customer–supplier between two domain
-  crates. Resolved when the decoded CPU types move to a published-language
-  crate in the assets split (wave 5).
 - `sdk → dsl-macros` (runtime → scene-markup interface crate) has no edge;
   resolved when the DSL tags leave `sdk` (ADR 020 D3, wave 6).
 - I/O in the diagnostics kernel (`foundation`'s tokio file sink, crash

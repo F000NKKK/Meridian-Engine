@@ -13,6 +13,8 @@ meridian-foundation = { workspace = true }
 meridian-gac-core = { workspace = true }
 meridian-platform-core = { workspace = true }
 meridian-asset-core = { workspace = true }
+meridian-asset-png = { workspace = true }
+meridian-asset-symphonia = { workspace = true }
 meridian-graphics-driver = { workspace = true }
 meridian-rendering-app = { workspace = true }
 meridian-graphics-core = { workspace = true }
@@ -36,6 +38,9 @@ meridian-ui-core = { workspace = true }
 # `meridian-foundation` directly.
 [features]
 file-logging = ["meridian-foundation/file-logging"]
+
+[dev-dependencies]
+png = { workspace = true }
 
 [lints]
 workspace = true

@@ -18,12 +18,12 @@
 
 use std::collections::{HashMap, VecDeque};
 
-use meridian_asset_core::{
-    AnyImageDecoder, AudioAsset, DecodeStrategy, Decoder, ImageAsset, ObjDecoder,
-    StreamingAudioDecoder, open_audio,
-};
+use meridian_asset_core::{Decoder, ImageAsset, ObjDecoder};
+use meridian_asset_symphonia::{AudioAsset, DecodeStrategy, StreamingAudioDecoder, open_audio};
 use meridian_graphics_core::{MeshHandle, MeshRegistryError, MeshSource, TextureHandle};
 use meridian_rendering_app::{MeshStore, TextureStore};
+
+use crate::any_image_decoder::AnyImageDecoder;
 
 /// Reads and decodes a real image asset file, identified by its magic
 /// bytes (never its extension — the same rule
@@ -85,7 +85,7 @@ fn compute_smooth_normals(positions: &[[f32; 3]], indices: &[u32]) -> Vec<[f32; 
 
 /// One looping mono audio source's decoded samples, however
 /// [`load_audio_track`] chose to get them — the two arms of
-/// `asset-core::AudioAsset`, exposed behind one
+/// `asset-symphonia::AudioAsset`, exposed behind one
 /// [`next_mono_chunk`](Self::next_mono_chunk) face so a caller never
 /// needs to know which one it got. Downmixed to mono here (spatializers
 /// like `audio-core::BinauralRenderer` take one channel per source and
@@ -162,7 +162,7 @@ fn refill_queue(
     }
 }
 
-/// Loads one audio file at `path` through `asset-core::open_audio`'s
+/// Loads one audio file at `path` through `asset-symphonia::open_audio`'s
 /// strategy-driven front door (`DecodeStrategy::default()` decodes short
 /// tracks eagerly and streams long ones — this handles both arms
 /// transparently) and downmixes it to mono. Returns the track plus its

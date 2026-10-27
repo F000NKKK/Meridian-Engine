@@ -2,6 +2,10 @@
 
 ## Status
 
+Location update: streaming decode lives in `meridian-asset-symphonia`
+([ADR 024](024-wave-5-ports-and-adapters.md)); the decision below is
+unchanged.
+
 Accepted — implements the "streaming decode is a real future concern"
 deferral recorded in [ADR 013](013-compressed-audio-codecs.md)'s
 consequences.
