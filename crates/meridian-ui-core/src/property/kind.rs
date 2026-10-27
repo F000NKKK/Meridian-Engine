@@ -2,8 +2,8 @@
 
 use super::literal::LiteralError;
 use super::{PropertyValue, literal};
-use crate::Thickness;
 use crate::layout::value::{Alignment, Dock, GridLength, Length, Orientation, Visibility};
+use crate::{Color, Thickness};
 
 /// A Rust type that a property can hold.
 pub trait PropertyType: Sized {
@@ -42,6 +42,7 @@ property_type! {
     String => Text via literal::text,
     Length => Length via literal::length,
     Vec<GridLength> => GridLengths via literal::grid_lengths,
+    Color => Color via literal::color,
     Thickness => Thickness via literal::thickness,
     Alignment => Alignment via literal::alignment,
     Orientation => Orientation via literal::orientation,

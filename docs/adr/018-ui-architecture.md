@@ -120,6 +120,11 @@ walks the laid-out tree into `Scene2D` sprites and quads and feeds it
 structure, and nothing in the ECS knows about UI. `ui-core` stays
 domain-neutral; game widgets are defined by the game.
 
+**8. Tool, not shackles.** The UI follows the extensibility rule of
+[ADR 021](021-ui-extraction-and-extensibility.md) §6: markup is optional,
+custom elements/draw/input go through public traits, and nothing sealed
+may block a game from replacing layout, visuals or input handling.
+
 ## Not decided yet
 
 - Styles, resource dictionaries, control templates, triggers and
@@ -130,8 +135,8 @@ domain-neutral; game widgets are defined by the game.
 - Controls (`Button`, `TextBox`, `ScrollViewer`) and content model
   (`ContentControl`); more panels (`Canvas`, `WrapPanel`); `Min`/`Max`
   sizes; `Grid` row/column spans.
-- Extraction to `Scene2D`/`Scene3D` and the draw-order contract; text
-  rendering (own ADR).
+- Extraction of text and images, `Scene3D` output, custom paint hooks
+  (background fills are done: ADR 021); text rendering (own ADR).
 - Whether a float/`Fixed` split is needed: layout is presentation, not
   simulation, so it stays `f32`.
 

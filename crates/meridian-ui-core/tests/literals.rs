@@ -101,3 +101,18 @@ fn set_literal_parses_by_property_and_reports_errors() {
         Err(UiError::Literal { .. })
     ));
 }
+
+#[test]
+fn colors_parse_hex_and_names() {
+    use meridian_ui_core::Color;
+    assert_eq!(parse::<Color>("#fff"), Ok(Color::WHITE));
+    assert_eq!(parse::<Color>("#000000"), Ok(Color::BLACK));
+    assert_eq!(
+        parse::<Color>("#FF000080"),
+        Ok(Color::from_rgba8(255, 0, 0, 128))
+    );
+    assert_eq!(parse::<Color>("Transparent"), Ok(Color::TRANSPARENT));
+    assert!(parse::<Color>("#ff").is_err());
+    assert!(parse::<Color>("#gggggg").is_err());
+    assert!(parse::<Color>("red").is_err());
+}

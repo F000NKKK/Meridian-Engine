@@ -101,6 +101,11 @@ ALLOWED = {
     "meridian-dsl-macros": set(),
     "meridian-mel-build": {"meridian-dsl-core", "meridian-ui-core"},
     "meridian-ui-core": {"meridian-foundation", "meridian-memory-core"},
+    "meridian-ui-render": {
+        "meridian-gac-core",
+        "meridian-graphics-core",
+        "meridian-ui-core",
+    },
     "meridian-sdk": {
         "meridian-foundation",
         "meridian-gac-core",

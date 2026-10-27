@@ -32,6 +32,8 @@ pub const ALL: &[PropertyMeta] = &[
     text_block::FONT_SIZE.meta(),
     interaction::FOCUSABLE.meta(),
     interaction::IS_HIT_TEST_VISIBLE.meta(),
+    element::BACKGROUND.meta(),
+    text_block::FOREGROUND.meta(),
 ];
 
 /// Looks a property up by id.
