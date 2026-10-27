@@ -1,6 +1,6 @@
 //! A single-channel texture page filled by shelf packing.
 
-use super::atlas_rect::AtlasRect;
+use super::rect::AtlasRect;
 use super::shelf::Shelf;
 use crate::Bitmap;
 

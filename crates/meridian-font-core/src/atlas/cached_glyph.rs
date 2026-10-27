@@ -1,6 +1,6 @@
 //! A glyph that lives on the atlas page.
 
-use super::atlas_rect::AtlasRect;
+use super::rect::AtlasRect;
 
 /// A rasterized glyph on the atlas page, with the placement to draw it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
