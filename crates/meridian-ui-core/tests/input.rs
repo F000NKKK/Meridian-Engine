@@ -146,8 +146,8 @@ fn click_needs_press_and_release_on_the_same_element() {
             button: PointerButton::Primary
         }
     )));
-    press(&mut tree, root, 5.0, 5.0);
-    release(&mut tree, root, 5.0, 25.0);
+    assert_eq!(press(&mut tree, root, 5.0, 5.0), InputOutcome::Consumed);
+    assert_eq!(release(&mut tree, root, 5.0, 25.0), InputOutcome::Consumed);
     let events = kinds(&tree.drain_events());
     assert!(
         !events
@@ -163,7 +163,7 @@ fn pressing_focuses_the_nearest_focusable_ancestor_or_self() {
     let inner = tree.create(ElementKind::Border);
     tree.append_child(nodes[0], inner).unwrap();
     layout(&mut tree, root, 100.0, 200.0);
-    press(&mut tree, root, 5.0, 5.0);
+    assert_eq!(press(&mut tree, root, 5.0, 5.0), InputOutcome::Consumed);
     assert_eq!(tree.focused(), Some(nodes[0]));
     assert_eq!(tree.ancestors(inner), vec![nodes[0], root]);
 }
@@ -190,8 +190,14 @@ fn hover_raises_leave_before_enter() {
         InputOutcome::Consumed
     );
     assert_eq!(tree.hovered(), Some(nodes[0]));
-    tree.handle_input(root, moved(6.0, 6.0));
-    tree.handle_input(root, moved(5.0, 25.0));
+    assert_eq!(
+        tree.handle_input(root, moved(6.0, 6.0)),
+        InputOutcome::Consumed
+    );
+    assert_eq!(
+        tree.handle_input(root, moved(5.0, 25.0)),
+        InputOutcome::Consumed
+    );
     assert_eq!(
         kinds(&tree.drain_events()),
         vec![
@@ -250,14 +256,17 @@ fn keys_and_text_go_to_the_focused_element_only() {
 fn removing_nodes_drops_focus_hover_and_press_state() {
     let mut tree = UiTree::new();
     let (root, nodes) = column(&mut tree, 1);
-    press(&mut tree, root, 5.0, 5.0);
-    tree.handle_input(root, InputEvent::PointerMoved(Point::new(5.0, 5.0)));
+    assert_eq!(press(&mut tree, root, 5.0, 5.0), InputOutcome::Consumed);
+    assert_eq!(
+        tree.handle_input(root, InputEvent::PointerMoved(Point::new(5.0, 5.0))),
+        InputOutcome::Consumed
+    );
     assert_eq!(tree.focused(), Some(nodes[0]));
     tree.remove(nodes[0]).unwrap();
     assert_eq!(tree.focused(), None);
     assert_eq!(tree.hovered(), None);
     tree.drain_events();
-    release(&mut tree, root, 5.0, 5.0);
+    assert_eq!(release(&mut tree, root, 5.0, 5.0), InputOutcome::Consumed);
     let events = kinds(&tree.drain_events());
     assert!(
         !events
