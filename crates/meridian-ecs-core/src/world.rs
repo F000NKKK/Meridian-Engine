@@ -71,6 +71,11 @@ impl World {
         entity
     }
 
+    /// Every live entity, in no particular order.
+    pub fn entities(&self) -> impl Iterator<Item = Entity> + '_ {
+        self.locations.keys().copied()
+    }
+
     #[must_use]
     pub fn is_alive(&self, entity: Entity) -> bool {
         self.locations.contains_key(&entity)

@@ -14,3 +14,4 @@ meridian-ecs-core = { workspace = true }
 # ecs-core itself never learns about files).
 meridian-gac-core = { workspace = true, features = ["data"] }
 substrate-data = { workspace = true }
+thiserror = { workspace = true }

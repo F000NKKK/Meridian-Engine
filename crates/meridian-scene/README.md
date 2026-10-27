@@ -14,7 +14,7 @@ The entry points are documented on [docs.rs](https://docs.rs/meridian-scene); se
 ## Depends on / used by
 
 - Depends on: [`meridian-ecs-core`](../meridian-ecs-core), [`meridian-gac-core`](../meridian-gac-core)
-- Used by: [`meridian-editor-protocol`](../meridian-editor-protocol)
+- Used by: [`meridian-editor-host`](../meridian-editor-host), [`meridian-editor-protocol`](../meridian-editor-protocol)
 
 ## License
 

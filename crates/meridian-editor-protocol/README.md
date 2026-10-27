@@ -5,7 +5,7 @@ The messages between a running Meridian game and its editor (Meridian IDLE): typ
 **Layer and context:** infrastructure (adapter) · editor
 
 - **For:** Typed, append-only requests, responses and events between a running game and its editor, framed as Substrate Data (`read_message`/`write_message`).
-- **Not for:** storing scenes: that is `meridian-scene`. No editor host exists yet.
+- **Not for:** storing scenes: that is `meridian-scene`. The host that answers requests is [`meridian-editor-host`](../meridian-editor-host).
 
 ## Usage
 
@@ -14,7 +14,7 @@ The entry points are documented on [docs.rs](https://docs.rs/meridian-editor-pro
 ## Depends on / used by
 
 - Depends on: [`meridian-ecs-core`](../meridian-ecs-core), [`meridian-scene`](../meridian-scene)
-- Used by: no workspace crate
+- Used by: [`meridian-editor-host`](../meridian-editor-host), [`meridian-editor-tcp`](../meridian-editor-tcp)
 
 ## License
 

@@ -82,6 +82,8 @@ Meridian-Engine — небольшой устойчивый набор крей�
 | [`meridian-physics-compute`](crates/meridian-physics-compute) | physics | Пакетные ядра твёрдых и мягких тел |
 | [`meridian-scene`](crates/meridian-scene) | data | Документы `.mscene` на Substrate Data, загрузка и сохранение `World` |
 | [`meridian-editor-protocol`](crates/meridian-editor-protocol) | editor | Типизированные сообщения игра/редактор в кадрах Substrate Data |
+| [`meridian-editor-host`](crates/meridian-editor-host) | editor | Сторона игры в протоколе без ввода-вывода: `Session`, `SimulationControl`, `RequestHandler` |
+| [`meridian-editor-tcp`](crates/meridian-editor-tcp) | editor | Обслуживает один редактор по loopback TCP (единственный crate редактора с `tokio`) |
 | [`meridian-mel-build`](crates/meridian-mel-build) | ui | Генератор для `build.rs`: `.mel` в типизированный Rust |
 
 **Интерфейс**
@@ -135,7 +137,7 @@ fn main() {
 flowchart LR
     I[interface<br/>sdk, dsl-macros, examples] --> A[application<br/>engine-core, compute-runtime]
     A --> D[domain<br/>graphics, physics, audio, assets, ui]
-    X[infrastructure<br/>drivers, adapters, scene, editor-protocol] --> D
+    X[infrastructure<br/>drivers, adapters, scene, editor-protocol, editor-host, editor-tcp] --> D
     K[shared kernel<br/>foundation, numeric, gac, memory, resource, ecs, dsl-core]
     I -.-> K
     A -.-> K

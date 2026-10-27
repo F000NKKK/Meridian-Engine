@@ -3,7 +3,7 @@
 //!
 //! Tier: above `meridian-scene` (whose component names and
 //! `ComponentRegistry::describe()` it reuses) and below `engine-core`
-//! (which will host the other end). Pure protocol: no async, no sockets,
+//! (which will wire in the other end, `meridian-editor-host`). Pure protocol: no async, no sockets,
 //! no I/O beyond a generic [`std::io::Read`]/[`std::io::Write`] through
 //! `substrate_data::io`. The editor sends a [`RequestEnvelope`]; the host
 //! answers with [`HostMessage`]s, each a response to one request or an

@@ -16,7 +16,7 @@ stay `asset-core` decoders and are not covered here.
 | `*.meta` | text | `resource-core` adapter | an asset's stable id and import settings |
 | `*.msave` | binary | the game | a save: scene delta + game state |
 | `*.mpak` | binary | build tool | cooked content bundle |
-| editor protocol | frames over a socket | `meridian-editor-protocol` (host in `engine-core`) | engine ↔ IDE messages |
+| editor protocol | frames over a socket | `meridian-editor-protocol` (host: `meridian-editor-host` + `meridian-editor-tcp`) | engine ↔ IDE messages |
 
 Text and binary of one file kind share an extension: readers detect
 `SDAT` magic and fall back to text.
@@ -214,4 +214,5 @@ Specified in [editor-protocol.md](editor-protocol.md).
 | `meridian-scene` (registry, `.mscene` load/save, `describe()`) | done (text form; hierarchy as `meridian-scene::Parent` until `ecs-core` has one) |
 | `.mscene` binary form, patching an existing file on save | not implemented |
 | `.mprefab`, `.meta`, `.msave`, `.mpak` | designed, not implemented |
-| `meridian-editor-protocol` (messages, framing, golden-pinned wire) | done; the host side in `engine-core` is not written |
+| `meridian-editor-protocol` (messages, framing, golden-pinned wire) | done |
+| `meridian-editor-host` (session, ports), `meridian-editor-tcp` (loopback TCP) | done; not yet wired into `engine-core`'s frame loop |

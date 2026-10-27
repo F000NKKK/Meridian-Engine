@@ -25,5 +25,7 @@ pub use identity::{
 pub use load::{LoadError, SceneIssue, SceneProblem};
 pub use mapping::{DuplicateKey, KeptComponent, Parent, SceneEntity, SceneMap};
 pub use no_resolver::NoResolver;
-pub use registry::{ComponentRegistry, ComponentShape, RegisterError, UnknownComponents};
+pub use registry::{
+    ComponentEditError, ComponentRegistry, ComponentShape, RegisterError, UnknownComponents,
+};
 pub use transform_form::{TransformCodec, TransformForm};
