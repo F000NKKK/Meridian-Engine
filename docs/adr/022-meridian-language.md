@@ -71,6 +71,12 @@ must agree on the semantics, as Yog's backend and interpreter do.
   glue (`mel_include!`-style), so a `.meui` `{x:Bind}` or event handler can
   name a function of the language the way it names a Rust method today.
   `Fixed`, `Handled` and the UI types map to the engine's own types.
+- **One language, two targets (owner, 2026-10-27).** The WASM backend
+  stays, and its modules are written in the same `.mel` syntax as the
+  Rust backend's: no second dialect. The simpler syntax is what makes the
+  stronger isolation practical: a WASM module sees only a capability-scoped
+  host API (a capability is granted per module, none by default), runs
+  under a fuel limit, and has no filesystem or network unless granted.
 - **WASM backend second,** for what must change without a rebuild of the
   program: mods and live iteration. A module is loaded by the host,
   swapped at a frame boundary (the generation and in-flight-guard pattern
