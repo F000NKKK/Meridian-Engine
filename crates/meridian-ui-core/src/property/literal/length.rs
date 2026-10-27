@@ -1,6 +1,7 @@
 //! `Length` literals: `Auto` or pixels.
 
-use super::{LiteralError, number::float};
+use super::LiteralError;
+use super::number::float;
 use crate::layout::value::Length;
 
 pub(in crate::property) fn length(text: &str) -> Result<Length, LiteralError> {

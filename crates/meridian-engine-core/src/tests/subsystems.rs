@@ -1,11 +1,11 @@
 //! Tests of the physics and audio subsystems.
 
-use super::falling_body;
-use super::subsystem_pair;
-use crate::*;
 use meridian_audio_core::{AttenuationModel, Channel, Emitter, Listener, Mixer, SpeakerLayout};
 use meridian_gac_core::{Motor3, Vec3};
 use meridian_physics_core::{ColliderShape, RigidBody};
+
+use super::{falling_body, subsystem_pair};
+use crate::*;
 
 #[test]
 fn audio_subsystem_mixes_audio_from_current_emitter_positions() {

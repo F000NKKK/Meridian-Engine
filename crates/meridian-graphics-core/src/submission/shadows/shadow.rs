@@ -1,7 +1,8 @@
 //! Directional shadow depth shader and the camera that fits the shadow volume.
 
-use crate::{Camera, look_at_rotor};
 use meridian_gac_core::{Motor3, Projection, Vec3};
+
+use crate::{Camera, look_at_rotor};
 
 /// The shadow map's own depth-only pass: transforms each vertex by the
 /// shadow-casting light's own view-projection matrix (not the camera's)

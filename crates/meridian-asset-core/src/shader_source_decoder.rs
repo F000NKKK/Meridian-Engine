@@ -1,8 +1,6 @@
 //! UTF-8 bytes to shader source.
 
-use crate::DecodeError;
-use crate::Decoder;
-use crate::ShaderSource;
+use crate::{DecodeError, Decoder, ShaderSource};
 
 /// Loads shader source as-is (UTF-8 text). Compiling it is
 /// `graphics-driver`'s job.

@@ -1,12 +1,10 @@
 //! Narrow phase: exact contacts for candidate pairs.
 
-use super::ColliderShape;
-use super::Contact;
-use super::RigidBody;
-use super::cuboid_vs_cuboid;
-use super::sphere_vs_cuboid;
-use super::sphere_vs_sphere;
 use meridian_gac_core::generic::{GaFlavor, ScalarLike};
+
+use super::{
+    ColliderShape, Contact, RigidBody, cuboid_vs_cuboid, sphere_vs_cuboid, sphere_vs_sphere,
+};
 
 /// Resolves candidate pairs from [`BroadPhase`](super::BroadPhase) into exact [`Contact`](super::Contact)s.
 #[derive(Debug)]

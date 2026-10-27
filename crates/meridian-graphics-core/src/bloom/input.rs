@@ -1,8 +1,9 @@
 //! What bloom reads from the frame that was just drawn.
 
+use meridian_graphics_driver::SurfaceFrame;
+
 use crate::SceneRenderer;
 use crate::submission::DrawBuffers;
-use meridian_graphics_driver::SurfaceFrame;
 
 /// The already-drawn frame [`BloomPass::apply`](super::BloomPass::apply)
 /// extracts emissive light from and composites onto.

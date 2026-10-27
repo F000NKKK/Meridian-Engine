@@ -1,8 +1,8 @@
 //! A registered stage with its dependencies.
 
-use crate::Stage;
-use crate::StageId;
 use std::sync::{Arc, Mutex};
+
+use crate::{Stage, StageId};
 
 pub(crate) struct StageEntry {
     pub(crate) name: &'static str,

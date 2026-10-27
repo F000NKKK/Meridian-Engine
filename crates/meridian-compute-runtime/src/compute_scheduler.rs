@@ -1,8 +1,6 @@
 //! Runs kernels against one context.
 
-use crate::ComputeContext;
-use crate::ComputeKernel;
-use crate::DispatchSize;
+use crate::{ComputeContext, ComputeKernel, DispatchSize};
 
 /// The entry point consumers use instead of calling `ComputeKernel::dispatch`
 /// directly: owns the [`ComputeContext`](crate::ComputeContext) (and its sequential/parallel

@@ -1,10 +1,10 @@
 //! The shared state every stage runs against.
 
-use crate::AudioSubsystem;
-use crate::PhysicsSubsystem;
-use crate::StageContext;
-use meridian_ecs_core::World;
 use std::sync::{Arc, Mutex, MutexGuard};
+
+use meridian_ecs_core::World;
+
+use crate::{AudioSubsystem, PhysicsSubsystem, StageContext};
 
 /// Shared per-frame state, split into independently-lockable pieces —
 /// see the module doc's "Locking" section for why this shape and not one

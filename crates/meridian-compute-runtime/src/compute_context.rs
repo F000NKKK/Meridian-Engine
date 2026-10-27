@@ -1,11 +1,12 @@
 //! The compute device and its dispatch policy.
 
-use crate::BackendSplit;
-use crate::HybridKernel;
+use std::sync::Arc;
+
 use meridian_compute_driver::{
     ComputeBuffer, ComputeCapabilities, ComputeDevice, GpuComputeDevice, GpuComputeError,
 };
-use std::sync::Arc;
+
+use crate::{BackendSplit, HybridKernel};
 
 /// Everything a `ComputeKernel` dispatch needs: bound buffers, the active
 /// `compute-driver` backend, synchronization state. Consumers reach

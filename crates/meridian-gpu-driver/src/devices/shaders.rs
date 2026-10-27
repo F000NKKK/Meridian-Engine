@@ -1,8 +1,6 @@
 //! Shader and compute pipeline creation on the device.
 
-use crate::ComputePipeline;
-use crate::Device;
-use crate::Shader;
+use crate::{ComputePipeline, Device, Shader};
 
 impl Device {
     /// Compiles a WGSL shader module. `label` is for GPU-debugger/error

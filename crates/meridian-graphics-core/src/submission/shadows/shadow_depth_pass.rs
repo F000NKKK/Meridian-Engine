@@ -1,9 +1,10 @@
 //! The depth-only pipelines and bind groups of the shadow pass.
 
-use crate::submission::SHADOW_DEPTH_SHADER_WGSL;
-use crate::submission::shadow_from_colored_layout;
-use crate::submission::shadow_from_textured_layout;
 use meridian_graphics_driver::{BindGroup, Buffer, BufferUsage, Device, RenderPipeline};
+
+use crate::submission::{
+    SHADOW_DEPTH_SHADER_WGSL, shadow_from_colored_layout, shadow_from_textured_layout,
+};
 
 /// What [`SceneRenderer`](crate::submission::SceneRenderer) needs to record the
 /// shadow-casters' depth pass: one pipeline per vertex family, each with

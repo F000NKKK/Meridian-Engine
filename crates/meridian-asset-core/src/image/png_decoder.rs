@@ -93,8 +93,9 @@ pub(crate) mod tests_support {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use tests_support::make_png;
+
+    use super::*;
 
     #[test]
     fn png_decodes_rgba_directly() {

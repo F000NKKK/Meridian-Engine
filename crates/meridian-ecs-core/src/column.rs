@@ -1,7 +1,8 @@
 //! Type-erased component columns of an archetype.
 
-use crate::Component;
 use std::any::Any;
+
+use crate::Component;
 
 /// A type-erased `SoA` column, downcast back to `Column<T>` by every
 /// operation that needs the concrete type. Object-safe by hand (`Any`

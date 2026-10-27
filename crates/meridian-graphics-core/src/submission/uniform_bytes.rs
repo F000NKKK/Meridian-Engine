@@ -1,10 +1,9 @@
 //! Packs matrices, vectors and lights into uniform buffer bytes.
 
-use super::MAX_LIGHTS;
-use super::ShadowLight;
-use super::ViewUniforms;
-use crate::scene::Light;
 use meridian_gac_core::Vec3;
+
+use super::{MAX_LIGHTS, ShadowLight, ViewUniforms};
+use crate::scene::Light;
 
 pub(crate) fn mat4_to_bytes(m: [[f32; 4]; 4]) -> [u8; 64] {
     let mut bytes = [0u8; 64];

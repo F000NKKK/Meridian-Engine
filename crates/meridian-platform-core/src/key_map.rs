@@ -1,7 +1,8 @@
 //! Translation of `winit` keys and mouse buttons into this crate's own.
 
-use crate::input::{KeyCode, MouseButton};
 use winit::keyboard::KeyCode as Wk;
+
+use crate::input::{KeyCode, MouseButton};
 
 /// Every `winit` key this crate names.
 const KEY_TABLE: [(Wk, KeyCode); 50] = [

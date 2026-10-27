@@ -1,8 +1,9 @@
 //! A kernel with both a CPU and a GPU implementation.
 
-use crate::ComputeContext;
 use std::future::Future;
 use std::ops::Range;
+
+use crate::ComputeContext;
 
 /// A dispatchable unit of compute work with *both* a CPU and a GPU
 /// implementation, letting [`ComputeContext::run_hybrid`](crate::ComputeContext::run_hybrid) split one

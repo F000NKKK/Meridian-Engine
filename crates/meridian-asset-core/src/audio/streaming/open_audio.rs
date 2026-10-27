@@ -1,9 +1,6 @@
 //! Opens audio bytes under a decode strategy.
 
-use super::AudioAsset;
-use super::DecodeMode;
-use super::DecodeStrategy;
-use super::StreamingAudioDecoder;
+use super::{AudioAsset, DecodeMode, DecodeStrategy, StreamingAudioDecoder};
 use crate::DecodeError;
 
 /// The strategy-driven front door: sniff the format by signature, then

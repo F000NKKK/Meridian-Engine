@@ -1,15 +1,13 @@
 //! Registers stages and ticks them in dependency order.
 
-use crate::AudioSubsystem;
-use crate::FrameScheduler;
-use crate::PhysicsSubsystem;
-use crate::RuntimeState;
-use crate::Stage;
-use crate::StageEntry;
-use crate::StageId;
+use std::sync::{Arc, Mutex};
+
 use meridian_platform_core::CpuCapabilities;
 use meridian_task_core::JobGraph;
-use std::sync::{Arc, Mutex};
+
+use crate::{
+    AudioSubsystem, FrameScheduler, PhysicsSubsystem, RuntimeState, Stage, StageEntry, StageId,
+};
 
 /// Owns [`RuntimeState`](crate::RuntimeState) and a set of registered [`Stage`](crate::Stage)s, and runs
 /// them in dependency order every [`Runtime::tick`] — see the module doc

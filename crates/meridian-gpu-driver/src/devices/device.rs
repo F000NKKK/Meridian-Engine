@@ -1,8 +1,8 @@
 //! The GPU device: adapter, queue and resource creation entry points.
 
-use crate::CommandBuffer;
-use crate::DeviceError;
 use meridian_platform_core::{BackendCapabilities, CpuCapabilities, GpuCapabilities};
+
+use crate::{CommandBuffer, DeviceError};
 
 /// A GPU device: owns the `wgpu::Device`/`wgpu::Queue` pair every other
 /// type here is created through or submitted against. `Clone` is cheap

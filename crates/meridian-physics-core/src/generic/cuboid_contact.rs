@@ -1,9 +1,8 @@
 //! Contact generation for cuboids by the separating axis test.
 
-use super::axis_x;
-use super::axis_y;
-use super::axis_z;
 use meridian_gac_core::generic::{GaFlavor, MotorLike, Obb, ScalarLike, Shape, VectorLike};
+
+use super::{axis_x, axis_y, axis_z};
 
 /// The box's own local axes (its rotated X/Y/Z), unit length since
 /// `transform_vector` only rotates.

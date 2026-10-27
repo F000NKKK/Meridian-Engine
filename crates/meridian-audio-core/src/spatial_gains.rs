@@ -1,11 +1,8 @@
 //! Per-channel gains for one emitter heard by one listener.
 
-use crate::AttenuationModel;
-use crate::Channel;
-use crate::Emitter;
-use crate::Listener;
-use crate::SpeakerLayout;
 use meridian_gac_core::Vec3;
+
+use crate::{AttenuationModel, Channel, Emitter, Listener, SpeakerLayout};
 
 /// The azimuth of `local_position` (a point already in listener-local
 /// space) in the horizontal plane, per the module doc's convention:

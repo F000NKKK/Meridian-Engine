@@ -22,6 +22,7 @@
 //! Design notes: docs/notes/meridian-gac-core.md (`fixed_ga`).
 
 use core::ops::{Add, Mul, Neg, Sub};
+
 use meridian_numeric_core::Fixed;
 
 use crate::blade;
@@ -600,8 +601,9 @@ pub fn fixed_icosphere(subdivisions: u32) -> FixedMesh {
 // See `float_ga`'s matching section for the full rationale: every
 // conversion here is precision- and determinism-relevant, so it's a
 // named `_lossy` method, never an implicit `From`/`Into`.
-use crate::float_ga::{Bivector3, Motor3, Multivector, Rotor, Vec3};
 use meridian_numeric_core::Scalar;
+
+use crate::float_ga::{Bivector3, Motor3, Multivector, Rotor, Vec3};
 
 impl FixedVec3 {
     /// Deliberate precision-changing cast to the default flavor — needed

@@ -1,8 +1,6 @@
 //! A window surface frames are acquired from.
 
-use crate::AcquireFrameError;
-use crate::Device;
-use crate::SurfaceFrame;
+use crate::{AcquireFrameError, Device, SurfaceFrame};
 
 /// A swapchain: the sequence of textures a windowed [`Device`](crate::Device) presents
 /// to the screen. Built by [`Device::new_windowed`](crate::Device::new_windowed); call

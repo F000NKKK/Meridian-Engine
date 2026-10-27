@@ -1,12 +1,13 @@
 //! Tests of stage dependencies and locking.
 
-use super::falling_body;
-use super::subsystem_pair;
-use crate::*;
+use std::sync::{Arc, Mutex};
+
 use meridian_audio_core::Emitter;
 use meridian_compute_runtime::DispatchSize;
 use meridian_gac_core::{Motor3, Vec3};
-use std::sync::{Arc, Mutex};
+
+use super::{falling_body, subsystem_pair};
+use crate::*;
 
 /// A stage that depends on another must see its finished output —
 /// the whole point of declaring the dependency, not an accident of

@@ -1,7 +1,8 @@
 //! Tests of the event system and the frame scheduler.
 
-use crate::*;
 use meridian_task_core::JobGraph;
+
+use crate::*;
 
 #[test]
 fn event_system_round_trips_by_type() {

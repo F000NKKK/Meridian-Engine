@@ -1,12 +1,11 @@
 //! Block-by-block audio decoding.
 
-use super::StreamBackend;
-use super::open_symphonia;
-use crate::Decoder;
+use std::sync::Arc;
+
+use super::{StreamBackend, open_symphonia};
 use crate::audio::compressed::AudioFormat;
 use crate::audio::wav::WavDecoder;
-use crate::{AudioClip, DecodeError};
-use std::sync::Arc;
+use crate::{AudioClip, DecodeError, Decoder};
 
 /// Incremental audio decoder: identifies the format by signature (never
 /// by extension), then yields interleaved-`i16` blocks of at most the

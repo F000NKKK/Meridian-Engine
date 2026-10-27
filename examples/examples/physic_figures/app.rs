@@ -1,20 +1,18 @@
 //! The application handler: window, camera and the frame loop.
 
-use crate::PhysicsRig;
-use crate::RenderEntity;
-use crate::SUN_DIRECTION;
-use crate::SceneEntity;
-use crate::load_scene;
-use crate::mesh_render_frame;
-use crate::mesh_source_for;
-use crate::sun_renderable;
+use std::sync::{Arc, Mutex};
+
 use meridian_examples::paths::asset_path;
 use meridian_sdk::{
     AppHandler, Camera, Device, FlyCamera, GraphicsSession, InputState, KeyCode, Light, Material,
     Motor3, RenderStage, Renderable3d, RigidBody, Scene3d, StageContext, StageId, Vec3, Window,
     look_at_rotor,
 };
-use std::sync::{Arc, Mutex};
+
+use crate::{
+    PhysicsRig, RenderEntity, SUN_DIRECTION, SceneEntity, load_scene, mesh_render_frame,
+    mesh_source_for, sun_renderable,
+};
 
 pub(crate) struct App {
     camera: FlyCamera,

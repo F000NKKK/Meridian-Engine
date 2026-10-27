@@ -3,7 +3,9 @@
 use meridian_ui_core::layout::value::{
     Alignment, Dock, GridLength, Length, Orientation, Visibility,
 };
-use meridian_ui_core::properties::{self, element::MARGIN, grid::COLUMN_DEFINITIONS};
+use meridian_ui_core::properties::element::MARGIN;
+use meridian_ui_core::properties::grid::COLUMN_DEFINITIONS;
+use meridian_ui_core::properties::{self};
 use meridian_ui_core::{ElementKind, LiteralError, PropertyType, Thickness, UiError, UiTree};
 
 fn parse<T: PropertyType>(text: &str) -> Result<T, LiteralError> {

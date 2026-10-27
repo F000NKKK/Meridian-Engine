@@ -1,11 +1,11 @@
 //! Tests of the compute-dispatched physics stage.
 
-use super::falling_body;
-use super::subsystem_pair;
-use crate::*;
 use meridian_audio_core::{Mixer, SpeakerLayout};
 use meridian_gac_core::{Motor3, Vec3};
 use meridian_physics_core::{ColliderShape, ConstraintSolver, RigidBody};
+
+use super::{falling_body, subsystem_pair};
+use crate::*;
 
 /// `PhysicsStepStage` in `PhysicsDispatchMode::Batched` must settle a
 /// box exactly the way `PhysicsDispatchMode::Sequential`/

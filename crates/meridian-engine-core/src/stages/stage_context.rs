@@ -1,9 +1,10 @@
 //! The handle a stage receives to reach the shared state.
 
-use crate::AudioSubsystem;
-use crate::PhysicsSubsystem;
-use meridian_ecs_core::World;
 use std::sync::{Arc, Mutex, MutexGuard};
+
+use meridian_ecs_core::World;
+
+use crate::{AudioSubsystem, PhysicsSubsystem};
 
 /// What a running [`Stage`](crate::Stage) sees — locked access to [`RuntimeState`](crate::RuntimeState)'s
 /// pieces, shaped so a lock-order inversion can't be expressed (see the

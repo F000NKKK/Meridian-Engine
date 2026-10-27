@@ -1,8 +1,9 @@
 //! Applies a parent motor to many child motors on the GPU.
 
+use std::sync::Mutex;
+
 use meridian_compute_runtime::{ComputeContext, ComputeKernel, DispatchSize};
 use meridian_gac_core::Motor3;
-use std::sync::Mutex;
 
 /// Batch-composes a shared `parent` motor with many `locals` — the
 /// `world[i] = locals[i].compose(parent)` step of parent/child transform

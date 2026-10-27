@@ -2,7 +2,8 @@
 
 use meridian_memory_core::ResourcePool;
 
-use super::{Change, element::Element};
+use super::Change;
+use super::element::Element;
 use crate::{ElementKind, NodeId, UiError};
 
 /// A retained element tree. Nodes live in a generational pool and refer to

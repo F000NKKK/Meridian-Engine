@@ -12,6 +12,7 @@
 //! [ADR 001](../../../docs/adr/001-geometric-algebra-as-spatial-model.md).
 
 use core::ops::{Add, Mul, Neg, Sub};
+
 use meridian_numeric_core::Scalar;
 
 use crate::blade;
@@ -761,8 +762,9 @@ pub fn icosphere(subdivisions: u32) -> Mesh {
 // interop" section. The `Add`/`Sub`/`Mul` impls below (for mixing a
 // `Vec3` with a `FixedVec3` directly) go through these same named
 // methods internally, not a silent implicit conversion.
-use crate::fixed_ga::{FixedBivector3, FixedMotor3, FixedMultivector, FixedRotor, FixedVec3};
 use meridian_numeric_core::Fixed;
+
+use crate::fixed_ga::{FixedBivector3, FixedMotor3, FixedMultivector, FixedRotor, FixedVec3};
 
 impl Vec3 {
     /// Deliberate precision-changing cast to the deterministic flavor.

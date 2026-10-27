@@ -1,7 +1,6 @@
 //! Speaker layouts and constant-power panning between the bracketing speakers.
 
-use crate::Channel;
-use crate::Speaker;
+use crate::{Channel, Speaker};
 
 /// A named set of output speakers and how panning should treat the space
 /// between the outermost ones.

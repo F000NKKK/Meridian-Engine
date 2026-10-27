@@ -1,7 +1,6 @@
 //! A scene baked for drawing.
 
-use super::DrawBuffers;
-use super::ShadowLight;
+use super::{DrawBuffers, ShadowLight};
 
 /// What [`SceneRenderer::render_shadow_pass`](super::SceneRenderer::render_shadow_pass)
 /// hands to the main pass: the baked draw buffers (kept alive until the

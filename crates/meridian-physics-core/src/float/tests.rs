@@ -1,8 +1,10 @@
 //! Tests of this module.
 
-use super::*;
 use core::f32::consts::PI;
+
 use meridian_gac_core::{Bivector3, Motor3, Vec3};
+
+use super::*;
 
 fn sphere(position: Vec3, velocity: Vec3, mass: f32, radius: f32) -> RigidBody {
     RigidBody {

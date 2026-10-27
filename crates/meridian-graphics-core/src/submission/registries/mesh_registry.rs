@@ -1,9 +1,9 @@
 //! Registered meshes by handle.
 
-use crate::MeshHandle;
-use crate::submission::MeshRegistryError;
-use crate::submission::MeshSource;
 use meridian_memory_core::ResourcePool;
+
+use crate::MeshHandle;
+use crate::submission::{MeshRegistryError, MeshSource};
 
 /// Handle-addressed storage for [`MeshSource`](crate::submission::MeshSource)s — the CPU-side registry
 /// [`Renderable3d::mesh`](crate::scene::Renderable3d::mesh) resolves against. Owns no GPU objects; GPU

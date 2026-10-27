@@ -1,12 +1,13 @@
 //! Criterion benches for the rigid-body step: integrate, broad phase,
 //! narrow phase and resolution.
 
+use std::hint::black_box;
+
 use criterion::{Criterion, criterion_group, criterion_main};
 use meridian_gac_core::{Motor3, Vec3};
 use meridian_physics_core::{
     BroadPhase, ColliderShape, ConstraintSolver, Integrator, NarrowPhase, RigidBody,
 };
-use std::hint::black_box;
 
 fn grid_of_spheres(side: u16) -> Vec<RigidBody> {
     let mut bodies = Vec::with_capacity(usize::from(side) * usize::from(side));
