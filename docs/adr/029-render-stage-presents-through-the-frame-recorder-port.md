@@ -1,4 +1,4 @@
-# ADR 028: Presenting a frame is a `Stage` in the sdk, through the `FrameRecorder` port
+# ADR 029: Presenting a frame is a `Stage` in the sdk, through the `FrameRecorder` port
 
 ## Status
 

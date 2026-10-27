@@ -304,7 +304,7 @@ driver.
    they can sort. The shadow and bloom passes read the same buffers.
    Still open: the instance buffer is rewritten every frame, there is no
    indirect or GPU-culled path, and meshes keep the `u16` index limit.
-4. **Done.** `Runtime::tick` integration ([ADR 028](adr/028-render-stage-presents-through-the-frame-recorder-port.md)):
+4. **Done.** `Runtime::tick` integration ([ADR 029](adr/029-render-stage-presents-through-the-frame-recorder-port.md)):
    `meridian_sdk::RenderStage` is a `Stage` that presents through the
    `rendering-app::FrameRecorder` port, so `runtime-app` never depends on
    `rendering-wgpu`. `physic_figures` registers it after its physics stage;

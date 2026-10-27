@@ -439,7 +439,7 @@ submission layers are real now too (see the `submission` entry above:
 `SceneRenderer`, real `Blinn`-Phong lit draws, bloom) — and
 presenting a frame is wired into `Runtime::tick` through
 `meridian_sdk::RenderStage`, a `Stage` over the `FrameRecorder` port
-([ADR 028](adr/028-render-stage-presents-through-the-frame-recorder-port.md)),
+([ADR 029](adr/029-render-stage-presents-through-the-frame-recorder-port.md)),
 so `runtime-app` still never depends on `rendering-wgpu`.
 `physic_figures` registers it after its physics stage.
 
