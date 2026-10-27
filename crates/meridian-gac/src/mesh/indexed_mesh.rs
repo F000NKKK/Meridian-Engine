@@ -30,14 +30,15 @@ impl<F: GaFlavor> Mesh<F> {
     pub fn unique_edges(&self) -> Vec<(usize, usize)> {
         let mut seen = std::collections::HashSet::new();
         let mut edges = Vec::new();
-        for face in &self.faces {
-            for (a, b, c) in face.triangles() {
-                for (x, y) in [(a, b), (b, c), (c, a)] {
-                    let key = if x < y { (x, y) } else { (y, x) };
-                    if seen.insert(key) {
-                        edges.push(key);
-                    }
-                }
+        let keys = self
+            .faces
+            .iter()
+            .flat_map(Face::triangles)
+            .flat_map(|(a, b, c)| [(a, b), (b, c), (c, a)])
+            .map(|(x, y)| if x < y { (x, y) } else { (y, x) });
+        for key in keys {
+            if seen.insert(key) {
+                edges.push(key);
             }
         }
         edges

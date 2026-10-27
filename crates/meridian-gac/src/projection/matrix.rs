@@ -62,15 +62,16 @@ impl<F: GaFlavor> Projection<F> {
 
     /// A right-handed orthographic projection over the view-space box
     /// `[left, right] x [bottom, top] x [-far, -near]`, depth mapped to
-    /// `[0, 1]`.
+    /// `[0, 1]`. Each range is `(min, max)`: `x = (left, right)`,
+    /// `y = (bottom, top)`, `depth = (near, far)`.
     pub fn orthographic(
-        left: F::Scalar,
-        right: F::Scalar,
-        bottom: F::Scalar,
-        top: F::Scalar,
-        near: F::Scalar,
-        far: F::Scalar,
+        x: (F::Scalar, F::Scalar),
+        y: (F::Scalar, F::Scalar),
+        depth: (F::Scalar, F::Scalar),
     ) -> Self {
+        let (left, right) = x;
+        let (bottom, top) = y;
+        let (near, far) = depth;
         let zero = F::Scalar::ZERO;
         let one = F::Scalar::ONE;
         let two = one + one;

@@ -121,26 +121,7 @@ fn cuboid_settles_without_runaway_spin() {
     let mut min_height_after_landing = f32::MAX;
     let mut max_height_after_landing = f32::MIN;
     for step in 0..600 {
-        integrator.step(&mut bodies, dt);
-        // Velocity-only relaxation passes, then positional
-        // correction exactly once — matching
-        // `examples/examples/physic_figures.rs`'s loop. Calling the
-        // combined `resolve` (velocity + position) once per
-        // relaxation pass instead applied the positional push
-        // several times per tick, which is the "cube/pyramid bounce
-        // up/down and clip through the floor" bug this test's
-        // height-stability assertion below catches — see
-        // `ConstraintSolver::resolve`'s doc comment.
-        for _ in 0..4 {
-            let pairs = broad.find_candidate_pairs(&bodies).to_vec();
-            for contact in narrow.generate_contacts(&bodies, &pairs) {
-                solver.resolve_velocity(&mut bodies, &contact);
-            }
-        }
-        let pairs = broad.find_candidate_pairs(&bodies).to_vec();
-        for contact in narrow.generate_contacts(&bodies, &pairs) {
-            solver.apply_positional_correction(&mut bodies, &contact);
-        }
+        simulate_step(&integrator, &solver, &mut broad, &narrow, &mut bodies);
         // Give the box a couple hundred steps to make first contact
         // and let any initial-impact wobble die down before tracking
         // the "should now be at rest" window.
@@ -171,4 +152,35 @@ fn cuboid_settles_without_runaway_spin() {
         min_height_after_landing > 0.0,
         "a settled box must not clip through the floor (min height {min_height_after_landing})"
     );
+}
+
+/// One tick as `examples/examples/physic_figures.rs` runs it.
+fn simulate_step(
+    integrator: &Integrator,
+    solver: &ConstraintSolver,
+    broad: &mut BroadPhase,
+    narrow: &NarrowPhase,
+    bodies: &mut [RigidBody],
+) {
+    let dt = 1.0 / 60.0;
+    integrator.step(bodies, dt);
+    // Velocity-only relaxation passes, then positional
+    // correction exactly once — matching
+    // `examples/examples/physic_figures.rs`'s loop. Calling the
+    // combined `resolve` (velocity + position) once per
+    // relaxation pass instead applied the positional push
+    // several times per tick, which is the "cube/pyramid bounce
+    // up/down and clip through the floor" bug this test's
+    // height-stability assertion below catches — see
+    // `ConstraintSolver::resolve`'s doc comment.
+    for _ in 0..4 {
+        let pairs = broad.find_candidate_pairs(bodies).to_vec();
+        for contact in narrow.generate_contacts(bodies, &pairs) {
+            solver.resolve_velocity(bodies, &contact);
+        }
+    }
+    let pairs = broad.find_candidate_pairs(bodies).to_vec();
+    for contact in narrow.generate_contacts(bodies, &pairs) {
+        solver.apply_positional_correction(bodies, &contact);
+    }
 }

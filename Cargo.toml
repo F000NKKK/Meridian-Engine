@@ -131,9 +131,9 @@ elided_lifetimes_in_paths = "warn"
 
 [workspace.lints.clippy]
 pedantic = { level = "warn", priority = -1 }
-too_many_lines = "warn" # backlog: deny in Craftbook
-too_many_arguments = "warn" # backlog: deny in Craftbook
-excessive_nesting = "warn" # backlog: deny in Craftbook
+too_many_lines = "deny"
+too_many_arguments = "deny"
+excessive_nesting = "deny"
 cognitive_complexity = "deny"
 fn_params_excessive_bools = "deny"
 struct_excessive_bools = "deny"

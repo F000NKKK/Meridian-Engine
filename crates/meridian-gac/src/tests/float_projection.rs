@@ -47,7 +47,7 @@ fn perspective_projects_frustum_boundary_points_to_ndc_edges() {
 
 #[test]
 fn orthographic_maps_box_corners_to_ndc_cube() {
-    let proj = Projection::orthographic(-2.0, 2.0, -1.0, 1.0, 0.5, 10.0);
+    let proj = Projection::orthographic((-2.0, 2.0), (-1.0, 1.0), (0.5, 10.0));
     let m = proj.0;
     let project = |p: [Scalar; 4]| -> [Scalar; 4] {
         [

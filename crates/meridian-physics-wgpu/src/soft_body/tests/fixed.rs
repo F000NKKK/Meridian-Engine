@@ -10,7 +10,7 @@ use meridian_physics_domain::soft_body::fixed::{
     fixed_icosphere_soft_body,
 };
 
-use crate::soft_body::csr::build_adjacency;
+use crate::soft_body::csr::{Adjacency, build_adjacency};
 use crate::soft_body::fixed::FixedSoftBodyGpuKernel;
 
 fn fv3(x: f64, y: f64, z: f64) -> FixedVec3 {
@@ -119,6 +119,56 @@ fn gpu_body_adjacency_degree(body: &FixedSoftBody, particle: usize) -> usize {
         .count()
 }
 
+/// The spring and damper force on particle `i` from the neighbour at CSR
+/// entry `e`, in the canonical direction (see `rust_gather_step`).
+fn neighbor_force(
+    body: &FixedSoftBody,
+    adjacency: &Adjacency<FixedFlavor>,
+    i: usize,
+    e: usize,
+) -> FixedVec3 {
+    let (j, is_a) = crate::soft_body::csr::decode_neighbor(adjacency.neighbor[e]);
+    let delta = if is_a {
+        body.positions[j] - body.positions[i]
+    } else {
+        body.positions[i] - body.positions[j]
+    };
+    let dist = delta.length();
+    let direction = if dist > Fixed::from_bits(4) {
+        delta * (Fixed::ONE / dist)
+    } else {
+        FixedVec3::new(Fixed::ONE, Fixed::ZERO, Fixed::ZERO)
+    };
+    let stretch = dist - adjacency.rest_length[e];
+    let spring_force = direction * (adjacency.stiffness[e] * stretch);
+    let relative_velocity = if is_a {
+        body.velocities[j] - body.velocities[i]
+    } else {
+        body.velocities[i] - body.velocities[j]
+    };
+    let closing_speed = relative_velocity.dot(direction);
+    let total = spring_force + direction * (adjacency.damping[e] * closing_speed);
+    if is_a { total } else { -total }
+}
+
+/// Pushes a particle out of the ground plane and reflects its velocity.
+fn collide_ground(
+    ground: Plane<FixedFlavor>,
+    restitution: Fixed,
+    mut position: FixedVec3,
+    mut velocity: FixedVec3,
+) -> (FixedVec3, FixedVec3) {
+    let separation = ground.distance(position);
+    if separation < Fixed::ZERO {
+        position = position - ground.normal * separation;
+        let normal_speed = velocity.dot(ground.normal);
+        if normal_speed < Fixed::ZERO {
+            velocity = velocity - ground.normal * (normal_speed * (Fixed::ONE + restitution));
+        }
+    }
+    (position, velocity)
+}
+
 /// Pure-Rust replica of the GPU kernel's per-particle gather
 /// algorithm (no WGSL, no GPU) — proves the *reformulation itself*
 /// (independent of its WGSL/GPU execution) is bit-exact with
@@ -144,44 +194,12 @@ fn rust_gather_step(
         let start = adjacency.offsets[i] as usize;
         let end = adjacency.offsets[i + 1] as usize;
         for e in start..end {
-            let (j, is_a) = crate::soft_body::csr::decode_neighbor(adjacency.neighbor[e]);
-            let delta = if is_a {
-                body.positions[j] - body.positions[i]
-            } else {
-                body.positions[i] - body.positions[j]
-            };
-            let dist = delta.length();
-            let direction = if dist > Fixed::from_bits(4) {
-                delta * (Fixed::ONE / dist)
-            } else {
-                FixedVec3::new(Fixed::ONE, Fixed::ZERO, Fixed::ZERO)
-            };
-            let rest_length = adjacency.rest_length[e];
-            let stiffness = adjacency.stiffness[e];
-            let damping = adjacency.damping[e];
-            let stretch = dist - rest_length;
-            let spring_force = direction * (stiffness * stretch);
-            let relative_velocity = if is_a {
-                body.velocities[j] - body.velocities[i]
-            } else {
-                body.velocities[i] - body.velocities[j]
-            };
-            let closing_speed = relative_velocity.dot(direction);
-            let damping_force = direction * (damping * closing_speed);
-            let total = spring_force + damping_force;
-            force = force + if is_a { total } else { -total };
+            force = force + neighbor_force(body, &adjacency, i, e);
         }
         let acceleration = force * inverse_mass + gravity;
         let mut velocity = body.velocities[i] + acceleration * dt;
         let mut position = body.positions[i] + velocity * dt;
-        let separation = ground.distance(position);
-        if separation < Fixed::ZERO {
-            position = position - ground.normal * separation;
-            let normal_speed = velocity.dot(ground.normal);
-            if normal_speed < Fixed::ZERO {
-                velocity = velocity - ground.normal * (normal_speed * (Fixed::ONE + restitution));
-            }
-        }
+        (position, velocity) = collide_ground(ground, restitution, position, velocity);
         out.positions[i] = position;
         out.velocities[i] = velocity;
     }

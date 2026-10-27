@@ -31,6 +31,6 @@ pub fn directional_shadow_camera(light_direction: Vec3, scene_center: Vec3) -> C
     let h = SHADOW_VOLUME_HALF_EXTENT;
     Camera {
         frame: Motor3::from_rotation_translation(rotor, eye),
-        projection: Projection::orthographic(-h, h, -h, h, 0.1, h * 4.0),
+        projection: Projection::orthographic((-h, h), (-h, h), (0.1, h * 4.0)),
     }
 }
