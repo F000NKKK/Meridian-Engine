@@ -266,6 +266,17 @@ impl World {
             .get_mut(loc.row)
     }
 
+    /// The component types `entity` currently has, sorted, or `None` for a
+    /// dead entity. This is the archetype's identity, so the call allocates
+    /// nothing. `TypeId` is not stable across builds: a persistence layer
+    /// keeps its own registry from stable names to concrete types and uses
+    /// this to know which of them to read with [`World::get`].
+    #[must_use]
+    pub fn component_types(&self, entity: Entity) -> Option<&[TypeId]> {
+        let loc = self.locations.get(&entity)?;
+        Some(&self.archetypes[loc.archetype].type_ids)
+    }
+
     #[must_use]
     pub fn contains<T: Component>(&self, entity: Entity) -> bool {
         self.get::<T>(entity).is_some()

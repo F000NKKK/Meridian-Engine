@@ -83,8 +83,9 @@ change that closed them.
    spawn/despawn/insert during iteration, and per-column change ticks so
    rendering can skip unchanged instances (feeds roadmap "Scaling" item 1).
 4. **Persistence hooks.** Roadmap "Scaling" item 5. Core side: component
-   enumeration per entity (`World::component_types(entity)`) and a world
-   snapshot API; the format and `meridian-scene` belong to `team/data`.
+   enumeration per entity (**done**: `World::component_types(entity)`,
+   sorted `TypeId`s; the stable-name registry and serializers are the
+   adapter's) and a world snapshot API; the format and `meridian-scene` belong to `team/data`.
 5. **Done: persistent worker pool.** `Scheduler` spawns its workers once;
    `run` no longer spawns threads (1-job graph ~210 µs -> ~0.35 µs, 1 000-job
    chain 1.1 ms -> 0.33 ms, `cargo bench -p meridian-task-core`). Work-stealing
