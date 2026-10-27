@@ -631,8 +631,8 @@ priority before writing implementations is keeping that document and the
     `{x:Bind}` compiler parses and validates bindings, resolves them to
     `ui-core` properties and generates `Names`, `apply_bindings` and
     `write_back_bindings` (type-checked against the `x:ViewModel`).
-    Building the `UiTree` from markup and event
-    dispatch are next.
+    A document with a UI root also gets `build_ui`, which creates the
+    `UiTree` from the markup. Event dispatch and resources are next.
 
 ## Scaling beyond a tech demo (Minecraft/Satisfactory-class scope)
 

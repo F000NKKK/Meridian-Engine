@@ -3,6 +3,7 @@
 //! `write_back_bindings`).
 
 use crate::code_writer::{ALLOW, CodeWriter};
+use crate::ui_build::render_build_ui;
 use crate::{BindingMode, MelDocument, PropertyBinding};
 
 const UI: &str = "::meridian_sdk::ui_core";
@@ -19,10 +20,13 @@ impl<'a> UiBindings<'a> {
     }
 
     pub(crate) fn render(&self, code: &mut CodeWriter) {
-        if self.document.bindings.is_empty() {
+        if self.document.bindings.is_empty() && self.document.ui.is_none() {
             return;
         }
         self.render_names(code);
+        if let Some(root) = &self.document.ui {
+            render_build_ui(code, &self.document.path, root);
+        }
         self.render_apply(code, "apply_one_time_bindings", |binding| {
             binding.mode == BindingMode::OneTime
         });

@@ -32,7 +32,9 @@ impl GeneratedModule {
         render_names(&mut code, document);
         render_alias(&mut code, "Class", document.class.as_deref());
         render_alias(&mut code, "ViewModel", document.view_model.as_deref());
-        render_functions(&mut code);
+        if document.ui.is_none() {
+            render_functions(&mut code);
+        }
         UiBindings::new(document).render(&mut code);
         Self { code: code.text }
     }
@@ -106,126 +108,4 @@ fn render_functions(code: &mut CodeWriter) {
 }
 
 #[cfg(test)]
-mod tests {
-    use std::path::Path;
-
-    use super::*;
-
-    fn render(source: &str) -> String {
-        let document = MelDocument::parse(Path::new("/scenes/demo.mel"), source).unwrap();
-        GeneratedModule::render(&document).code
-    }
-
-    #[test]
-    fn names_class_and_functions_are_generated() {
-        let code = render(r#"<Scene x:Class="crate::Demo"><Entity x:Name="left_arm" /></Scene>"#);
-        assert!(
-            code.contains(r#"include_str!("/scenes/demo.mel")"#),
-            "{code}"
-        );
-        assert!(
-            code.contains("    // @mel /scenes/demo.mel:1:30\n    LeftArm,"),
-            "{code}"
-        );
-        assert!(
-            code.contains("pub const ALL: [Self; 1] = [Self::LeftArm];"),
-            "{code}"
-        );
-        assert!(code.contains(r#"Self::LeftArm => "left_arm","#), "{code}");
-        assert!(code.contains("pub type Class = crate::Demo;"), "{code}");
-        assert!(!code.contains("ViewModel"), "{code}");
-        assert!(
-            code.contains("::meridian_sdk::dsl::build_scene(SOURCE, registry)"),
-            "{code}"
-        );
-    }
-
-    #[test]
-    fn bindings_become_ui_glue() {
-        let code = render(
-            r#"<StackPanel x:ViewModel="crate::HudVm">
-                <TextBlock x:Name="title" text="{x:Bind player?.name, Fallback='-'}" font_size="{x:Bind size, Mode=OneTime}" />
-                <TextBlock x:Name="query_box" text="{x:Bind search.text, Mode=TwoWay}" />
-                <Border x:Name="mute" width="{x:Bind width(), Mode=TwoWay, BindBack=set_width}" />
-            </StackPanel>"#,
-        );
-        let ui = "::meridian_sdk::ui_core";
-        assert!(
-            code.contains(&format!("pub title: {ui}::NodeId,")),
-            "{code}"
-        );
-        assert!(
-            code.contains(&format!("pub query_box: {ui}::NodeId,")),
-            "{code}"
-        );
-        assert!(
-            code.contains("pub fn apply_one_time_bindings(vm: &ViewModel, tree: &mut"),
-            "{code}"
-        );
-        assert!(
-            code.contains(&format!(
-                "tree.set(names.title, {ui}::properties::text_block::FONT_SIZE, ::core::convert::Into::into(::core::clone::Clone::clone(&(vm.size))))?;"
-            )),
-            "{code}"
-        );
-        assert!(
-            code.contains(
-                "match (|| Some(::core::clone::Clone::clone(&(vm.player.as_ref()?.name))))() {"
-            ),
-            "{code}"
-        );
-        assert!(code.contains("None => tree.set(names.title,"), "{code}");
-        assert!(
-            code.contains("pub fn write_back_bindings(vm: &mut ViewModel"),
-            "{code}"
-        );
-        assert!(
-            code.contains("vm.search.text = ::core::convert::Into::into(value);"),
-            "{code}"
-        );
-        assert!(
-            code.contains("vm.set_width(::core::convert::Into::into(value));"),
-            "{code}"
-        );
-        assert!(
-            code.contains(&format!(
-                "change.node == names.mute && change.property == {ui}::properties::element::WIDTH.meta().id"
-            )),
-            "{code}"
-        );
-        assert!(code.contains("// @mel /scenes/demo.mel:2:"), "{code}");
-        assert_eq!(
-            code.matches('{').count(),
-            code.matches('}').count(),
-            "{code}"
-        );
-    }
-
-    #[test]
-    fn one_way_only_documents_have_no_write_back() {
-        let code = render(
-            r#"<StackPanel x:ViewModel="V"><TextBlock x:Name="t" text="{x:Bind s}" /></StackPanel>"#,
-        );
-        assert!(code.contains("pub fn apply_bindings("), "{code}");
-        assert!(!code.contains("apply_one_time_bindings"), "{code}");
-        assert!(!code.contains("write_back_bindings"), "{code}");
-    }
-
-    #[test]
-    fn document_without_names_has_an_empty_enum() {
-        let code = render("<Scene />");
-        assert!(code.contains("pub enum Name {\n}\n\n"), "{code}");
-        assert!(
-            code.contains("        match self {\n        }\n    }\n}\n"),
-            "{code}"
-        );
-        assert_eq!(
-            code.matches('{').count(),
-            code.matches('}').count(),
-            "{code}"
-        );
-        assert_eq!(code.matches("#[allow(dead_code").count(), 5, "{code}");
-        assert!(!code.contains("Names"), "{code}");
-        assert!(code.contains("pub const ALL: [Self; 0] = [];"), "{code}");
-    }
-}
+mod tests;

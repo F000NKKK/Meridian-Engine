@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 
 use meridian_dsl_core::{Attribute, Element, MarkupValue, parse};
 
-use crate::{BuildError, InvalidMarkup, NamedElement, PropertyBinding};
+use crate::{BuildError, InvalidMarkup, NamedElement, PropertyBinding, UiNode};
 
 const ROOT_ONLY: [&str; 2] = ["Class", "ViewModel"];
 const ANYWHERE: [&str; 2] = ["Name", "Key"];
@@ -22,6 +22,8 @@ pub struct MelDocument {
     pub view_model: Option<String>,
     /// Every `{x:Bind}`, in document order.
     pub bindings: Vec<PropertyBinding>,
+    /// The element tree to build, when the root is a UI element.
+    pub ui: Option<UiNode>,
 }
 
 impl MelDocument {
@@ -39,9 +41,15 @@ impl MelDocument {
             root,
             names: Vec::new(),
             bindings: Vec::new(),
+            ui: None,
         };
         let root = document.root.clone();
         document.collect(&root, true)?;
+        if UiNode::is_ui_root(&root) {
+            let ui = UiNode::from_element(&root, &document.names)
+                .map_err(|(span, reason)| BuildError::invalid(path, span, reason))?;
+            document.ui = Some(ui);
+        }
         Ok(document)
     }
 
