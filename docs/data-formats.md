@@ -16,7 +16,7 @@ stay `asset-core` decoders and are not covered here.
 | `*.meta` | text | `resource-core` adapter | an asset's stable id and import settings |
 | `*.msave` | binary | the game | a save: scene delta + game state |
 | `*.mpak` | binary | build tool | cooked content bundle |
-| editor protocol | frames over a socket | `engine-core` (editor host) | engine ↔ IDE messages |
+| editor protocol | frames over a socket | `meridian-editor-protocol` (host in `engine-core`) | engine ↔ IDE messages |
 
 Text and binary of one file kind share an extension: readers detect
 `SDAT` magic and fall back to text.
@@ -198,10 +198,12 @@ only owns the envelope.
 
 Messages are Substrate Data frames over a byte stream
 (`substrate_data::io::write_frame`/`read_frame`): a little-endian `u32`
-length, then the frame. Requests and events are tagged enums deriving
-`Schema`; fields are only ever appended, so an IDE and a game built at
-different times still talk. The protocol itself (handshake, `Describe`,
-`Snapshot`, `SetField`, `Select`, …) is specified with Meridian IDLE.
+length, then the message in the binary form. Requests, responses and
+events are tagged enums deriving `Schema`, in `meridian-editor-protocol`;
+they are only ever appended to, and the two peers agree on a
+`ProtocolVersion` in the first message, because the binary form rejects
+what it doesn't know (an older reader does not skip a newer peer's field).
+Specified in [editor-protocol.md](editor-protocol.md).
 
 ## Status
 
@@ -212,4 +214,4 @@ different times still talk. The protocol itself (handshake, `Describe`,
 | `meridian-scene` (registry, `.mscene` load/save, `describe()`) | done (text form; hierarchy as `meridian-scene::Parent` until `ecs-core` has one) |
 | `.mscene` binary form, patching an existing file on save | not implemented |
 | `.mprefab`, `.meta`, `.msave`, `.mpak` | designed, not implemented |
-| editor protocol | designed with Meridian IDLE |
+| `meridian-editor-protocol` (messages, framing, golden-pinned wire) | done; the host side in `engine-core` is not written |

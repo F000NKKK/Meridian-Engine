@@ -93,6 +93,7 @@ ALLOWED = {
         "meridian-physics-compute",
     },
     "meridian-scene": {"meridian-ecs-core", "meridian-gac-core"},
+    "meridian-editor-protocol": {"meridian-ecs-core", "meridian-scene"},
     "meridian-dsl-core": {"meridian-foundation"},
     "meridian-dsl-macros": set(),
     "meridian-mel-build": {"meridian-dsl-core", "meridian-ui-core"},
