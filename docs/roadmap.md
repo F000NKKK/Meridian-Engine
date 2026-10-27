@@ -436,17 +436,12 @@ them through a job graph would be decorative; see
 docs/threading-model.md's `FrameScheduler` section for why, and what makes
 it load-bearing later. `rendering-domain`'s scene/material/lighting/
 submission layers are real now too (see the `submission` entry above:
-`SceneRenderer`, real `Blinn`-Phong lit draws, bloom) — but
-`rendering-domain` still isn't wired into `Runtime::tick` itself, for a
-different reason than "no vocabulary yet": presenting a frame needs a
-real windowed `Device`/`Surface`, which is driver state, and
-`runtime-app` deliberately never depends on `rendering-wgpu` (only
-`rendering-domain` — see dependency-rules.md's edge list; `runtime-app`
-does list `rendering-domain` as an allowed dependency, per rule 7, it's
-just not used yet); an application (`meridian-sdk`, which is allowed to
-depend on `*-driver` crates) calls `Runtime::tick_fixed` for physics and
-does its own render submission separately, the same split
-`physic_figures` uses today.
+`SceneRenderer`, real `Blinn`-Phong lit draws, bloom) — and
+presenting a frame is wired into `Runtime::tick` through
+`meridian_sdk::RenderStage`, a `Stage` over the `FrameRecorder` port
+([ADR 028](adr/028-render-stage-presents-through-the-frame-recorder-port.md)),
+so `runtime-app` still never depends on `rendering-wgpu`.
+`physic_figures` registers it after its physics stage.
 
 **`Runtime`/`SubsystemManager` are now proven end-to-end, not just
 tested in isolation.** `examples/physic_figures` drives its physics

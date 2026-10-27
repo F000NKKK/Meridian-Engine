@@ -73,9 +73,9 @@ Not started; ordered by suggested priority. Items wait for an explicit task.
    `Material::specular`; roughness/metallic wait for a PBR shader.
 6. **Render-graph resource lifetime.** Ordering is real; transient target
    allocation/aliasing is not.
-7. **`Runtime::tick` integration.** Blocked on an architecture decision:
-   `runtime-app` must not depend on `rendering-wgpu`. Needs an ADR
-   (likely an app-side presenter trait owned by `meridian-sdk`).
+7. **`Runtime::tick` integration — done.** `meridian_sdk::RenderStage`
+   presents through the `FrameRecorder` port, so `runtime-app` never names
+   rendering; see [ADR 028](../adr/028-render-stage-presents-through-the-frame-recorder-port.md).
 8. **Larger, ADR-gated:** HDR (`Rgba16Float` + tone mapping), shadow
    cascades/frustum fitting, point-light shadows, IBL, glTF meshes (with
    team/data), animation (no vocabulary yet), concrete backend crates.

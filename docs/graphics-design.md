@@ -304,15 +304,12 @@ driver.
    they can sort. The shadow and bloom passes read the same buffers.
    Still open: the instance buffer is rewritten every frame, there is no
    indirect or GPU-culled path, and meshes keep the `u16` index limit.
-4. `Runtime::tick` integration — **not** blocked on vocabulary anymore
-   (steps 1-3 above cover it); blocked on an actual architecture
-   decision instead, since presenting a frame needs a windowed
-   `Device`/`Surface` (driver state) and `runtime-app` deliberately
-   never depends on `rendering-wgpu`. `magic_figures`/`physic_figures`
-   compose `rendering-domain::SceneRenderer` directly against their own
-   `Device`/`Surface` inside their own `winit` event loop today, rather
-   than through `Runtime::tick` — see docs/roadmap.md's
-   `Runtime`-adoption entry for the current state of that decision.
+4. **Done.** `Runtime::tick` integration ([ADR 028](adr/028-render-stage-presents-through-the-frame-recorder-port.md)):
+   `meridian_sdk::RenderStage` is a `Stage` that presents through the
+   `rendering-app::FrameRecorder` port, so `runtime-app` never depends on
+   `rendering-wgpu`. `physic_figures` registers it after its physics stage;
+   `magic_figures` calls `render_frame`/`compose_frame` directly because its
+   audio rig does not fit the stage model.
 5. **Done.** The 2D sprite path (`sprites/`): `batch_scene2d` culls a
    `Scene2d` to its camera, orders sprites by `layer` (stable) and merges
    consecutive same-texture sprites into `SpriteBatch`es (CPU only, tested
