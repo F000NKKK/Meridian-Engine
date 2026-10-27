@@ -66,6 +66,16 @@ impl UiTree {
         self.store(node, *meta, value, ChangeSource::Code)
     }
 
+    /// Writes a property from markup text, parsed as the property's type.
+    pub fn set_literal(&mut self, node: NodeId, id: PropertyId, text: &str) -> Result<(), UiError> {
+        let meta = properties::meta(id).ok_or(UiError::UnknownProperty(id))?;
+        let value = (meta.parse)(text).map_err(|source| UiError::Literal {
+            property: id,
+            source,
+        })?;
+        self.store(node, *meta, value, ChangeSource::Code)
+    }
+
     /// Reads a property for layout, where a stale node simply reads as
     /// the type's default.
     pub(crate) fn get_or_default<T: PropertyType + Default>(

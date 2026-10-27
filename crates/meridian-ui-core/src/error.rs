@@ -1,6 +1,6 @@
 //! The crate's error type.
 
-use crate::{NodeId, PropertyId};
+use crate::{LiteralError, NodeId, PropertyId};
 
 /// What can go wrong when editing or reading the element tree.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
@@ -20,6 +20,12 @@ pub enum UiError {
     /// A value of the wrong kind was written to, or found in, a property.
     #[error("value of the wrong kind for property {0:?}")]
     ValueKind(PropertyId),
+    /// Markup text that does not parse as the property's type.
+    #[error("property {property:?}: {source}")]
+    Literal {
+        property: PropertyId,
+        source: LiteralError,
+    },
 }
 
 impl meridian_foundation::EngineError for UiError {}

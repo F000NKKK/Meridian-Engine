@@ -83,9 +83,13 @@ rely on:
   flag re-applying its `OneWay` bindings) and gets finer only if a profile
   asks for it. That interface belongs to `team/scripting`'s generator and
   is not fixed here.
-- Parsing a markup literal into `T` (`"Auto"`, `"10,5"`, `"2*"`) is not
-  implemented yet; it will be a method of `PropertyType`, so the generator
-  never needs to know the value types.
+- Markup literals are parsed by the runtime, not the generator: the
+  generator emits the attribute text and the property constant, and
+  `PropertyType::parse(text)` turns `"Auto"`, `"4,2"` or `"2*"` into the
+  typed value (`tree.set_literal(node, id, text)` does the same for
+  tooling). Plain text follows the Substrate-Data `@` rule: `@@` is a
+  literal `@`, any other leading `@` comes back as
+  `LiteralError::Reference` for the caller to resolve.
 
 **6. Boundaries.** `ui-core` depends on `foundation` and `memory-core`
 only (see [dependency-rules.md](../dependency-rules.md)). It does not

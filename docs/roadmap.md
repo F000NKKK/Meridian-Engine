@@ -732,7 +732,8 @@ rest are not started.
    (`Border`, `StackPanel`, `DockPanel`, `Grid`, `TextBlock`) and hit
    testing, tested without a GPU. Still missing: extraction to
    `Scene2D`, text rendering, input routing and controls, styles and
-   templates, parsing markup literals for the `.mel` generator.
+   templates. Markup literals (`"Auto"`, `"2*"`, `"4,2"`) parse through
+   `PropertyType::parse`.
 8. **Asset pipeline stops at static meshes.** `asset-core::ObjDecoder`
    has no skeletal/skinning support and there's no animation system at
    all — a blocker for any animated creature (Minecraft mobs) or
