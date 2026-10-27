@@ -38,7 +38,7 @@ tier 0  foundation, memory-core, task-core, dsl-macros
 tier 1  numeric-core, platform-core, resource-core, dsl-core
 tier 2  asset-core, audio-driver, gac-core, gpu-driver, physics-driver
 tier 3  audio-core, compute-driver, ecs-core, graphics-driver
-tier 4  compute-runtime
+tier 4  compute-runtime, scene
 tier 5  gac-compute
 tier 6  graphics-core, physics-core
 tier 7  physics-compute
@@ -59,6 +59,20 @@ this diagram only tracks internal `meridian-*` edges). Neither knows
 about `Entity`/`Mesh`/`RigidBody` or any other specific tag — those are
 defined in `meridian-sdk::dsl` (built-ins) or in a game's own crate
 (custom tags), both just ordinary `#[dsl_tag]`-annotated structs.
+
+`meridian-scene` is scene serialization on Substrate Data (see
+[ADR 016](adr/016-data-formats-on-substrate-data.md) and
+[data-formats.md](data-formats.md)): an application-built
+`ComponentRegistry` and `.mscene` load/save into an `ecs-core::World`. It
+depends on `ecs-core` (the `World` it fills) and on `gac-core` with its
+optional `data` feature (`Motor3`'s schema, for `Transform`), plus the
+external `substrate-data`. It sits *above* `ecs-core` on purpose, so
+`ecs-core` stays file-blind (rule 3): `Transform` is registered through a
+codec in `meridian-scene` rather than `ecs-core` growing a format
+dependency. Nothing depends on it yet; `engine-core`/`sdk` will when the
+editor host and scene loading are wired up (docs/roadmap.md). The
+`data` features of `numeric-core`/`gac-core` add no internal edge — only
+the optional external `substrate-data` dependency.
 
 This shows *depth*, not *which crate depends on which* — two crates in
 the same tier aren't necessarily related at all (`audio-core` and
@@ -201,6 +215,7 @@ bottom-up.
 - `meridian-physics-core` -> `meridian-compute-runtime`, `meridian-ecs-core`, `meridian-gac-compute`, `meridian-gac-core`, `meridian-numeric-core`, `meridian-physics-driver`, `meridian-resource-core`
 - `meridian-physics-compute` -> `meridian-compute-runtime`, `meridian-foundation`, `meridian-gac-compute`, `meridian-gac-core`, `meridian-gpu-driver`, `meridian-numeric-core`, `meridian-physics-core`
 - `meridian-engine-core` -> `meridian-asset-core`, `meridian-audio-core`, `meridian-compute-runtime`, `meridian-ecs-core`, `meridian-foundation`, `meridian-gac-core`, `meridian-graphics-core`, `meridian-memory-core`, `meridian-physics-compute`, `meridian-physics-core`, `meridian-platform-core`, `meridian-task-core`
+- `meridian-scene` -> `meridian-ecs-core`, `meridian-gac-core`
 - `meridian-dsl-core` -> `meridian-foundation`
 - `meridian-dsl-macros` -> (nothing; external `syn`/`quote`/`proc-macro-crate` only)
 - `meridian-sdk` -> `meridian-asset-core`, `meridian-audio-core`, `meridian-dsl-core`, `meridian-dsl-macros`, `meridian-engine-core`, `meridian-foundation`, `meridian-gac-core`, `meridian-graphics-core`, `meridian-graphics-driver`, `meridian-physics-core`, `meridian-platform-core`, `meridian-task-core`
