@@ -64,7 +64,8 @@ the prior art to copy from is Yog-Mod-Loader's `.yui` -> `.g.rs` pipeline
    a typed form. Malformed-input tests for each.
 4. **Literal grammar.** Validate plain attribute values against
    Substrate-Data string rules (`@kind:id`, `@@`, error on other `@`),
-   reusing `substrate-data` rather than re-implementing it.
+   reusing `substrate-data`'s classifier (`typed::classify`, in progress
+   on `team/data`'s side) rather than re-implementing the grammar.
 5. **Generator crate + `mel_include!`.** Build-time `foo.mel` ->
    `OUT_DIR/foo.g.rs` (ids, typed element accessors, builder, event
    dispatch), driven from `build.rs`. Port `magic_figures` to a
