@@ -1,6 +1,6 @@
 //! A run of vertices drawn with one texture.
 
-use super::SpriteVertex;
+use super::{ClipRect, SpriteVertex};
 use crate::TextureHandle;
 
 /// Vertices drawn in order with one texture, as a triangle list (three
@@ -12,6 +12,8 @@ pub struct SpriteBatch {
     pub texture: TextureHandle,
     /// The triangle list, in draw order.
     pub vertices: Vec<SpriteVertex>,
+    /// Where the batch shows; `None` draws unclipped.
+    pub clip: Option<ClipRect>,
 }
 
 impl SpriteBatch {
@@ -21,7 +23,15 @@ impl SpriteBatch {
         Self {
             texture,
             vertices: Vec::new(),
+            clip: None,
         }
+    }
+
+    /// The same batch, clipped to `clip`.
+    #[must_use]
+    pub fn with_clip(mut self, clip: ClipRect) -> Self {
+        self.clip = Some(clip);
+        self
     }
 
     /// Appends one quad as two triangles. `corners` and `uvs` run

@@ -91,6 +91,14 @@ part that touches `graphics-driver`.
   half-axis is the x one turned a quarter turn, valid because a sprite
   lives in the scene plane. `Motor3::transform_point` is the cost (see
   `benches/sprite_batching.rs`).
+- **Clip spans by layer, not per sprite.** `Sprite` and `Scene2d` are
+  built as struct literals by `meridian-ui-render`, so a clip field on
+  either would break it. A `ClipSpan` over a layer range matches how a
+  tree walk emits a container's content (one contiguous run) and keeps the
+  scene types unchanged. Batches merge only when texture and clip match.
+- **Scissor, not geometry clipping.** Quads are not cut; the scissor
+  rectangle (outward-rounded, clamped to the target) hides the rest.
+  Sprites fully outside their clip are dropped before upload.
 - **Premultiplied alpha.** Textures are straight RGBA8
   (`asset-core::ImageAsset`); the fragment shader multiplies by `tint` and
   then by alpha, and the pipeline blends `src + dst * (1 - src.a)`.

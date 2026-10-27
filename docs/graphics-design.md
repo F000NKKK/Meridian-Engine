@@ -310,8 +310,15 @@ driver.
    (`TextureRegistry::upload_solid`) and carry the color in `tint`.
    **Raw path:** `SpriteBatch`/`SpriteVertex` are public, so custom drawing
    builds triangle lists in camera units and calls `prepare` directly,
-   never going through `Sprite`. Still open: one bind group per run per
-   frame (no cache), no scissor/clip rectangles, no sprite atlas packing,
+   never going through `Sprite`. **Clipping:** `ClipSpan { layers, rect }`
+   clips a contiguous range of layers (a scroll viewer's content) to a
+   `ClipRect`; spans nest by intersection; `batch_scene2d_clipped` tags
+   batches and splits them at clip changes, `SpriteRenderer::draw` sets a
+   scissor per run (`ClipRect::to_scissor` rounds outward from camera units
+   to pixels, so `SpriteView` carries the target size). Clipping is
+   rectangular and axis-aligned in camera units; no rounded or rotated
+   clips. Still open: one bind group per run per
+   frame (no cache), no sprite atlas packing,
    and `Motor3::transform_point` (about 350 ns) dominates batching cost.
 6. `ui-core` (widgets/layout/input) and text rendering — separate,
    ADR-gated.

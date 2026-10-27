@@ -37,6 +37,12 @@ impl RenderPass<'_> {
             .set_index_buffer(buffer.wgpu_buffer().slice(..), wgpu::IndexFormat::Uint16);
     }
 
+    /// Restricts rasterization to a rectangle of the target, in pixels
+    /// with the origin at the top-left. Persists until set again.
+    pub fn set_scissor_rect(&mut self, x: u32, y: u32, width: u32, height: u32) {
+        self.raw.set_scissor_rect(x, y, width, height);
+    }
+
     pub fn draw(&mut self, vertices: core::ops::Range<u32>) {
         self.raw.draw(vertices, 0..1);
     }

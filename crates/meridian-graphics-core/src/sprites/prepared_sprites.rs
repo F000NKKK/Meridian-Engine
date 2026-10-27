@@ -1,15 +1,8 @@
 //! A frame's sprite batches, uploaded.
 
-use core::ops::Range;
+use meridian_graphics_driver::Buffer;
 
-use meridian_graphics_driver::{BindGroup, Buffer};
-
-/// One draw: a texture's bind group and its slice of the vertex buffer.
-#[derive(Debug)]
-pub(crate) struct SpriteRun {
-    pub bind_group: BindGroup,
-    pub vertices: Range<u32>,
-}
+use super::sprite_run::SpriteRun;
 
 /// Built by [`SpriteRenderer::prepare`](super::SpriteRenderer::prepare)
 /// before the render pass opens and kept alive until the pass is done.
@@ -19,6 +12,7 @@ pub(crate) struct SpriteRun {
 pub struct PreparedSprites {
     pub(crate) vertices: Option<Buffer>,
     pub(crate) runs: Vec<SpriteRun>,
+    pub(crate) viewport: [u32; 2],
 }
 
 impl PreparedSprites {
