@@ -9,7 +9,7 @@ use crate::{BufferUsage, CommandBuffer, DeviceError, Surface};
 /// buffer/shader mechanic) and adds nothing but the graphics-specific
 /// constructors/resources declared in this crate — buffer/shader/texture
 /// methods forward directly to the inner device, not reimplemented here.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Device(pub(crate) meridian_gpu_driver::Device);
 
 impl Device {

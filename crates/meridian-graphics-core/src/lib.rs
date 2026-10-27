@@ -1,15 +1,16 @@
-//! High-level rendering: render graph, scene extraction, visibility/culling, lighting, materials, camera and post-processing.
+//! High-level rendering domain: render graph, scene extraction, visibility/culling, lighting, materials, camera and the ports to a GPU.
 //!
 //! Layer: domain; bounded context: rendering (`craftbook.toml`,
 //! docs/context-map.md).
 
 #![forbid(unsafe_code)]
 
-pub mod bloom;
+mod bloom_config;
 mod camera;
 mod frustum;
 mod graph_resource_id;
 mod mesh_handle;
+mod ports;
 mod render_graph;
 mod render_graph_error;
 mod render_pass;
@@ -17,15 +18,18 @@ pub mod scene;
 mod shader_handle;
 pub mod sprites;
 pub mod submission;
+#[cfg(any(test, feature = "testing"))]
+pub mod testing;
 #[cfg(test)]
 mod tests;
 mod texture_handle;
 
-pub use bloom::{BloomConfig, BloomInput, BloomPass};
+pub use bloom_config::BloomConfig;
 pub use camera::{Camera, look_at_rotor};
 pub use frustum::Frustum;
 pub use graph_resource_id::GraphResourceId;
 pub use mesh_handle::{MeshHandle, MeshMarker};
+pub use ports::{FrameOutcome, FrameRecorder, FrameRequest, MeshStore, TextureStore};
 pub use render_graph::RenderGraph;
 pub use render_graph_error::RenderGraphError;
 pub use render_pass::RenderPass;
@@ -36,13 +40,11 @@ pub use scene::{
 };
 pub use shader_handle::{ShaderHandle, ShaderMarker};
 pub use sprites::{
-    ClipRect, ClipSpan, PreparedSprites, SPRITE_SHADER_WGSL, SPRITE_VERTEX_BYTES, ScissorRect,
-    SpriteBatch, SpriteRenderer, SpriteVertex, SpriteView, batch_scene2d, batch_scene2d_clipped,
+    ClipRect, ClipSpan, ScissorRect, SpriteBatch, SpriteVertex, SpriteView, batch_scene2d,
+    batch_scene2d_clipped,
 };
 pub use submission::{
-    DEFAULT_SHADOW_MAP_SIZE, DrawBuffers, MAX_LIGHTS, MaterialRegistry, MeshRegistry,
-    MeshRegistryError, MeshSource, PreparedScene, SHADOW_VOLUME_HALF_EXTENT, SceneAssets,
-    SceneRenderer, ShadowLight, TEXTURED_SHADER_WGSL, TextureRegistry, UNLIT_SHADER_WGSL,
-    ViewUniforms, directional_shadow_camera, submit_scene3d,
+    MaterialRegistry, MeshRegistry, MeshRegistryError, MeshSource, SHADOW_VOLUME_HALF_EXTENT,
+    ShadowLight, ViewUniforms, directional_shadow_camera,
 };
 pub use texture_handle::{TextureHandle, TextureMarker};

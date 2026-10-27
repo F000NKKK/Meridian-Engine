@@ -1299,7 +1299,6 @@ dependencies = [
  "meridian-ecs-core",
  "meridian-foundation",
  "meridian-gac-core",
- "meridian-graphics-driver",
  "meridian-memory-core",
  "meridian-resource-core",
  "tokio",
@@ -1309,8 +1308,12 @@ dependencies = [
 name = "meridian-graphics-driver"
 version = "0.18.0"
 dependencies = [
+ "meridian-asset-core",
  "meridian-foundation",
+ "meridian-gac-core",
  "meridian-gpu-driver",
+ "meridian-graphics-core",
+ "meridian-memory-core",
  "meridian-platform-core",
  "tokio",
  "wgpu",

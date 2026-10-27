@@ -3,6 +3,11 @@
 Rationale moved out of the module docs (Craftbook ch. 5 §5.2: a `//!` is at
 most 30 lines). Each section belongs to the module named in its heading.
 
+Wave 5 (ADR 019) moved the GPU-touching parts of `bloom`, `submission` and
+`sprites` (pipelines, shaders, baking and recording) to `meridian-graphics-driver`;
+the sections below describe them where they now live. `graphics-core` keeps the
+scene, the registries, sprite batching, the shadow light and the ports.
+
 ## `bloom`
 
 **Pipeline, once per frame a bloom-enabled view renders:**

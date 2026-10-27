@@ -23,7 +23,7 @@ two layers today is listed under the one it is moving to; Craftbook's
 | platform | infrastructure | `platform-core` (infra) | window, input state, clock, CPU/GPU capabilities, dynamic libraries |
 | compute | application + adapters | `compute-runtime` (app), `compute-driver` (infra), `gpu-driver` (infra) | compute context, kernels, dispatch size, untyped buffers, GPU device |
 | assets | domain | `asset-core` (domain; codecs move to adapters in wave 5) | decoded images, meshes, audio, shader sources, decoders |
-| rendering | domain + adapter | `graphics-core` (domain), `graphics-driver` (infra) | scenes, cameras, lights, materials, render graph, frame submission |
+| rendering | domain + adapter | `graphics-core` (domain: scene, ports `FrameRecorder`/`MeshStore`/`TextureStore`), `graphics-driver` (infra: wgpu recording, implements the ports) | scenes, cameras, lights, materials, render graph, frame submission |
 | physics | domain + adapters | `physics-core` (domain, perf), `physics-compute` (infra) | rigid bodies, colliders, contacts, solver, integrator, soft bodies |
 | audio | domain + adapter | `audio-core` (domain), `audio-driver` (infra) | listener, emitters, speakers, mixer, DSP graph |
 | ui | domain + adapter | `ui-core` (domain), `mel-build` (infra: build-time `.mel` generator), `ui-render` (infra: adapter from the UI tree to `graphics-core::Scene2d`) | element tree, typed properties, layout, hit testing, generated bindings |
@@ -61,8 +61,6 @@ dependencies need one of these:
 `craftcheck deps` lists them; `.craftcheck-deps-baseline` holds the count and
 may only shrink.
 
-- Domain and application crates that still depend on adapters
-  (`graphics-core → graphics-driver`, …): ADR 019, wave 5.
 - `graphics-core → asset-core` is a domain-to-domain edge declared as a
   published language; Craftbook requires customer–supplier between two domain
   crates. Resolved when the decoded CPU types move to a published-language

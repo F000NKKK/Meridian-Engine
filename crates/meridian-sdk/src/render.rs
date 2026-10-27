@@ -11,70 +11,37 @@
 //! `Runtime::tick` guarantees it never runs before that state is ready.
 
 use meridian_engine_core::{Stage, StageContext};
-use meridian_graphics_core::{BloomInput, Scene3d, SceneAssets, submit_scene3d};
+use meridian_graphics_core::{FrameOutcome, FrameRecorder, FrameRequest, Scene3d};
 use meridian_platform_core::Window;
 
 use crate::scene::GraphicsSession;
 
-/// Renders one frame of `scene` into `base`'s surface: records the
-/// shadow-casting depth pass (`SceneRenderer::render_shadow_pass` — see
-/// that method's own doc for why it has to run, as its own pass, before
-/// the main color pass opens), acquires the swapchain frame
-/// (reconfiguring the surface and skipping the frame on a lost/outdated
-/// swapchain instead of the "gray window" failure — logged via
-/// `log_warn!`, not a silent skip), submits through `graphics-core`'s
-/// submission bridge, applies `base`'s `BloomPass`, then presents. Ends
-/// with `window.request_redraw()`, so a caller only needs to call this
-/// once per redraw, last. [`RenderStage`] is this function wrapped as a
-/// `Stage`, for a caller driving everything through `Runtime::tick`;
-/// call this directly instead if an application isn't using `Runtime`
-/// at all (e.g. `examples/magic_figures`, which has no physics bodies).
+/// Renders one frame of `scene` into `base`'s surface through its
+/// [`FrameRecorder`]: shadow pass, main pass, bloom, present (see
+/// `GpuFrameRecorder::record_frame`). A lost swapchain reconfigures the surface
+/// to `window`'s size and skips the frame (the recorder logs it); a presented
+/// frame ends with `window.request_redraw()`, so a caller only needs to call this
+/// once per redraw, last. [`RenderStage`] is this function wrapped as a `Stage`,
+/// for a caller driving everything through `Runtime::tick`; call this directly
+/// instead if an application isn't using `Runtime` at all (e.g.
+/// `examples/magic_figures`, which has no physics bodies).
 pub fn render_frame(
     base: &mut GraphicsSession,
     scene: &Scene3d,
     clear_color: [f64; 4],
     window: &Window,
 ) {
-    let mut commands = base.device.create_command_buffer();
-    let prepared = base.renderer.render_shadow_pass(
-        &base.device,
-        &mut commands,
+    let request = FrameRequest {
         scene,
-        &SceneAssets {
-            meshes: &base.meshes,
-            materials: &base.materials,
-            textures: &base.textures,
-        },
-    );
-
-    let frame = match base.surface.acquire_frame() {
-        Ok(frame) => frame,
-        Err(err) => {
-            meridian_foundation::log_warn!(
-                "swapchain frame unavailable ({err}); reconfiguring surface"
-            );
-            base.resize(window.width(), window.height());
-            return;
-        }
+        meshes: &base.meshes,
+        materials: &base.materials,
+        clear_color,
     };
-
-    {
-        let mut pass = commands.begin_render_pass(frame.view(), clear_color, Some(&base.depth));
-        submit_scene3d(&base.device, &base.renderer, &mut pass, scene, &prepared);
+    match base.gpu.record_frame(&request) {
+        FrameOutcome::Presented => window.request_redraw(),
+        FrameOutcome::TargetUnavailable => base.resize(window.width(), window.height()),
+        _ => {}
     }
-    base.bloom.apply(
-        &base.device,
-        &mut commands,
-        &BloomInput {
-            renderer: &base.renderer,
-            draw_buffers: &prepared.buffers,
-            target_frame: &frame,
-        },
-    );
-    commands.submit();
-    frame.present(&base.device);
-
-    window.request_redraw();
 }
 
 /// A [`Stage`] that owns a [`GraphicsSession`] and presents a frame every

@@ -260,13 +260,13 @@ bottom-up.
 - `meridian-resource-core` -> `meridian-memory-core`
 - `meridian-ecs-core` -> `meridian-gac-core`, `meridian-memory-core`
 - `meridian-gpu-driver` -> `meridian-foundation`, `meridian-platform-core`
-- `meridian-graphics-driver` -> `meridian-foundation`, `meridian-gpu-driver`, `meridian-platform-core`
+- `meridian-graphics-driver` -> `meridian-asset-core`, `meridian-foundation`, `meridian-gac-core`, `meridian-gpu-driver`, `meridian-graphics-core`, `meridian-memory-core`, `meridian-platform-core`
 - `meridian-compute-driver` -> `meridian-compute-runtime`, `meridian-gpu-driver`, `meridian-platform-core`
 - `meridian-audio-driver` -> `meridian-audio-core`, `meridian-foundation`, `meridian-platform-core`
 - `meridian-compute-runtime` -> (none; it owns the `ComputeDevice` and `GpuBackend` ports)
 - `meridian-gac-compute` -> `meridian-compute-driver`, `meridian-compute-runtime`, `meridian-gac-core`, `meridian-gpu-driver`, `meridian-numeric-core`
 - `meridian-asset-core` -> `meridian-foundation`
-- `meridian-graphics-core` -> `meridian-asset-core`, `meridian-ecs-core`, `meridian-foundation`, `meridian-gac-core`, `meridian-graphics-driver` (pending, wave 5), `meridian-memory-core`, `meridian-resource-core`
+- `meridian-graphics-core` -> `meridian-asset-core`, `meridian-ecs-core`, `meridian-foundation`, `meridian-gac-core`, `meridian-memory-core`, `meridian-resource-core`
 - `meridian-audio-core` -> `meridian-gac-core`
 - `meridian-physics-core` -> `meridian-gac-core`, `meridian-numeric-core`, `meridian-resource-core`
 - `meridian-physics-compute` -> `meridian-compute-driver`, `meridian-compute-runtime`, `meridian-foundation`, `meridian-gac-compute`, `meridian-gac-core`, `meridian-gpu-driver`, `meridian-numeric-core`, `meridian-physics-core`
@@ -315,10 +315,9 @@ crates it belongs to (wave 6). Applications depend on `sdk` alone.
 1. **A domain or application crate never depends on a driver.** Drivers
    are adapters: they depend on the crate that owns the port and implement
    it ([ADR 019](adr/019-ports-in-domain-drivers-as-adapters.md)). Only the
-   composition root (`sdk`, examples) names a concrete driver. Today's
-   `graphics-core → graphics-driver` edge is pending migration (wave 5);
-   audio (`audio-driver → audio-core`) and compute
-   (`compute-driver → compute-runtime`) are done.
+   composition root (`sdk`, examples) names a concrete driver. Audio (`audio-driver → audio-core`), compute
+   (`compute-driver → compute-runtime`) and rendering
+   (`graphics-driver → graphics-core`) are inverted.
 
 2. **A driver never depends on a different subsystem's driver or domain.**
    An adapter depends on the port crate of its own context and on the

@@ -1,4 +1,4 @@
-//! Low-level GPU abstraction (device, command queues, buffers, textures, shaders, pipelines, synchronization). Knows nothing about scenes or materials.
+//! The `wgpu` rendering adapter: device, surface, pipelines, and the recording of scenes, sprites and bloom into GPU passes.
 //!
 //! Layer: infrastructure (adapter); bounded context: rendering
 //! (`craftbook.toml`, docs/context-map.md).
@@ -27,13 +27,18 @@
 #![forbid(unsafe_code)]
 
 mod acquire_frame_error;
+mod bloom;
 mod color_format;
 mod command_buffer;
 mod depth_texture;
 mod devices;
+mod gpu_frame_recorder;
+mod gpu_texture_store;
 mod render_pass;
 mod render_pipeline;
 mod shader_stages;
+mod sprites;
+mod submission;
 mod surface;
 mod surface_frame;
 #[cfg(test)]
@@ -41,10 +46,13 @@ mod tests;
 mod vertex;
 
 pub use acquire_frame_error::AcquireFrameError;
+pub use bloom::{BloomInput, BloomPass};
 pub use color_format::ColorFormat;
 pub use command_buffer::CommandBuffer;
 pub use depth_texture::DepthTexture;
 pub use devices::*;
+pub use gpu_frame_recorder::GpuFrameRecorder;
+pub use gpu_texture_store::GpuTextureStore;
 // `Buffer`/`BindGroup` are re-exported so callers that already reach
 // this crate's API (which returns/consumes them directly, e.g.
 // `create_buffer`/`create_uniform_bind_group`) never need their own
@@ -57,6 +65,12 @@ pub use meridian_gpu_driver::{
 pub use render_pass::RenderPass;
 pub use render_pipeline::RenderPipeline;
 pub use shader_stages::ShaderStages;
+pub use sprites::{PreparedSprites, SPRITE_SHADER_WGSL, SPRITE_VERTEX_BYTES, SpriteRenderer};
+pub use submission::{
+    DEFAULT_SHADOW_MAP_SIZE, DrawBuffers, EMISSIVE_EXTRACT_SHADER_WGSL, MAX_LIGHTS, PreparedScene,
+    SHADOW_DEPTH_SHADER_WGSL, SceneAssets, SceneRenderer, TEXTURED_SHADER_WGSL, TextureRegistry,
+    UNLIT_SHADER_WGSL, submit_scene3d,
+};
 pub use surface::Surface;
 pub use surface_frame::SurfaceFrame;
 pub use vertex::*;

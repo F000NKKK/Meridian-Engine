@@ -5,7 +5,6 @@ use meridian_gac_core::{Motor3, Rotor, Vec3};
 use super::*;
 use crate::TextureHandle;
 use crate::scene::{Camera2d, Scene2d, Sprite};
-use crate::submission::TextureRegistry;
 
 /// The `index`th handle a fresh pool hands out: same index, same handle.
 pub(super) fn texture(index: usize) -> TextureHandle {
@@ -145,16 +144,6 @@ fn rotation_about_the_plane_normal_turns_the_quad() {
 }
 
 #[test]
-fn vertices_encode_to_the_declared_stride() {
-    let batches = batch_scene2d(&scene(vec![sprite(texture(0), 50.0, 50.0, 0)]));
-    let mut bytes = Vec::new();
-    batches[0].vertices[0].write_to(&mut bytes);
-    assert_eq!(bytes.len(), SPRITE_VERTEX_BYTES);
-    let x = f32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
-    assert_close([x, 0.0], [45.0, 0.0]);
-}
-
-#[test]
 fn hand_built_batches_need_no_sprite() {
     let mut batch = SpriteBatch::new(texture(0));
     batch.push_quad(
@@ -163,50 +152,4 @@ fn hand_built_batches_need_no_sprite() {
         [1.0, 0.0, 0.0, 1.0],
     );
     assert_eq!(batch.vertices.len(), 6);
-}
-
-#[test]
-fn registry_is_the_only_gate_for_unknown_textures() {
-    // No GPU needed: an empty registry resolves nothing.
-    assert!(TextureRegistry::new().get(texture(0)).is_none());
-}
-
-#[cfg(feature = "hw-tests")]
-#[tokio::test]
-async fn prepared_scene_draws_into_an_offscreen_target_without_validation_errors() {
-    use meridian_graphics_driver::{ColorFormat, Device};
-
-    let Ok(device) = Device::new().await else {
-        eprintln!("skipping: no GPU device available");
-        return;
-    };
-    let mut textures = TextureRegistry::new();
-    let white = textures.upload_solid(&device, [255; 4]);
-    let target = device.create_offscreen_color_texture(64, 64, ColorFormat::SrgbRgba8);
-    let renderer = SpriteRenderer::new_offscreen(&device, ColorFormat::SrgbRgba8);
-
-    let mut tinted = sprite(white, 32.0, 32.0, 0);
-    tinted.tint = [1.0, 0.0, 0.0, 0.5];
-    let scene = Scene2d {
-        camera: Camera2d::from_surface_size(64.0, 64.0),
-        sprites: vec![tinted, sprite(white, 20.0, 20.0, 1)],
-    };
-    let batches = batch_scene2d(&scene);
-    let prepared = renderer.prepare(
-        &device,
-        SpriteView {
-            camera: scene.camera,
-            viewport: [64, 64],
-        },
-        &batches,
-        &textures,
-    );
-    assert_eq!(prepared.draw_calls(), 1);
-
-    let mut commands = device.create_command_buffer();
-    {
-        let mut pass = commands.begin_render_pass(target.view(), [0.0; 4], None);
-        renderer.draw(&mut pass, &prepared);
-    }
-    commands.submit();
 }

@@ -60,13 +60,15 @@ pub use meridian_foundation::{
 pub use meridian_gac_core::{Aabb, Bivector3, Motor3, Projection, Rotor, Vec3};
 // -- meridian-graphics-core: scene/material/lighting/submission --
 pub use meridian_graphics_core::{
-    BloomPass, Camera, DEFAULT_SHADOW_MAP_SIZE, DrawBuffers, Frustum, Light, Material,
-    MaterialHandle, MaterialRegistry, MeshHandle, MeshRegistry, MeshSource, Renderable3d, Scene2d,
-    Scene3d, SceneRenderer, TextureHandle, TextureRegistry, submit_scene3d,
+    Camera, FrameOutcome, FrameRecorder, FrameRequest, Frustum, Light, Material, MaterialHandle,
+    MaterialRegistry, MeshHandle, MeshRegistry, MeshSource, MeshStore, Renderable3d, Scene2d,
+    Scene3d, TextureHandle, TextureStore,
 };
 // -- meridian-graphics-driver: the GPU device a windowed app opens once --
 pub use meridian_graphics_driver::{
-    CommandBuffer, DepthTexture, Device, DeviceError, RenderPass, Surface,
+    BloomPass, CommandBuffer, DEFAULT_SHADOW_MAP_SIZE, DepthTexture, Device, DeviceError,
+    DrawBuffers, GpuFrameRecorder, GpuTextureStore, RenderPass, SceneRenderer, Surface,
+    TextureRegistry, submit_scene3d,
 };
 // -- meridian-physics-core: rigid bodies --
 pub use meridian_physics_core::{

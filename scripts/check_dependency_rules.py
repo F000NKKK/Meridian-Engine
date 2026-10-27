@@ -58,7 +58,15 @@ ALLOWED = {
     },
     "meridian-ecs-core": {"meridian-memory-core", "meridian-gac-core"},
     "meridian-asset-core": {"meridian-foundation"},
-    "meridian-graphics-driver": {"meridian-foundation", "meridian-platform-core", "meridian-gpu-driver"},
+    "meridian-graphics-driver": {
+        "meridian-foundation",
+        "meridian-platform-core",
+        "meridian-gpu-driver",
+        "meridian-gac-core",
+        "meridian-graphics-core",
+        "meridian-memory-core",
+        "meridian-asset-core",
+    },
     "meridian-audio-driver": {
         "meridian-foundation",
         "meridian-platform-core",
@@ -138,7 +146,6 @@ ALLOWED = {
 # These edges point outwards and contradict ADR 019; they stay until that
 # wave inverts them. Never add to this table.
 PENDING = {
-    ("meridian-graphics-core", "meridian-graphics-driver"): "migration pending (wave 5)",
     ("meridian-engine-core", "meridian-task-core"): "migration pending (wave 6)",
     ("meridian-engine-core", "meridian-platform-core"): "migration pending (wave 6)",
     ("meridian-engine-core", "meridian-physics-compute"): "migration pending (wave 6)",

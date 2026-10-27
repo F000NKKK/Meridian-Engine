@@ -23,9 +23,8 @@ use meridian_asset_core::{
     StreamingAudioDecoder, open_audio,
 };
 use meridian_graphics_core::{
-    MeshHandle, MeshRegistry, MeshRegistryError, MeshSource, TextureHandle, TextureRegistry,
+    MeshHandle, MeshRegistryError, MeshSource, MeshStore, TextureHandle, TextureStore,
 };
-use meridian_graphics_driver::Device;
 
 /// Reads and decodes a real image asset file, identified by its magic
 /// bytes (never its extension — the same rule
@@ -227,17 +226,12 @@ impl AssetCache {
     /// returns its handle — cached by `path`: a second call with the
     /// same path returns the same handle without re-reading, decoding
     /// or uploading the file again.
-    pub fn load_texture(
-        &mut self,
-        device: &Device,
-        textures: &mut TextureRegistry,
-        path: &str,
-    ) -> TextureHandle {
+    pub fn load_texture(&mut self, textures: &mut impl TextureStore, path: &str) -> TextureHandle {
         if let Some(&handle) = self.texture_cache.get(path) {
             return handle;
         }
         let image = load_image_asset(path);
-        let handle = textures.upload(device, &image);
+        let handle = textures.upload(&image);
         self.texture_cache.insert(path.to_string(), handle);
         handle
     }
@@ -255,7 +249,7 @@ impl AssetCache {
     /// disclosed, not hidden.
     pub fn load_mesh_obj(
         &mut self,
-        meshes: &mut MeshRegistry,
+        meshes: &mut impl MeshStore,
         path: &str,
     ) -> Result<MeshHandle, String> {
         if let Some(&handle) = self.mesh_cache.get(path) {
@@ -274,7 +268,7 @@ impl AssetCache {
             indices: mesh_data.indices,
         };
         let handle = meshes
-            .register(source)
+            .add(source)
             .map_err(|e: MeshRegistryError| format!("{path}: {e}"))?;
         self.mesh_cache.insert(path.to_string(), handle);
         Ok(handle)
