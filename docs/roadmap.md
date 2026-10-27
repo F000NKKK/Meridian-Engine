@@ -9,13 +9,12 @@ rotation against an independent Rodrigues-formula oracle and validates the
 parent/child transform-hierarchy milestone below (`cargo test -p
 meridian-gac-core`).
 
-`meridian-foundation` also owns the workspace's diagnostics: the unified
-`logging` sink (`log_error!`..`log_trace!` macros, stderr + an in-memory
-ring, and — behind the `file-logging` feature — a buffered async file
-sink on a dedicated tokio thread with Error/Warn/Info file levels and
-7-day-default retention cleanup) and `crash_reporting` (a panic hook
-writing post-mortem files: message, location, backtrace, the recent-log
-tail). Every workspace error type implements `foundation::EngineError`;
+`meridian-foundation` also owns the workspace's log kernel (`log_error!`..
+`log_trace!` macros, stderr + an in-memory ring, the `LogSink` port);
+`meridian-diagnostics-fs` is the adapter: a buffered async file sink on a
+dedicated tokio thread (Error/Warn/Info file levels, 7-day-default
+retention cleanup) and a panic hook writing post-mortem files (message,
+location, backtrace, the recent-log tail). Every workspace error type implements `foundation::EngineError`;
 drivers and windowed examples log through the sink instead of scattered
 `eprintln!`s, and every windowed example installs the crash hook and
 recovers a lost/outdated swapchain by reconfiguring the surface instead
@@ -702,7 +701,10 @@ the rest are not started.
    machine footprints) that share an x range: a uniform grid keyed to
    chunk size or a BVH, plus incremental updates for static bodies.
 4. **Done: `physics-compute`'s batched rigid-body kernels are wired
-   into `engine-core::Runtime`.** `PhysicsStepStage` (in `engine-core`,
+   into `engine-core::Runtime`.** (Wave 6, ADR 025: the `PhysicsDispatchMode`
+   flag described below became the `PhysicsStepper` port; `BatchedStepper`
+   in `physics-compute` is the batched mode and `SequentialStepper` in
+   `physics-app` the sequential one.) `PhysicsStepStage` (in `engine-core`,
    re-exported from `meridian-sdk`, alongside its `PhysicsDispatchMode`
    flag) dispatches `RigidBodyIntegratorKernel`/`BroadPhasePairsKernel`/
    `GenerateContactsKernel`/`ConstraintSolverBatchKernel` when in

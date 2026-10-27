@@ -26,8 +26,6 @@ env:
   # The Craftbook version this project follows; bumped by the project's own PR.
   CRAFTBOOK_REF: main
   # The clippy backlog counts warnings of this exact toolchain; bump both together.
-  # Every feature except hw-tests.
-  TEST_FEATURES: meridian-sdk/file-logging
 
 jobs:
   static:
@@ -82,11 +80,11 @@ jobs:
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-llvm-cov,cargo-deny
-      - run: cargo test --locked --workspace --no-fail-fast --features "$TEST_FEATURES"
+      - run: cargo test --locked --workspace --no-fail-fast
       # llvm-cov on stable does not run doc tests; they run here.
-      - run: cargo test --locked --workspace --features "$TEST_FEATURES" --doc
+      - run: cargo test --locked --workspace --doc
       - name: coverage per crate
-        run: cargo llvm-cov --workspace --features "$TEST_FEATURES" --summary-only
+        run: cargo llvm-cov --workspace --summary-only
       - name: coverage threshold by layer (chapter 8 §8.1; reported during adoption)
         continue-on-error: true
         run: |
@@ -165,7 +163,7 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y libasound2-dev
       - uses: dtolnay/rust-toolchain@1.97
       - uses: Swatinem/rust-cache@v2
-      - run: cargo bench --workspace --features "$TEST_FEATURES"
+      - run: cargo bench --workspace
 
   # hw-tests (GPU and audio device) run only on a runner with the hardware:
   #   cargo test --workspace --all-features

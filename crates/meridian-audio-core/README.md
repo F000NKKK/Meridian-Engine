@@ -21,7 +21,7 @@ The entry points are documented on [docs.rs](https://docs.rs/meridian-audio-core
 ## Depends on / used by
 
 - Depends on: [`meridian-gac-core`](../meridian-gac-core)
-- Used by: [`meridian-audio-app`](../meridian-audio-app), [`meridian-audio-driver`](../meridian-audio-driver), [`meridian-engine-core`](../meridian-engine-core), [`meridian-sdk`](../meridian-sdk)
+- Used by: [`meridian-audio-app`](../meridian-audio-app), [`meridian-audio-driver`](../meridian-audio-driver), [`meridian-sdk`](../meridian-sdk)
 
 ## License
 

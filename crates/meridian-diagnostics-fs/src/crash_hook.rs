@@ -1,43 +1,15 @@
-//! Crash reporting: a panic hook that writes a post-mortem file.
+//! The crash-reporting panic hook: a post-mortem file on panic.
 //!
-//! [`install`] wraps the process's panic hook. When anything panics,
-//! a report lands in the configured directory containing the panic
-//! message and location, a captured backtrace
-//! (`std::backtrace::Backtrace`, no external crate), the tail of the
-//! unified log ([`logging::recent_lines`](crate::logging::recent_lines) —
-//! the "what was the engine doing" context), and basic build/OS
-//! identification. The previous hook still runs afterwards, so the
-//! normal stderr panic output is unchanged.
-//!
-//! Set `RUST_BACKTRACE=1` (or use `Backtrace::force_capture` — which
-//! this module does) for symbolized frames in debug builds; release
-//! builds report addresses unless debug info is kept.
+//! When anything panics, a report lands in the configured directory with the
+//! panic message and location, a captured backtrace, the tail of the unified
+//! log (`meridian_foundation::logging::recent_lines`) and basic build/OS
+//! identification. The previous hook still runs afterwards, so the normal
+//! stderr panic output is unchanged.
 
 use std::io::Write;
 use std::path::PathBuf;
 
-/// Where and under what name crash reports are written.
-#[derive(Debug, Clone)]
-pub struct CrashReportConfig {
-    /// Prefix for report file names (typically the binary/app name).
-    pub app_name: String,
-    /// Directory for reports; created on demand. Default: `./crashes`.
-    pub directory: PathBuf,
-}
-
-impl CrashReportConfig {
-    pub fn new(app_name: impl Into<String>) -> Self {
-        Self {
-            app_name: app_name.into(),
-            directory: PathBuf::from("crashes"),
-        }
-    }
-
-    pub fn with_directory(mut self, directory: impl Into<PathBuf>) -> Self {
-        self.directory = directory.into();
-        self
-    }
-}
+use crate::CrashReportConfig;
 
 /// Installs the crash-reporting panic hook (idempotent per process in
 /// practice — installing twice chains harmlessly, each writing its own
@@ -89,7 +61,7 @@ fn write_report(
     writeln!(file)?;
 
     writeln!(file, "---- recent log (oldest first) ----")?;
-    for line in crate::logging::recent_lines() {
+    for line in meridian_foundation::logging::recent_lines() {
         writeln!(file, "{line}")?;
     }
     Ok(path)
@@ -128,46 +100,5 @@ fn panic_message(panic_info: &std::panic::PanicHookInfo<'_>) -> String {
         message.clone()
     } else {
         "<non-string panic payload>".to_string()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// The report writer is exercised directly (not via a real panic —
-    /// a panicking test can't assert on its own hook's output): a
-    /// panic in a spawned thread triggers the installed hook for real.
-    #[test]
-    fn a_panicking_thread_produces_a_report_file() {
-        let dir = std::env::temp_dir().join(format!("meridian-crash-test-{}", std::process::id()));
-        if dir.exists() {
-            std::fs::remove_dir_all(&dir).unwrap();
-        }
-
-        install(CrashReportConfig::new("crash-test").with_directory(&dir));
-
-        let result = std::thread::spawn(|| panic!("deliberate test panic")).join();
-        assert!(result.is_err(), "the thread must have panicked");
-
-        let reports: Vec<_> = std::fs::read_dir(&dir)
-            .expect("crash directory must exist")
-            .flatten()
-            .map(|e| e.path())
-            .collect();
-        // Other tests' panics also fire the (global) hook, so look for
-        // *this* panic's report rather than assuming it's alone.
-        let content = reports
-            .iter()
-            .map(|p| std::fs::read_to_string(p).unwrap())
-            .find(|c| c.contains("deliberate test panic"))
-            .expect("a report for the deliberate panic must exist");
-        assert!(content.contains("location:"));
-        assert!(content.contains("backtrace"));
-        // The recent-log section exists; its exact contents race with
-        // other tests sharing the global ring, so no line assertion.
-        assert!(content.contains("---- recent log"));
-
-        std::fs::remove_dir_all(&dir).unwrap();
     }
 }

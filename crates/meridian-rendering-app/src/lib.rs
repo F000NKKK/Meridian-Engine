@@ -1,4 +1,5 @@
-//! Rendering use cases and the ports to the GPU: [`FrameRecorder`], [`TextureStore`] and [`MeshStore`].
+//! Rendering use cases and the ports to the GPU: [`FrameRecorder`], [`TextureStore`] and [`MeshStore`],
+//! plus the [`RenderSession`] that presents frames through them.
 //!
 //! Layer: application; bounded context: rendering (`craftbook.toml`,
 //! docs/context-map.md).
@@ -15,6 +16,7 @@ mod frame_recorder;
 mod frame_request;
 mod mesh_registry_store;
 mod mesh_store;
+mod render_session;
 #[cfg(any(test, feature = "testing"))]
 pub mod testing;
 mod texture_store;
@@ -23,4 +25,5 @@ pub use frame_outcome::FrameOutcome;
 pub use frame_recorder::FrameRecorder;
 pub use frame_request::FrameRequest;
 pub use mesh_store::MeshStore;
+pub use render_session::RenderSession;
 pub use texture_store::TextureStore;

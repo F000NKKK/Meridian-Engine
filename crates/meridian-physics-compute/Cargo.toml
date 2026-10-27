@@ -11,6 +11,7 @@ readme = "README.md"
 [dependencies]
 meridian-foundation = { workspace = true }
 meridian-physics-core = { workspace = true }
+meridian-physics-app = { workspace = true }
 meridian-gac-core = { workspace = true }
 meridian-gac-compute = { workspace = true }
 meridian-compute-runtime = { workspace = true }
@@ -20,6 +21,8 @@ meridian-gpu-driver = { workspace = true }
 
 [dev-dependencies]
 tokio = { workspace = true }
+meridian-physics-app = { workspace = true, features = ["testing"] }
+meridian-compute-runtime = { workspace = true, features = ["testing"] }
 
 [features]
 # Tests that need a real GPU or audio device; CI has neither (docs/adr/020).

@@ -28,7 +28,7 @@ assert!((rotated - Vec3::Y).length() < 1e-5);
 ## Depends on / used by
 
 - Depends on: [`meridian-numeric-core`](../meridian-numeric-core)
-- Used by: [`meridian-audio-core`](../meridian-audio-core), [`meridian-ecs-core`](../meridian-ecs-core), [`meridian-engine-core`](../meridian-engine-core), [`meridian-gac-compute`](../meridian-gac-compute), [`meridian-graphics-core`](../meridian-graphics-core), [`meridian-graphics-driver`](../meridian-graphics-driver), [`meridian-physics-compute`](../meridian-physics-compute), [`meridian-physics-core`](../meridian-physics-core), [`meridian-scene`](../meridian-scene), [`meridian-sdk`](../meridian-sdk), [`meridian-ui-render`](../meridian-ui-render)
+- Used by: [`meridian-audio-core`](../meridian-audio-core), [`meridian-ecs-core`](../meridian-ecs-core), [`meridian-gac-compute`](../meridian-gac-compute), [`meridian-graphics-core`](../meridian-graphics-core), [`meridian-graphics-driver`](../meridian-graphics-driver), [`meridian-physics-app`](../meridian-physics-app), [`meridian-physics-compute`](../meridian-physics-compute), [`meridian-physics-core`](../meridian-physics-core), [`meridian-scene`](../meridian-scene), [`meridian-sdk`](../meridian-sdk), [`meridian-ui-render`](../meridian-ui-render)
 
 ## License
 

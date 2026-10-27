@@ -1,8 +1,42 @@
 //! Tests of this module.
 
-use meridian_platform_core::{InputState, KeyCode};
+use meridian_gac_core::Vec3;
 
 use super::*;
+
+#[derive(Clone, Copy)]
+enum Key {
+    W,
+    S,
+    A,
+    D,
+    Space,
+    ControlLeft,
+    ShiftLeft,
+}
+
+fn controls_for(keys: &[Key]) -> FlyControls {
+    let mut controls = FlyControls::default();
+    for key in keys {
+        match key {
+            Key::W => controls.forward = true,
+            Key::S => controls.backward = true,
+            Key::A => controls.left = true,
+            Key::D => controls.right = true,
+            Key::Space => controls.up = true,
+            Key::ControlLeft => controls.down = true,
+            Key::ShiftLeft => controls.boost = true,
+        }
+    }
+    controls
+}
+
+fn looking(dx: f32, dy: f32) -> FlyControls {
+    FlyControls {
+        look: (dx, dy),
+        ..Default::default()
+    }
+}
 
 /// Returns (`forward_horiz`, right, up) expected from the camera's yaw.
 fn expected_basis(yaw: f32) -> (Vec3, Vec3, Vec3) {
@@ -62,26 +96,18 @@ fn rotor_and_forward_horiz_agree() {
     }
 }
 
-fn simulate(dt: f32, speed: f32, keys: &[KeyCode]) -> Vec3 {
+fn simulate(dt: f32, speed: f32, keys: &[Key]) -> Vec3 {
     let mut cam = FlyCamera::new(Vec3::ZERO);
     cam.move_speed = speed;
-    let mut input = InputState::new();
-    for &k in keys {
-        input.press_key(k);
-    }
-    cam.update(&input, dt);
+    cam.update(controls_for(keys), dt);
     cam.position
 }
 
-fn simulate_at(yaw: f32, dt: f32, speed: f32, keys: &[KeyCode]) -> Vec3 {
+fn simulate_at(yaw: f32, dt: f32, speed: f32, keys: &[Key]) -> Vec3 {
     let mut cam = FlyCamera::new(Vec3::ZERO);
     cam.yaw = yaw;
     cam.move_speed = speed;
-    let mut input = InputState::new();
-    for &k in keys {
-        input.press_key(k);
-    }
-    cam.update(&input, dt);
+    cam.update(controls_for(keys), dt);
     cam.position
 }
 
@@ -105,7 +131,7 @@ fn w_moves_forward_along_yaw_basis() {
         -3.0 * core::f32::consts::FRAC_PI_4,
     ];
     for &yaw in &yaws {
-        let pos = simulate_at(yaw, 1.0, 3.0, &[KeyCode::W]);
+        let pos = simulate_at(yaw, 1.0, 3.0, &[Key::W]);
         let (fwd, _, _) = expected_basis(yaw);
         let expected = fwd.normalize() * 3.0;
         assert!(
@@ -124,8 +150,8 @@ fn s_moves_backward_opposite_to_w() {
         -core::f32::consts::FRAC_PI_2,
     ];
     for &yaw in &yaws {
-        let fwd = simulate_at(yaw, 1.0, 3.0, &[KeyCode::W]);
-        let bwd = simulate_at(yaw, 1.0, 3.0, &[KeyCode::S]);
+        let fwd = simulate_at(yaw, 1.0, 3.0, &[Key::W]);
+        let bwd = simulate_at(yaw, 1.0, 3.0, &[Key::S]);
         assert!(
             (fwd + bwd).length() < 1e-5,
             "S should oppose W at yaw={yaw}"
@@ -143,7 +169,7 @@ fn d_moves_right_along_yaw_basis() {
         -core::f32::consts::FRAC_PI_2,
     ];
     for &yaw in &yaws {
-        let pos = simulate_at(yaw, 1.0, 3.0, &[KeyCode::D]);
+        let pos = simulate_at(yaw, 1.0, 3.0, &[Key::D]);
         let (_, right, _) = expected_basis(yaw);
         let expected = right.normalize() * 3.0;
         assert!(
@@ -162,27 +188,27 @@ fn a_moves_left_opposite_to_d() {
         -core::f32::consts::FRAC_PI_2,
     ];
     for &yaw in &yaws {
-        let d = simulate_at(yaw, 1.0, 3.0, &[KeyCode::D]);
-        let a = simulate_at(yaw, 1.0, 3.0, &[KeyCode::A]);
+        let d = simulate_at(yaw, 1.0, 3.0, &[Key::D]);
+        let a = simulate_at(yaw, 1.0, 3.0, &[Key::A]);
         assert!((d + a).length() < 1e-5, "A should oppose D at yaw={yaw}");
     }
 }
 
 #[test]
 fn space_moves_up_and_ctrl_moves_down() {
-    let up = simulate(1.0, 3.0, &[KeyCode::Space]);
+    let up = simulate(1.0, 3.0, &[Key::Space]);
     assert_eq!(up, Vec3::new(0.0, 3.0, 0.0));
 
-    let down = simulate(1.0, 3.0, &[KeyCode::ControlLeft]);
+    let down = simulate(1.0, 3.0, &[Key::ControlLeft]);
     assert_eq!(down, Vec3::new(0.0, -3.0, 0.0));
 
-    let both = simulate(1.0, 3.0, &[KeyCode::Space, KeyCode::ControlLeft]);
+    let both = simulate(1.0, 3.0, &[Key::Space, Key::ControlLeft]);
     assert_eq!(both, Vec3::ZERO);
 }
 
 #[test]
 fn diagonal_movement_preserves_length() {
-    let pos = simulate_at(0.0, 1.0, 3.0, &[KeyCode::W, KeyCode::D]);
+    let pos = simulate_at(0.0, 1.0, 3.0, &[Key::W, Key::D]);
     let expected = (Vec3::X + Vec3::Z).normalize() * 3.0;
     assert!((pos - expected).length() < 1e-5, "W+D diagonal got {pos:?}");
 }
@@ -197,7 +223,7 @@ fn full_3d_movement_wsad_space_ctrl() {
     ];
     for &yaw in &yaws {
         let (fwd, right, _) = expected_basis(yaw);
-        let pos = simulate_at(yaw, 1.0, 3.0, &[KeyCode::W, KeyCode::D, KeyCode::Space]);
+        let pos = simulate_at(yaw, 1.0, 3.0, &[Key::W, Key::D, Key::Space]);
         let expected = (fwd.normalize() + right.normalize() + Vec3::Y).normalize() * 3.0;
         assert!(
             (pos - expected).length() < 1e-5,
@@ -210,7 +236,7 @@ fn full_3d_movement_wsad_space_ctrl() {
 fn pitch_does_not_affect_movement_direction() {
     let pitches = [0.0, 0.5, -0.3, 1.2, -1.0];
     for &pitch in &pitches {
-        let pos = simulate_at(0.0, 1.0, 3.0, &[KeyCode::W]);
+        let pos = simulate_at(0.0, 1.0, 3.0, &[Key::W]);
         let expected = Vec3::new(3.0, 0.0, 0.0);
         assert!(
             (pos - expected).length() < 1e-5,
@@ -221,22 +247,22 @@ fn pitch_does_not_affect_movement_direction() {
 
 #[test]
 fn move_speed_scales_velocity() {
-    let slow = simulate(1.0, 1.0, &[KeyCode::W]);
-    let fast = simulate(1.0, 10.0, &[KeyCode::W]);
+    let slow = simulate(1.0, 1.0, &[Key::W]);
+    let fast = simulate(1.0, 10.0, &[Key::W]);
     assert!((fast - slow * 10.0).length() < 1e-5);
 }
 
 #[test]
 fn dt_scales_velocity() {
-    let t1 = simulate(0.5, 3.0, &[KeyCode::W]);
-    let t2 = simulate(1.0, 3.0, &[KeyCode::W]);
+    let t1 = simulate(0.5, 3.0, &[Key::W]);
+    let t2 = simulate(1.0, 3.0, &[Key::W]);
     assert!((t2 - t1 * 2.0).length() < 1e-5);
 }
 
 #[test]
 fn shift_multiplies_move_speed() {
-    let normal = simulate(1.0, 3.0, &[KeyCode::W]);
-    let shifted = simulate(1.0, 3.0, &[KeyCode::W, KeyCode::ShiftLeft]);
+    let normal = simulate(1.0, 3.0, &[Key::W]);
+    let shifted = simulate(1.0, 3.0, &[Key::W, Key::ShiftLeft]);
     assert!((shifted - normal * 3.0).length() < 1e-5);
 }
 
@@ -244,9 +270,7 @@ fn shift_multiplies_move_speed() {
 fn mouse_affects_yaw() {
     let mut cam = FlyCamera::new(Vec3::ZERO);
     let start_yaw = cam.yaw;
-    let mut input = InputState::new();
-    input.accumulate_mouse_motion(100.0, 0.0);
-    cam.update(&input, 1.0);
+    cam.update(looking(100.0, 0.0), 1.0);
     assert!(
         (cam.yaw - start_yaw).abs() > 0.001,
         "mouse dx should change yaw"
@@ -257,9 +281,7 @@ fn mouse_affects_yaw() {
 fn mouse_affects_pitch() {
     let mut cam = FlyCamera::new(Vec3::ZERO);
     let start_pitch = cam.pitch;
-    let mut input = InputState::new();
-    input.accumulate_mouse_motion(0.0, 100.0);
-    cam.update(&input, 1.0);
+    cam.update(looking(0.0, 100.0), 1.0);
     assert!(
         (cam.pitch - start_pitch).abs() > 0.001,
         "mouse dy should change pitch"
@@ -269,21 +291,17 @@ fn mouse_affects_pitch() {
 #[test]
 fn pitch_clamping() {
     let mut cam = FlyCamera::new(Vec3::ZERO);
-    let mut input = InputState::new();
     // Try to exceed ±90°
-    input.accumulate_mouse_motion(0.0, -1e6);
-    cam.update(&input, 1.0);
+    cam.update(looking(0.0, -1e6), 1.0);
     assert!(cam.pitch > -core::f32::consts::FRAC_PI_2 + 0.009);
-    input.accumulate_mouse_motion(0.0, 1e6);
-    cam.update(&input, 1.0);
+    cam.update(looking(0.0, 1e6), 1.0);
     assert!(cam.pitch < core::f32::consts::FRAC_PI_2 - 0.009);
 }
 
 #[test]
 fn zero_movement_does_not_change_position() {
     let mut cam = FlyCamera::new(Vec3::new(10.0, -5.0, 3.0));
-    let input = InputState::new();
-    cam.update(&input, 1.0);
+    cam.update(FlyControls::default(), 1.0);
     assert_eq!(cam.position, Vec3::new(10.0, -5.0, 3.0));
 }
 
@@ -292,12 +310,7 @@ fn w_s_d_a_with_nonzero_pitch_stays_horizontal() {
     let yaws = [0.0, core::f32::consts::FRAC_PI_2, core::f32::consts::PI];
     for &yaw in &yaws {
         for &pitch in &[0.3, -0.5] {
-            let pos = simulate_at(
-                yaw,
-                1.0,
-                3.0,
-                &[KeyCode::W, KeyCode::S, KeyCode::D, KeyCode::A],
-            );
+            let pos = simulate_at(yaw, 1.0, 3.0, &[Key::W, Key::S, Key::D, Key::A]);
             // All four buttons cancel out → no movement regardless of pitch
             assert!(
                 pos.length() < 1e-5,

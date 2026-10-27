@@ -22,22 +22,16 @@ meridian-physics-core = { workspace = true }
 meridian-audio-core = { workspace = true }
 meridian-audio-app = { workspace = true }
 meridian-audio-driver = { workspace = true }
+meridian-diagnostics-fs = { workspace = true }
 meridian-engine-core = { workspace = true }
+meridian-physics-app = { workspace = true }
+meridian-physics-compute = { workspace = true }
+meridian-task-core = { workspace = true }
 meridian-compute-driver = { workspace = true }
 meridian-compute-runtime = { workspace = true }
 meridian-dsl-core = { workspace = true }
 meridian-dsl-macros = { workspace = true }
 meridian-ui-core = { workspace = true }
-
-# Forwards straight to `meridian-foundation`'s own feature (the buffered
-# async file-log sink, `logging::file`) — this crate re-exports
-# `meridian_foundation::logging` unconditionally, but the `file`
-# submodule only exists when the underlying feature is actually on, the
-# same optionality `foundation` itself has. An application enables it
-# via `meridian-sdk = { features = ["file-logging"] }`, never by naming
-# `meridian-foundation` directly.
-[features]
-file-logging = ["meridian-foundation/file-logging"]
 
 [dev-dependencies]
 png = { workspace = true }

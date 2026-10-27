@@ -11,6 +11,9 @@ readme = "README.md"
 [dependencies]
 meridian-audio-core = { workspace = true }
 
+[dev-dependencies]
+meridian-gac-core = { workspace = true }
+
 [features]
 # The fake `AudioSink` and its contract suite, for adapters' own tests (Craftbook 8.4).
 testing = []

@@ -12,6 +12,11 @@ layer = "shared-kernel"
 context = "diagnostics"
 
 [[crate]]
+name = "meridian-diagnostics-fs"
+layer = "infra"
+context = "diagnostics"
+
+[[crate]]
 name = "meridian-numeric-core"
 layer = "shared-kernel"
 context = "geometry"
@@ -104,6 +109,11 @@ name = "meridian-physics-core"
 layer = "domain"
 context = "physics"
 profile = "perf"
+
+[[crate]]
+name = "meridian-physics-app"
+layer = "app"
+context = "physics"
 
 [[crate]]
 name = "meridian-physics-compute"
@@ -296,7 +306,7 @@ relation = "customer-supplier"
 
 [[exempt]]
 path = "crates/meridian-foundation/src/logging.rs"
-reason = "process logger: the one allowed global (ch. 4 §4.7); its tokio file I/O still moves to an adapter (D7)"
+reason = "process logger: the one allowed global (ch. 4 §4.7); file output is the LogSink adapter meridian-diagnostics-fs (ADR 020 D7)"
 
 [[context_edge]]
 from = "editor"
@@ -318,4 +328,9 @@ relation = "customer-supplier"
 [[context_edge]]
 from = "runtime"
 to = "scene-markup"
+relation = "customer-supplier"
+
+[[context_edge]]
+from = "runtime"
+to = "diagnostics"
 relation = "customer-supplier"

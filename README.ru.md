@@ -42,7 +42,8 @@ Meridian-Engine — небольшой устойчивый набор крей�
 
 | Crate | Context | Что даёт |
 |---|---|---|
-| [`meridian-foundation`](crates/meridian-foundation) | diagnostics | Соглашения об ошибках, журнал, отчёты о падениях, флаги возможностей CPU |
+| [`meridian-foundation`](crates/meridian-foundation) | diagnostics | Соглашения об ошибках, ядро журнала и порт `LogSink`, флаги возможностей CPU |
+| [`meridian-diagnostics-fs`](crates/meridian-diagnostics-fs) | diagnostics | Файловый журнал и отчёты о падениях (адаптер) |
 | [`meridian-numeric-core`](crates/meridian-numeric-core) | geometry | Скалярные типы, детерминированный `Fixed`, числовые трейты |
 | [`meridian-gac-core`](crates/meridian-gac-core) | geometry | Геометрическая алгебра: векторы, роторы, моторы, фигуры (float и `Fixed`) |
 | [`meridian-memory-core`](crates/meridian-memory-core) | identity | Арены, пулы ресурсов, поколенческие дескрипторы |
@@ -66,8 +67,9 @@ Meridian-Engine — небольшой устойчивый набор крей�
 |---|---|---|
 | [`meridian-compute-runtime`](crates/meridian-compute-runtime) | compute | Контекст вычислений, интерфейсы ядер, размер диспетчеризации и разделение |
 | [`meridian-audio-app`](crates/meridian-audio-app) | audio | Порт `AudioSink` с фейком и контрактным набором тестов |
+| [`meridian-physics-app`](crates/meridian-physics-app) | physics | `PhysicsSubsystem`, порт `PhysicsStepper` и `SequentialStepper` |
 | [`meridian-rendering-app`](crates/meridian-rendering-app) | rendering | Порты `FrameRecorder`, `MeshStore`, `TextureStore` с фейками и контрактными наборами |
-| [`meridian-engine-core`](crates/meridian-engine-core) | runtime | `Runtime`: планировщик кадра, события, подсистемы физики и звука, стадии |
+| [`meridian-engine-core`](crates/meridian-engine-core) | runtime | `Runtime`: стадии в порядке зависимостей, порт `JobExecutor`, события (состоянием не владеет) |
 
 **Инфраструктура (адаптеры)**
 
@@ -138,7 +140,7 @@ fn main() {
 
 ```mermaid
 flowchart LR
-    I[interface<br/>sdk, dsl-macros, examples] --> A[application<br/>engine-core, compute-runtime, audio-app, rendering-app]
+    I[interface<br/>sdk, dsl-macros, examples] --> A[application<br/>engine-core, compute-runtime, audio-app, physics-app, rendering-app]
     A --> D[domain<br/>graphics, physics, audio, assets, ui]
     X[infrastructure<br/>drivers, adapters, scene, editor-protocol, editor-host, editor-tcp] --> D
     K[shared kernel<br/>foundation, numeric, gac, memory, resource, ecs, dsl-core]

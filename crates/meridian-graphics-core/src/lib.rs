@@ -7,6 +7,7 @@
 
 mod bloom_config;
 mod camera;
+mod fly;
 mod frustum;
 mod graph_resource_id;
 mod mesh_handle;
@@ -15,6 +16,7 @@ mod render_graph_error;
 mod render_pass;
 pub mod scene;
 mod shader_handle;
+mod shapes;
 pub mod sprites;
 pub mod submission;
 #[cfg(test)]
@@ -23,6 +25,7 @@ mod texture_handle;
 
 pub use bloom_config::BloomConfig;
 pub use camera::{Camera, look_at_rotor};
+pub use fly::{FlyCamera, FlyControls};
 pub use frustum::Frustum;
 pub use graph_resource_id::GraphResourceId;
 pub use mesh_handle::{MeshHandle, MeshMarker};
@@ -35,6 +38,10 @@ pub use scene::{
     world_space_bounds,
 };
 pub use shader_handle::{ShaderHandle, ShaderMarker};
+pub use shapes::{
+    cube_mesh_source, ground_mesh_source, icosphere_mesh_source, pyramid_mesh_source,
+    smooth_normals,
+};
 pub use sprites::{
     ClipRect, ClipSpan, ScissorRect, SpriteBatch, SpriteVertex, SpriteView, batch_scene2d,
     batch_scene2d_clipped,

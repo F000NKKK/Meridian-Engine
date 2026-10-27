@@ -10,7 +10,7 @@ readme = "README.md"
 publish = false
 
 [dependencies]
-meridian-sdk = { workspace = true, features = ["file-logging"] }
+meridian-sdk = { workspace = true }
 tokio = { workspace = true }
 
 [build-dependencies]

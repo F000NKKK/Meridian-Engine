@@ -2,15 +2,14 @@
 
 use meridian_compute_runtime::{ComputeKernel, ComputeScheduler, DispatchSize};
 
-use crate::{Stage, StageContext};
+use crate::Stage;
 
 /// Built-in convenience stage wrapping an arbitrary
 /// `compute-runtime::ComputeKernel` — the concrete answer to "how does a
 /// game hand the runtime its own GPU/CPU compute work," registered the
 /// exact same way as any other [`Stage`](crate::Stage): dependency-ordered against
-/// physics, audio, or other compute stages, with `StageContext` giving
-/// it nothing it doesn't ask for (a kernel that needs `physics`/`audio`
-/// state locks them itself inside `run`, same as any other `Stage`). Not
+/// physics, audio, or other compute stages (a kernel that needs shared
+/// state holds its own [`Shared`](crate::Shared) handle). Not
 /// specific to any domain — `gac-compute`/`physics-compute`'s own
 /// kernels work here exactly as well as a game-specific one; this crate
 /// still doesn't know what any given kernel actually computes.
@@ -36,7 +35,7 @@ impl<K: ComputeKernel + Send + 'static> ComputeStage<K> {
 }
 
 impl<K: ComputeKernel + Send> Stage for ComputeStage<K> {
-    fn run(&mut self, _ctx: &StageContext) {
+    fn run(&mut self) {
         self.scheduler.run(&self.kernel, self.size);
     }
 }

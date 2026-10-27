@@ -18,6 +18,7 @@ mod job_graph;
 mod job_id;
 mod run_state;
 mod scheduler;
+mod task_executor;
 #[cfg(test)]
 mod tests;
 mod topology;
@@ -26,3 +27,4 @@ mod worker_pool;
 pub use job_graph::JobGraph;
 pub use job_id::JobId;
 pub use scheduler::Scheduler;
+pub use task_executor::TaskExecutor;

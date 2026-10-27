@@ -13,6 +13,7 @@ repository = "https://github.com/F000NKKK/Meridian-Engine"
 # repeating path/version — bump a version once here and it's correct both
 # for local builds (path) and for `cargo publish` (version).
 [workspace.dependencies]
+meridian-diagnostics-fs = { path = "crates/meridian-diagnostics-fs", version = "0.1" }
 meridian-foundation = { path = "crates/meridian-foundation", version = "0.7" }
 meridian-numeric-core = { path = "crates/meridian-numeric-core", version = "0.8" }
 meridian-gac-core = { path = "crates/meridian-gac-core", version = "0.12" }
@@ -37,6 +38,7 @@ meridian-audio-app = { path = "crates/meridian-audio-app", version = "0.1" }
 meridian-rendering-app = { path = "crates/meridian-rendering-app", version = "0.1" }
 meridian-audio-core = { path = "crates/meridian-audio-core", version = "0.19" }
 meridian-engine-core = { path = "crates/meridian-engine-core", version = "0.31" }
+meridian-physics-app = { path = "crates/meridian-physics-app", version = "0.1" }
 meridian-sdk = { path = "crates/meridian-sdk", version = "0.5" }
 meridian-dsl-core = { path = "crates/meridian-dsl-core", version = "0.1" }
 meridian-dsl-macros = { path = "crates/meridian-dsl-macros", version = "0.1" }

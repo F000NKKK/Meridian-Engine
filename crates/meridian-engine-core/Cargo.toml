@@ -5,22 +5,22 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Runtime: frame scheduler, event system, subsystem manager; ties every other crate into the main loop."
+description = "Runtime use cases: stages run in dependency order through a job-executor port, the event system, and the physics and compute step stages."
 readme = "README.md"
 
 [dependencies]
 meridian-foundation = { workspace = true }
-meridian-gac-core = { workspace = true }
-meridian-task-core = { workspace = true }
-meridian-platform-core = { workspace = true }
-meridian-ecs-core = { workspace = true }
-meridian-physics-core = { workspace = true }
-meridian-audio-core = { workspace = true }
+meridian-physics-app = { workspace = true }
 meridian-compute-runtime = { workspace = true }
-meridian-physics-compute = { workspace = true }
 
 [dev-dependencies]
 meridian-compute-runtime = { workspace = true, features = ["testing"] }
+meridian-gac-core = { workspace = true }
+meridian-physics-core = { workspace = true }
+
+[features]
+# The inline `JobExecutor` fake and its contract suite, for adapters' own tests (Craftbook 8.4).
+testing = []
 
 [lints]
 workspace = true

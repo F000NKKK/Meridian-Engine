@@ -15,8 +15,8 @@ owns what and what the segment plans to do next.
 Shared with other segments (physics reviews changes, the other segment owns
 the crate):
 
-- `meridian-engine-core` (`team/core`): `PhysicsSubsystem`,
-  `PhysicsStepStage`, `PhysicsDispatchMode`, fixed-timestep `tick_fixed`.
+- `meridian-physics-app`: `PhysicsSubsystem`, the `PhysicsStepper` port and
+  `SequentialStepper`; `meridian-engine-core` (`team/core`): `PhysicsStepStage`.
 - `meridian-gac-core` / `meridian-gac-compute` (`team/core`): `Motor3`,
   bivectors, `Aabb`/`Obb`/`Shape`. Geometry goes there, never into
   `physics-core`.
@@ -38,8 +38,9 @@ Skills that apply: `meridian-subsystem-core-keeper`,
   the bivector exponential map.
 - Deterministic `fixed` (Q16.16) pipeline with a bit-exact reproducibility
   test.
-- Batched dispatch is wired into `engine-core` through
-  `PhysicsDispatchMode::Batched` and matches the sequential path bit for bit.
+- Batched dispatch is `physics-compute`'s `BatchedStepper`, a `PhysicsStepper`
+  that passes the same contract as `SequentialStepper`; the composition root
+  hands it to `PhysicsStepStage`.
 
 ## Gaps and backlog
 
@@ -84,7 +85,7 @@ a task.
 
 13. Port integrator, narrow phase and solver to WGSL with the same
     bit-for-bit oracle tests the broad-phase kernel has, then add
-    `PhysicsDispatchMode::Gpu` only when all four stages have a GPU path
+    a GPU stepper only when all four stages have a GPU path
     (see roadmap gap 4).
 
 ### Standards alignment

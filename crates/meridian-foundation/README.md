@@ -1,10 +1,10 @@
 # meridian-foundation
 
-Zero-dependency foundational types shared workspace-wide: error conventions, unified logging, crash reporting, feature-detection primitives.
+Zero-dependency foundational types shared workspace-wide: error conventions, the log kernel and its `LogSink` port, feature-detection primitives.
 
 **Layer and context:** shared kernel · diagnostics
 
-- **For:** `EngineError`, the process-wide log sink and `LogLevel`, `CrashReportConfig`.
+- **For:** `EngineError`, the process-wide log (`log_*!`, `LogLevel`, the `LogSink` port); file output and crash reports are [`meridian-diagnostics-fs`](../meridian-diagnostics-fs).
 - `FeatureFlags`: CPU feature detection shared by the compute crates.
 - **Not for:** any subsystem concept; it depends on no other workspace crate.
 
@@ -16,12 +16,6 @@ use meridian_foundation::FeatureFlags;
 let flags = FeatureFlags::default();
 assert!(!flags.simd128 && !flags.simd256);
 ```
-
-## Features
-
-| Feature | Enables |
-|---|---|
-| `file-logging` | Writes the log to a file (tokio-backed I/O) |
 
 ## Depends on / used by
 

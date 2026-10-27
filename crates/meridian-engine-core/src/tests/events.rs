@@ -1,6 +1,4 @@
-//! Tests of the event system and the frame scheduler.
-
-use meridian_task_core::JobGraph;
+//! Tests of the event system.
 
 use crate::*;
 
@@ -27,20 +25,4 @@ fn event_system_drain_empties_the_queue() {
 fn event_system_drain_of_unpublished_type_is_empty() {
     let mut events = EventSystem::new();
     assert_eq!(events.drain::<f32>(), Vec::<f32>::new());
-}
-
-#[test]
-fn frame_scheduler_runs_a_job_graph() {
-    use std::sync::Arc;
-    use std::sync::atomic::{AtomicUsize, Ordering};
-
-    let ran = Arc::new(AtomicUsize::new(0));
-    let mut graph = JobGraph::new();
-    let ran2 = ran.clone();
-    graph.add_job("job", &[], move || {
-        ran2.fetch_add(1, Ordering::SeqCst);
-    });
-
-    FrameScheduler::new(2).run(graph);
-    assert_eq!(ran.load(Ordering::SeqCst), 1);
 }
