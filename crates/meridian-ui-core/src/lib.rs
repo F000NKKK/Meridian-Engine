@@ -25,6 +25,7 @@ mod hit_test;
 mod node;
 
 pub mod geometry;
+pub mod input;
 pub mod layout;
 pub mod properties;
 pub mod property;
@@ -33,7 +34,8 @@ pub mod tree;
 pub use error::UiError;
 pub use geometry::{Point, Rect, Size, Thickness};
 pub use hit_test::hit_test;
+pub use input::{InputEvent, InputOutcome, Key, Modifiers, PointerButton, UiEvent, UiEventKind};
 pub use layout::{FixedAdvanceText, TextMeasurer, compute_layout};
 pub use node::{ElementKind, NodeId};
 pub use property::{LiteralError, Property, PropertyId, PropertyMeta, PropertyType, PropertyValue};
-pub use tree::{Change, ChangeSource, UiTree};
+pub use tree::{Change, ChangeSource, FocusDirection, UiTree};

@@ -34,7 +34,20 @@ impl UiTree {
             }
         }
         self.layout_dirty = true;
+        self.forget_removed_nodes();
         Ok(())
+    }
+
+    /// The ancestors of `node`, nearest first, ending at the root; the
+    /// bubbling path of an event targeting `node`.
+    pub fn ancestors(&self, node: NodeId) -> Vec<NodeId> {
+        let mut path = Vec::new();
+        let mut current = self.element(node).ok().and_then(|element| element.parent);
+        while let Some(id) = current {
+            path.push(id);
+            current = self.element(id).ok().and_then(|element| element.parent);
+        }
+        path
     }
 
     /// True when `candidate` is `node` or one of its ancestors.
