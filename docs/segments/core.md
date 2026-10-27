@@ -76,8 +76,9 @@ change that closed them.
 1. **Done: multi-component ECS queries.** `World::query_many` /
    `query_many_mut` over tuples of two to four `&T` / `&mut T`, safe via
    `HashMap::get_disjoint_mut` ([ecs-design.md](../ecs-design.md)).
-2. **ECS filters.** `Option<&T>` and `Without<T>` elements for
-   `query_many`.
+2. **Done: ECS filters.** `Option<&T>`, `Option<&mut T>`, `With<T>` and
+   `Without<T>` elements for `query_many`/`query_many_mut`; the column pass
+   no longer needs `get_disjoint_mut` (`query_many_mut` bench ~31 µs -> ~25 µs).
 3. **ECS change detection and entity commands.** Deferred
    spawn/despawn/insert during iteration, and per-column change ticks so
    rendering can skip unchanged instances (feeds roadmap "Scaling" item 1).

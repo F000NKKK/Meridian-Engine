@@ -36,14 +36,17 @@ for (_, (position, velocity)) in world.query_many_mut::<(&mut Position, &Velocit
 }
 ```
 
-No `unsafe`. An archetype keeps its columns in a `HashMap`, and
-`HashMap::get_disjoint_mut` returns several `&mut` columns after checking
-their keys differ, so the borrow checker is satisfied by the standard
-library, not by the crate. A tuple that names one component twice
+No `unsafe`. An archetype keeps its columns in a `HashMap`; one
+`iter_mut` pass over it hands each accessed column to exactly one tuple
+element, so the borrow checker is satisfied by the iterator, not by the
+crate. A tuple that names one component twice
 (`(&mut T, &T)`) would alias a column, so `query_many_mut` panics on it
 before iterating; `query_many` (shared `&World`, `&T` elements only) allows
-it. `Query`/`QueryMut` stay for the single-component case. Not built yet:
-`Option<&T>` / `Without<T>` filters and parallel iteration.
+it. `Query`/`QueryMut` stay for the single-component case. Tuple elements may also be
+`Option<&T>` / `Option<&mut T>` (the archetype need not have the component;
+absent rows yield `None`) and the zero-sized filters `With<T>` / `Without<T>`,
+which constrain the archetype without borrowing a column, so `With<T>` next
+to `&mut T` is not an alias. Not built yet: parallel iteration.
 
 ## What this crate is not
 

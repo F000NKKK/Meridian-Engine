@@ -1,29 +1,7 @@
-//! Tests of multi-component queries.
+//! Tests of `query_many` and `query_many_mut` over required components.
 
-use crate::{Component, Entity, World};
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-struct Position(f32);
-impl Component for Position {}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-struct Velocity(f32);
-impl Component for Velocity {}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-struct Mass(f32);
-impl Component for Mass {}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-struct Tag;
-impl Component for Tag {}
-
-fn spawn_moving(world: &mut World, x: f32, v: f32) -> Entity {
-    let e = world.spawn();
-    world.insert(e, Position(x));
-    world.insert(e, Velocity(v));
-    e
-}
+use super::fixtures::{Mass, Position, Tag, Velocity, spawn_moving};
+use crate::{Entity, World};
 
 #[test]
 fn query_many_skips_entities_missing_a_component() {

@@ -690,8 +690,9 @@ the rest are not started.
 2. **Done: `ecs-core` multi-component queries.** `World::query_many`
    and `query_many_mut` take tuples of two to four `&T`/`&mut T`
    ("every entity with `Conveyor` *and* `ItemSlot` *and* `Position`").
-   Not built yet: `Option<&T>`/`Without<T>` filters, parallel iteration,
-   and change detection.
+   Elements can also be `Option<&T>`/`Option<&mut T>` and the
+   `With<T>`/`Without<T>` filters. Not built yet: parallel iteration and
+   change detection.
 3. **`physics-core::BroadPhase` is x-axis sweep-and-prune** (first
    step, done): `find_candidate_pairs` sorts AABBs by minimum x and only
    tests bodies that overlap along x, returning the same pairs in the same
