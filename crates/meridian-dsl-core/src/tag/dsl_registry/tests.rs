@@ -99,3 +99,14 @@ fn nested_custom_tags_all_build() {
         Some(&RigidBodyTag { mass: 1.0 })
     );
 }
+
+#[test]
+fn x_name_is_kept_and_found() {
+    let mut registry = DslRegistry::new();
+    registry.register::<RigidBodyTag>();
+    let element = parse(r#"<RigidBody x:Name="crate" mass="1.0" />"#).unwrap();
+    let node = registry.build(&element).unwrap();
+    assert_eq!(node.name.as_deref(), Some("crate"));
+    assert!(node.find_named("crate").is_some());
+    assert!(node.find_named("missing").is_none());
+}

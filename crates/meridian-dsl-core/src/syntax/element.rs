@@ -31,6 +31,11 @@ impl Element {
         self.attrs.iter().find(|attr| attr.name.is_plain(name))
     }
 
+    /// The directive attribute `x:local` (`x:Name`, `x:Class`, ...).
+    pub fn directive(&self, local: &str) -> Option<&Attribute> {
+        self.attrs.iter().find(|attr| attr.name.is_directive(local))
+    }
+
     /// Whether this is a property element (`Owner.Property`).
     pub fn is_property_element(&self) -> bool {
         self.name.owner().is_some()

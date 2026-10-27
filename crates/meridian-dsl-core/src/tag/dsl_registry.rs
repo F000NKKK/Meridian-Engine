@@ -54,8 +54,13 @@ impl DslRegistry {
             .iter()
             .map(|child| self.build(child))
             .collect::<Result<Vec<_>, _>>()?;
+        let name = element
+            .directive("Name")
+            .and_then(|attr| attr.text())
+            .map(str::to_string);
         Ok(BuiltNode {
             tag,
+            name,
             value,
             children,
         })

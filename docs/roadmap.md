@@ -626,7 +626,9 @@ priority before writing implementations is keeping that document and the
     [ADR 017](adr/017-mel-markup-and-code-behind.md). Started: the
     `dsl-core` side is done (line/column spans, the `x:` prefix, dotted
     names and property elements, parsed markup extensions, typed
-    `ParseErrorKind`); the `.g.rs` generator and bindings are next.
+    `ParseErrorKind`), and the `meridian-mel-build` generator
+    (`.mel` -> `.g.rs`, `mel_include!`; used by `magic_figures`).
+    Compiled `{x:Bind}` bindings and event dispatch are next.
 
 ## Scaling beyond a tech demo (Minecraft/Satisfactory-class scope)
 

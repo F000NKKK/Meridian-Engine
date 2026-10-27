@@ -69,6 +69,11 @@ impl QualifiedName {
         &self.local
     }
 
+    /// Whether this is the directive `x:local` (no owner).
+    pub fn is_directive(&self, local: &str) -> bool {
+        self.prefix == Some(Prefix::Directive) && self.owner.is_none() && self.local == local
+    }
+
     /// Whether this is exactly `local` with no prefix and no owner.
     pub fn is_plain(&self, local: &str) -> bool {
         self.prefix.is_none() && self.owner.is_none() && self.local == local
