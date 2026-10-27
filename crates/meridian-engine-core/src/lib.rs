@@ -22,7 +22,7 @@ mod physics_step_stage;
 mod physics_subsystem;
 mod runtime;
 mod runtime_state;
-mod stage;
+mod stages;
 #[cfg(test)]
 mod tests;
 
@@ -36,4 +36,4 @@ pub use physics_subsystem::PhysicsSubsystem;
 pub(crate) use physics_subsystem::RELAXATION_ITERATIONS;
 pub use runtime::Runtime;
 pub use runtime_state::RuntimeState;
-pub use stage::*;
+pub use stages::*;

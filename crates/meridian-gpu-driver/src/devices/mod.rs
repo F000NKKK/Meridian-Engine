@@ -3,9 +3,9 @@
 mod bind_groups;
 mod buffers;
 mod device;
-mod error;
+mod device_error;
 mod shaders;
 mod textures;
 
 pub use device::Device;
-pub use error::DeviceError;
+pub use device_error::DeviceError;
