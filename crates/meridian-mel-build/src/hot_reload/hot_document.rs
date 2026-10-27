@@ -7,7 +7,7 @@ use meridian_ui_core::{NodeId, UiTree};
 
 use super::{LiveUi, Refreshed, Reload, ReloadError, SourceWatcher};
 use crate::source_dir::{SourceFiles, read_sets};
-use crate::{BuildError, MelDocument, ResourceSets, UiNode};
+use crate::{BuildError, Culture, MelDocument, ResourceSets, UiNode};
 
 /// A document and the resource sets it uses, watched on disk. The host
 /// calls [`Self::refresh`] each frame (or at any rhythm it likes); when
@@ -20,6 +20,9 @@ pub struct HotDocument {
     resources: Option<PathBuf>,
     watcher: SourceWatcher,
     live: LiveUi,
+    culture: Option<Culture>,
+    /// The culture was changed since the last read.
+    switched: bool,
 }
 
 impl HotDocument {
@@ -32,13 +35,26 @@ impl HotDocument {
         root: NodeId,
         debounce: Duration,
     ) -> Result<Self, ReloadError> {
-        let (ui, watched) = Self::read(mel, resources)?;
+        let (ui, watched) = Self::read(mel, resources, None)?;
         Ok(Self {
             mel: mel.to_path_buf(),
             resources: resources.map(Path::to_path_buf),
             watcher: SourceWatcher::new(watched, debounce),
             live: LiveUi::new(root, ui),
+            culture: None,
+            switched: false,
         })
+    }
+
+    /// Reads `@res:` references in `culture` from now on (`None`: the
+    /// default sets). Takes effect at the next [`Self::refresh`], which
+    /// applies it even when no file changed: this is the run-time
+    /// language switch.
+    pub fn set_culture(&mut self, culture: Option<Culture>) {
+        if self.culture != culture {
+            self.culture = culture;
+            self.switched = true;
+        }
     }
 
     /// Applies a change of the files, if one has settled. `None` when
@@ -49,10 +65,12 @@ impl HotDocument {
         tree: &mut UiTree,
         now: Instant,
     ) -> Result<Option<Refreshed>, ReloadError> {
-        if self.watcher.poll(now).is_empty() {
+        let changed = !self.watcher.poll(now).is_empty();
+        if !changed && !self.switched {
             return Ok(None);
         }
-        let (ui, _) = Self::read(&self.mel, self.resources.as_deref())?;
+        self.switched = false;
+        let (ui, _) = Self::read(&self.mel, self.resources.as_deref(), self.culture.as_ref())?;
         let refreshed = match self.live.reload(tree, ui.clone())? {
             Reload::Patched { changed } => Refreshed::Patched { changed },
             Reload::Restructured => Refreshed::Rebuilt(self.live.rebuild(tree, ui)?),
@@ -61,12 +79,19 @@ impl HotDocument {
     }
 
     /// The document and the files it depends on.
-    fn read(mel: &Path, resources: Option<&Path>) -> Result<(UiNode, Vec<PathBuf>), ReloadError> {
+    fn read(
+        mel: &Path,
+        resources: Option<&Path>,
+        culture: Option<&Culture>,
+    ) -> Result<(UiNode, Vec<PathBuf>), ReloadError> {
         let mut watched = vec![mel.to_path_buf()];
         let mut sets = ResourceSets::default();
         if let Some(dir) = resources {
             let mres = SourceFiles::find(dir)?.mres;
             sets = read_sets(&mres)?;
+            if let Some(culture) = culture {
+                sets = sets.for_culture(culture);
+            }
             watched.extend(mres);
         }
         let text = std::fs::read_to_string(mel).map_err(|error| BuildError::io(mel, error))?;

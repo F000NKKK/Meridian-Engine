@@ -204,4 +204,29 @@ mod files {
             Some(tree.children(rebuilt.root).unwrap()[1])
         );
     }
+
+    #[test]
+    fn switching_the_culture_patches_without_a_file_change() {
+        let dir = scratch("culture");
+        let (mut tree, root, mut document) = open(&dir);
+        write(&dir.join("Strings.ru.mres"), r#"{ title: "Йог" }"#);
+        let label = tree.children(root).unwrap()[0];
+        let start = Instant::now();
+        let ru = crate::Culture::parse("ru");
+        document.set_culture(ru.clone());
+        let refreshed = document.refresh(&mut tree, start).unwrap();
+        assert_eq!(refreshed, Some(Refreshed::Patched { changed: 1 }));
+        assert_eq!(
+            tree.get(label, properties::text_block::TEXT).unwrap(),
+            "Йог"
+        );
+        document.set_culture(ru);
+        assert_eq!(document.refresh(&mut tree, start).unwrap(), None);
+        document.set_culture(None);
+        document.refresh(&mut tree, start).unwrap();
+        assert_eq!(
+            tree.get(label, properties::text_block::TEXT).unwrap(),
+            "Yog"
+        );
+    }
 }

@@ -4,7 +4,8 @@ use std::path::{Path, PathBuf};
 
 use crate::BuildError;
 
-/// The `.mel` and `.mres` files under a directory, each list sorted.
+/// The `.mel` and `.mres` files under a directory, each list sorted
+/// (culture variants last).
 #[derive(Debug, Default)]
 pub(crate) struct SourceFiles {
     pub mel: Vec<PathBuf>,
@@ -17,7 +18,10 @@ impl SourceFiles {
         let mut found = Self::default();
         found.walk(dir)?;
         found.mel.sort();
-        found.mres.sort();
+        // Default sets first: a variant is checked against its default.
+        found
+            .mres
+            .sort_by_key(|path| (is_variant(path), path.clone()));
         Ok(found)
     }
 
@@ -35,4 +39,10 @@ impl SourceFiles {
         }
         Ok(())
     }
+}
+
+/// `Strings.ru.mres`: a stem with a culture after the set name.
+fn is_variant(path: &Path) -> bool {
+    path.file_stem()
+        .is_some_and(|stem| stem.to_string_lossy().contains('.'))
 }

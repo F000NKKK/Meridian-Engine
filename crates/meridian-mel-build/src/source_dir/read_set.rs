@@ -2,13 +2,24 @@
 
 use std::path::Path;
 
-use crate::{BuildError, ResourceSet};
+use crate::{BuildError, Culture, ResourceError, ResourceProblem, ResourceSet};
 
-/// Reads `<Set>.mres`; the set is named after the file.
+/// Reads `<Set>.mres`, or the variant `<Set>.<culture>.mres`.
 pub(crate) fn read_set(source: &Path) -> Result<ResourceSet, BuildError> {
     let text = std::fs::read_to_string(source).map_err(|error| BuildError::io(source, error))?;
-    let name = source
+    let stem = source
         .file_stem()
         .map_or_else(String::new, |stem| stem.to_string_lossy().into_owned());
-    Ok(ResourceSet::parse(source, &name, &text)?)
+    let Some((name, tag)) = stem.split_once('.') else {
+        return Ok(ResourceSet::parse(source, &stem, &text)?);
+    };
+    let culture = Culture::parse(tag).ok_or_else(|| {
+        ResourceError::at(
+            source,
+            &text,
+            0,
+            ResourceProblem::InvalidCulture(tag.to_string()),
+        )
+    })?;
+    Ok(ResourceSet::parse_variant(source, name, culture, &text)?)
 }

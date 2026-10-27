@@ -36,12 +36,14 @@ fn compile_tree(dir: &Path, out_dir: &Path) -> Result<Vec<PathBuf>, BuildError> 
     let mut generated = Vec::new();
     for source in &files.mres {
         let set = read_set(source)?;
-        let file = format!("{}.mres", set.name);
-        write(
-            &target(source)?,
-            &GeneratedResources::render(&set, &file).code,
-            &mut generated,
-        )?;
+        if set.culture.is_none() {
+            let file = format!("{}.mres", set.name);
+            write(
+                &target(source)?,
+                &GeneratedResources::render(&set, &file).code,
+                &mut generated,
+            )?;
+        }
         insert_set(&mut sets, set, source)?;
     }
     for source in &files.mel {
@@ -140,6 +142,25 @@ mod tests {
         );
         let hud = std::fs::read_to_string(out.join("ui/hud.g.rs")).unwrap();
         assert!(hud.contains(r#""Yog")?;"#), "{hud}");
+    }
+
+    #[test]
+    fn variants_generate_nothing_and_are_checked() {
+        let dir = scratch("variants");
+        std::fs::write(dir.join("Strings.mres"), r#"{ title: "Yog" }"#).unwrap();
+        std::fs::write(dir.join("Strings.ru.mres"), r#"{ title: "Йог" }"#).unwrap();
+        let files = compile_tree(&dir, &dir.join("out")).unwrap();
+        assert_eq!(files.len(), 1, "{files:?}");
+        std::fs::write(dir.join("Strings.ru.mres"), r#"{ nope: "x" }"#).unwrap();
+        let error = compile_tree(&dir, &dir.join("out")).unwrap_err();
+        assert!(
+            error.to_string().contains("which the default set does not"),
+            "{error}"
+        );
+        std::fs::write(dir.join("Strings.ru.mres"), "{}").unwrap();
+        std::fs::write(dir.join("Strings.r_u.mres"), "{}").unwrap();
+        let error = compile_tree(&dir, &dir.join("out")).unwrap_err();
+        assert!(error.to_string().contains("is not a culture"), "{error}");
     }
 
     #[test]

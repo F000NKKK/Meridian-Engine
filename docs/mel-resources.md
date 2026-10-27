@@ -99,6 +99,24 @@ key written `Set.name` is the `.mres` entry, so `{StaticResource
 Strings.title}` and `@res:Strings.title` are the same. An unknown key, a
 bad block or a second block on one element is a build error at its line.
 
+## Culture variants
+
+`Strings.ru.mres` is the Russian variant of `Strings.mres`: the part after
+the set name is a culture tag (letters and digits, `-` between parts, any
+case; stored lowercase: `ru`, `en-gb`). A variant may define only entries
+the default set has, with the same type (a number stays a number); what it
+leaves out falls back to the default, and `en-gb` falls back to `en` and
+then to the default. A variant without a default set, an unknown entry, a
+type mismatch, a bad tag or two files for one culture is a build error at
+its file. Variants generate no constants: `Strings::TITLE` is the default
+value, and `@res:Strings.title` in a `.mel` compiled by the build script is
+the default too.
+
+The language switch is a run-time reload: `HotDocument::set_culture(Some(
+Culture::parse("ru")))` makes the next `refresh` read `@res:` references
+through `ResourceSets::for_culture` and patch the tree, with no file
+change needed; `set_culture(None)` goes back to the default.
+
 ## Reloading
 
 `HotDocument::open(mel, Some(resources_dir), root, debounce)` watches the
@@ -112,8 +130,8 @@ is an error and leaves the tree as it was; the next change tries again.
 
 ## Not yet
 
-Culture variants (`Strings.ru_ru.mres`) and run-time language switching,
-placeholders (`{count}`), file/image/sound entries that bundle assets,
+Culture-aware lookup from code (generated constants are the default
+value), placeholders (`{count}`), file/image/sound entries that bundle assets,
 styles and templates (`{StaticResource}` of a whole `Style`), run-time
 lookup (`{DynamicResource}`), and resources in tags built by
 `build_scene`.

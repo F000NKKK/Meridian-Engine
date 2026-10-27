@@ -103,8 +103,10 @@ the prior art to copy from is Yog-Mod-Loader's `.yui` -> `.g.rs` pipeline
    `<Owner.Resources>` blocks with `x:Key` and `{StaticResource Key}`
    resolved at build time, nearest block first and `Set.name` falling back
    to the `.mres` entry (format and rules in
-   [mel-resources.md](../mel-resources.md)). Still open: culture variants
-   and run-time language switching, `{name}` placeholders,
+   [mel-resources.md](../mel-resources.md)). Culture variants
+   (`Strings.ru.mres`) and the run-time language switch through
+   `HotDocument::set_culture` are done. Still open: culture-aware
+   lookup from code, `{name}` placeholders,
    file/image/sound entries, styles and templates, `{DynamicResource}`.
 8. **Hot reload of markup.** Done for the markup and resource side:
    `LiveUi` patches the attributes that changed into a built tree (plain

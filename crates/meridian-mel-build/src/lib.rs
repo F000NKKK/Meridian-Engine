@@ -56,8 +56,8 @@ pub use invalid_markup::InvalidMarkup;
 pub use mel_document::MelDocument;
 pub use named_element::NamedElement;
 pub use resources::{
-    GeneratedResources, LocalResources, ResourceEntry, ResourceError, ResourceProblem, ResourceSet,
-    ResourceSets, ResourceValue,
+    Culture, GeneratedResources, LocalResources, ResourceEntry, ResourceError, ResourceProblem,
+    ResourceSet, ResourceSets, ResourceValue,
 };
 pub(crate) use resources::{ResourceTag, read_markup_value};
 pub use ui_literal::UiLiteral;
