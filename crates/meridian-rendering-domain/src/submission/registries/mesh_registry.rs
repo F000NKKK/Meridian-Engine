@@ -7,7 +7,7 @@ use crate::submission::{MeshRegistryError, MeshSource};
 
 /// Handle-addressed storage for [`MeshSource`](crate::submission::MeshSource)s — the CPU-side registry
 /// [`Renderable3d::mesh`](crate::scene::Renderable3d::mesh) resolves against. Owns no GPU objects; GPU
-/// buffers are built fresh per instance in `SceneRenderer::prepare` (in `meridian-rendering-wgpu`)
+/// buffers are built fresh per instance in `bake_batches` (in `meridian-rendering-wgpu`)
 /// (see the module doc).
 #[derive(Debug, Default)]
 pub struct MeshRegistry {

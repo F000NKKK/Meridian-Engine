@@ -137,9 +137,14 @@ fn compute_shadow_factor(world_pos: vec3<f32>, world_normal: vec3<f32>) -> f32 {
 struct VertexInput {
     @location(0) position: vec3<f32>,
     @location(1) normal: vec3<f32>,
-    @location(2) color: vec4<f32>,
-    @location(3) emissive: vec3<f32>,
-    @location(4) gloss: vec2<f32>,
+    @location(2) uv: vec2<f32>,
+    @location(3) model_0: vec4<f32>,
+    @location(4) model_1: vec4<f32>,
+    @location(5) model_2: vec4<f32>,
+    @location(6) model_3: vec4<f32>,
+    @location(7) color: vec4<f32>,
+    @location(8) emissive: vec3<f32>,
+    @location(9) gloss: vec2<f32>,
 };
 
 struct VertexOutput {
@@ -154,9 +159,12 @@ struct VertexOutput {
 @vertex
 fn vs_main(in: VertexInput) -> VertexOutput {
     var out: VertexOutput;
-    out.clip_position = u.view_proj * vec4<f32>(in.position, 1.0);
-    out.world_position = in.position;
-    out.world_normal = in.normal;
+    let model = mat4x4<f32>(in.model_0, in.model_1, in.model_2, in.model_3);
+    let world = model * vec4<f32>(in.position, 1.0);
+    let world_normal = (model * vec4<f32>(in.normal, 0.0)).xyz;
+    out.clip_position = u.view_proj * world;
+    out.world_position = world.xyz;
+    out.world_normal = world_normal;
     out.color = in.color;
     out.emissive = in.emissive;
     out.gloss = in.gloss;
@@ -205,9 +213,13 @@ struct VertexInput {
     @location(0) position: vec3<f32>,
     @location(1) normal: vec3<f32>,
     @location(2) uv: vec2<f32>,
-    @location(3) tint: vec4<f32>,
-    @location(4) emissive: vec3<f32>,
-    @location(5) gloss: vec2<f32>,
+    @location(3) model_0: vec4<f32>,
+    @location(4) model_1: vec4<f32>,
+    @location(5) model_2: vec4<f32>,
+    @location(6) model_3: vec4<f32>,
+    @location(7) color: vec4<f32>,
+    @location(8) emissive: vec3<f32>,
+    @location(9) gloss: vec2<f32>,
 };
 
 struct VertexOutput {
@@ -223,11 +235,14 @@ struct VertexOutput {
 @vertex
 fn vs_main(in: VertexInput) -> VertexOutput {
     var out: VertexOutput;
-    out.clip_position = u.view_proj * vec4<f32>(in.position, 1.0);
-    out.world_position = in.position;
-    out.world_normal = in.normal;
+    let model = mat4x4<f32>(in.model_0, in.model_1, in.model_2, in.model_3);
+    let world = model * vec4<f32>(in.position, 1.0);
+    let world_normal = (model * vec4<f32>(in.normal, 0.0)).xyz;
+    out.clip_position = u.view_proj * world;
+    out.world_position = world.xyz;
+    out.world_normal = world_normal;
     out.uv = in.uv;
-    out.tint = in.tint;
+    out.tint = in.color;
     out.emissive = in.emissive;
     out.gloss = in.gloss;
     return out;

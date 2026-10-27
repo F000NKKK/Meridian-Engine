@@ -15,7 +15,9 @@ mod shadows;
 mod tests;
 mod view_uniforms;
 
-pub use draw_order::{DrawState, OrderedDraw, order_draws};
+pub use draw_order::{
+    BatchKey, DrawBatch, DrawItem, DrawState, OrderedDraw, order_draws, plan_batches,
+};
 pub use registries::*;
 pub use shadows::*;
 pub use view_uniforms::ViewUniforms;

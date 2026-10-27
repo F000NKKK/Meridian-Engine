@@ -1,6 +1,6 @@
 //! A vertex buffer layout.
 
-use crate::VertexAttributeDesc;
+use crate::{VertexAttributeDesc, VertexStep};
 
 /// Describes one vertex buffer's layout for
 /// [`Device::create_render_pipeline`](crate::Device::create_render_pipeline): `stride` is the byte size of one
@@ -9,4 +9,6 @@ use crate::VertexAttributeDesc;
 pub struct VertexLayout {
     pub stride: u64,
     pub attributes: Vec<VertexAttributeDesc>,
+    /// Whether the buffer advances per vertex or per instance.
+    pub step: VertexStep,
 }

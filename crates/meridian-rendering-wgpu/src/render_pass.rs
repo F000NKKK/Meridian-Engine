@@ -44,6 +44,16 @@ impl RenderPass<'_> {
     }
 
     pub fn draw_indexed(&mut self, indices: core::ops::Range<u32>) {
-        self.raw.draw_indexed(indices, 0, 0..1);
+        self.draw_indexed_instanced(indices, 0..1);
+    }
+
+    /// Draws `indices` once per instance in `instances`; per-instance vertex
+    /// buffers advance over that range.
+    pub fn draw_indexed_instanced(
+        &mut self,
+        indices: core::ops::Range<u32>,
+        instances: core::ops::Range<u32>,
+    ) {
+        self.raw.draw_indexed(indices, 0, instances);
     }
 }

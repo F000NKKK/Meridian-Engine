@@ -662,27 +662,22 @@ Everything above proves the engine works end-to-end for a small scene
 (a few dozen renderables, a handful of rigid bodies). A voxel-world game
 (Minecraft-like) or a large-factory simulation (Satisfactory-like) needs
 real capacity in several places that a small demo never exercises.
-Ordered roughly by "blocks everything else" first; items 2 and 4 are done,
+Ordered roughly by "blocks everything else" first; items 1 (partly), 2 and 4 are done,
 the rest are not started.
 
-1. **Per-instance vertex rebaking, every frame, is the sharpest wall.**
-   `rendering-domain::submission::draw_buffers` reuploads a fresh
-   vertex buffer for *every* `Renderable3d` on *every*
-   `SceneRenderer::prepare` call, whether or not that instance moved
-   since the last frame (see that function's own doc comment — "correct
-   now, batch later" was an explicit, disclosed trade-off, not an
-   oversight). A voxel world's static chunk meshes or a factory's
-   thousands of static machine models make this the first thing that
-   falls over — not a tuning problem, an architecture gap. Needed:
-   - A "this instance's baked bytes are unchanged, skip the reupload"
-     cache keyed by (mesh, material, frame), invalidated only when one
-     of those actually changes.
-   - Real instancing for repeated meshes (a Minecraft block face, a
-     Satisfactory conveyor segment) — one vertex/index buffer per mesh
-     shape, a per-instance transform/tint buffer, one draw call instead
-     of thousands. `rendering-wgpu`'s pipeline/bind-group primitives
-     don't have an instance-buffer path today; this is real driver-layer
-     work, not just a `rendering-domain` change.
+1. **Instancing is real; the per-frame instance upload is what is left.**
+   `rendering-wgpu` uploads each registered mesh once (`MeshCache`, local
+   space, dropped when the mesh is unregistered) and writes one 100-byte
+   record per drawn renderable (model matrix, colour, emissive, gloss) into
+   a single instance buffer per frame; opaque renderables with equal
+   `BatchKey`s (mesh, albedo, lighting, shadow casting) draw in one
+   instanced call (`rendering-domain::plan_batches`). Still open for a
+   voxel world's or factory's tens of thousands of static instances:
+   - A "this instance's record is unchanged, skip the reupload" cache, or a
+     persistent instance buffer patched in place, instead of rewriting every
+     record each frame.
+   - Indirect draws and GPU-side culling (the GPU-driven direction in
+     graphics-design.md), and a mesh path for more than 65 535 vertices.
 2. **Done: `ecs` multi-component queries.** `World::query_many`
    and `query_many_mut` take tuples of two to four `&T`/`&mut T`
    ("every entity with `Conveyor` *and* `ItemSlot` *and* `Position`").

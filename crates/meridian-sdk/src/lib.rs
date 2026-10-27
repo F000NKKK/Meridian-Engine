@@ -82,7 +82,7 @@ pub use meridian_rendering_domain::{
 // -- meridian-rendering-wgpu: the GPU device a windowed app opens once --
 pub use meridian_rendering_wgpu::{
     BloomPass, CommandBuffer, DEFAULT_SHADOW_MAP_SIZE, DepthTexture, Device, DeviceError,
-    DrawBuffers, GpuFrameRecorder, GpuTextureStore, RenderPass, SceneRenderer, Surface,
+    GpuFrameRecorder, GpuTextureStore, PreparedBatch, RenderPass, SceneRenderer, Surface,
     TextureRegistry, submit_scene3d,
 };
 // -- meridian-runtime-app: Runtime, the single frame-work entry point --
