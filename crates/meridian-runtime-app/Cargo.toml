@@ -1,0 +1,26 @@
+[package]
+name = "meridian-runtime-app"
+version = "0.31.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Runtime use cases: stages run in dependency order through a job-executor port, the event system, and the physics and compute step stages."
+readme = "README.md"
+
+[dependencies]
+meridian-diagnostics = { workspace = true }
+meridian-physics-app = { workspace = true }
+meridian-compute-app = { workspace = true }
+
+[dev-dependencies]
+meridian-compute-app = { workspace = true, features = ["testing"] }
+meridian-gac = { workspace = true }
+meridian-physics-domain = { workspace = true }
+
+[features]
+# The inline `JobExecutor` fake and its contract suite, for adapters' own tests (Craftbook 8.4).
+testing = []
+
+[lints]
+workspace = true

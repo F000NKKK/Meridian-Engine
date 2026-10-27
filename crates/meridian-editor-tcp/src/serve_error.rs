@@ -2,7 +2,7 @@
 
 use std::io;
 
-use meridian_editor_protocol::FrameError;
+use meridian_editor_domain::FrameError;
 use substrate_data::Diagnostic;
 
 /// Why serving an editor stopped. A clean end of the stream is not an error.

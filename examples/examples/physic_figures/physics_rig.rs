@@ -1,8 +1,8 @@
 //! The physics runtime stepped every frame.
 
 use meridian_sdk::{
-    AudioSubsystem, ConstraintSolver, Mixer, Motor3, PhysicsDispatchMode, PhysicsStepStage,
-    PhysicsSubsystem, RigidBody, Runtime, SpeakerLayout, StageId,
+    BatchedStepper, ConstraintSolver, Motor3, PhysicsStepStage, PhysicsSubsystem, RigidBody,
+    Runtime, Shared, StageId, cpu_context, parallel_runtime,
 };
 
 use crate::SceneEntity;
@@ -23,10 +23,10 @@ const SOLVER_RESTITUTION: f32 = 0.0;
 const SOLVER_FRICTION: f32 = 0.6;
 
 /// Fixed-timestep driver around a real `meridian_sdk::Runtime` running
-/// one registered [`PhysicsStepStage`] in `PhysicsDispatchMode::Batched`
+/// one registered [`PhysicsStepStage`] driving a `BatchedStepper`
 /// — the physics stepping
 /// itself (integrate/relax-contacts/resolve, batched through
-/// `physics-compute`'s kernels rather than a plain sequential loop) is
+/// `physics-wgpu`'s kernels rather than a plain sequential loop) is
 /// the stage's job, not this file's; see that stage's own doc comment for
 /// the multi-point-manifold relaxation semantics it preserves exactly.
 /// What's left at this layer is
@@ -42,6 +42,8 @@ const SOLVER_FRICTION: f32 = 0.6;
 /// per this module's own top-level doc.
 pub(crate) struct PhysicsRig {
     pub(crate) runtime: Runtime,
+    /// The physics world, shared with the render stage's scene closure.
+    pub(crate) physics: Shared<PhysicsSubsystem>,
     pub(crate) physics_stage: StageId,
     accumulator: f32,
 }
@@ -58,30 +60,30 @@ impl PhysicsRig {
             })
             .collect();
 
-        let physics = PhysicsSubsystem {
+        let physics = Shared::new(PhysicsSubsystem {
             bodies,
             solver: ConstraintSolver::new(SOLVER_RESTITUTION).with_friction(SOLVER_FRICTION),
             ..Default::default()
-        };
-        // No audio in this example — `Runtime::new` still requires an
-        // `AudioSubsystem` (physics and audio are the two subsystems
-        // every `Runtime` owns, per `engine-core`'s own module doc),
-        // left unused here.
-        let audio = AudioSubsystem::new(Mixer::new(SpeakerLayout::mono()));
+        });
 
-        let mut runtime = Runtime::new(physics, audio);
-        // `PhysicsDispatchMode::Batched`, not `Sequential` — this
-        // example is the live proof that the batched-dispatch physics
-        // path (docs/roadmap.md's "Scaling beyond a tech demo" item 4)
-        // is a real drop-in swap, not just unit-tested in isolation.
+        let mut runtime = parallel_runtime();
+        // `BatchedStepper`, not `SequentialStepper` — this example is the
+        // live proof that the batched-dispatch physics path
+        // (docs/roadmap.md's "Scaling beyond a tech demo" item 4) is a
+        // real drop-in swap, not just unit-tested in isolation.
         let physics_stage = runtime.add_stage(
             "physics",
             &[],
-            PhysicsStepStage::new(PHYSICS_DT, PhysicsDispatchMode::Batched),
+            PhysicsStepStage::new(
+                PHYSICS_DT,
+                BatchedStepper::new(cpu_context()),
+                physics.clone(),
+            ),
         );
 
         Self {
             runtime,
+            physics,
             physics_stage,
             accumulator: 0.0,
         }

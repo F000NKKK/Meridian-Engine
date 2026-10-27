@@ -1,0 +1,21 @@
+[package]
+name = "meridian-compute-app"
+version = "0.20.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Compute dispatch runtime: device/context, buffers, and the ComputeKernel interface domain crates (gac-wgpu, future particle-compute/physics-compute/...) implement against. Owns no algorithms of its own."
+readme = "README.md"
+
+[dependencies]
+tokio = { workspace = true }
+
+[features]
+# The fake devices and their contract suites, for adapters' own tests (Craftbook 8.4).
+testing = []
+# Tests that need a real GPU or audio device; CI has neither (docs/adr/020).
+hw-tests = []
+
+[lints]
+workspace = true

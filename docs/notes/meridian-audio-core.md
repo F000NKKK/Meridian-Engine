@@ -1,4 +1,4 @@
-# `meridian-audio-core` design notes
+# `meridian-audio-domain` design notes
 
 Rationale moved out of the module docs (Craftbook ch. 5 §5.2: a `//!` is at
 most 30 lines). Each section belongs to the module named in its heading.

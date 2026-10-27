@@ -1,4 +1,4 @@
-# Threading model — `meridian-task-core`
+# Threading model — `meridian-runtime-threads`
 
 Not a plain thread pool. Frame work is expressed as a **job graph**: systems
 declare their dependencies, and the scheduler derives execution order,
@@ -33,7 +33,7 @@ the graph — not a hardcoded call order — determines what can overlap.
   panic is re-raised from `run`. Per run: ~0.35 µs for a one-job graph
   (was ~210 µs while threads were spawned per run), ~0.33 ms for a
   1 000-job chain, ~6 ms for 10 000 independent tiny jobs, on 4 cores
-  (`cargo bench -p meridian-task-core`).
+  (`cargo bench -p meridian-runtime-threads`).
 - **Dependency tracking** — `JobGraph::add_job` takes the `JobId`s a job
   depends on; `Scheduler::run` computes in-degrees and only makes a job
   runnable once every dependency has completed. A cycle or a `JobId` from
@@ -43,7 +43,7 @@ the graph — not a hardcoded call order — determines what can overlap.
 - **Shared ready-queue, not per-worker work-stealing deques (yet)** — every
   worker pulls from one `Mutex`-guarded queue rather than each having its
   own deque with the classic steal-from-a-busy-peer protocol. This is
-  correct and easy to verify by test (see `meridian-task-core`'s test
+  correct and easy to verify by test (see `meridian-runtime-threads`'s test
   suite: sequential-dependency, diamond-dependency, and independent-jobs
   cases, run repeatedly to catch flakiness). Per-worker work-stealing
   deques would only help at job counts far above a frame's (the 10 000-job
@@ -51,31 +51,28 @@ the graph — not a hardcoded call order — determines what can overlap.
   frame profile shows queue contention, not before. The public API
   (`JobGraph`, `Scheduler::run`) doesn't change when that swap happens.
 
-## Relationship to `compute-runtime`
+## Relationship to `compute-app`
 
-`task-core` schedules CPU-side jobs (systems, subsystem updates).
-`meridian-compute-runtime` is the separate, explicit path for SIMD/GPU compute
+`runtime-threads` schedules CPU-side jobs (systems, subsystem updates).
+`meridian-compute-app` is the separate, explicit path for SIMD/GPU compute
 dispatch used by physics, rendering, and future animation/particles/AI work
-— see [dependency-rules.md](dependency-rules.md) rule 5. `compute-runtime`
-itself depends on `task-core` for CPU-side scheduling of that compute work,
-but the two are not the same layer: `task-core` doesn't know what a compute
-buffer is, and `compute-runtime` doesn't schedule general application logic.
+— see [dependency-rules.md](dependency-rules.md) rule 5. `compute-app`
+itself depends on `runtime-threads` for CPU-side scheduling of that compute work,
+but the two are not the same layer: `runtime-threads` doesn't know what a compute
+buffer is, and `compute-app` doesn't schedule general application logic.
 
-## `engine-core`'s `FrameScheduler`
+## `runtime-app`'s `JobExecutor` port
 
-`meridian-engine-core::FrameScheduler` is the engine-layer application of
-`Scheduler` above — real and tested on its own terms, sized by default to
-the real detected CPU thread count (`platform-core::CpuCapabilities`), not
-a hardcoded guess. `Runtime::tick`, however, does *not* run physics and
-audio through it: those are the only two real per-frame systems today, and
-they have a genuine sequential data dependency (audio reads the emitter
-frames physics just updated), not two independent branches like the
-Physics/Audio split in the "shape of a frame" diagram above implies once
-more systems exist. Wrapping a strictly sequential two-step in a job graph
-would be decorative, not functional. `FrameScheduler` becomes load-bearing
-once a second real per-frame system exists that's genuinely independent of
-physics (animation, particles, ...) to run alongside it — see
-`meridian-engine-core`'s module doc.
+`meridian-runtime-app::Runtime` runs its stages through the `JobExecutor`
+port (ADR 025): it builds a list of `Job`s (name, dependency indices, action)
+every tick and hands it to the executor. `meridian-runtime-threads::TaskExecutor`
+implements the port with the `Scheduler` above, sized by the composition root
+(`meridian_sdk::parallel_runtime` uses the detected CPU thread count from
+`platform-winit`, so `runtime-app` itself never asks). Independent stages run
+in parallel; a stage that depends on another sees its finished work. Stages
+share state through `Shared` handles the composition root passes in, not
+through a runtime-owned hub. `testing::InlineExecutor` is the deterministic
+single-threaded fake.
 
 ## Determinism note
 
