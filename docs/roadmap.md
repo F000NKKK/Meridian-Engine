@@ -627,8 +627,11 @@ priority before writing implementations is keeping that document and the
     `dsl-core` side is done (line/column spans, the `x:` prefix, dotted
     names and property elements, parsed markup extensions, typed
     `ParseErrorKind`), and the `meridian-mel-build` generator
-    (`.mel` -> `.g.rs`, `mel_include!`; used by `magic_figures`).
-    Compiled `{x:Bind}` bindings and event dispatch are next.
+    (`.mel` -> `.g.rs`, `mel_include!`; used by `magic_figures`), whose
+    `{x:Bind}` compiler parses and validates bindings and type-checks
+    them against the `x:ViewModel` at build time. Writing bound values
+    into elements waits for `team/ui-ux`'s binding target model; event
+    dispatch is next.
 
 ## Scaling beyond a tech demo (Minecraft/Satisfactory-class scope)
 
@@ -737,11 +740,14 @@ rest are not started.
    lockstep-style sync, but the actual transport/replication layer is
    unstarted. This is its own multi-month subsystem, not an add-on to
    an existing crate.
-7. **No UI framework.** Inventory, crafting, HUD, building-placement
-   previews — `graphics-core::Scene2D`/`Sprite` exist (a layer-sorted
-   2D plane) but there's no widget/layout/input-routing system built on
-   top. Every UI element today would be hand-assembled sprites with
-   hand-rolled input handling.
+7. **UI framework: runtime started, rendering not.**
+   `meridian-ui-core` ([ADR 018](adr/018-ui-architecture.md)) has the
+   WPF-style element tree, typed properties, measure/arrange layout
+   (`Border`, `StackPanel`, `DockPanel`, `Grid`, `TextBlock`) and hit
+   testing, tested without a GPU. Still missing: extraction to
+   `Scene2D`, text rendering, input routing and controls, styles and
+   templates. Markup literals (`"Auto"`, `"2*"`, `"4,2"`) parse through
+   `PropertyType::parse`.
 8. **Asset pipeline stops at static meshes.** `asset-core::ObjDecoder`
    has no skeletal/skinning support and there's no animation system at
    all — a blocker for any animated creature (Minecraft mobs) or

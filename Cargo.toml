@@ -38,6 +38,7 @@ meridian-sdk = { path = "crates/meridian-sdk", version = "0.5" }
 meridian-dsl-core = { path = "crates/meridian-dsl-core", version = "0.1" }
 meridian-dsl-macros = { path = "crates/meridian-dsl-macros", version = "0.1" }
 meridian-scene = { path = "crates/meridian-scene", version = "0.1" }
+meridian-ui-core = { path = "crates/meridian-ui-core", version = "0.1" }
 meridian-mel-build = { path = "crates/meridian-mel-build", version = "0.1" }
 
 # External dependencies shared by more than one crate go here too, same

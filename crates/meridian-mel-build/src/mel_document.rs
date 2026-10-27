@@ -3,9 +3,9 @@
 
 use std::path::{Path, PathBuf};
 
-use meridian_dsl_core::{Attribute, Element, parse};
+use meridian_dsl_core::{Attribute, Element, MarkupValue, parse};
 
-use crate::{BuildError, InvalidMarkup, NamedElement};
+use crate::{BuildError, InvalidMarkup, NamedElement, PropertyBinding};
 
 const ROOT_ONLY: [&str; 2] = ["Class", "ViewModel"];
 const ANYWHERE: [&str; 2] = ["Name", "Key"];
@@ -20,6 +20,8 @@ pub struct MelDocument {
     pub class: Option<String>,
     /// The root's `x:ViewModel`, a Rust type path.
     pub view_model: Option<String>,
+    /// Every `{x:Bind}`, in document order.
+    pub bindings: Vec<PropertyBinding>,
 }
 
 impl MelDocument {
@@ -36,6 +38,7 @@ impl MelDocument {
             view_model: type_path(path, &root, "ViewModel")?,
             root,
             names: Vec::new(),
+            bindings: Vec::new(),
         };
         let root = document.root.clone();
         document.collect(&root, true)?;
@@ -45,6 +48,9 @@ impl MelDocument {
     fn collect(&mut self, element: &Element, is_root: bool) -> Result<(), BuildError> {
         for attr in &element.attrs {
             self.check_directive(element, attr, is_root)?;
+        }
+        for attr in &element.attrs {
+            self.collect_binding(element, attr)?;
         }
         element
             .children
@@ -77,6 +83,33 @@ impl MelDocument {
                 .map_err(|reason| BuildError::invalid(&self.path, attr.span, reason))?;
             self.add_name(named, attr)?;
         }
+        Ok(())
+    }
+
+    /// Records `attr` if its value is an `{x:Bind}`; runs after the
+    /// element's directives, so its `x:Name` is known.
+    fn collect_binding(&mut self, element: &Element, attr: &Attribute) -> Result<(), BuildError> {
+        let MarkupValue::Extension(extension) = &attr.value else {
+            return Ok(());
+        };
+        if !extension.name.is_directive("Bind") {
+            return Ok(());
+        }
+        let fail = |reason| Err(BuildError::invalid(&self.path, attr.span, reason));
+        if self.view_model.is_none() {
+            return fail(InvalidMarkup::BindingWithoutViewModel);
+        }
+        let named = element
+            .directive("Name")
+            .and_then(Attribute::text)
+            .and_then(|name| self.names.iter().find(|named| named.name == name));
+        let Some(named) = named else {
+            return fail(InvalidMarkup::BindingWithoutName(element.name.to_string()));
+        };
+        let binding =
+            PropertyBinding::new(&named.variant, &attr.name.to_string(), extension, attr.span)
+                .map_err(|reason| BuildError::invalid(&self.path, attr.span, reason))?;
+        self.bindings.push(binding);
         Ok(())
     }
 

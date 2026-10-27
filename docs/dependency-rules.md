@@ -35,7 +35,7 @@ depend on crates in tiers `0..N`, never a same-tier or higher-tier one
 
 ```text
 tier 0  foundation, memory-core, task-core, dsl-macros
-tier 1  numeric-core, platform-core, resource-core, dsl-core
+tier 1  numeric-core, platform-core, resource-core, dsl-core, ui-core
 tier 2  asset-core, audio-driver, gac-core, gpu-driver, mel-build, physics-driver
 tier 3  audio-core, compute-driver, ecs-core, graphics-driver
 tier 4  compute-runtime, scene
@@ -80,6 +80,14 @@ until `ecs-core` has a hierarchy of its own. Nothing depends on it yet; `engine-
 editor host and scene loading are wired up (docs/roadmap.md). The
 `data` features of `numeric-core`/`gac-core` add no internal edge — only
 the optional external `substrate-data` dependency.
+
+`meridian-ui-core` (tier 1, on `foundation` and `memory-core` only) is the
+WPF-style UI runtime of [ADR 018](adr/018-ui-architecture.md): element
+tree, typed properties, layout and hit testing. It deliberately has no
+edge to `graphics-core`, `platform-core` or `ecs-core`: turning a laid-out
+tree into `Scene2D` renderables and feeding it `InputState` are the job of
+a later adapter above both (rule 7: orchestration lives at the top), not of
+this crate.
 
 This shows *depth*, not *which crate depends on which* — two crates in
 the same tier aren't necessarily related at all (`audio-core` and
@@ -226,6 +234,7 @@ bottom-up.
 - `meridian-dsl-core` -> `meridian-foundation`
 - `meridian-dsl-macros` -> (nothing; external `syn`/`quote`/`proc-macro-crate` only)
 - `meridian-mel-build` -> `meridian-dsl-core`
+- `meridian-ui-core` -> `meridian-foundation`, `meridian-memory-core`
 - `meridian-sdk` -> `meridian-asset-core`, `meridian-audio-core`, `meridian-dsl-core`, `meridian-dsl-macros`, `meridian-engine-core`, `meridian-foundation`, `meridian-gac-core`, `meridian-graphics-core`, `meridian-graphics-driver`, `meridian-physics-core`, `meridian-platform-core`, `meridian-task-core`
 
 `meridian-engine-core` lists `meridian-graphics-core` as an allowed edge
