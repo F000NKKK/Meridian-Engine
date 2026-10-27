@@ -1368,13 +1368,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "meridian-physics-driver"
-version = "0.10.0"
-dependencies = [
- "meridian-platform-core",
-]
-
-[[package]]
 name = "meridian-platform-core"
 version = "0.12.0"
 dependencies = [

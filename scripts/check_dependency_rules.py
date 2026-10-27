@@ -55,7 +55,6 @@ ALLOWED = {
     "meridian-asset-core": {"meridian-foundation"},
     "meridian-graphics-driver": {"meridian-foundation", "meridian-platform-core", "meridian-gpu-driver"},
     "meridian-audio-driver": {"meridian-foundation", "meridian-platform-core"},
-    "meridian-physics-driver": {"meridian-platform-core"},
     "meridian-graphics-core": {
         "meridian-foundation",
         "meridian-gac-core",

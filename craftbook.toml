@@ -91,11 +91,6 @@ context = "physics"
 profile = "perf"
 
 [[crate]]
-name = "meridian-physics-driver"
-layer = "infra"
-context = "physics"
-
-[[crate]]
 name = "meridian-physics-compute"
 layer = "infra"
 context = "physics"

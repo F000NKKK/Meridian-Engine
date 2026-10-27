@@ -24,7 +24,7 @@ two layers today is listed under the one it is moving to; Craftbook's
 | compute | application + adapters | `compute-runtime` (app), `compute-driver` (infra), `gpu-driver` (infra) | compute context, kernels, dispatch size, untyped buffers, GPU device |
 | assets | domain | `asset-core` (domain; codecs move to adapters in wave 5) | decoded images, meshes, audio, shader sources, decoders |
 | rendering | domain + adapter | `graphics-core` (domain), `graphics-driver` (infra) | scenes, cameras, lights, materials, render graph, frame submission |
-| physics | domain + adapters | `physics-core` (domain, perf), `physics-compute` (infra), `physics-driver` (infra, to be deleted) | rigid bodies, colliders, contacts, solver, integrator, soft bodies |
+| physics | domain + adapters | `physics-core` (domain, perf), `physics-compute` (infra) | rigid bodies, colliders, contacts, solver, integrator, soft bodies |
 | audio | domain + adapter | `audio-core` (domain), `audio-driver` (infra) | listener, emitters, speakers, mixer, DSP graph |
 | ui | domain + adapter | `ui-core` (domain), `mel-build` (infra: build-time `.mel` generator), `ui-render` (infra: adapter from the UI tree to `graphics-core::Scene2d`) | element tree, typed properties, layout, hit testing, generated bindings |
 | data | infrastructure | `scene` (infra: Substrate Data scene documents) | scene document schema and migration |
@@ -50,7 +50,7 @@ dependencies need one of these:
 | rendering → platform | customer–supplier | window handle for the surface |
 | compute → platform | customer–supplier | GPU/CPU capability report |
 | audio → platform | customer–supplier | capability report |
-| physics → platform | customer–supplier | capability report (`physics-driver`) |
+| physics → platform | customer–supplier | `CpuCapabilities` (`platform-core`) |
 | runtime → physics, audio, rendering, platform, assets, compute | customer–supplier | each context's published API, called by runtime use cases |
 | ui → rendering | customer–supplier | `ui-render` extracts the UI tree into `graphics-core::Scene2d` (ADR 021) |
 | editor → data | customer–supplier | the protocol carries scene documents and entity refs |

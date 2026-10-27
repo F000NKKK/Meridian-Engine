@@ -77,7 +77,6 @@ Meridian-Engine — небольшой устойчивый набор крей�
 | [`meridian-compute-driver`](crates/meridian-compute-driver) | compute | Диспетчеризация вычислений на CPU-SIMD и GPU |
 | [`meridian-graphics-driver`](crates/meridian-graphics-driver) | rendering | Графическое устройство, поверхности, конвейеры рендера |
 | [`meridian-audio-driver`](crates/meridian-audio-driver) | audio | Устройство вывода звука через `cpal` |
-| [`meridian-physics-driver`](crates/meridian-physics-driver) | physics | Отчёт о бэкенде выполнения физики (будет удалён, ADR 019) |
 | [`meridian-gac-compute`](crates/meridian-gac-compute) | geometry | Пакетные ядра `Motor3` на CPU-SIMD и GPU |
 | [`meridian-physics-compute`](crates/meridian-physics-compute) | physics | Пакетные ядра твёрдых и мягких тел |
 | [`meridian-scene`](crates/meridian-scene) | data | Документы `.mscene` на Substrate Data, загрузка и сохранение `World` |

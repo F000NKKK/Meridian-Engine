@@ -2,9 +2,8 @@
 //! `*-driver` backend implements (the "devices" view of the platform).
 
 /// Backend capability reporting shared by every `*-driver` crate's own
-/// capability type (`compute-driver::ComputeCapabilities`,
-/// `physics-driver::PhysicsBackend`, and future `graphics-driver`/
-/// `audio-driver` equivalents). CPU and GPU are deliberately separate
+/// capability type (`compute-driver::ComputeCapabilities` and future
+/// `graphics-driver`/`audio-driver` equivalents). CPU and GPU are deliberately separate
 /// capability shapes, not one bag of fields with a `gpu: bool` flag: CPU
 /// capability is "how many threads" (a number, always present); GPU
 /// capability is a completely different shape (device name, VRAM,
@@ -44,7 +43,7 @@ impl CpuCapabilities {
 /// GPU-side capability info. `device_name` is real, populated by
 /// `graphics-driver::Device` (the first `*-driver` crate with an actual
 /// GPU backend — see that crate's module doc for the `wgpu` details);
-/// `compute-driver`/`physics-driver`/`audio-driver` still report `gpu:
+/// `compute-driver`/`audio-driver` still report `gpu:
 /// None` since none of them dispatch to a GPU yet. More fields (VRAM, max
 /// workgroup size, ...) land here once a backend needs to report them —
 /// additive, not a redesign of the `Option`-based shape in

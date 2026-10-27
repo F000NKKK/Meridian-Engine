@@ -26,7 +26,7 @@
 use meridian_platform_core::{BackendCapabilities, CpuCapabilities, GpuCapabilities};
 
 /// Backend capability flags. Embeds `platform-core`'s [`CpuCapabilities`]
-/// (the shape shared with `physics-driver::PhysicsBackend` and
+/// (the shape shared with future
 /// `graphics-driver`/`audio-driver` equivalents) rather than redeclaring
 /// `threads`; `gpu` is `None` for [`ComputeDevice`] (the CPU backend has
 /// no GPU to report) and `Some(GpuCapabilities { .. })` for

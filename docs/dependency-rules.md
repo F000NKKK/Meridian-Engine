@@ -54,7 +54,7 @@ depend on crates in tiers `0..N`, never a same-tier or higher-tier one
 ```text
 tier 0  foundation, memory-core, task-core, dsl-macros
 tier 1  asset-core, dsl-core, numeric-core, platform-core, resource-core, ui-core
-tier 2  audio-driver, gac-core, gpu-driver, mel-build, physics-driver
+tier 2  audio-driver, gac-core, gpu-driver, mel-build
 tier 3  audio-core, compute-driver, ecs-core, graphics-driver, physics-core
 tier 4  compute-runtime, graphics-core, scene
 tier 5  editor-protocol, gac-compute
@@ -261,7 +261,6 @@ bottom-up.
 - `meridian-graphics-driver` -> `meridian-foundation`, `meridian-gpu-driver`, `meridian-platform-core`
 - `meridian-compute-driver` -> `meridian-gpu-driver`, `meridian-platform-core`
 - `meridian-audio-driver` -> `meridian-foundation`, `meridian-platform-core`
-- `meridian-physics-driver` -> `meridian-platform-core`
 - `meridian-compute-runtime` -> `meridian-compute-driver` (pending, wave 5)
 - `meridian-gac-compute` -> `meridian-compute-runtime`, `meridian-gac-core`, `meridian-gpu-driver`, `meridian-numeric-core`
 - `meridian-asset-core` -> `meridian-foundation`
@@ -371,12 +370,11 @@ crates it belongs to (wave 6). Applications depend on `sdk` alone.
    reloaded does not. It must never define a manager type (same rule as
    asset-core, rule 4) and must depend on nothing but `memory-core`. See
    [ADR 006](adr/006-resource-core-separation.md).
-9. **`meridian-physics-driver` owns no collision algorithms and has no
-   dependents.** It only reports CPU capabilities; BVH construction, spatial
-   hashing and broad-phase structures are domain logic in `physics-core`
-   (see [physics-design.md](physics-design.md)). `physics-core` no longer
-   depends on it; the crate is deleted in wave 5 and its capability report
-   moves to the platform context (ADR 019).
+9. **Physics has no driver crate.** The unused `meridian-physics-driver`
+   (a capability report and a step counter nobody called) was deleted in
+   wave 5 (ADR 019); `CpuCapabilities` already lives in `platform-core`.
+   BVH construction, spatial hashing and broad-phase structures are domain
+   logic in `physics-core` (see [physics-design.md](physics-design.md)).
 
 10. **`meridian-gac-core` and `meridian-compute-runtime` never depend on
     each other, in either direction.** `gac-core` stays pure geometric

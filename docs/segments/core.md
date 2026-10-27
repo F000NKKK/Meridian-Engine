@@ -34,7 +34,7 @@ every domain adapter builds on.
 - `team/rendering`: `gpu-driver`, `graphics-driver`, `graphics-core`. Core
   keeps `compute-driver` on top of `gpu-driver` but does not own `wgpu`
   device mechanics.
-- `team/physics`: `physics-driver`, `physics-core`, `physics-compute`.
+- `team/physics`: `physics-core`, `physics-compute`.
   Core owns the `GaFlavor` traits and `gac-core` shapes they are generic
   over; physics must reuse them, not copy them.
 - `team/audio`: `audio-driver`, `audio-core`. Core owns the audio decoders

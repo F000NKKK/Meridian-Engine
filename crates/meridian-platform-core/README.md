@@ -20,7 +20,7 @@ assert!(time.delta_seconds >= 0.0);
 ## Depends on / used by
 
 - Depends on: [`meridian-foundation`](../meridian-foundation)
-- Used by: [`meridian-audio-driver`](../meridian-audio-driver), [`meridian-compute-driver`](../meridian-compute-driver), [`meridian-engine-core`](../meridian-engine-core), [`meridian-gpu-driver`](../meridian-gpu-driver), [`meridian-graphics-driver`](../meridian-graphics-driver), [`meridian-physics-driver`](../meridian-physics-driver), [`meridian-sdk`](../meridian-sdk)
+- Used by: [`meridian-audio-driver`](../meridian-audio-driver), [`meridian-compute-driver`](../meridian-compute-driver), [`meridian-engine-core`](../meridian-engine-core), [`meridian-gpu-driver`](../meridian-gpu-driver), [`meridian-graphics-driver`](../meridian-graphics-driver), [`meridian-sdk`](../meridian-sdk)
 
 ## License
 

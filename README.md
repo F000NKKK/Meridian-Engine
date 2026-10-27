@@ -78,7 +78,6 @@ crate has its own README.
 | [`meridian-compute-driver`](crates/meridian-compute-driver) | compute | CPU-SIMD and GPU compute dispatch |
 | [`meridian-graphics-driver`](crates/meridian-graphics-driver) | rendering | Graphics device, surfaces, render pipelines |
 | [`meridian-audio-driver`](crates/meridian-audio-driver) | audio | Audio output device via `cpal` |
-| [`meridian-physics-driver`](crates/meridian-physics-driver) | physics | Physics execution backend report (to be deleted, ADR 019) |
 | [`meridian-gac-compute`](crates/meridian-gac-compute) | geometry | Batch `Motor3` kernels on CPU-SIMD and GPU |
 | [`meridian-physics-compute`](crates/meridian-physics-compute) | physics | Batched rigid-body and soft-body kernels |
 | [`meridian-scene`](crates/meridian-scene) | data | `.mscene` documents on Substrate Data, `World` load/save |
