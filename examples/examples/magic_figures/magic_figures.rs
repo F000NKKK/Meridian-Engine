@@ -24,6 +24,7 @@
 
 mod app;
 mod glow;
+mod hud;
 mod music_rig;
 mod orbit;
 /// The code generated from `assets/scenes/magic_figures.mel` by this
@@ -40,6 +41,7 @@ mod sun;
 
 use app::App;
 pub(crate) use glow::Glow;
+pub(crate) use hud::Hud;
 use meridian_sdk::run_windowed_app;
 pub(crate) use music_rig::MusicRig;
 pub(crate) use orbit::{ORBIT_RADIUS, OrbitTag, orbit_position};

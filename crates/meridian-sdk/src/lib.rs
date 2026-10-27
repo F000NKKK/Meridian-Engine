@@ -24,6 +24,7 @@ mod any_image_decoder;
 pub mod assets;
 pub mod dsl;
 mod fly_controls;
+mod overlay_builder;
 pub mod render;
 mod runtime;
 pub mod scene;
@@ -74,10 +75,10 @@ pub use meridian_rendering_app::{
 };
 // -- meridian-rendering-domain: scene/material/lighting/submission --
 pub use meridian_rendering_domain::{
-    Camera, FlyCamera, FlyControls, Frustum, Light, Material, MaterialHandle, MaterialRegistry,
-    MeshHandle, MeshRegistry, MeshSource, Renderable3d, Scene2d, Scene3d, TextureHandle,
-    cube_mesh_source, ground_mesh_source, icosphere_mesh_source, look_at_rotor,
-    pyramid_mesh_source, smooth_normals,
+    Camera, Camera2d, ClipRect, ClipSpan, FlyCamera, FlyControls, Frustum, Light, Material,
+    MaterialHandle, MaterialRegistry, MeshHandle, MeshRegistry, MeshSource, Overlay2d,
+    Renderable3d, Scene2d, Scene3d, Sprite, TextureHandle, cube_mesh_source, ground_mesh_source,
+    icosphere_mesh_source, look_at_rotor, pyramid_mesh_source, smooth_normals,
 };
 // -- meridian-rendering-wgpu: the GPU device a windowed app opens once --
 pub use meridian_rendering_wgpu::{
@@ -93,6 +94,6 @@ pub use meridian_runtime_app::{
 pub use meridian_runtime_threads::TaskExecutor;
 /// The retained UI runtime (ADR 018), named by generated `.mel` glue.
 pub use meridian_ui_domain as ui_core;
-pub use render::{RenderStage, render_frame};
+pub use render::{RenderStage, compose_frame, render_frame};
 pub use runtime::parallel_runtime;
 pub use scene::GraphicsSession;

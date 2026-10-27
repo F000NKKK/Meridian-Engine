@@ -1,7 +1,7 @@
 //! What an application renders with: a recorder plus the registries its scenes resolve against.
 
 use meridian_rendering_domain::scene::Scene3d;
-use meridian_rendering_domain::{MaterialRegistry, MeshRegistry};
+use meridian_rendering_domain::{MaterialRegistry, MeshRegistry, Overlay2d};
 
 use crate::{FrameOutcome, FrameRecorder, FrameRequest};
 
@@ -39,10 +39,23 @@ impl<R: FrameRecorder> RenderSession<R> {
         clear_color: [f64; 4],
         target_size: (u32, u32),
     ) -> FrameOutcome {
+        self.render_with_overlays(scene, &[], clear_color, target_size)
+    }
+
+    /// [`render`](Self::render) with `overlays` (UI, HUD) drawn over the 3D
+    /// frame, in slice order.
+    pub fn render_with_overlays(
+        &mut self,
+        scene: &Scene3d,
+        overlays: &[Overlay2d],
+        clear_color: [f64; 4],
+        target_size: (u32, u32),
+    ) -> FrameOutcome {
         let request = FrameRequest {
             scene,
             meshes: &self.meshes,
             materials: &self.materials,
+            overlays,
             clear_color,
         };
         let outcome = self.recorder.record_frame(&request);
@@ -69,6 +82,16 @@ mod tests {
         let outcome = session.render(&Scene3d::default(), [0.0; 4], (8, 8));
         assert_eq!(outcome, FrameOutcome::Presented);
         assert_eq!(session.recorder.presented(), 1);
+    }
+
+    #[test]
+    fn overlays_reach_the_recorder() {
+        let mut session = RenderSession::new(FakeFrameRecorder::new(8, 8));
+        let overlays = [Overlay2d::default(), Overlay2d::default()];
+        let outcome =
+            session.render_with_overlays(&Scene3d::default(), &overlays, [0.0; 4], (8, 8));
+        assert_eq!(outcome, FrameOutcome::Presented);
+        assert_eq!(session.recorder.overlays_drawn(), 2);
     }
 
     #[test]

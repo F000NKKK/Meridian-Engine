@@ -34,6 +34,7 @@ mod depth_texture;
 mod devices;
 mod gpu_frame_recorder;
 mod gpu_texture_store;
+mod overlay_pass;
 mod render_pass;
 mod render_pipeline;
 mod shader_stages;
