@@ -1,14 +1,14 @@
 //! A free-fly camera.
 //!
 //! The camera uses `gac-core`'s local-forward `+X` convention (see
-//! [`look_at_rotor`] and [`FlyCamera::yaw`]'s own doc) and composes its
+//! [`look_at_rotor`](crate::look_at_rotor) and [`FlyCamera::yaw`]'s own doc) and composes its
 //! view rotor as yaw-then-pitch around the yawed local-right axis,
-//! avoiding the roll problem [`look_at_rotor`] has when pitch changes.
+//! avoiding the roll problem [`look_at_rotor`](crate::look_at_rotor) has when pitch changes.
 
 use meridian_gac_core::{Motor3, Vec3};
 
 use super::FlyControls;
-use crate::{Camera, look_at_rotor};
+use crate::Camera;
 
 /// A free-fly camera: WASD to move (relative to the way it's currently
 /// looking, not world axes), Space/Ctrl for up/down, mouse to look
@@ -23,7 +23,7 @@ use crate::{Camera, look_at_rotor};
 pub struct FlyCamera {
     pub position: Vec3,
     /// Radians, measured from `+X` toward `+Z` (matches `Vec3::X` being
-    /// `gac-core`'s local-forward convention — see [`look_at_rotor`]).
+    /// `gac-core`'s local-forward convention — see [`look_at_rotor`](crate::look_at_rotor)).
     pub yaw: f32,
     /// Radians, clamped just short of &plusmn;90&deg; to avoid a gimbal
     /// flip at the poles.
@@ -54,7 +54,7 @@ impl FlyCamera {
     /// mouse motion, not cursor-position-based, so it keeps working once the
     /// caller grabs the cursor — a locked cursor stops generating position
     /// deltas entirely.
-    pub fn update(&mut self, controls: &FlyControls, dt: f32) {
+    pub fn update(&mut self, controls: FlyControls, dt: f32) {
         let (dx, dy) = controls.look;
         self.yaw += dx * self.look_sensitivity;
         self.pitch = (self.pitch - dy * self.look_sensitivity).clamp(
@@ -96,7 +96,7 @@ impl FlyCamera {
     }
 
     /// The view rotor: yaw around world `+Y`, *then* pitch around the
-    /// yaw-rotated local-right axis — not [`look_at_rotor`]. That
+    /// yaw-rotated local-right axis — not [`look_at_rotor`](crate::look_at_rotor). That
     /// helper picks the shortest-arc rotation from local-forward to a
     /// target direction, which is ambiguous about roll (many rotations
     /// take `+X` to a given `forward`, and the shortest-arc choice drifts

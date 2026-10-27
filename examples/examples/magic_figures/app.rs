@@ -197,7 +197,7 @@ impl AppHandler for App {
         let frame_dt = (now - self.last_frame).as_secs_f32().min(0.1);
         self.last_frame = now;
         if self.cursor_grabbed {
-            self.camera.update(&fly_controls(input), frame_dt);
+            self.camera.update(fly_controls(input), frame_dt);
         }
 
         let elapsed = now.duration_since(self.start).as_secs_f32();

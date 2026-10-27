@@ -80,7 +80,7 @@ mod tests {
         assert_eq!(outcome, FrameOutcome::TargetUnavailable);
         assert_eq!(session.recorder.size(), [640, 480]);
 
-        let outcome = session.render(&Scene3d::default(), [0.0; 4], (640, 480));
-        assert_eq!(outcome, FrameOutcome::Presented);
+        let retried = session.render(&Scene3d::default(), [0.0; 4], (640, 480));
+        assert_eq!(retried, FrameOutcome::Presented);
     }
 }

@@ -25,8 +25,8 @@ pub fn icosphere_mesh_source(subdivisions: u32, radius: f32) -> MeshSource {
         .map(|v| {
             let n = v.normalize();
             let u = 0.5 + n.z.atan2(n.x) / std::f32::consts::TAU;
-            let v = 0.5 - n.y.asin() / std::f32::consts::PI;
-            [u, v]
+            let t = 0.5 - n.y.asin() / std::f32::consts::PI;
+            [u, t]
         })
         .collect();
     let mut indices = Vec::new();

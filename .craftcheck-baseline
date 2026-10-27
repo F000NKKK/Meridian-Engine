@@ -15,6 +15,7 @@ crates/meridian-foundation/src/crash_reporting.rs	C108	CrashReportConfig	1
 crates/meridian-foundation/src/crash_reporting.rs	S701		1
 crates/meridian-gac-compute/src/fixed_wgsl/arithmetic_lib.rs	C101		1
 crates/meridian-gac-compute/src/fixed_wgsl/tests.rs	C101		1
+crates/meridian-graphics-core/src/fly/tests.rs	C101		1
 crates/meridian-graphics-core/src/mesh_handle.rs	C108	MeshMarker	1
 crates/meridian-graphics-core/src/scene.rs	C101		1
 crates/meridian-graphics-core/src/scene.rs	C108	BlendMode	1
@@ -63,8 +64,6 @@ crates/meridian-sdk/src/assets.rs	C101		1
 crates/meridian-sdk/src/assets.rs	C108	AssetCache	1
 crates/meridian-sdk/src/assets.rs	C108	AudioTrack	1
 crates/meridian-sdk/src/assets.rs	S701		5
-crates/meridian-sdk/src/camera/mod.rs	C108	FlyCamera	1
-crates/meridian-sdk/src/camera/tests.rs	C101		1
 crates/meridian-sdk/src/dsl.rs	C108	Entity	1
 crates/meridian-sdk/src/dsl.rs	C108	Material	1
 crates/meridian-sdk/src/dsl.rs	C108	Mesh	1

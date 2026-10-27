@@ -5,6 +5,10 @@
 /// mouse onto it (`meridian-sdk::fly_controls`), so the camera itself needs
 /// no platform types.
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "a snapshot of independent held keys; each is its own input, not a state"
+)]
 pub struct FlyControls {
     /// Move along the way the camera faces (W).
     pub forward: bool,

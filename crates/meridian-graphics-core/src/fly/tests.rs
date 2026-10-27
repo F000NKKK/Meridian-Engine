@@ -99,7 +99,7 @@ fn rotor_and_forward_horiz_agree() {
 fn simulate(dt: f32, speed: f32, keys: &[Key]) -> Vec3 {
     let mut cam = FlyCamera::new(Vec3::ZERO);
     cam.move_speed = speed;
-    cam.update(&controls_for(keys), dt);
+    cam.update(controls_for(keys), dt);
     cam.position
 }
 
@@ -107,7 +107,7 @@ fn simulate_at(yaw: f32, dt: f32, speed: f32, keys: &[Key]) -> Vec3 {
     let mut cam = FlyCamera::new(Vec3::ZERO);
     cam.yaw = yaw;
     cam.move_speed = speed;
-    cam.update(&controls_for(keys), dt);
+    cam.update(controls_for(keys), dt);
     cam.position
 }
 
@@ -270,7 +270,7 @@ fn shift_multiplies_move_speed() {
 fn mouse_affects_yaw() {
     let mut cam = FlyCamera::new(Vec3::ZERO);
     let start_yaw = cam.yaw;
-    cam.update(&looking(100.0, 0.0), 1.0);
+    cam.update(looking(100.0, 0.0), 1.0);
     assert!(
         (cam.yaw - start_yaw).abs() > 0.001,
         "mouse dx should change yaw"
@@ -281,7 +281,7 @@ fn mouse_affects_yaw() {
 fn mouse_affects_pitch() {
     let mut cam = FlyCamera::new(Vec3::ZERO);
     let start_pitch = cam.pitch;
-    cam.update(&looking(0.0, 100.0), 1.0);
+    cam.update(looking(0.0, 100.0), 1.0);
     assert!(
         (cam.pitch - start_pitch).abs() > 0.001,
         "mouse dy should change pitch"
@@ -292,16 +292,16 @@ fn mouse_affects_pitch() {
 fn pitch_clamping() {
     let mut cam = FlyCamera::new(Vec3::ZERO);
     // Try to exceed ±90°
-    cam.update(&looking(0.0, -1e6), 1.0);
+    cam.update(looking(0.0, -1e6), 1.0);
     assert!(cam.pitch > -core::f32::consts::FRAC_PI_2 + 0.009);
-    cam.update(&looking(0.0, 1e6), 1.0);
+    cam.update(looking(0.0, 1e6), 1.0);
     assert!(cam.pitch < core::f32::consts::FRAC_PI_2 - 0.009);
 }
 
 #[test]
 fn zero_movement_does_not_change_position() {
     let mut cam = FlyCamera::new(Vec3::new(10.0, -5.0, 3.0));
-    cam.update(&FlyControls::default(), 1.0);
+    cam.update(FlyControls::default(), 1.0);
     assert_eq!(cam.position, Vec3::new(10.0, -5.0, 3.0));
 }
 
