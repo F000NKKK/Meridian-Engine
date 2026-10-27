@@ -2,14 +2,14 @@
 
 ## Current state
 
-`meridian-foundation`, `meridian-numeric-core`, and `meridian-gac-core` have
+`meridian-diagnostics`, `meridian-numeric`, and `meridian-gac` have
 real implementations: `Vec3`, `Rotor`, `Motor3`, and the underlying 16-blade
 `Multivector` geometric product, with a test suite that cross-checks
 rotation against an independent Rodrigues-formula oracle and validates the
 parent/child transform-hierarchy milestone below (`cargo test -p
-meridian-gac-core`).
+meridian-gac`).
 
-`meridian-foundation` also owns the workspace's log kernel (`log_error!`..
+`meridian-diagnostics` also owns the workspace's log kernel (`log_error!`..
 `log_trace!` macros, stderr + an in-memory ring, the `LogSink` port);
 `meridian-diagnostics-fs` is the adapter: a buffered async file sink on a
 dedicated tokio thread (Error/Warn/Info file levels, 7-day-default
@@ -22,16 +22,16 @@ of silently skipping frames forever (the "gray window" failure). See
 dependency-rules.md rule 0 for why foundation is the open bottom of the
 graph.
 
-Step 3 (`memory-core`/`task-core`/`platform-core`) is also real and tested:
-- `meridian-memory-core` — generational `ResourcePool<T>` (stale-handle
+Step 3 (`memory`/`runtime-threads`/`platform-winit`) is also real and tested:
+- `meridian-memory` — generational `ResourcePool<T>` (stale-handle
   detection via generation bump on reuse) and `FrameArena<T>`/
   `PersistentArena<T>` (safe bump-style lists, `reset()` retains capacity).
-- `meridian-task-core` — `JobGraph`/`Scheduler`: dependency-ordered
+- `meridian-runtime-threads` — `JobGraph`/`Scheduler`: dependency-ordered
   execution on a persistent worker pool (spawned once with the
   `Scheduler`), panics on a cycle instead of hanging, re-raises a job's panic
   from `run`. Deliberately a shared mutex-guarded ready-queue rather than
   per-worker work-stealing deques — see docs/threading-model.md.
-- `meridian-platform-core` — `Time`/`Clock` and `InputState` (held/
+- `meridian-platform-winit` — `Time`/`Clock` and `InputState` (held/
   pressed-this-frame/released-this-frame key state, mouse position+delta)
   are real; `BackendCapabilities`/`CpuCapabilities`/`GpuCapabilities`
   (shared by every `*-driver` crate's own capability type) are real;
@@ -40,52 +40,52 @@ Step 3 (`memory-core`/`task-core`/`platform-core`) is also real and tested:
   `dlopen`/`LoadLibrary` FFI) are real too — neither is a stub anymore.
 
 Steps 4-6 are real and tested:
-- `meridian-resource-core` — `Version::next()`, and `DependencyGraph`
+- `meridian-resource` — `Version::next()`, and `DependencyGraph`
   (tracks declared `ResourceDependency` edges by `Handle`, answers
   `depends_on`/`would_cycle` — topology only, never owns resource data or
   lifetime, per rule 8).
-- `meridian-ecs-core` — a real archetype `World`: type-erased SoA columns
+- `meridian-ecs` — a real archetype `World`: type-erased SoA columns
   (checked `downcast`, no `unsafe`), archetype migration on `insert`/
   `remove`, single-component `Query`/`QueryMut`, and two-to-four-component
   `World::query_many`/`query_many_mut` (safe: `HashMap::get_disjoint_mut`
   hands out the disjoint columns, see docs/ecs-design.md).
-- `meridian-compute-driver`/`meridian-compute-runtime`/`meridian-gac-compute`
+- `meridian-compute-wgpu`/`meridian-compute-app`/`meridian-gac-wgpu`
   — a real CPU-parallel dispatch pipeline (`std::thread::scope`, no
   `unsafe`), with `MotorTransformKernel`/`MotorComposeKernel` batching
-  `Motor3` composition, cross-checked against direct `gac-core` calls at
-  2000+/500+ item batches. `compute-driver` also has a real GPU backend
-  now (`GpuComputeDevice`, shared `wgpu` mechanics with `graphics-driver`
-  via `meridian-gpu-driver`), reachable through
-  `compute-runtime::ComputeContext::with_gpu` — see "Not yet decided"
+  `Motor3` composition, cross-checked against direct `gac` calls at
+  2000+/500+ item batches. `compute-wgpu` also has a real GPU backend
+  now (`GpuComputeDevice`, shared `wgpu` mechanics with `rendering-wgpu`
+  via `meridian-gpu-wgpu`), reachable through
+  `compute-app::ComputeContext::with_gpu` — see "Not yet decided"
   below ([ADR 011](adr/011-shared-gpu-driver-crate.md)). `MotorTransformKernel`/
   `MotorComposeKernel` themselves still only dispatch through
-  `compute-runtime`'s CPU `parallel_for` path — wiring their own
+  `compute-app`'s CPU `parallel_for` path — wiring their own
   GPU-dispatching variant is separate follow-up. What *does* dispatch on
-  GPU today: `gac-compute::fixed_wgsl`, real Q16.16 `Fixed`-point
+  GPU today: `gac-wgpu::fixed_wgsl`, real Q16.16 `Fixed`-point
   `+`/`-`/`*`/`/` running as WGSL compute shaders (32x32->64 multiply/
   divide emulated from 32-bit words — WGSL has no native `i64`), proven
   bit-for-bit identical to the CPU `Fixed` implementation across ~1000
   operand pairs per operation, not just numerically close (`cargo test -p
-  meridian-gac-compute fixed_wgsl`) — `sqrt` now included (Newton's
+  meridian-gac-wgpu fixed_wgsl`) — `sqrt` now included (Newton's
   method ported from `isqrt_u64`, same bit-exactness proof), and so is
   CORDIC `sin_cos`/`atan2`: unlike the arithmetic ops, CORDIC needs no
   64-bit emulation (only shifts/adds on a single `i32`, and WGSL's `>>`
   on `i32` is already the same arithmetic sign-extending shift Rust
   uses), so it's a near-literal translation of
-  `numeric-core::fixed`'s `cordic_rotate`/`cordic_vector_angle`, with the
+  `numeric::fixed`'s `cordic_rotate`/`cordic_vector_angle`, with the
   `atan` table and gain/pi constants precomputed on the Rust side and
   embedded as WGSL literals. Same bit-exactness bar, proven against the
   CPU `Fixed::sin_cos`/`atan2` across a full-circle angle sweep and every
-  `atan2` quadrant (`cargo test -p meridian-gac-compute fixed_wgsl`).
+  `atan2` quadrant (`cargo test -p meridian-gac-wgpu fixed_wgsl`).
 
-  A real domain kernel now dispatches through it: `meridian-physics-compute`
+  A real domain kernel now dispatches through it: `meridian-physics-wgpu`
   (a new `meridian-<domain>-compute` adapter crate per rule 11, mirroring
-  `gac-compute`'s shape one layer up) has a GPU soft-body (mass-spring)
+  `gac-wgpu`'s shape one layer up) has a GPU soft-body (mass-spring)
   integration kernel, both flavors — `float` (numerically close to
   `SoftBodyIntegrator::step`, not bit-exact — GPU float summation order
   can differ from the CPU's) and `Fixed` (proven bit-exact against
   `FixedSoftBodyIntegrator::step` across 60 steps, `cargo test -p
-  meridian-physics-compute fixed::`). The reformulation from "iterate
+  meridian-physics-wgpu fixed::`). The reformulation from "iterate
   springs, scatter into both endpoints" (the CPU version, a data race if
   parallelized directly) to "iterate particles, gather from adjacent
   springs" (the GPU version) turned out to have a real bit-exactness trap
@@ -99,11 +99,11 @@ Steps 4-6 are real and tested:
   same canonical direction and spring force, and only the non-canonical
   endpoint negates the *finished* force vector (exact) rather than
   re-deriving it from a negated direction (not exact) — is documented in
-  `meridian-physics-compute::generic`'s module doc as a worked example of
+  `meridian-physics-wgpu::generic`'s module doc as a worked example of
   why "provably symmetric on paper" isn't the same as "bit-exact in
   fixed-point," for the next time this class of reformulation comes up.
 
-  `compute-runtime` also has a real hybrid CPU+GPU dispatch mechanism now:
+  `compute-app` also has a real hybrid CPU+GPU dispatch mechanism now:
   `HybridKernel` (`run_cpu`/`run_gpu`, one method per backend, each
   covering an index range) plus `ComputeContext::run_hybrid`, which
   splits `count` work items between both per a `BackendSplit` policy
@@ -114,7 +114,7 @@ Steps 4-6 are real and tested:
   real doubling kernel (CPU doubles in Rust, GPU doubles via WGSL, both
   write into the same shared output buffer by index) that checks every
   index landed correct regardless of which backend processed it, plus a
-  no-GPU-backend fallback test (`cargo test -p meridian-compute-runtime`).
+  no-GPU-backend fallback test (`cargo test -p meridian-compute-app`).
   This is deliberately *not* an automatic "run this same code on either
   backend" switch — there's no such thing for an arbitrary Rust closure,
   since it has no WGSL equivalent a compiler can derive; a kernel author
@@ -128,29 +128,29 @@ Steps 4-6 are real and tested:
   cheap/simple operations — deliberately deferred rather than built
   speculatively ahead of a concrete caller that needs it.
 
-`physics-core`'s rigid-body engine (`BroadPhase`/`NarrowPhase`/
+`physics-domain`'s rigid-body engine (`BroadPhase`/`NarrowPhase`/
 `ConstraintSolver`/`Integrator`) was, until now, only ever driven by a
-plain CPU `for` loop — the "batching them through `compute-runtime` is
+plain CPU `for` loop — the "batching them through `compute-app` is
 additive later" note earlier in this document. `Integrator`'s half of
-that is real now: `meridian-physics-compute::rigid_body::RigidBodyIntegratorKernel`
+that is real now: `meridian-physics-wgpu::rigid_body::RigidBodyIntegratorKernel`
 batches `Integrator::step` across many independent bodies through one
 `ComputeKernel::dispatch` call instead of a loop, the same shape as
-`gac-compute::MotorTransformKernel`. Unlike this crate's soft-body
+`gac-wgpu::MotorTransformKernel`. Unlike this crate's soft-body
 kernels (`float`/`fixed`, WGSL, float/fixed-split because the GPU
 dispatch itself forces it), `RigidBodyIntegratorKernel` is generic over
 `GaFlavor` and dispatches through `ComputeContext::parallel_for`'s CPU
 backend only — `Integrator::step` has no GPU-dispatch constraint of its
-own (same reasoning as `physics-core`'s own engine being written once
+own (same reasoning as `physics-domain`'s own engine being written once
 and generic, not float/fixed-duplicated), so there's nothing to
 WGSL-port yet, and CPU batching is the real, useful step this phase
 needed. Proven to match calling `Integrator::step` directly, including
 its static-body (`mass <= 0`) skip and a batch above the CPU
-parallel-dispatch threshold (`cargo test -p meridian-physics-compute
+parallel-dispatch threshold (`cargo test -p meridian-physics-wgpu
 rigid_body`). `NarrowPhase::test_pair` is batched too, the same way:
-`meridian-physics-compute::narrow_phase::NarrowPhaseTestPairKernel`
+`meridian-physics-wgpu::narrow_phase::NarrowPhaseTestPairKernel`
 tests many candidate pairs (typically
 `BroadPhase::find_candidate_pairs`'s output) for exact overlap through
-one dispatch, mirroring `gac-compute::MotorComposeKernel`'s
+one dispatch, mirroring `gac-wgpu::MotorComposeKernel`'s
 independent-pairs shape — `test_pair` is one pair in, one
 `Option<Contact<F>>` out, a fixed 1:1 shape, deliberately not
 `NarrowPhase::generate_contacts` (a box-box pair expands to a *variable*
@@ -158,10 +158,10 @@ number of manifold points, which doesn't fit a fixed-size-per-item
 kernel slot). Same proof shape as `RigidBodyIntegratorKernel`: matches
 calling `test_pair` directly pair-for-pair, including which pairs come
 back `None`, across a batch above the parallel-dispatch threshold
-(`cargo test -p meridian-physics-compute narrow_phase`).
+(`cargo test -p meridian-physics-wgpu narrow_phase`).
 `BroadPhase::find_candidate_pairs` is batched too, the same fixed
 one-output-per-item shape:
-`meridian-physics-compute::broad_phase::BroadPhasePairsKernel` tests
+`meridian-physics-wgpu::broad_phase::BroadPhasePairsKernel` tests
 every candidate pair's AABB overlap in parallel (via `RigidBody::aabb`
 — a new public method exposing the same bound `find_candidate_pairs`
 already computed internally, reused rather than re-derived) and returns
@@ -174,7 +174,7 @@ running distinct contacts in parallel races whenever they share a body
 (the common case for a multi-point manifold) and would silently turn
 the solver's deliberately Gauss-Seidel sequential relaxation into
 Jacobi instead, a real behavior change, not just a speed one.
-`meridian-physics-compute::constraint_solver::ConstraintSolverBatchKernel`
+`meridian-physics-wgpu::constraint_solver::ConstraintSolverBatchKernel`
 solves this with graph coloring (`color_contacts`): contacts are
 grouped so no two contacts sharing a body land in the same group, each
 group's contacts run concurrently (real per-body `Mutex` locking, not
@@ -183,20 +183,20 @@ sequential solver's exact dependency order. Proven bit-for-bit
 identical to the sequential `resolve_velocity`/
 `apply_positional_correction` loop on a real multi-point box-on-floor
 manifold, plus a 600-tick settling regression test matching
-`engine-core`'s own sequential-solver test (`cargo test -p
-meridian-physics-compute constraint_solver`). This closes every item
+`runtime-app`'s own sequential-solver test (`cargo test -p
+meridian-physics-wgpu constraint_solver`). This closes every item
 `docs/physics-design.md`'s Compute section named as open — see that
 document for the full breakdown. `NarrowPhase::generate_contacts` is
 batched too — earlier than the other four, in fact:
-`meridian-physics-compute::narrow_phase::GenerateContactsKernel`
+`meridian-physics-wgpu::narrow_phase::GenerateContactsKernel`
 handles its variable-per-pair manifold output (a box-box pair expands
 to up to `MAX_CONTACTS_PER_PAIR` points) with a fixed-size-per-pair
 output slot (`[Option<Contact<F>>; MAX_CONTACTS_PER_PAIR]`, flattened
 back to pair order for the result), rather than a true dynamic
 prefix-sum — the same `MAX_LIGHTS`-style fixed-capacity-array approach
-`graphics-core::submission` uses for its own per-frame uniform array,
+`rendering-domain::submission` uses for its own per-frame uniform array,
 truncating (with a logged warning) only if a pair's manifold ever
-exceeds the cap, which `physics-core::collision::face_manifold`'s own
+exceeds the cap, which `physics-domain::collision::face_manifold`'s own
 `.take(4)` currently guarantees it never does. So all five rigid-body
 pipeline steps — `Integrator`, `BroadPhase::find_candidate_pairs`,
 `NarrowPhase::test_pair`, `NarrowPhase::generate_contacts` and
@@ -204,7 +204,7 @@ pipeline steps — `Integrator`, `BroadPhase::find_candidate_pairs`,
 manifold cap that might someday grow past a small fixed bound) remains
 a hypothetical future refinement, not an open gap.
 
-Step 7 (`asset-core`) is real: BMP (uncompressed 24/32-bit), WAV (PCM
+Step 7 (`asset-domain`) is real: BMP (uncompressed 24/32-bit), WAV (PCM
 16-bit), and a minimal OBJ (positions + triangles) decoder — formats
 simple enough to hand-roll without an external crate. Compressed audio
 is real too: MP3/OGG-Vorbis/FLAC via `symphonia` and Opus via the
@@ -223,22 +223,22 @@ configuration (force either, or `Auto` by estimated decoded size), with
 (video would be a sibling `video/` module) exists. PNG/JPEG/glTF stay on
 the same when-a-concrete-asset-needs-it trigger.
 
-Step 8's physics half (`physics-driver`/`physics-core`) is real: AABB
+Step 8's physics half (`physics-driver`/`physics-domain`) is real: AABB
 broad phase, sphere-sphere/sphere-cuboid/cuboid-cuboid (SAT) narrow phase
 (see below for the `Cuboid` collider shape), an impulse-based constraint
 solver (linear *and* angular — see below), semi-implicit Euler
-integration. `graphics-driver` is real now, headless-only — see "Not yet
-decided" below for the `wgpu` details. `audio-driver` is real, backed by
+integration. `rendering-wgpu` is real now, headless-only — see "Not yet
+decided" below for the `wgpu` details. `audio-cpal` is real, backed by
 `cpal` (see [ADR 012](adr/012-audio-output-via-cpal.md)): async device
 enumeration per ADR 009, and an `AudioStream` that bridges cpal's
 real-time callback model into a push model — the game thread pushes
 interleaved `f32` samples into a bounded ring buffer, the hardware
 callback drains it, blocking-on-full is the backpressure. Only `f32`
-output for now; `audio-core` never appears in its dependency graph — see
+output for now; `audio-domain` never appears in its dependency graph — see
 next.
 
 **GA is used in physics where it actually matters, not decoratively**:
-angular velocity/torque are `gac-core::Bivector3` (angular quantities
+angular velocity/torque are `gac::Bivector3` (angular quantities
 live in so(3), the Lie algebra of rotations — a bivector space, not a
 vector space; using `Vec3` for them would be exactly the
 vector/bivector conflation GA exists to make explicit, not hide), and
@@ -269,12 +269,12 @@ threshold) unchanged, and `physic_figures` additionally sets its solver
 restitution to `0.0` so landings are fully inelastic. Covered by a
 settled-body regression test asserting height stability (no
 bounce-then-clip) across many ticks (`cargo test -p
-meridian-physics-core`, the `drop`/settling tests). See
+meridian-physics-domain`, the `drop`/settling tests). See
 docs/physics-design.md's "Resting-contact stabilization" section for the
 `resolve_velocity`/`apply_positional_correction` split and the
 restitution threshold in detail.
 
-`meridian-audio-core` (the driver-independent half of step 8) is real:
+`meridian-audio-domain` (the driver-independent half of step 8) is real:
 `SpeakerLayout` (mono/stereo-headphones/stereo-speakers/5.0/5.1, one VBAP-lite
 panning algorithm for all of them — see the crate's module doc for the
 `wraps_around` distinction between front-only and real-rear-speaker
@@ -283,10 +283,10 @@ for stereo but not for 5.0/5.1), `AttenuationModel` (OpenAL's inverse-
 clamped-distance model), `Mixer`, and a small `DspGraph`
 (`Gain`/`LowPassFilter`). Validated against a listener at the origin
 facing `+X` with sources placed front/back/left/right and checked across
-every layout (`cargo test -p meridian-audio-core`) — including the front/back
+every layout (`cargo test -p meridian-audio-domain`) — including the front/back
 ambiguity stereo genuinely can't resolve without HRTF (not implemented;
 documented as a real, known limitation, not hidden). On top of the
-`Mixer` path, `audio-core::effects` (one effect per file:
+`Mixer` path, `audio-domain::effects` (one effect per file:
 `Gain`/`LowPassFilter`/`DspGraph`/`BinauralRenderer`) adds the
 physically-motivated headphone spatializer: ITD via fractional-sample
 delay lines, azimuth-dependent head-shadow low-pass on the far ear, rear
@@ -295,47 +295,47 @@ eliminate zipper/crackle when the listener moves — deliberately CPU-side:
 per block it's a few thousand samples of inherently serial IIR work,
 orders of magnitude below GPU dispatch+readback cost; batched
 FFT/HRTF-convolution over many sources is the future
-`audio-effects`/`*-compute` trigger. With `audio-driver`
-real, `audio-core` also owns the output bridge: `Mixer::render_interleaved`
+`audio-effects`/`*-compute` trigger. With `audio-cpal`
+real, `audio-domain` also owns the output bridge: `Mixer::render_interleaved`
 (block rendering to interleaved speaker-order samples) and `AudioOutput`
 (opens the default device with one stream channel per speaker) — audible
 end-to-end via the `magic_figures` example (see below).
 
-`meridian-graphics-core`'s driver-independent half is real: `Camera`
+`meridian-rendering-domain`'s driver-independent half is real: `Camera`
 bridges a `Motor3` world frame into a classical view/projection matrix
-(`Motor3::to_mat4` in `gac-core` plus a fixed local-forward-`+X`-to-view-`-Z`
-remap, reusing `audio-core`'s listener-forward convention for
+(`Motor3::to_mat4` in `gac` plus a fixed local-forward-`+X`-to-view-`-Z`
+remap, reusing `audio-domain`'s listener-forward convention for
 cross-subsystem consistency — see docs/graphics-design.md for the full
 derivation), `Frustum` does Gribb/Hartmann frustum culling against *any*
-`gac-core::Shape` (not just an AABB — see below), and
+`gac::Shape` (not just an AABB — see below), and
 `RenderGraph::execution_order` derives pass ordering from declared
-resource reads/writes (Kahn's algorithm, the same pattern as `task-core`'s
+resource reads/writes (Kahn's algorithm, the same pattern as `runtime-threads`'s
 `JobGraph`, applied to resource conflicts instead of explicit
 dependencies), rejecting write conflicts and cycles rather than guessing
-(`cargo test -p meridian-graphics-core`). Scene extraction, lighting,
+(`cargo test -p meridian-rendering-domain`). Scene extraction, lighting,
 materials-as-shading-inputs, animation and post processing remain scaffolds
-— they need an actual GPU resource to shade against, `graphics-driver`
+— they need an actual GPU resource to shade against, `rendering-wgpu`
 now has real headless `wgpu` resources (see "Not yet decided" below) but
 no window/swapchain yet, so nothing to present a shaded frame to.
 
-`meridian-gac-core` also grew a small shared geometric-primitives set:
-`Aabb` (moved here after it turned out `physics-core` and `graphics-core`
+`meridian-gac` also grew a small shared geometric-primitives set:
+`Aabb` (moved here after it turned out `physics-domain` and `rendering-domain`
 had each independently written the same one), `Sphere`, `Obb` (oriented
 box — `Aabb` is the axis-aligned box variant; a cube is either with equal
 extents, not a separate type), `Cone`, `Plane`, and a `Shape` trait (a
 support-function interface, the same one GJK/EPA-style algorithms use) that
 every one of them implements — so `Plane::contains`/
-`ConvexVolume::intersects` (the generalization of `graphics-core`'s
+`ConvexVolume::intersects` (the generalization of `rendering-domain`'s
 6-plane `Frustum` to any number of planes) are written once, generically,
 instead of once per shape pair. All real and tested (`cargo test -p
-meridian-gac-core`). `Motor3::transform_vector` (rotation-only action on a
+meridian-gac`). `Motor3::transform_vector` (rotation-only action on a
 direction, computed as `transform_point(v) - transform_point(ZERO)`, which
 cancels translation exactly) was added alongside this, and `Obb` was
 changed to store `frame: Motor3` instead of a separate center/orientation
 pair — the same pose convention every rigid body in the workspace already
 used, so a physics `RigidBody`'s own `frame` builds an `Obb` directly.
 
-`physics-core` grew a second collider shape, `ColliderShape::Cuboid`
+`physics-domain` grew a second collider shape, `ColliderShape::Cuboid`
 (`half_extents` only; orientation comes from the owning `RigidBody`'s
 `frame` via `RigidBody::as_obb`) — the point docs/gac-design.md's `Shape`
 section anticipated. `NarrowPhase` now handles sphere-sphere,
@@ -348,17 +348,17 @@ three true principal moments, not a full anisotropic tensor — disclosed on
 that method's doc comment, forced by `ConstraintSolver` only having a
 single scalar `inverse_inertia`. All real and tested, including a
 rotated-box SAT case and a full box-settles-on-box-floor integration test
-(`cargo test -p meridian-physics-core`). See docs/physics-design.md for
+(`cargo test -p meridian-physics-domain`). See docs/physics-design.md for
 the full breakdown.
 
 **Deterministic simulation mode is real** (see "Not yet decided" below for
-the decision this replaces): `meridian-numeric-core::Fixed`, a Q16.16
+the decision this replaces): `meridian-numeric::Fixed`, a Q16.16
 fixed-point number (`i32`-backed) with exact integer `sqrt` and
 CORDIC-based `sin`/`cos`/`atan2` (add/subtract/shift only — no `libm`
 call, which is what makes it exactly reproducible across
 platforms/compilers, unlike `f32`) — split into its own file
-(`numeric-core::fixed`) alongside the existing `f32` flavor
-(`numeric-core::float`), both re-exported at the crate root. `gac-core`
+(`numeric::fixed`) alongside the existing `f32` flavor
+(`numeric::float`), both re-exported at the crate root. `gac`
 grew a `fixed_ga` module (`Fixed`-backed `Multivector`/`Vec3`/`Bivector3`/
 `Rotor`/`Motor3`) alongside the existing `float_ga` (`f32`, the default,
 re-exported at the crate root so nothing downstream changed) — this pair
@@ -372,54 +372,54 @@ named method (`Vec3::to_fixed_lossy`/`FixedVec3::to_float_lossy`, same
 pair for `Bivector3`/`Rotor`/`Motor3`), not `From`/`Into` — deliberately,
 so a precision/determinism-changing cast never looks free at the call
 site; `Vec3`/`FixedVec3` also support direct mixed-type `+`/`-`/`*` built
-on those same named conversions. `gac-compute` grew `Fixed` counterparts
+on those same named conversions. `gac-wgpu` grew `Fixed` counterparts
 too (`FixedMotorTransformKernel`/`FixedMotorComposeKernel`), CPU-dispatch
 only in practice (no GPU backend exists yet to actually dispatch to, not
 a type-level restriction — see that crate's doc comment).
 
 Everything *besides* the algebra itself — `Aabb`/`Sphere`/`Obb`/`Cone`/
-`Plane`/`Shape`/`ConvexVolume`/`Projection`/`Frame` in `gac-core`, and the
-entire `physics-core` engine (`RigidBody`/`ColliderShape`/`Contact`/
+`Plane`/`Shape`/`ConvexVolume`/`Projection`/`Frame` in `gac`, and the
+entire `physics-domain` engine (`RigidBody`/`ColliderShape`/`Contact`/
 `BroadPhase`/`NarrowPhase`/`ConstraintSolver`/`Integrator`) — has no
 GPU-dispatch constraint of its own, so it's written **once**, generic
-over a `GaFlavor` trait (`gac-core::generic::GaFlavor`, bundling
+over a `GaFlavor` trait (`gac::generic::GaFlavor`, bundling
 `ScalarLike`/`VectorLike`/`BivectorLike`/`RotorLike`/`MotorLike`), not
-hand-duplicated per scalar flavor. `gac-core::float_ga`/`fixed_ga` and
-`physics-core::float`/`fixed` each expose thin `FloatFlavor`/`FixedFlavor`
+hand-duplicated per scalar flavor. `gac::float_ga`/`fixed_ga` and
+`physics-domain::float`/`fixed` each expose thin `FloatFlavor`/`FixedFlavor`
 type aliases over that one generic implementation (`float`'s aliases
 re-exported at each crate's root, so existing unparameterized call sites
 are unaffected). This was a correction made partway through the original
-determinism work: `physics-core::deterministic` initially hand-duplicated
+determinism work: `physics-domain::deterministic` initially hand-duplicated
 `RigidBody`/`Integrator`/etc. as `DeterministicBody`/
 `DeterministicIntegrator`/etc. (sphere colliders only, since porting SAT
 by hand was deferred as risky/duplicative) — caught on review as
 duplicating logic with no GPU-dispatch justification, and replaced by the
 generic engine described above. A direct benefit of that correction:
-because `physics-core`'s engine is now generic rather than duplicated,
+because `physics-domain`'s engine is now generic rather than duplicated,
 sphere-sphere, sphere-cuboid *and* cuboid-cuboid (SAT) narrow phase all
 work for the `Fixed` flavor for free — there's no "sphere only" scope
 limit left to track as follow-up. `fixed::RigidBody`/etc. are opt-in, not
 a replacement: `float::RigidBody` (aliased at the crate root) and the
-rest of `physics-core`'s default pipeline are untouched; a caller chooses
-`physics-core::fixed::RigidBody` instead when it needs bit-reproducibility
+rest of `physics-domain`'s default pipeline are untouched; a caller chooses
+`physics-domain::fixed::RigidBody` instead when it needs bit-reproducibility
 (lockstep networking, replay), and `FixedMotor3::to_float_lossy` (called
-on its `frame`) converts the pose to `gac-core::Motor3` for handoff to
+on its `frame`) converts the pose to `gac::Motor3` for handoff to
 rendering/ECS/audio either way. Proven with an actual bit-exact
 reproducibility test — the same scenario run twice via independent
 `fixed::RigidBody` simulations produces identical `Fixed` bit patterns,
-not just approximately-equal floats (`cargo test -p meridian-numeric-core`
-for `Fixed` itself, `-p meridian-gac-core` for `fixed_ga` cross-checked
-against `float_ga` as an oracle, `-p meridian-gac-compute` for the `Fixed`
-kernels, `-p meridian-physics-core` for the full pipeline and the
+not just approximately-equal floats (`cargo test -p meridian-numeric`
+for `Fixed` itself, `-p meridian-gac` for `fixed_ga` cross-checked
+against `float_ga` as an oracle, `-p meridian-gac-wgpu` for the `Fixed`
+kernels, `-p meridian-physics-domain` for the full pipeline and the
 reproducibility test; human-readable version via `./build.sh run
 determinism_validation`). See
 [ADR 008](adr/008-fixed-point-determinism.md) for the full decision,
-including the layering correction (primitives belong in `gac-core`, not
-`physics-core`) and the later genericization correction, both made
+including the layering correction (primitives belong in `gac`, not
+`physics-domain`) and the later genericization correction, both made
 partway through this work.
 
-Step 9 (`meridian-engine-core`) is real: `SubsystemManager` owns real
-`ecs-core`/`physics-core`/`audio-core` instances (the one place in the
+Step 9 (`meridian-runtime-app`) is real: `SubsystemManager` owns real
+`ecs`/`physics-domain`/`audio-domain` instances (the one place in the
 workspace allowed to know about every `*-core` at once, per
 dependency-rules.md rule 7), `EventSystem` is a type-erased pub/sub
 mailbox (`publish`/`drain`, frame-scoped — not a persistent log) that's
@@ -427,26 +427,26 @@ the actual mechanism rule 7 exists to enable (subsystems communicating
 without depending on each other), and `Runtime::tick`/`Runtime::tick_fixed`
 advance physics then recompute audio from the physics-updated emitter
 frames, publishing a `FrameCompleted` event each frame (`cargo test -p
-meridian-engine-core`). `tick_fixed(dt)` bypasses the internal
+meridian-runtime-app`). `tick_fixed(dt)` bypasses the internal
 wall-clock entirely (steps by exactly `dt`, tracks its own
-`total_seconds`) — added because `physics-core`'s solver is only
+`total_seconds`) — added because `physics-domain`'s solver is only
 validated at a constant timestep, so a real application's accumulator
 loop needs to call *something* with a fixed `dt`, not `tick`'s
-variable wall-clock-driven one. `FrameScheduler` (task-core's
+variable wall-clock-driven one. `FrameScheduler` (runtime-threads's
 `Scheduler` at the engine layer) is real and tested but not used by
 `Runtime::tick`/`tick_fixed` themselves — physics and audio are
 sequentially data-dependent today, not independent branches, so running
 them through a job graph would be decorative; see
 docs/threading-model.md's `FrameScheduler` section for why, and what makes
-it load-bearing later. `graphics-core`'s scene/material/lighting/
+it load-bearing later. `rendering-domain`'s scene/material/lighting/
 submission layers are real now too (see the `submission` entry above:
 `SceneRenderer`, real `Blinn`-Phong lit draws, bloom) — but
-`graphics-core` still isn't wired into `Runtime::tick` itself, for a
+`rendering-domain` still isn't wired into `Runtime::tick` itself, for a
 different reason than "no vocabulary yet": presenting a frame needs a
 real windowed `Device`/`Surface`, which is driver state, and
-`engine-core` deliberately never depends on `graphics-driver` (only
-`graphics-core` — see dependency-rules.md's edge list; `engine-core`
-does list `graphics-core` as an allowed dependency, per rule 7, it's
+`runtime-app` deliberately never depends on `rendering-wgpu` (only
+`rendering-domain` — see dependency-rules.md's edge list; `runtime-app`
+does list `rendering-domain` as an allowed dependency, per rule 7, it's
 just not used yet); an application (`meridian-sdk`, which is allowed to
 depend on `*-driver` crates) calls `Runtime::tick_fixed` for physics and
 does its own render submission separately, the same split
@@ -458,7 +458,7 @@ stepping through a real `Runtime` (`Runtime::tick_fixed` inside a
 fixed-timestep accumulator, replacing the `meridian_sdk::pipeline::Pipeline`
 it used before that) — the first real application in this workspace to
 actually construct and step a `Runtime`. `examples/magic_figures` still
-doesn't go through `Runtime`: it needs `audio-core::BinauralRenderer`'s
+doesn't go through `Runtime`: it needs `audio-domain::BinauralRenderer`'s
 real per-sample stereo synthesis, which `AudioSubsystem::mix`'s
 per-channel-gain model can't express, so it hand-assembles its own
 audio rig instead (see `meridian_sdk::pipeline`'s own module doc for
@@ -475,7 +475,7 @@ fragment's world-normal.y, a disclosed lightweight step toward real
 image-based lighting (a full convolved-cubemap IBL pipeline is still
 future work, just no longer the *only* option). The first
 `Light::Directional` in a scene's `lights` now casts a real shadow: a
-depth-only pass (`SceneRenderer::render_shadow_pass`, `graphics-driver`'s
+depth-only pass (`SceneRenderer::render_shadow_pass`, `rendering-wgpu`'s
 new `create_shadow_map_texture`/`create_shadow_pipeline`/
 `begin_shadow_pass`) renders occluder depth into a
 `Depth32Float` shadow map from the light's own orthographic view (see
@@ -489,7 +489,7 @@ examples (`physic_figures`/`magic_figures`, via
 `meridian_examples::render::render_frame`) running many frames without
 a `wgpu` validation error — `directional_shadow_camera`'s own matrix
 math (depth ordering, scene-center centering) is unit-tested in
-isolation (`cargo test -p meridian-graphics-core`), the same
+isolation (`cargo test -p meridian-rendering-domain`), the same
 "unverifiable-without-a-window, so windowed examples are the proof"
 convention this crate's own test module already documents for
 `SceneRenderer` itself. **Not yet done:** a real convolved-environment-map
@@ -497,18 +497,18 @@ IBL pipeline, shadow cascades/frustum-fitting, soft point-light
 shadows, and HDR values above `1.0` feeding bloom's bright-pass beyond
 what it already does (see `bloom`'s own module doc) — not a blanket
 "every other crate is a scaffold." Audio is wired end-to-end:
-`audio-core::AudioOutput` + `Mixer::render_interleaved` bridge mixed
-samples into `audio-driver`'s real stream (the declared
+`audio-domain::AudioOutput` + `Mixer::render_interleaved` bridge mixed
+samples into `audio-cpal`'s real stream (the declared
 core→own-driver edge, used for the first time), and — for
 `physic_figures`, which has no audio needs of its own — through
-`engine-core::Runtime`/`SubsystemManager` for real, per the entry
+`runtime-app::Runtime`/`SubsystemManager` for real, per the entry
 above. `magic_figures` is the full audio+graphics loop: a windowed
 scene with three orbiting shapes (sphere, cube, pyramid), each emitting
 its own decoded music track (a different container/codec format per
-shape) while the `FlyCamera` pose doubles as the shared `audio-core`
+shape) while the `FlyCamera` pose doubles as the shared `audio-domain`
 listener (same local-forward-`+X` `Motor3` convention), so panning and
 distance attenuation track the camera live; `physic_figures` runs the
-same shapes as real `physics-core` rigid bodies settling onto a
+same shapes as real `physics-domain` rigid bodies settling onto a
 textured floor, sharing `meridian_sdk::scene::GraphicsSession` with
 `magic_figures`. Every crate not named above
 has a real, tested implementation; see each crate's own section above
@@ -528,11 +528,11 @@ committed baselines, which only shrink: `.craftcheck-baseline`,
 - Wave 0 (gates): lint set, `craftbook.toml`, baselines, CI workflow,
   `hw-tests` feature, glossary and context map — done.
 - Waves 1–3 (hygiene, wiring-only `lib.rs`, splitting the largest files,
-  long and wide functions, `proptest` for `numeric-core`/`gac-core`,
+  long and wide functions, `proptest` for `numeric`/`gac`,
   `criterion` benches for the four `perf` crates) — done, except the
   files and functions that wave 4 rewrote.
-- Wave 4 (float/fixed layout: `gac-core`, `physics-core`, `soft_body`,
-  `physics-compute` as one directory per concept) — done. Waves 5–7
+- Wave 4 (float/fixed layout: `gac`, `physics-domain`, `soft_body`,
+  `physics-wgpu` as one directory per concept) — done. Waves 5–7
   (inverting the driver edges, runtime/composition root, crate renames)
   follow.
 
@@ -540,8 +540,8 @@ committed baselines, which only shrink: `.craftcheck-baseline`,
 
 The riskiest failure mode at this project's current size isn't technical
 complexity — it's layers slowly bleeding into each other (a rendering
-concept leaking into `ecs-core`, a global manager reappearing in
-`asset-core`, a driver crate quietly depending on its own core). Once real
+concept leaking into `ecs`, a global manager reappearing in
+`asset-domain`, a driver crate quietly depending on its own core). Once real
 code exists, every such violation costs a refactor. Right now it costs a
 one-line correction to [dependency-rules.md](dependency-rules.md). The
 priority before writing implementations is keeping that document and the
@@ -549,64 +549,64 @@ priority before writing implementations is keeping that document and the
 
 ## Suggested implementation order
 
-1. `meridian-foundation`, `meridian-numeric-core` — scalar/SIMD groundwork
+1. `meridian-diagnostics`, `meridian-numeric` — scalar/SIMD groundwork
    everything else depends on.
-2. `meridian-gac-core` — motors, rotors, transforms. Nothing above this
+2. `meridian-gac` — motors, rotors, transforms. Nothing above this
    layer can be meaningfully tested without it. Build it bottom-up and
    validate before moving on: `Vec3` → `Rotor3` → `Motor3` → a parent/child
    transform-hierarchy composition test, *then* wire `Transform` into
-   `ecs-core` (step 5) — not the other way around. `ecs-core` should
+   `ecs` (step 5) — not the other way around. `ecs` should
    consume a `Motor3` API already proven to compose and invert correctly,
    not be the place that API gets debugged.
 
    **Milestone before continuing to step 3 — done:** `Vec3`/`Rotor`/
    `Motor3` are implemented and validated: composition, inversion, and
    parent → child transform propagation are covered by both
-   `meridian-gac-core`'s test suite and the `gac_validation` example, each
+   `meridian-gac`'s test suite and the `gac_validation` example, each
    cross-checked against an independent (non-GA) oracle rather than just
    internal self-consistency. This was the highest-risk layer in the
    workspace (see [ADR 001](adr/001-geometric-algebra-as-spatial-model.md));
    the `Motor3` API held up through this milestone, so the next crates can
    build on it directly.
-3. `meridian-memory-core`, `meridian-task-core`, `meridian-platform-core` —
+3. `meridian-memory`, `meridian-runtime-threads`, `meridian-platform-winit` —
    in parallel, no interdependency.
-4. `meridian-resource-core` — typed handles on top of `memory-core`'s
+4. `meridian-resource` — typed handles on top of `memory`'s
    generic `Handle`, needed before any subsystem below can hold a
    `TextureHandle`/`MeshHandle`/etc.
-5. `meridian-ecs-core` — archetype storage, `Transform` as a component.
-6. `meridian-compute-driver` → `meridian-compute-runtime` → `meridian-gac-compute`
+5. `meridian-ecs` — archetype storage, `Transform` as a component.
+6. `meridian-compute-wgpu` → `meridian-compute-app` → `meridian-gac-wgpu`
    — needed before physics or graphics can use compute for batched
-   transforms. `gac-compute` depends on both `gac-core` (step 2) and
-   `compute-runtime` and is what lets a `Motor3` batch run on CPU-SIMD or
-   GPU without `gac-core` or `compute-runtime` depending on each other — see
+   transforms. `gac-wgpu` depends on both `gac` (step 2) and
+   `compute-app` and is what lets a `Motor3` batch run on CPU-SIMD or
+   GPU without `gac` or `compute-app` depending on each other — see
    [ADR 007](adr/007-batch-transforms-via-compute.md).
-7. `meridian-asset-core` — decoders, independent of the above once
-   `platform-core` exists.
-8. `meridian-physics-driver` → `meridian-physics-core` — **done** (broad/
+7. `meridian-asset-domain` — decoders, independent of the above once
+   `platform-winit` exists.
+8. `meridian-physics-driver` → `meridian-physics-domain` — **done** (broad/
    narrow phase, impulse solver, GA-native integration; see "Current
-   state" above). `meridian-audio-core` — **done** (`SpeakerLayout`/
+   state" above). `meridian-audio-domain` — **done** (`SpeakerLayout`/
    `Mixer`/`AttenuationModel`/`DspGraph`; see "Current state" above).
-   `meridian-graphics-driver` — **done**: real `wgpu`
+   `meridian-rendering-wgpu` — **done**: real `wgpu`
    `Device`/`Buffer`/`Texture`/`Shader`/compute `Pipeline`/`CommandBuffer`,
    headless and windowed (`Device::new_windowed`, a real swapchain —
-   see "Not yet decided" below). `meridian-audio-driver` — **done**,
+   see "Not yet decided" below). `meridian-audio-cpal` — **done**,
    backed by `cpal` (see [ADR 012](adr/012-audio-output-via-cpal.md)
    and "Current state" above).
-   `meridian-graphics-core`'s driver-independent half — **done**: render
+   `meridian-rendering-domain`'s driver-independent half — **done**: render
    graph pass ordering, `Camera`'s `Motor3` -> view/projection matrix
    bridge, and frustum culling (see "Current state" above). This was the
    harder of the two remaining `-core`s, since it has to bridge
-   `gac-core`'s `Motor3` into the classical 4×4 view/projection matrices
-   graphics APIs actually need, where `audio-core` could stay entirely in
+   `gac`'s `Motor3` into the classical 4×4 view/projection matrices
+   graphics APIs actually need, where `audio-domain` could stay entirely in
    GA/`Vec3` terms throughout. Scene extraction, lighting, materials, and
-   post-processing are the parts of `graphics-core` still blocked on a
+   post-processing are the parts of `rendering-domain` still blocked on a
    window/swapchain surface and a mesh/material vocabulary, neither of
    which exist yet.
-9. `meridian-engine-core` — **done** for the driver-independent
+9. `meridian-runtime-app` — **done** for the driver-independent
    subsystems: `Runtime`/`SubsystemManager`/`EventSystem` wire
-   `ecs-core`/`physics-core`/`audio-core` into a real per-frame loop (see
-   "Current state" above). `graphics-core` joins once a window/swapchain
-   exists for `graphics-driver` to submit frames to.
+   `ecs`/`physics-domain`/`audio-domain` into a real per-frame loop (see
+   "Current state" above). `rendering-domain` joins once a window/swapchain
+   exists for `rendering-wgpu` to submit frames to.
 10. `meridian-sdk` — **done** for its current scope: a single
     application-facing re-export crate (`examples/` depends on it
     alone), its own composable `pipeline::Pipeline` (job-graph-based,
@@ -633,10 +633,10 @@ priority before writing implementations is keeping that document and the
     Per-frame *behavior* (orbit/spin motion, the fixed-timestep physics
     accumulator) stays genuine Rust — the DSL describes composition
     only, per its documented scope. `physic_figures` now drives its
-    physics through `meridian-engine-core::Runtime`/`SubsystemManager`
+    physics through `meridian-runtime-app::Runtime`/`SubsystemManager`
     for real (`Runtime::tick_fixed`, see that crate's "Current state"
     entry above) — no longer an open item. Real shadow mapping and
-    hemisphere ambient lighting in `graphics-core` are also done now
+    hemisphere ambient lighting in `rendering-domain` are also done now
     (see the "shadow mapping and hemisphere ambient" entry above) — no
     longer an open item either. **Not yet done:** an app-shell schema
     (window title, logging, crash-report config) was considered and
@@ -644,12 +644,12 @@ priority before writing implementations is keeping that document and the
     generated `.g.rs` glue, compiled `{x:Bind}` bindings, later an own
     script language) — decided in
     [ADR 017](adr/017-mel-markup-and-code-behind.md). Started: the
-    `dsl-core` side is done (line/column spans, the `x:` prefix, dotted
+    `markup` side is done (line/column spans, the `x:` prefix, dotted
     names and property elements, parsed markup extensions, typed
-    `ParseErrorKind`), and the `meridian-mel-build` generator
+    `ParseErrorKind`), and the `meridian-ui-mel` generator
     (`.mel` -> `.g.rs`, `mel_include!`; used by `magic_figures`), whose
     `{x:Bind}` compiler parses and validates bindings, resolves them to
-    `ui-core` properties and generates `Names`, `apply_bindings` and
+    `ui-domain` properties and generates `Names`, `apply_bindings` and
     `write_back_bindings` (type-checked against the `x:ViewModel`).
     A document with a UI root also gets `build_ui`, which creates the
     `UiTree` from the markup, and `.mres` resource sets
@@ -670,7 +670,7 @@ Ordered roughly by "blocks everything else" first; items 2 and 4 are done,
 the rest are not started.
 
 1. **Per-instance vertex rebaking, every frame, is the sharpest wall.**
-   `graphics-core::submission::draw_buffers` reuploads a fresh
+   `rendering-domain::submission::draw_buffers` reuploads a fresh
    vertex buffer for *every* `Renderable3d` on *every*
    `SceneRenderer::prepare` call, whether or not that instance moved
    since the last frame (see that function's own doc comment — "correct
@@ -684,45 +684,45 @@ the rest are not started.
    - Real instancing for repeated meshes (a Minecraft block face, a
      Satisfactory conveyor segment) — one vertex/index buffer per mesh
      shape, a per-instance transform/tint buffer, one draw call instead
-     of thousands. `graphics-driver`'s pipeline/bind-group primitives
+     of thousands. `rendering-wgpu`'s pipeline/bind-group primitives
      don't have an instance-buffer path today; this is real driver-layer
-     work, not just a `graphics-core` change.
-2. **Done: `ecs-core` multi-component queries.** `World::query_many`
+     work, not just a `rendering-domain` change.
+2. **Done: `ecs` multi-component queries.** `World::query_many`
    and `query_many_mut` take tuples of two to four `&T`/`&mut T`
    ("every entity with `Conveyor` *and* `ItemSlot` *and* `Position`").
    Elements can also be `Option<&T>`/`Option<&mut T>` and the
    `With<T>`/`Without<T>` filters. Not built yet: parallel iteration and
    change detection.
-3. **`physics-core::BroadPhase` is x-axis sweep-and-prune** (first
+3. **`physics-domain::BroadPhase` is x-axis sweep-and-prune** (first
    step, done): `find_candidate_pairs` sorts AABBs by minimum x and only
    tests bodies that overlap along x, returning the same pairs in the same
    order as the exhaustive sweep. Still open for thousands of
    mostly-static colliders (a voxel world's solid blocks, a factory's
    machine footprints) that share an x range: a uniform grid keyed to
    chunk size or a BVH, plus incremental updates for static bodies.
-4. **Done: `physics-compute`'s batched rigid-body kernels are wired
-   into `engine-core::Runtime`.** (Wave 6, ADR 025: the `PhysicsDispatchMode`
+4. **Done: `physics-wgpu`'s batched rigid-body kernels are wired
+   into `runtime-app::Runtime`.** (Wave 6, ADR 025: the `PhysicsDispatchMode`
    flag described below became the `PhysicsStepper` port; `BatchedStepper`
-   in `physics-compute` is the batched mode and `SequentialStepper` in
-   `physics-app` the sequential one.) `PhysicsStepStage` (in `engine-core`,
+   in `physics-wgpu` is the batched mode and `SequentialStepper` in
+   `physics-app` the sequential one.) `PhysicsStepStage` (in `runtime-app`,
    re-exported from `meridian-sdk`, alongside its `PhysicsDispatchMode`
    flag) dispatches `RigidBodyIntegratorKernel`/`BroadPhasePairsKernel`/
    `GenerateContactsKernel`/`ConstraintSolverBatchKernel` when in
    `PhysicsDispatchMode::Batched`, instead of `PhysicsSubsystem::step`'s
    plain sequential loop in `PhysicsDispatchMode::Sequential` — proven
    identical bit-for-bit on a single tick and across a 600-tick settling
-   regression (`cargo test -p meridian-engine-core`), and proven live in
+   regression (`cargo test -p meridian-runtime-app`), and proven live in
    `examples/physic_figures` (swapped in as a drop-in mode change, no
    other example code changed). One type with a dispatch-mode flag, not
    two separate `Stage` types, so an application (or a future third
    mode) switches dispatch shape without touching anything else about
-   how it composes its `Runtime`. `engine-core` moved from tier 7 to
-   tier 8 for the new edge (`physics-compute` is tier 7 — see
+   how it composes its `Runtime`. `runtime-app` moved from tier 7 to
+   tier 8 for the new edge (`physics-wgpu` is tier 7 — see
    dependency-rules.md's own note on this edge).
 
    **Partial progress on the "not literally GPU-executing" gap**: the
    broad-phase overlap test now has a real WGSL kernel
-   (`physics-compute::float::BroadPhaseGpuKernel`), proven against a
+   (`physics-wgpu::float::BroadPhaseGpuKernel`), proven against a
    real GPU device (an actual adapter, not a mock) to produce the exact
    same candidate pairs as `BroadPhase::find_candidate_pairs`. It's
    scoped to just the pairwise AABB comparison — pure arithmetic, no
@@ -743,32 +743,32 @@ the rest are not started.
    (see [ADR 016](adr/016-data-formats-on-substrate-data.md) and
    [data-formats.md](data-formats.md)) — not `serde` derives scattered
    across every `*-core` type. **Done:** the optional `data` feature on
-   `numeric-core`/`gac-core` (`Fixed` as raw Q16.16 bits; `Vec3`/
+   `numeric`/`gac` (`Fixed` as raw Q16.16 bits; `Vec3`/
    `Bivector3`/`Rotor`/`Motor3` and their `Fixed*` counterparts as
    `Shape::Named` values, bit-exact through text, binary and frames), and
-   the `meridian-scene` crate: an application-built `ComponentRegistry`
+   the `meridian-data-substrate` crate: an application-built `ComponentRegistry`
    (by name and `TypeId`; `register`/`register_with` a codec —
-   `Transform` goes through the `TransformForm` newtype so `ecs-core`
+   `Transform` goes through the `TransformForm` newtype so `ecs`
    stays file-blind), `.mscene` load into a
    `World` (all-or-nothing, every problem with line/column/path, unknown
    component names with a "did you mean" or kept as written for editors),
    save, and `describe()` for an IDE. **Editor protocol:** the
-   `meridian-editor-protocol` crate ([editor-protocol.md](editor-protocol.md))
+   `meridian-editor-domain` crate ([editor-domain.md](editor-domain.md))
    defines the typed, append-only `Request`/`Response`/`Event` messages
    between a game and Meridian IDLE (golden-byte pinned, version
-   handshake). **Editor host:** `meridian-editor-host` (a pure `Session`
+   handshake). **Editor host:** `meridian-editor-app` (a pure `Session`
    answering every request against a `World` and a `ComponentRegistry`,
    events by subscription, a `SimulationControl` port) and
    `meridian-editor-tcp` (one editor over loopback TCP, `tokio`); see
-   [editor-protocol.md](editor-protocol.md#host). Parent links load as
-   `meridian-scene::Parent`, a stand-in until `ecs-core` gets a
+   [editor-domain.md](editor-domain.md#host). Parent links load as
+   `meridian-data-substrate::Parent`, a stand-in until `ecs` gets a
    hierarchy (it moves there then). **Not yet done:** transform
    propagation along parents; `World::component_types(entity)` in
-   `ecs-core` (saving walks registered types until then); `.mprefab`
+   `ecs` (saving walks registered types until then); `.mprefab`
    instancing, `.meta`, `.msave` (voxel/chunk data via
    `substrate_data::Stream`), `.mpak`, wiring the editor host into
-   `engine-core`'s frame loop, and wiring scene loading into
-   `engine-core`/`sdk`. The substrate-data dependency
+   `runtime-app`'s frame loop, and wiring scene loading into
+   `runtime-app`/`sdk`. The substrate-data dependency
    is a git revision pin (its `main`) until it is published to crates.io.
 6. **No networking.** Multiplayer (both games have it) is a subsystem
    that doesn't exist in any form — no netcode, no client/server
@@ -778,17 +778,17 @@ the rest are not started.
    unstarted. This is its own multi-month subsystem, not an add-on to
    an existing crate.
 7. **UI framework: runtime and fill output started, text not.**
-   `meridian-ui-core` ([ADR 018](adr/018-ui-architecture.md)) has the
+   `meridian-ui-domain` ([ADR 018](adr/018-ui-architecture.md)) has the
    WPF-style element tree, typed properties, measure/arrange layout
    (`Border`, `StackPanel`, `DockPanel`, `Grid`, `TextBlock`) and hit
    testing, focus and input routing (`handle_input`, `UiEvent`s, a
    consumed/ignored outcome), tested without a GPU. Still missing:
-   `meridian-ui-render` extracts `Background` fills to `Scene2d`
+   `meridian-ui-scene2d` extracts `Background` fills to `Scene2d`
    ([ADR 021](adr/021-ui-extraction-and-extensibility.md)); there is no
    sprite renderer for `Scene2d` yet. Still missing: text rendering,
    controls, styles and templates. Markup literals (`"Auto"`, `"2*"`, `"4,2"`) parse through
    `PropertyType::parse`.
-8. **Asset pipeline stops at static meshes.** `asset-core::ObjDecoder`
+8. **Asset pipeline stops at static meshes.** `asset-domain::ObjDecoder`
    has no skeletal/skinning support and there's no animation system at
    all — a blocker for any animated creature (Minecraft mobs) or
    animated machine (Satisfactory conveyors, at least beyond a
@@ -815,10 +815,10 @@ sprint — treat this section as "what's missing," not "next release."
 
 - `animation-core`, `particles-core`, `ai-core` — referenced in
   [dependency-rules.md](dependency-rules.md) as future consumers of
-  `compute-runtime`, but not part of the current workspace. Add them only when
+  `compute-app`, but not part of the current workspace. Add them only when
   there's a concrete subsystem to build, not speculatively.
-- Splitting `graphics-driver` into a separately-named RHI crate plus backend
-  crates (`vulkan-driver`, etc.) — `graphics-driver` already plays the RHI
+- Splitting `rendering-wgpu` into a separately-named RHI crate plus backend
+  crates (`vulkan-driver`, etc.) — `rendering-wgpu` already plays the RHI
   role today (see [graphics-design.md](graphics-design.md)); a rename or
   further split is only worth doing once a second concrete backend actually
   exists to justify it.
@@ -826,16 +826,16 @@ sprint — treat this section as "what's missing," not "next release."
 ## Not yet decided
 
 - **Deterministic simulation mode — decided: Q16.16 fixed-point
-  (`meridian-numeric-core::Fixed`), not ordered floating point.** Ordered
+  (`meridian-numeric::Fixed`), not ordered floating point.** Ordered
   floating point (careful summation order, no FMA, disabled
   auto-vectorization) was rejected: it fights the compiler/CPU rather
   than sidestepping the problem, and still doesn't fully solve
   cross-`libm` `sin`/`cos`/`sqrt` disagreement, which fixed-point +
   CORDIC avoids by construction (integer add/subtract/shift only). See
-  "Current state" above for what's built (`gac-core::fixed_ga`,
-  `physics-core::fixed`) and [ADR
+  "Current state" above for what's built (`gac::fixed_ga`,
+  `physics-domain::fixed`) and [ADR
   008](adr/008-fixed-point-determinism.md).
-- **GPU backend beneath `compute-driver`/`graphics-driver`/`physics-driver`
+- **GPU backend beneath `compute-wgpu`/`rendering-wgpu`/`physics-driver`
   — decided: `wgpu`, not hand-written per-API FFI.** Reversed from the
   earlier zero-external-dependencies stance: hand-writing Vulkan bindings
   alone (extension loading, swapchain/memory management, synchronization)
@@ -848,35 +848,35 @@ sprint — treat this section as "what's missing," not "next release."
   `wgpu`'s first external dependency, a heavy transitive tree (`wgpu` +
   `naga` + platform GPU bindings), and `async`-flavored device/adapter
   acquisition — see the `tokio` entry below for how that's bridged.
-  `graphics-driver`'s existing stub shape (`Device`, `CommandBuffer`,
+  `rendering-wgpu`'s existing stub shape (`Device`, `CommandBuffer`,
   `Buffer`, `Texture`, `Shader`, `Pipeline`) already maps onto `wgpu`'s
   own vocabulary, so this doesn't force a redesign, just a real
-  implementation of what's already stubbed. `platform-core`'s
+  implementation of what's already stubbed. `platform-winit`'s
   `Window`/`DynamicLibrary` are a separate, smaller decision (below) and
   keep their own hand-written-FFI answer; GPU is the one deliberate
   exception to zero-deps, not a reversal of the policy in general.
 
-  **`graphics-driver` and `compute-driver` are both real now**, sharing
+  **`rendering-wgpu` and `compute-wgpu` are both real now**, sharing
   their `wgpu` device/buffer/shader/compute-pipeline mechanics through a
-  third crate, `meridian-gpu-driver` — see
-  [ADR 011](adr/011-shared-gpu-driver-crate.md). `graphics-driver::Device`
+  third crate, `meridian-gpu-wgpu` — see
+  [ADR 011](adr/011-shared-gpu-driver-crate.md). `rendering-wgpu::Device`
   supports both headless (`Device::new`) and windowed
   (`Device::new_windowed`, a real swapchain `Surface`) construction, with
   a real render pipeline (`RenderPipeline`, `DepthTexture`,
   `VertexLayout`) — proven end-to-end by the `magic_figures`/
-  `physic_figures` examples (real windowed scenes, not headless). `compute-driver` gained
+  `physic_figures` examples (real windowed scenes, not headless). `compute-wgpu` gained
   `GpuComputeDevice`, a second backend alongside its existing CPU
-  `ComputeDevice`, and `compute-runtime::ComputeContext::with_gpu` is the
+  `ComputeDevice`, and `compute-app::ComputeContext::with_gpu` is the
   real dispatch path domain crates reach it through (per rule 5) — proven
   by a compute-shader round-trip test reachable through
-  `compute-runtime` itself, not just `compute-driver` in isolation.
-  `platform-core::GpuCapabilities` gained its first real field
+  `compute-app` itself, not just `compute-wgpu` in isolation.
+  `platform-winit::GpuCapabilities` gained its first real field
   (`device_name`), populated by both drivers' `BackendCapabilities` impls
-  (via `meridian_gpu_driver::Device`'s own impl); `physics-driver`/
-  `audio-driver` still report `gpu: None` since neither dispatches to a
+  (via `meridian_gpu_wgpu::Device`'s own impl); `physics-driver`/
+  `audio-cpal` still report `gpu: None` since neither dispatches to a
   GPU yet.
 - **Async I/O — decided: `tokio`, scoped to genuine I/O only, not applied
-  uniformly.** `graphics-driver::Device::new`/`read_buffer` (an OS/driver
+  uniformly.** `rendering-wgpu::Device::new`/`read_buffer` (an OS/driver
   handshake and waiting on in-flight GPU work — both genuinely unbounded
   wait, no useful CPU work to do meanwhile) are real `async fn`s now, not
   `pollster`-wrapped synchronous functions; `read_buffer`'s manual
@@ -887,12 +887,12 @@ sprint — treat this section as "what's missing," not "next release."
   synchronous — bounded, local, effectively-instant work gains nothing
   from being `async`, the same reason `Vec::push` isn't. `tokio` is only
   a dependency of crates with a genuine I/O operation of their own —
-  `audio-driver`'s real `AudioDevice::new` is an `async fn` per the same
+  `audio-cpal`'s real `AudioDevice::new` is an `async fn` per the same
   policy (and needs `tokio` itself only as a dev-dependency, for its
-  tests' runtime); `platform-core::Window`/`DynamicLibrary` will add it
+  tests' runtime); `platform-winit::Window`/`DynamicLibrary` will add it
   if their implementations gain a genuine I/O operation. It isn't forced
-  onto `ecs-core`,
-  `gac-core`, `physics-core`, or anything else with no I/O. See
+  onto `ecs`,
+  `gac`, `physics-domain`, or anything else with no I/O. See
   [ADR 009](adr/009-async-io-via-tokio.md) for the full decision,
   including why this reverses this document's own earlier "not a reason
   to pull in a full async runtime for one call" note (that reasoning held
@@ -900,23 +900,23 @@ sprint — treat this section as "what's missing," not "next release."
   operation).
 - **`meridian-audio-effects` (heavier DSP effects as a separate crate)** —
   decided: not yet, and only split it out when a concrete effect actually
-  needs an external dependency. `meridian-audio-core` already owns basic,
+  needs an external dependency. `meridian-audio-domain` already owns basic,
   zero-dependency DSP (`DspNode`/`DspGraph`, `Gain`, `LowPassFilter`) and
   should keep owning simple effects that need nothing beyond
-  `numeric-core`/`gac-core` — there's no architectural reason to move those
+  `numeric`/`gac` — there's no architectural reason to move those
   out. The trigger for a separate crate is the same class of decision as
   `wgpu` below: something like a real convolution reverb, multiband EQ, or
   resampling needs an FFT crate (e.g. `rustfft`), and pulling that into
-  `audio-core` would force every consumer of basic spatial audio (including
-  `engine-core` and every example) to compile it too. When that concrete
-  need exists, `meridian-audio-effects` depends on `meridian-audio-core`
+  `audio-domain` would force every consumer of basic spatial audio (including
+  `runtime-app` and every example) to compile it too. When that concrete
+  need exists, `meridian-audio-effects` depends on `meridian-audio-domain`
   only (implements its `DspNode` trait, one edge, no new adapter pattern —
-  unlike `gac-compute` this isn't avoiding a forbidden edge, just isolating
+  unlike `gac-wgpu` this isn't avoiding a forbidden edge, just isolating
   an optional heavy dependency) and ships the heavy effects there, keeping
-  `audio-core`'s own dependency footprint minimal. Creating the crate before
+  `audio-domain`'s own dependency footprint minimal. Creating the crate before
   that concrete need exists would be exactly the speculative split
   `roadmap.md` already rejects elsewhere (see "Explicitly out of scope").
-- **`meridian-platform-core`'s `Window` — decided: `winit`, not
+- **`meridian-platform-winit`'s `Window` — decided: `winit`, not
   hand-written per-platform FFI.** Reversed from the original plan (see
   [ADR 010](adr/010-windowing-via-winit.md) for the full decision):
   correct cross-platform windowing (lifecycle, input delivery, HiDPI,
@@ -924,10 +924,10 @@ sprint — treat this section as "what's missing," not "next release."
   multiple-independent-bug-classes undertaking that justified accepting
   `wgpu` over hand-written Vulkan/DX12/Metal — the "small enough to
   hand-roll safely" reasoning didn't survive contact with the real scope.
-  `platform-core::Window` wraps a real `Arc<winit::window::Window>`;
-  `meridian-graphics-driver` stays `winit`-agnostic (`Device::new_windowed`
+  `platform-winit::Window` wraps a real `Arc<winit::window::Window>`;
+  `meridian-rendering-wgpu` stays `winit`-agnostic (`Device::new_windowed`
   takes `impl Into<wgpu::SurfaceTarget<'static>>`, a `wgpu`-defined bound,
-  not a `winit`-specific type). `platform-core`'s existing
+  not a `winit`-specific type). `platform-winit`'s existing
   `KeyCode`/`MouseButton`/`InputState` vocabulary needed no redesign —
   real `winit` event handling translates into that existing API.
   `DynamicLibrary` is unaffected by this decision: still hand-written FFI

@@ -151,7 +151,7 @@ jobs:
           gate app 70
           exit $status
 
-  # No Miri job: the only unsafe code (platform-core's dynamic_library.rs)
+  # No Miri job: the only unsafe code (platform-winit's dynamic_library.rs)
   # calls dlopen/LoadLibrary, which Miri cannot execute.
 
   benches:

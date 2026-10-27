@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use meridian_asset_core::DecodeError;
+use meridian_asset_domain::DecodeError;
 use symphonia::core::codecs::audio::{AudioDecoder, AudioDecoderOptions};
 use symphonia::core::formats::probe::Hint;
 use symphonia::core::formats::{FormatOptions, FormatReader, TrackType};

@@ -5,7 +5,7 @@ use crate::{FrameOutcome, FrameRequest};
 /// Draws frames to a render target: the rendering context's output port.
 ///
 /// An implementation owns the device, the swapchain and every pipeline.
-/// `graphics-driver` implements it over `wgpu`;
+/// `rendering-wgpu` implements it over `wgpu`;
 /// [`testing::FakeFrameRecorder`](crate::testing::FakeFrameRecorder) is the fake
 /// and [`testing::run_frame_recorder_contract`](crate::testing::run_frame_recorder_contract)
 /// the suite an implementation passes. A windowed adapter needs a real window,

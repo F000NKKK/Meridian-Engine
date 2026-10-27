@@ -1,4 +1,4 @@
-//! Compressed-audio adapter for `meridian-asset-core`: MP3, OGG/Vorbis, FLAC and
+//! Compressed-audio adapter for `meridian-asset-domain`: MP3, OGG/Vorbis, FLAC and
 //! OGG/Opus on `symphonia` and `libopus`.
 //!
 //! Layer: infrastructure; bounded context: assets (`craftbook.toml`,

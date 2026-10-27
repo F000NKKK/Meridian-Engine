@@ -1,6 +1,6 @@
 //! The sniffing front door over every audio format.
 
-use meridian_asset_core::{AudioClip, AudioFormat, DecodeError, Decoder, WavDecoder};
+use meridian_asset_domain::{AudioClip, AudioFormat, DecodeError, Decoder, WavDecoder};
 
 use crate::{FlacDecoder, Mp3Decoder, OpusDecoder, VorbisDecoder};
 

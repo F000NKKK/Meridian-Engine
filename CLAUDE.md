@@ -50,8 +50,8 @@ Markdown file.
 ## Non-negotiable rules
 
 - Keep dependency direction consistent with `docs/dependency-rules.md`.
-- Keep `gac-core` independent from `compute-runtime`.
-- Keep `compute-runtime` independent from `gac-core` and free of domain-shaped
+- Keep `gac` independent from `compute-app`.
+- Keep `compute-app` independent from `gac` and free of domain-shaped
   algorithms or buffers.
 - Dependencies point inwards (ADR 019): domain and application crates own
   the port traits they need; driver crates are adapters that implement them
@@ -61,7 +61,7 @@ Markdown file.
 - Keep resource identity separate from resource lifetime policy.
 - Keep ECS generic and data-oriented; do not leak graphics/physics/audio domain
   concepts into it.
-- Put cross-subsystem orchestration in `engine-core`.
+- Put cross-subsystem orchestration in `runtime-app`.
 - Do not introduce global singleton managers.
 
 ## Skill sets to invoke by file area
@@ -93,7 +93,7 @@ error without checking the graph.
 
 ### GAC skill: `meridian-gac-math-keeper`
 
-Files: `meridian-gac-core`, transform code, spatial math, rotation integration,
+Files: `meridian-gac`, transform code, spatial math, rotation integration,
 physics angular quantities, camera/listener spatial code.
 
 Use it to preserve GA semantics. Angular quantities that live in the rotation
@@ -102,7 +102,7 @@ possible.
 
 ### ECS skill: `meridian-data-oriented-ecs-keeper`
 
-Files: `meridian-ecs-core`, component storage, archetypes, queries, world/entity
+Files: `meridian-ecs`, component storage, archetypes, queries, world/entity
 logic.
 
 Use it to preserve SoA/archetype storage, avoid domain leakage, and test entity
@@ -110,7 +110,7 @@ migration, dead entities, query behavior and type-erased storage boundaries.
 
 ### Memory/resource/asset skill: `meridian-resource-lifetime-keeper`
 
-Files: `meridian-memory-core`, `meridian-resource-core`, `meridian-asset-core`,
+Files: `meridian-memory`, `meridian-resource`, `meridian-asset-domain`,
 handles, pools, decoders, dependency graph.
 
 Use it to keep generic handles, typed resource IDs, decoded CPU data and
@@ -119,26 +119,26 @@ generation changes, cycle checks and malformed asset bytes.
 
 ### Compute skill: `meridian-compute-driver-keeper`
 
-Files: `meridian-compute-driver`, `meridian-compute-runtime`,
-`meridian-gac-compute`, future concrete `*-compute` adapter crates.
+Files: `meridian-compute-wgpu`, `meridian-compute-app`,
+`meridian-gac-wgpu`, future concrete `*-compute` adapter crates.
 
 Use it to keep runtime dispatch generic, domain kernels in adapters, and
-scheduler responsibilities aligned with `task-core`. Test sequential/small and
+scheduler responsibilities aligned with `runtime-threads`. Test sequential/small and
 parallel/large dispatch paths.
 
 ### Subsystem skill: `meridian-subsystem-core-keeper`
 
-Files: `meridian-graphics-core`, `meridian-physics-core`, `meridian-audio-core`,
+Files: `meridian-rendering-domain`, `meridian-physics-domain`, `meridian-audio-domain`,
 corresponding drivers and design docs.
 
 Use it to keep domain algorithms in core crates and hardware/OS execution in
 driver crates. A core declares the ports it needs; its driver implements them
 (ADR 019). No core takes a new edge to any driver. Compute work goes through
-`compute-runtime` or an adapter crate.
+`compute-app` or an adapter crate.
 
 ### Engine/examples skill: `meridian-engine-integration-keeper`
 
-Files: `meridian-engine-core`, `examples/**`, frame scheduler and subsystem
+Files: `meridian-runtime-app`, `examples/**`, frame scheduler and subsystem
 composition.
 
 Use it to put orchestration at the top layer, keep examples demonstrative, and
@@ -163,9 +163,9 @@ Tests that need a real GPU or audio device are behind the `hw-tests` feature
 Run package-specific tests during iteration, for example:
 
 ```sh
-cargo test -p meridian-gac-core
-cargo test -p meridian-ecs-core
-cargo test -p meridian-resource-core
+cargo test -p meridian-gac
+cargo test -p meridian-ecs
+cargo test -p meridian-resource
 ```
 
 Run changed examples through `./build.sh run <example>`.
@@ -185,42 +185,42 @@ Craftbook §1.3–1.4. When a concept has a float (`f32`/`Scalar`) flavor and a
 `rotor/fixed.rs`, plus item-named files for logic shared by both flavors.
 The split is symmetric: never float code loose next to a `fixed` module.
 `lib.rs` is wiring only, and `generic.rs` is not a file name. Wave 4 of
-the Craftbook migration converted `gac-core` (`rotor/`, `motor/`, `vector/`,
-`volume/`, ...), `physics-core` (`collision/`, `dynamics/`, `soft_body/`) and
-`physics-compute` (`soft_body/`, `broad_phase/`) to this layout; follow it.
+the Craftbook migration converted `gac` (`rotor/`, `motor/`, `vector/`,
+`volume/`, ...), `physics-domain` (`collision/`, `dynamics/`, `soft_body/`) and
+`physics-wgpu` (`soft_body/`, `broad_phase/`) to this layout; follow it.
 
 **Default to generic (or thin wrappers over one generic implementation),
 not disclosed duplication.** Full duplication (writing the float and fixed
 versions of a type/algorithm twice, even if "disclosed" with matching doc
 comments) is justified *only* when a genuine external constraint makes
 genericity impossible or unsafe — the one known case in this workspace is
-`gac-core::Motor3`/`Vec3`/`Bivector3`/`Rotor`: `meridian-gac-compute`
+`gac::Motor3`/`Vec3`/`Bivector3`/`Rotor`: `meridian-gac-wgpu`
 dispatches them to GPU, GPUs have no real `i64` support and are
 `f32`-native, so a GPU-dispatchable type has to stay concretely `f32`
 regardless of how the CPU-side type is parameterized (see
 [ADR 008](docs/adr/008-fixed-point-determinism.md)). Absent a constraint
 like that, write the algorithm/type once, generic over a trait describing
-what it needs from "a GA flavor" (see `meridian_gac_core::GaFlavor` and
+what it needs from "a GA flavor" (see `meridian_gac::GaFlavor` and
 its component traits), and make `float.rs`/`fixed.rs` thin — type aliases
 and flavor-marker impls, not a second copy of the logic. Before
 duplicating float/fixed code, check whether the thing being duplicated
 actually has a GPU-dispatch (or similarly hard) constraint forcing it;
-if not, genericize instead. `physics-core`'s `Integrator`/
+if not, genericize instead. `physics-domain`'s `Integrator`/
 `ConstraintSolver`/`BroadPhase`/`NarrowPhase`/`RigidBody` and
-`gac-core`'s `Aabb`/`Sphere`/`Obb`/`Cone`/`Plane`/`ConvexVolume`/`Shape`
+`gac`'s `Aabb`/`Sphere`/`Obb`/`Cone`/`Plane`/`ConvexVolume`/`Shape`
 are generic over `GaFlavor` for exactly this reason — none of them are
 GPU-dispatched.
 
 ## Do not drag another crate's logic into your own
 
 If a piece of logic conceptually belongs to another crate (geometry
-belongs to `gac-core`, not to whichever crate needed it first; dispatch
-mechanics belong to `compute-runtime`, not to a domain crate), depend on
+belongs to `gac`, not to whichever crate needed it first; dispatch
+mechanics belong to `compute-app`, not to a domain crate), depend on
 that crate and reuse its implementation — do not hand-roll a local copy
 inside the crate that merely *consumes* it. This applies even under time
-pressure or when the "local copy" looks small: `physics-core` reinventing
+pressure or when the "local copy" looks small: `physics-domain` reinventing
 sphere-overlap math or bounding-box structs instead of using
-`gac-core::Aabb`/`Shape` is the concrete case this rule was written after
+`gac::Aabb`/`Shape` is the concrete case this rule was written after
 catching. When in doubt about which crate owns a piece of logic, check
 [dependency-rules.md](docs/dependency-rules.md) and the crate's own
 top-of-file doc comment before writing new code, not after.
@@ -233,7 +233,7 @@ This is an async-native engine: `tokio` is the workspace's async runtime
 unbounded and determined by something outside this process (an OS/driver
 handshake, a GPU/device queue, a filesystem, a network peer): the
 textbook definition, not "talks to an external system's *type*."
-`meridian-graphics-driver::Device::new`/`read_buffer` are the concrete
+`meridian-rendering-wgpu::Device::new`/`read_buffer` are the concrete
 precedent. Recording/allocation/validation calls with bounded,
 effectively-instant local cost stay plain synchronous functions —
 `create_buffer`, `write_buffer`, `CommandBuffer::submit`, and their

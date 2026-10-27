@@ -1,6 +1,6 @@
 //! The behaviour every [`TextureStore`](crate::TextureStore) must have.
 
-use meridian_asset_core::ImageAsset;
+use meridian_asset_domain::ImageAsset;
 
 use crate::TextureStore;
 

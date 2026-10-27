@@ -8,7 +8,7 @@ pub enum DecodeMode {
     /// stream.
     #[default]
     Auto,
-    /// Always decode the whole track into one [`AudioClip`](meridian_asset_core::AudioClip).
+    /// Always decode the whole track into one [`AudioClip`](meridian_asset_domain::AudioClip).
     ForceEager,
     /// Always stream, no matter how small the track.
     ForceStreaming,

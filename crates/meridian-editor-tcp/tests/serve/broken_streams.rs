@@ -1,6 +1,6 @@
 //! Streams that end early or carry nonsense, over in-memory pipes.
 
-use meridian_editor_protocol::{
+use meridian_editor_domain::{
     FrameError, HostMessage, ProtocolVersion, Request, RequestError, RequestId, Response,
 };
 use meridian_editor_tcp::{ServeError, serve_stream};

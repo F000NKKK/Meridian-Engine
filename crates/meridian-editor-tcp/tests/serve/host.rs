@@ -1,12 +1,12 @@
 //! A host for the tests: a world, a registry, a simulation and a session
 //! behind the `RequestHandler` port, and the client's half of the wire.
 
-use meridian_ecs_core::{Component, World};
-use meridian_editor_host::{Game, ManualSimulation, RequestHandler, Session};
-use meridian_editor_protocol::{
+use meridian_data_substrate::ComponentRegistry;
+use meridian_ecs::{Component, World};
+use meridian_editor_app::{Game, ManualSimulation, RequestHandler, Session};
+use meridian_editor_domain::{
     ComponentRef, HostMessage, Request, RequestEnvelope, RequestId, Response,
 };
-use meridian_scene::ComponentRegistry;
 use substrate_data::Schema;
 use tokio::io::{AsyncRead, AsyncWrite};
 

@@ -1,7 +1,7 @@
 //! The behaviour every [`FrameRecorder`](crate::FrameRecorder) must have.
 
-use meridian_graphics_core::scene::Scene3d;
-use meridian_graphics_core::{MaterialRegistry, MeshRegistry};
+use meridian_rendering_domain::scene::Scene3d;
+use meridian_rendering_domain::{MaterialRegistry, MeshRegistry};
 
 use crate::{FrameOutcome, FrameRecorder, FrameRequest};
 

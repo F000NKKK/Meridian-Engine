@@ -5,7 +5,7 @@ Physics use cases: the `PhysicsSubsystem` world state, the `PhysicsStepper` port
 **Layer and context:** application · physics
 
 - **For:** the plain-data physics world (`PhysicsSubsystem`), the `PhysicsStepper` port that advances it by one timestep, `SequentialStepper` (a CPU loop), and a contract suite (`testing`) every stepper must pass.
-- **Not for:** rigid-body algorithms, which are `meridian-physics-core`; batched or GPU stepping, which is `meridian-physics-compute`; deciding when a step runs, which is `meridian-engine-core`.
+- **Not for:** rigid-body algorithms, which are `meridian-physics-domain`; batched or GPU stepping, which is `meridian-physics-wgpu`; deciding when a step runs, which is `meridian-runtime-app`.
 
 ## Usage
 
@@ -25,8 +25,8 @@ assert!(physics.bodies.is_empty());
 
 ## Depends on / used by
 
-- Depends on: [`meridian-gac-core`](../meridian-gac-core), [`meridian-physics-core`](../meridian-physics-core)
-- Used by: [`meridian-engine-core`](../meridian-engine-core), [`meridian-physics-compute`](../meridian-physics-compute), [`meridian-sdk`](../meridian-sdk)
+- Depends on: [`meridian-gac`](../meridian-gac), [`meridian-physics-domain`](../meridian-physics-domain)
+- Used by: [`meridian-runtime-app`](../meridian-runtime-app), [`meridian-physics-wgpu`](../meridian-physics-wgpu), [`meridian-sdk`](../meridian-sdk)
 
 ## License
 

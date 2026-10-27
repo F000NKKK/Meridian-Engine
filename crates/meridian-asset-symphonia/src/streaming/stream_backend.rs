@@ -1,6 +1,6 @@
 //! The decoder behind a stream.
 
-use meridian_asset_core::AudioClip;
+use meridian_asset_domain::AudioClip;
 use symphonia::core::codecs::audio::AudioDecoder;
 use symphonia::core::formats::FormatReader;
 

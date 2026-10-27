@@ -1,6 +1,6 @@
 //! [`serve_stream`]: the request/response loop over one connection.
 
-use meridian_editor_host::{Incoming, RequestHandler, unsupported};
+use meridian_editor_app::{Incoming, RequestHandler, unsupported};
 use substrate_data::Value;
 use tokio::io::{AsyncRead, AsyncWrite, AsyncWriteExt};
 

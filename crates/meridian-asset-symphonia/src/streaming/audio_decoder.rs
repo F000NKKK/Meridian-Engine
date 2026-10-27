@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use meridian_asset_core::{AudioClip, AudioFormat, DecodeError, Decoder, WavDecoder};
+use meridian_asset_domain::{AudioClip, AudioFormat, DecodeError, Decoder, WavDecoder};
 
 use super::{StreamBackend, open_symphonia};
 

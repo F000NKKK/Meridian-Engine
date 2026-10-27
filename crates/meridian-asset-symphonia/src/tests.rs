@@ -1,6 +1,6 @@
 //! Tests of the compressed-audio decoders.
 
-use meridian_asset_core::{AudioFormat, DecodeError, Decoder};
+use meridian_asset_domain::{AudioFormat, DecodeError, Decoder};
 
 use crate::{AnyAudioDecoder, FlacDecoder, Mp3Decoder, OpusDecoder, VorbisDecoder};
 

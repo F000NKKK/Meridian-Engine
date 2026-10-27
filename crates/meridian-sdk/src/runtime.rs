@@ -2,9 +2,9 @@
 
 use std::sync::Arc;
 
-use meridian_engine_core::Runtime;
-use meridian_platform_core::CpuCapabilities;
-use meridian_task_core::TaskExecutor;
+use meridian_platform_winit::CpuCapabilities;
+use meridian_runtime_app::Runtime;
+use meridian_runtime_threads::TaskExecutor;
 
 /// A [`Runtime`] whose stages run on a [`TaskExecutor`] sized to the detected
 /// CPU thread count: the composition root's choice of adapters, so the

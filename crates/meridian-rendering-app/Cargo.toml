@@ -9,9 +9,9 @@ description = "Rendering use cases and the ports to the GPU: FrameRecorder, Text
 readme = "README.md"
 
 [dependencies]
-meridian-graphics-core = { workspace = true }
-meridian-asset-core = { workspace = true }
-meridian-memory-core = { workspace = true }
+meridian-rendering-domain = { workspace = true }
+meridian-asset-domain = { workspace = true }
+meridian-memory = { workspace = true }
 
 [features]
 # The fakes and contract suites of the rendering ports, for adapters' own tests (Craftbook 8.4).

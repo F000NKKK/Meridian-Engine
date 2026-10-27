@@ -4,32 +4,32 @@
 //! is about turning a file *path* into a real GPU-registered handle,
 //! once, no matter how many times an application asks for it).
 //!
-//! **Layering, explicitly:** `asset-core` only decodes bytes into
+//! **Layering, explicitly:** `asset-domain` only decodes bytes into
 //! CPU-side data (`ImageAsset`/`MeshAsset`) — it has no idea what a path,
-//! a cache, or a GPU handle is (rule 4: asset-core stays a decoder,
-//! never a manager). `resource-core`'s generational handles are what
-//! `MeshRegistry`/`TextureRegistry` (in `graphics-core`) already build
+//! a cache, or a GPU handle is (rule 4: asset-domain stays a decoder,
+//! never a manager). `resource`'s generational handles are what
+//! `MeshRegistry`/`TextureRegistry` (in `rendering-domain`) already build
 //! identity on. This module is the missing middle layer an application
 //! actually wants: "give me a path, get a handle back, and don't
 //! re-decode/re-upload if I ask for the same path twice" — owned here,
-//! not smeared across `asset-core` (which shouldn't know about caching
-//! or GPU handles) or `graphics-core` (whose registries shouldn't know
+//! not smeared across `asset-domain` (which shouldn't know about caching
+//! or GPU handles) or `rendering-domain` (whose registries shouldn't know
 //! about file paths or decoders).
 
 use std::collections::{HashMap, VecDeque};
 
-use meridian_asset_core::{Decoder, ImageAsset, ObjDecoder};
+use meridian_asset_domain::{Decoder, ImageAsset, ObjDecoder};
 use meridian_asset_symphonia::{AudioAsset, DecodeStrategy, StreamingAudioDecoder, open_audio};
-use meridian_graphics_core::{
+use meridian_rendering_app::{MeshStore, TextureStore};
+use meridian_rendering_domain::{
     MeshHandle, MeshRegistryError, MeshSource, TextureHandle, smooth_normals,
 };
-use meridian_rendering_app::{MeshStore, TextureStore};
 
 use crate::any_image_decoder::AnyImageDecoder;
 
 /// Reads and decodes a real image asset file, identified by its magic
 /// bytes (never its extension — the same rule
-/// `asset-core::AudioFormat::detect` follows for audio). `path` must
+/// `asset-domain::AudioFormat::detect` follows for audio). `path` must
 /// already be a path this process can open directly (absolute, or
 /// relative to the current working directory) — this function doesn't
 /// resolve it against any particular crate's `CARGO_MANIFEST_DIR`,
@@ -50,7 +50,7 @@ pub fn load_image_asset(path: &str) -> ImageAsset {
 /// `asset-symphonia::AudioAsset`, exposed behind one
 /// [`next_mono_chunk`](Self::next_mono_chunk) face so a caller never
 /// needs to know which one it got. Downmixed to mono here (spatializers
-/// like `audio-core::BinauralRenderer` take one channel per source and
+/// like `audio-domain::BinauralRenderer` take one channel per source and
 /// pan it themselves) — not cached by [`AssetCache`] like textures/
 /// meshes, since a track carries its own playback cursor and two
 /// listeners of the same file need two independent cursors, not one
@@ -197,11 +197,11 @@ impl AssetCache {
         handle
     }
 
-    /// Loads an OBJ model file at `path` through `asset-core::ObjDecoder`
+    /// Loads an OBJ model file at `path` through `asset-domain::ObjDecoder`
     /// (positions + triangle indices only — see that decoder's own
     /// module doc for the current "no `vt`/`vn` parsing" scope), derives
     /// smooth per-vertex normals from the triangle topology (this
-    /// `graphics-core`'s `smooth_normals`), and registers the
+    /// `rendering-domain`'s `smooth_normals`), and registers the
     /// result as a real [`MeshHandle`] — cached by `path`, same as
     /// [`load_texture`](Self::load_texture). UVs are `[0.0, 0.0]` for
     /// every vertex until the decoder itself gains `vt` support; a

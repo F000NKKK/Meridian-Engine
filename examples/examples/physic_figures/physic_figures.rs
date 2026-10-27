@@ -1,6 +1,6 @@
 //! Real rigid-body physics: a sphere, a cube and a pyramid dropped above
 //! a textured floor and stepped every frame through a real
-//! `meridian_sdk::Runtime` (`engine-core`'s single `JobGraph`-based
+//! `meridian_sdk::Runtime` (`runtime-app`'s single `JobGraph`-based
 //! frame-work entry point — see that crate's own module doc). Physics
 //! *and* rendering both go through this one `Runtime`: a registered
 //! `meridian_sdk::PhysicsStepStage` in `PhysicsDispatchMode::Batched`

@@ -5,11 +5,11 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Diagnostics adapter: the buffered log-file sink (the LogSink port of meridian-foundation) and the crash-report panic hook."
+description = "Diagnostics adapter: the buffered log-file sink (the LogSink port of meridian-diagnostics) and the crash-report panic hook."
 readme = "README.md"
 
 [dependencies]
-meridian-foundation = { workspace = true }
+meridian-diagnostics = { workspace = true }
 tokio = { workspace = true, features = ["time", "fs", "io-util", "rt"] }
 
 [lints]

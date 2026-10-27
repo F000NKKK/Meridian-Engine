@@ -1,8 +1,8 @@
 //! The audio state the runtime mixes each frame.
 
-use meridian_audio_core::{Emitter, Listener, Mixer};
+use meridian_audio_domain::{Emitter, Listener, Mixer};
 
-/// `audio-core`'s listener, emitters and gain mixer, bundled as one
+/// `audio-domain`'s listener, emitters and gain mixer, bundled as one
 /// plain-data unit the application owns; no lock lives here. **One
 /// specific, opinionated audio path (`Mixer::mix`'s per-channel gain
 /// model), not "the" audio pipeline every consumer must fit** — see
@@ -24,7 +24,7 @@ impl AudioSubsystem {
     }
 
     /// Per-channel gains for every emitter against the current listener,
-    /// via `audio-core`'s `Mixer` — reads whatever `emitters`' frames are
+    /// via `audio-domain`'s `Mixer` — reads whatever `emitters`' frames are
     /// *right now*, so calling this after a physics step reflects
     /// physics-updated positions.
     ///
@@ -37,18 +37,18 @@ impl AudioSubsystem {
     /// through this type: bolting a second fixed pipeline (a
     /// `binaural: Option<BinauralRenderer>` field plus a matching
     /// hardcoded declick stage) onto `AudioSubsystem` alongside this one
-    /// would repeat the same mistake — engine-core dictating a specific
+    /// would repeat the same mistake — runtime-app dictating a specific
     /// effect chain — rather than fixing it. An application-defined
     /// runtime stage can own a `BinauralRenderer` directly instead.
-    pub fn mix(&self) -> Vec<(meridian_audio_core::Channel, f32)> {
+    pub fn mix(&self) -> Vec<(meridian_audio_domain::Channel, f32)> {
         self.mixer.mix(&self.listener, &self.emitters)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use meridian_audio_core::{AttenuationModel, Channel, SpeakerLayout};
-    use meridian_gac_core::{Motor3, Vec3};
+    use meridian_audio_domain::{AttenuationModel, Channel, SpeakerLayout};
+    use meridian_gac::{Motor3, Vec3};
 
     use super::*;
 
@@ -64,7 +64,7 @@ mod tests {
         audio.listener = Listener {
             frame: Motor3::identity(),
         };
-        // Local +Z is "right" per audio-core's listener convention.
+        // Local +Z is "right" per audio-domain's listener convention.
         audio.emitters.push((
             Emitter {
                 frame: Motor3::translation(Vec3::new(0.0, 0.0, 5.0)),

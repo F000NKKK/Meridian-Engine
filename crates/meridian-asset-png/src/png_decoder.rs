@@ -1,7 +1,7 @@
 //! PNG decoder via the `png` crate — see docs/adr/013-compressed-audio-codecs.md
 //! for why PNG's DEFLATE payload isn't hand-rolled the way BMP is.
 
-use meridian_asset_core::{DecodeError, Decoder, ImageAsset};
+use meridian_asset_domain::{DecodeError, Decoder, ImageAsset};
 
 /// Decodes PNG (any color type/bit depth the `png` crate itself
 /// supports) into RGBA8, always — palette, grayscale and

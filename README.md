@@ -43,60 +43,60 @@ crate has its own README.
 
 | Crate | Context | What it gives |
 |---|---|---|
-| [`meridian-foundation`](crates/meridian-foundation) | diagnostics | Error conventions, log kernel and `LogSink` port, CPU feature flags |
+| [`meridian-diagnostics`](crates/meridian-diagnostics) | diagnostics | Error conventions, log kernel and `LogSink` port, CPU feature flags |
 | [`meridian-diagnostics-fs`](crates/meridian-diagnostics-fs) | diagnostics | Log file sink and crash-report hook (adapter) |
-| [`meridian-numeric-core`](crates/meridian-numeric-core) | geometry | Scalar types, deterministic `Fixed`, numeric traits |
-| [`meridian-gac-core`](crates/meridian-gac-core) | geometry | Geometric algebra: vectors, rotors, motors, shapes (float and `Fixed`) |
-| [`meridian-memory-core`](crates/meridian-memory-core) | identity | Arenas, resource pools, generational handles |
-| [`meridian-resource-core`](crates/meridian-resource-core) | identity | Typed resource ids, versions, dependency graph |
-| [`meridian-ecs-core`](crates/meridian-ecs-core) | entity | Archetype ECS with SoA storage |
-| [`meridian-dsl-core`](crates/meridian-dsl-core) | scene-markup | Domain-blind `.mel` markup parser and tag registry |
+| [`meridian-numeric`](crates/meridian-numeric) | geometry | Scalar types, deterministic `Fixed`, numeric traits |
+| [`meridian-gac`](crates/meridian-gac) | geometry | Geometric algebra: vectors, rotors, motors, shapes (float and `Fixed`) |
+| [`meridian-memory`](crates/meridian-memory) | identity | Arenas, resource pools, generational handles |
+| [`meridian-resource`](crates/meridian-resource) | identity | Typed resource ids, versions, dependency graph |
+| [`meridian-ecs`](crates/meridian-ecs) | entity | Archetype ECS with SoA storage |
+| [`meridian-markup`](crates/meridian-markup) | scene-markup | Domain-blind `.mel` markup parser and tag registry |
 
 **Domain**
 
 | Crate | Context | What it gives |
 |---|---|---|
-| [`meridian-graphics-core`](crates/meridian-graphics-core) | rendering | Render graph, scenes, culling, lighting, materials, camera, bloom |
-| [`meridian-physics-core`](crates/meridian-physics-core) | physics | Rigid bodies, collision, solver, integrator, soft bodies |
-| [`meridian-audio-core`](crates/meridian-audio-core) | audio | Spatial mixer, DSP graph, listener and emitters |
-| [`meridian-asset-core`](crates/meridian-asset-core) | assets | `Decoder` port, CPU asset types and the pure BMP, WAV, OBJ and shader parsers |
-| [`meridian-ui-core`](crates/meridian-ui-core) | ui | WPF-style retained UI tree, layout, hit testing |
+| [`meridian-rendering-domain`](crates/meridian-rendering-domain) | rendering | Render graph, scenes, culling, lighting, materials, camera, bloom |
+| [`meridian-physics-domain`](crates/meridian-physics-domain) | physics | Rigid bodies, collision, solver, integrator, soft bodies |
+| [`meridian-audio-domain`](crates/meridian-audio-domain) | audio | Spatial mixer, DSP graph, listener and emitters |
+| [`meridian-asset-domain`](crates/meridian-asset-domain) | assets | `Decoder` port, CPU asset types and the pure BMP, WAV, OBJ and shader parsers |
+| [`meridian-ui-domain`](crates/meridian-ui-domain) | ui | WPF-style retained UI tree, layout, hit testing |
 
 **Application**
 
 | Crate | Context | What it gives |
 |---|---|---|
-| [`meridian-compute-runtime`](crates/meridian-compute-runtime) | compute | Compute context, kernel interfaces, dispatch size and split |
+| [`meridian-compute-app`](crates/meridian-compute-app) | compute | Compute context, kernel interfaces, dispatch size and split |
 | [`meridian-audio-app`](crates/meridian-audio-app) | audio | The `AudioSink` port, with a fake and a contract suite |
 | [`meridian-physics-app`](crates/meridian-physics-app) | physics | `PhysicsSubsystem`, the `PhysicsStepper` port and `SequentialStepper` |
 | [`meridian-rendering-app`](crates/meridian-rendering-app) | rendering | Ports `FrameRecorder`, `MeshStore`, `TextureStore`, with fakes and contract suites |
-| [`meridian-engine-core`](crates/meridian-engine-core) | runtime | `Runtime`: stages in dependency order, `JobExecutor` port, events (owns no state) |
+| [`meridian-runtime-app`](crates/meridian-runtime-app) | runtime | `Runtime`: stages in dependency order, `JobExecutor` port, events (owns no state) |
 
 **Infrastructure (adapters)**
 
 | Crate | Context | What it gives |
 |---|---|---|
-| [`meridian-task-core`](crates/meridian-task-core) | runtime | Job graph scheduler with worker threads; implements `JobExecutor` |
-| [`meridian-platform-core`](crates/meridian-platform-core) | platform | Window, input, clock, capabilities, dynamic libraries |
-| [`meridian-gpu-driver`](crates/meridian-gpu-driver) | compute | Shared `wgpu` device, buffers, shaders, compute pipelines |
-| [`meridian-compute-driver`](crates/meridian-compute-driver) | compute | CPU-SIMD and GPU compute dispatch |
-| [`meridian-graphics-driver`](crates/meridian-graphics-driver) | rendering | Graphics device, surfaces, render pipelines |
+| [`meridian-runtime-threads`](crates/meridian-runtime-threads) | runtime | Job graph scheduler with worker threads; implements `JobExecutor` |
+| [`meridian-platform-winit`](crates/meridian-platform-winit) | platform | Window, input, clock, capabilities, dynamic libraries |
+| [`meridian-gpu-wgpu`](crates/meridian-gpu-wgpu) | compute | Shared `wgpu` device, buffers, shaders, compute pipelines |
+| [`meridian-compute-wgpu`](crates/meridian-compute-wgpu) | compute | CPU-SIMD and GPU compute dispatch |
+| [`meridian-rendering-wgpu`](crates/meridian-rendering-wgpu) | rendering | Graphics device, surfaces, render pipelines |
 | [`meridian-asset-png`](crates/meridian-asset-png) | assets | PNG decoder adapter on the `png` crate |
 | [`meridian-asset-symphonia`](crates/meridian-asset-symphonia) | assets | MP3, OGG/Vorbis, FLAC, OGG/Opus and streaming decoder adapter |
-| [`meridian-audio-driver`](crates/meridian-audio-driver) | audio | Audio output device via `cpal` |
-| [`meridian-gac-compute`](crates/meridian-gac-compute) | geometry | Batch `Motor3` kernels on CPU-SIMD and GPU |
-| [`meridian-physics-compute`](crates/meridian-physics-compute) | physics | Batched rigid-body and soft-body kernels |
-| [`meridian-scene`](crates/meridian-scene) | data | `.mscene` documents on Substrate Data, `World` load/save |
-| [`meridian-editor-protocol`](crates/meridian-editor-protocol) | editor | Typed game/editor messages as Substrate Data frames |
-| [`meridian-editor-host`](crates/meridian-editor-host) | editor | The game's side of the protocol, without I/O: `Session`, `SimulationControl`, `RequestHandler` |
+| [`meridian-audio-cpal`](crates/meridian-audio-cpal) | audio | Audio output device via `cpal` |
+| [`meridian-gac-wgpu`](crates/meridian-gac-wgpu) | geometry | Batch `Motor3` kernels on CPU-SIMD and GPU |
+| [`meridian-physics-wgpu`](crates/meridian-physics-wgpu) | physics | Batched rigid-body and soft-body kernels |
+| [`meridian-data-substrate`](crates/meridian-data-substrate) | data | `.mscene` documents on Substrate Data, `World` load/save |
+| [`meridian-editor-domain`](crates/meridian-editor-domain) | editor | Typed game/editor messages as Substrate Data frames |
+| [`meridian-editor-app`](crates/meridian-editor-app) | editor | The game's side of the protocol, without I/O: `Session`, `SimulationControl`, `RequestHandler` |
 | [`meridian-editor-tcp`](crates/meridian-editor-tcp) | editor | Serves one editor over loopback TCP (the only editor crate with `tokio`) |
-| [`meridian-mel-build`](crates/meridian-mel-build) | ui | `build.rs` generator turning `.mel` into typed Rust |
+| [`meridian-ui-mel`](crates/meridian-ui-mel) | ui | `build.rs` generator turning `.mel` into typed Rust |
 
 **Interface**
 
 | Crate | Context | What it gives |
 |---|---|---|
-| [`meridian-dsl-macros`](crates/meridian-dsl-macros) | scene-markup | `#[dsl_tag]` attribute macro |
+| [`meridian-markup-macros`](crates/meridian-markup-macros) | scene-markup | `#[dsl_tag]` attribute macro |
 | [`meridian-sdk`](crates/meridian-sdk) | runtime | Single application entry point: re-exports, scene DSL, windowed-app scaffolding |
 
 ## 🚀 Getting Started
@@ -108,11 +108,11 @@ Depend on the crate you need. For example, the geometric algebra on its own:
 
 ```toml
 [dependencies]
-meridian-gac-core = { git = "https://github.com/F000NKKK/Meridian-Engine" }
+meridian-gac = { git = "https://github.com/F000NKKK/Meridian-Engine" }
 ```
 
 ```rust
-use meridian_gac_core::{Rotor, Vec3};
+use meridian_gac::{Rotor, Vec3};
 
 fn main() {
     // Rotating X about Z by a quarter turn gives Y.
@@ -141,10 +141,10 @@ and every layer may use the shared kernel.
 
 ```mermaid
 flowchart LR
-    I[interface<br/>sdk, dsl-macros, examples] --> A[application<br/>engine-core, compute-runtime, audio-app, physics-app, rendering-app]
+    I[interface<br/>sdk, markup-macros, examples] --> A[application<br/>runtime-app, compute-app, audio-app, physics-app, rendering-app]
     A --> D[domain<br/>graphics, physics, audio, assets, ui]
-    X[infrastructure<br/>drivers, adapters, scene, editor-protocol, editor-host, editor-tcp] --> D
-    K[shared kernel<br/>foundation, numeric, gac, memory, resource, ecs, dsl-core]
+    X[infrastructure<br/>drivers, adapters, scene, editor-domain, editor-app, editor-tcp] --> D
+    K[shared kernel<br/>diagnostics, numeric, gac, memory, resource, ecs, markup]
     I -.-> K
     A -.-> K
     D -.-> K
@@ -190,8 +190,8 @@ Crates are released with `./release.sh` (see its `--help`).
 | Geometric algebra, ECS, memory, resources, task graph | Implemented and tested |
 | Windowing (`winit`), GPU rendering and compute (`wgpu`) | Implemented |
 | Physics, spatial audio, assets, scene DSL | Implemented, in use by the examples |
-| UI runtime (`ui-core`) | Layout and hit testing; rendering and input routing not done |
-| Editor protocol, scene documents | Implemented; editor host (`Session` + loopback TCP) implemented, not yet wired into `engine-core`'s frame loop |
+| UI runtime (`ui-domain`) | Layout and hit testing; rendering and input routing not done |
+| Editor protocol, scene documents | Implemented; editor host (`Session` + loopback TCP) implemented, not yet wired into `runtime-app`'s frame loop |
 | Craftbook migration | In progress: some files and functions still above the limits, tracked by the baselines |
 
 The plan is in [`docs/roadmap.md`](docs/roadmap.md).

@@ -1,11 +1,11 @@
 //! The windowed application's graphics session: the wgpu recorder, the
 //! registries and the asset cache an application builds once. The mesh
-//! builders it used to hold are `meridian_graphics_core`'s `shapes`; the
+//! builders it used to hold are `meridian_rendering_domain`'s `shapes`; the
 //! per-frame logic is `meridian_rendering_app::RenderSession`.
 
-use meridian_graphics_core::{MeshHandle, TextureHandle};
-use meridian_graphics_driver::{Device, GpuFrameRecorder, Surface};
 use meridian_rendering_app::RenderSession;
+use meridian_rendering_domain::{MeshHandle, TextureHandle};
+use meridian_rendering_wgpu::{Device, GpuFrameRecorder, Surface};
 
 use crate::assets::AssetCache;
 
@@ -36,7 +36,7 @@ impl GraphicsSession {
             surface,
             width,
             height,
-            meridian_graphics_driver::DEFAULT_SHADOW_MAP_SIZE,
+            meridian_rendering_wgpu::DEFAULT_SHADOW_MAP_SIZE,
         )
     }
 

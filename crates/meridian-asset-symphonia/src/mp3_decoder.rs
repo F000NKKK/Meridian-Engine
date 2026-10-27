@@ -1,6 +1,6 @@
 //! MPEG Layer III decoding.
 
-use meridian_asset_core::{AudioClip, AudioFormat, DecodeError, Decoder};
+use meridian_asset_domain::{AudioClip, AudioFormat, DecodeError, Decoder};
 
 use crate::decode_compressed::{decode_compressed, expect_format};
 

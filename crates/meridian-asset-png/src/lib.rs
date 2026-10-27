@@ -1,4 +1,4 @@
-//! PNG adapter for `meridian-asset-core`: decodes PNG bytes to RGBA8 on the `png` crate.
+//! PNG adapter for `meridian-asset-domain`: decodes PNG bytes to RGBA8 on the `png` crate.
 //!
 //! Layer: infrastructure; bounded context: assets (`craftbook.toml`,
 //! docs/context-map.md). [`PngDecoder`] implements the `Decoder` port of

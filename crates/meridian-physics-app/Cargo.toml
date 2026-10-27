@@ -9,15 +9,15 @@ description = "Physics use cases: the PhysicsSubsystem world state, the PhysicsS
 readme = "README.md"
 
 [dependencies]
-meridian-physics-core = { workspace = true }
-meridian-gac-core = { workspace = true, optional = true }
+meridian-physics-domain = { workspace = true }
+meridian-gac = { workspace = true, optional = true }
 
 [dev-dependencies]
-meridian-gac-core = { workspace = true }
+meridian-gac = { workspace = true }
 
 [features]
 # The `PhysicsStepper` contract suite, for adapters' own tests (Craftbook 8.4).
-testing = ["dep:meridian-gac-core"]
+testing = ["dep:meridian-gac"]
 
 [lints]
 workspace = true

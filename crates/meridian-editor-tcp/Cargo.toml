@@ -9,15 +9,15 @@ description = "Serves the editor protocol to one editor over a local TCP connect
 readme = "README.md"
 
 [dependencies]
-meridian-editor-host = { workspace = true }
-meridian-editor-protocol = { workspace = true }
+meridian-editor-app = { workspace = true }
+meridian-editor-domain = { workspace = true }
 substrate-data = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["net", "io-util"] }
 
 [dev-dependencies]
-meridian-ecs-core = { workspace = true }
-meridian-scene = { workspace = true }
+meridian-ecs = { workspace = true }
+meridian-data-substrate = { workspace = true }
 
 [lints]
 workspace = true

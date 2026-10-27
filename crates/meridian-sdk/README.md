@@ -1,6 +1,6 @@
 # meridian-sdk
 
-Single application-facing entry point: re-exports everything an app needs (gac-core/physics-core/audio-core/graphics-core/graphics-driver/platform-core/asset-core/engine-core types) plus its own composable job-graph pipeline and windowed-app scaffolding (scene/camera helpers). Applications depend on this crate alone, never on the individual crates it composes.
+Single application-facing entry point: re-exports everything an app needs (gac/physics-domain/audio-domain/rendering-domain/rendering-wgpu/platform-winit/asset-domain/runtime-app types) plus its own composable job-graph pipeline and windowed-app scaffolding (scene/camera helpers). Applications depend on this crate alone, never on the individual crates it composes.
 
 **Layer and context:** interface · runtime
 
@@ -19,7 +19,7 @@ let registry = dsl::default_registry();
 
 ## Depends on / used by
 
-- Depends on: [`meridian-asset-core`](../meridian-asset-core), [`meridian-asset-png`](../meridian-asset-png), [`meridian-asset-symphonia`](../meridian-asset-symphonia), [`meridian-audio-app`](../meridian-audio-app), [`meridian-audio-core`](../meridian-audio-core), [`meridian-audio-driver`](../meridian-audio-driver), [`meridian-compute-driver`](../meridian-compute-driver), [`meridian-compute-runtime`](../meridian-compute-runtime), [`meridian-diagnostics-fs`](../meridian-diagnostics-fs), [`meridian-dsl-core`](../meridian-dsl-core), [`meridian-dsl-macros`](../meridian-dsl-macros), [`meridian-engine-core`](../meridian-engine-core), [`meridian-foundation`](../meridian-foundation), [`meridian-gac-core`](../meridian-gac-core), [`meridian-graphics-core`](../meridian-graphics-core), [`meridian-graphics-driver`](../meridian-graphics-driver), [`meridian-physics-app`](../meridian-physics-app), [`meridian-physics-compute`](../meridian-physics-compute), [`meridian-physics-core`](../meridian-physics-core), [`meridian-platform-core`](../meridian-platform-core), [`meridian-rendering-app`](../meridian-rendering-app), [`meridian-task-core`](../meridian-task-core), [`meridian-ui-core`](../meridian-ui-core)
+- Depends on: [`meridian-asset-domain`](../meridian-asset-domain), [`meridian-asset-png`](../meridian-asset-png), [`meridian-asset-symphonia`](../meridian-asset-symphonia), [`meridian-audio-app`](../meridian-audio-app), [`meridian-audio-domain`](../meridian-audio-domain), [`meridian-audio-cpal`](../meridian-audio-cpal), [`meridian-compute-wgpu`](../meridian-compute-wgpu), [`meridian-compute-app`](../meridian-compute-app), [`meridian-diagnostics-fs`](../meridian-diagnostics-fs), [`meridian-markup`](../meridian-markup), [`meridian-markup-macros`](../meridian-markup-macros), [`meridian-runtime-app`](../meridian-runtime-app), [`meridian-diagnostics`](../meridian-diagnostics), [`meridian-gac`](../meridian-gac), [`meridian-rendering-domain`](../meridian-rendering-domain), [`meridian-rendering-wgpu`](../meridian-rendering-wgpu), [`meridian-physics-app`](../meridian-physics-app), [`meridian-physics-wgpu`](../meridian-physics-wgpu), [`meridian-physics-domain`](../meridian-physics-domain), [`meridian-platform-winit`](../meridian-platform-winit), [`meridian-rendering-app`](../meridian-rendering-app), [`meridian-runtime-threads`](../meridian-runtime-threads), [`meridian-ui-domain`](../meridian-ui-domain)
 - Used by: [`meridian-examples`](../../examples)
 
 ## License

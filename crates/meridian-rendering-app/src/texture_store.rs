@@ -1,13 +1,13 @@
 //! The port that puts decoded images on the GPU.
 
-use meridian_asset_core::ImageAsset;
-use meridian_graphics_core::TextureHandle;
+use meridian_asset_domain::ImageAsset;
+use meridian_rendering_domain::TextureHandle;
 
 /// Where decoded images become sampleable textures, addressed by
-/// [`TextureHandle`](meridian_graphics_core::TextureHandle).
+/// [`TextureHandle`](meridian_rendering_domain::TextureHandle).
 ///
 /// Uploading is the adapter's work (it owns the device); callers hold only
-/// handles (ADR 002). `graphics-driver` implements it with GPU textures;
+/// handles (ADR 002). `rendering-wgpu` implements it with GPU textures;
 /// [`testing::FakeTextureStore`](crate::testing::FakeTextureStore) is the
 /// in-memory fake and
 /// [`testing::run_texture_store_contract`](crate::testing::run_texture_store_contract)
