@@ -58,7 +58,7 @@ crate has its own README.
 | [`meridian-graphics-core`](crates/meridian-graphics-core) | rendering | Render graph, scenes, culling, lighting, materials, camera, bloom |
 | [`meridian-physics-core`](crates/meridian-physics-core) | physics | Rigid bodies, collision, solver, integrator, soft bodies |
 | [`meridian-audio-core`](crates/meridian-audio-core) | audio | Spatial mixer, DSP graph, listener and emitters |
-| [`meridian-asset-core`](crates/meridian-asset-core) | assets | Decoders for images, meshes, audio and shaders |
+| [`meridian-asset-core`](crates/meridian-asset-core) | assets | `Decoder` port, CPU asset types and the pure BMP, WAV, OBJ and shader parsers |
 | [`meridian-ui-core`](crates/meridian-ui-core) | ui | WPF-style retained UI tree, layout, hit testing |
 
 **Application**
@@ -66,6 +66,8 @@ crate has its own README.
 | Crate | Context | What it gives |
 |---|---|---|
 | [`meridian-compute-runtime`](crates/meridian-compute-runtime) | compute | Compute context, kernel interfaces, dispatch size and split |
+| [`meridian-audio-app`](crates/meridian-audio-app) | audio | The `AudioSink` port, with a fake and a contract suite |
+| [`meridian-rendering-app`](crates/meridian-rendering-app) | rendering | Ports `FrameRecorder`, `MeshStore`, `TextureStore`, with fakes and contract suites |
 | [`meridian-engine-core`](crates/meridian-engine-core) | runtime | `Runtime`: frame scheduler, events, physics/audio subsystems, stages |
 
 **Infrastructure (adapters)**
@@ -77,8 +79,9 @@ crate has its own README.
 | [`meridian-gpu-driver`](crates/meridian-gpu-driver) | compute | Shared `wgpu` device, buffers, shaders, compute pipelines |
 | [`meridian-compute-driver`](crates/meridian-compute-driver) | compute | CPU-SIMD and GPU compute dispatch |
 | [`meridian-graphics-driver`](crates/meridian-graphics-driver) | rendering | Graphics device, surfaces, render pipelines |
+| [`meridian-asset-png`](crates/meridian-asset-png) | assets | PNG decoder adapter on the `png` crate |
+| [`meridian-asset-symphonia`](crates/meridian-asset-symphonia) | assets | MP3, OGG/Vorbis, FLAC, OGG/Opus and streaming decoder adapter |
 | [`meridian-audio-driver`](crates/meridian-audio-driver) | audio | Audio output device via `cpal` |
-| [`meridian-physics-driver`](crates/meridian-physics-driver) | physics | Physics execution backend report (to be deleted, ADR 019) |
 | [`meridian-gac-compute`](crates/meridian-gac-compute) | geometry | Batch `Motor3` kernels on CPU-SIMD and GPU |
 | [`meridian-physics-compute`](crates/meridian-physics-compute) | physics | Batched rigid-body and soft-body kernels |
 | [`meridian-scene`](crates/meridian-scene) | data | `.mscene` documents on Substrate Data, `World` load/save |
@@ -136,7 +139,7 @@ and every layer may use the shared kernel.
 
 ```mermaid
 flowchart LR
-    I[interface<br/>sdk, dsl-macros, examples] --> A[application<br/>engine-core, compute-runtime]
+    I[interface<br/>sdk, dsl-macros, examples] --> A[application<br/>engine-core, compute-runtime, audio-app, rendering-app]
     A --> D[domain<br/>graphics, physics, audio, assets, ui]
     X[infrastructure<br/>drivers, adapters, scene, editor-protocol, editor-host, editor-tcp] --> D
     K[shared kernel<br/>foundation, numeric, gac, memory, resource, ecs, dsl-core]

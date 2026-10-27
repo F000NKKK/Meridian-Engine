@@ -1,5 +1,6 @@
 //! Tests of this module.
 
+use meridian_compute_driver::gpu_context;
 use meridian_compute_runtime::ComputeContext;
 use meridian_numeric_core::Fixed;
 
@@ -93,7 +94,7 @@ fn all_pairs(values: &[Fixed]) -> Vec<(Fixed, Fixed)> {
 /// this workspace.
 #[cfg(feature = "hw-tests")]
 async fn kernels_or_skip() -> Option<(ComputeContext, FixedArithmeticKernels)> {
-    let context = match ComputeContext::new().with_gpu().await {
+    let context = match gpu_context().await {
         Ok(ctx) => ctx,
         Err(err) => {
             eprintln!("skipping: no GPU device available ({err})");

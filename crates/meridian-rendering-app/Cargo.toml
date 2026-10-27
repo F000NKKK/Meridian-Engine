@@ -1,0 +1,21 @@
+[package]
+name = "meridian-rendering-app"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Rendering use cases and the ports to the GPU: FrameRecorder, TextureStore and MeshStore."
+readme = "README.md"
+
+[dependencies]
+meridian-graphics-core = { workspace = true }
+meridian-asset-core = { workspace = true }
+meridian-memory-core = { workspace = true }
+
+[features]
+# The fakes and contract suites of the rendering ports, for adapters' own tests (Craftbook 8.4).
+testing = []
+
+[lints]
+workspace = true

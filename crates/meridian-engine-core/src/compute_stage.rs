@@ -25,9 +25,10 @@ impl<K: ComputeKernel + Send + 'static> ComputeStage<K> {
     /// `size` is the dispatch shape passed to `ComputeKernel::dispatch`
     /// every tick — most kernels use `DispatchSize::linear(item_count)`
     /// (see that constructor's own doc comment).
-    pub fn new(kernel: K, size: DispatchSize) -> Self {
+    /// `scheduler` is built by the composition root from its compute adapter.
+    pub fn new(kernel: K, size: DispatchSize, scheduler: ComputeScheduler) -> Self {
         Self {
-            scheduler: ComputeScheduler::new(),
+            scheduler,
             kernel,
             size,
         }

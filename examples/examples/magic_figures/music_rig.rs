@@ -2,8 +2,8 @@
 
 use meridian_examples::paths::asset_path;
 use meridian_sdk::{
-    AcousticMedium, AudioOutput, AudioTrack, BinauralRenderer, Declicker, DspNode, Emitter,
-    Listener, Motor3, SpeakerLayout, Vec3, load_audio_track,
+    AcousticMedium, AudioSink, AudioStream, AudioTrack, BinauralRenderer, Declicker, DspNode,
+    Emitter, Listener, Motor3, SpeakerLayout, Vec3, load_audio_track, open_output,
 };
 
 use crate::ShapeSpec;
@@ -50,11 +50,11 @@ fn load_music_tracks(shapes: &[ShapeSpec]) -> (Vec<AudioTrack>, u32) {
 }
 
 /// All tracks, spatialized in one shared `BinauralRenderer` and pushed
-/// into one `AudioOutput` — see the module doc for why one stream
+/// into one `AudioStream` — see the module doc for why one stream
 /// suffices, and for why this is a hand-assembled pipeline rather than
 /// `meridian_sdk::AudioSubsystem::mix`.
 pub(crate) struct MusicRig {
-    output: AudioOutput,
+    output: AudioStream,
     renderer: BinauralRenderer,
     declicker: Declicker,
     tracks: Vec<AudioTrack>,
@@ -67,7 +67,7 @@ impl MusicRig {
         let renderer =
             BinauralRenderer::new(sample_rate).with_medium(AcousticMedium::air_sea_level());
         let ring_frames = (sample_rate as f32 * RING_SECONDS) as u32;
-        let output = AudioOutput::open(
+        let output = open_output(
             &SpeakerLayout::stereo_headphones(),
             sample_rate,
             Some(ring_frames),

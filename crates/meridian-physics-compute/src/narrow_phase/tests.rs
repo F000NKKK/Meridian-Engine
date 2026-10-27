@@ -1,5 +1,6 @@
 //! Tests of this module.
 
+use meridian_compute_driver::cpu_context;
 use meridian_gac_core::{FloatFlavor, Motor3, Vec3};
 use meridian_physics_core::collision::ColliderShape;
 
@@ -33,7 +34,7 @@ fn dispatch_matches_direct_test_pair() {
         .map(|&(a, b)| narrow_phase.test_pair(&bodies, a, b))
         .collect();
 
-    let context = ComputeContext::new();
+    let context = cpu_context();
     let kernel = NarrowPhaseTestPairKernel::new(bodies, pairs.clone());
     kernel.dispatch(&context, DispatchSize::linear(pairs.len() as u32));
 
@@ -73,7 +74,7 @@ fn large_batch_matches_direct_test_pair() {
         .map(|&(a, b)| narrow_phase.test_pair(&bodies, a, b))
         .collect();
 
-    let context = ComputeContext::new();
+    let context = cpu_context();
     let kernel = NarrowPhaseTestPairKernel::new(bodies, pairs.clone());
     kernel.dispatch(&context, DispatchSize::linear(pairs.len() as u32));
 
@@ -142,7 +143,7 @@ fn dispatch_matches_direct_generate_contacts() {
         expected.len()
     );
 
-    let context = ComputeContext::new();
+    let context = cpu_context();
     let kernel = GenerateContactsKernel::new(bodies, pairs);
     kernel.dispatch(&context, DispatchSize::linear(kernel.pairs.len() as u32));
 
@@ -172,7 +173,7 @@ fn dispatch_matches_direct_generate_contacts_mixed_pairs() {
     let narrow_phase = NarrowPhase::<FloatFlavor>::new();
     let expected = narrow_phase.generate_contacts(&bodies, &pairs);
 
-    let context = ComputeContext::new();
+    let context = cpu_context();
     let kernel = GenerateContactsKernel::new(bodies, pairs);
     kernel.dispatch(&context, DispatchSize::linear(kernel.pairs.len() as u32));
 

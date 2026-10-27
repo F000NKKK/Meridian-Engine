@@ -1,11 +1,11 @@
 # meridian-graphics-core
 
-High-level rendering: render graph, scene extraction, visibility/culling, lighting, materials, camera and post-processing.
+High-level rendering domain: render graph, scene extraction, visibility/culling, lighting, materials, camera and the ports to a GPU.
 
 **Layer and context:** domain · rendering
 
-- **For:** `Scene3d`/`Scene2d`, `Camera`, lights and materials, the render graph, bloom, and the submission bridge to `graphics-driver`.
-- **Not for:** owning GPU objects or the device: those are `meridian-graphics-driver`.
+- **For:** `Scene3d`/`Scene2d`, `Camera`, lights and materials, the render graph, sprite batching, the mesh/material registries and the shadow light.
+- **Not for:** owning GPU objects, pipelines or recording: those are `meridian-graphics-driver`, which implements the ports of `meridian-rendering-app`.
 
 ## Usage
 
@@ -19,8 +19,8 @@ The entry points are documented on [docs.rs](https://docs.rs/meridian-graphics-c
 
 ## Depends on / used by
 
-- Depends on: [`meridian-asset-core`](../meridian-asset-core), [`meridian-ecs-core`](../meridian-ecs-core), [`meridian-foundation`](../meridian-foundation), [`meridian-gac-core`](../meridian-gac-core), [`meridian-graphics-driver`](../meridian-graphics-driver), [`meridian-memory-core`](../meridian-memory-core), [`meridian-resource-core`](../meridian-resource-core)
-- Used by: [`meridian-sdk`](../meridian-sdk)
+- Depends on: [`meridian-ecs-core`](../meridian-ecs-core), [`meridian-foundation`](../meridian-foundation), [`meridian-gac-core`](../meridian-gac-core), [`meridian-memory-core`](../meridian-memory-core), [`meridian-resource-core`](../meridian-resource-core)
+- Used by: [`meridian-graphics-driver`](../meridian-graphics-driver), [`meridian-rendering-app`](../meridian-rendering-app), [`meridian-sdk`](../meridian-sdk), [`meridian-ui-render`](../meridian-ui-render)
 
 ## License
 

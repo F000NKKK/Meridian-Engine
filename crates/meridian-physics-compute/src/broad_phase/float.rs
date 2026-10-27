@@ -1,6 +1,7 @@
 //! GPU-dispatched broad-phase overlap test, the one kernel of this crate's
 //! rigid-body pipeline with a real WGSL shader behind it.
 
+use meridian_compute_driver::GpuComputeDevice;
 use meridian_compute_runtime::ComputeContext;
 use meridian_gac_core::FloatFlavor;
 use meridian_gpu_driver::{Buffer, BufferUsage, ComputePipeline};
@@ -77,7 +78,7 @@ impl BroadPhaseGpuKernel {
     /// ([`ComputeContext::with_gpu`]) — panics otherwise, the same
     /// policy [`crate::soft_body::float::SoftBodyGpuKernel::new`] uses.
     pub fn new(context: &ComputeContext) -> Self {
-        let gpu = context.gpu().expect(GPU_MISSING_NEW);
+        let gpu = context.gpu::<GpuComputeDevice>().expect(GPU_MISSING_NEW);
         let shader = gpu.create_shader("broad_phase_overlap_f32", BROAD_PHASE_WGSL);
         let pipeline = gpu.create_compute_pipeline(&shader, "broad_phase_overlap");
         Self { pipeline }
@@ -114,7 +115,7 @@ impl BroadPhaseGpuKernel {
         bodies: &[RigidBody<FloatFlavor>],
         candidates: &[(u32, u32)],
     ) -> Vec<u8> {
-        let gpu = context.gpu().expect(GPU_MISSING_PAIRS);
+        let gpu = context.gpu::<GpuComputeDevice>().expect(GPU_MISSING_PAIRS);
         let (aabb_min_bytes, aabb_max_bytes) = aabb_bytes(bodies);
         let pair_count = candidates.len() as u32;
         let pair_indices_bytes: Vec<u8> = candidates

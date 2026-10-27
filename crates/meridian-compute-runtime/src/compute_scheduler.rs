@@ -1,6 +1,8 @@
 //! Runs kernels against one context.
 
-use crate::{ComputeContext, ComputeKernel, DispatchSize};
+use std::sync::Arc;
+
+use crate::{ComputeContext, ComputeDevice, ComputeKernel, DispatchSize};
 
 /// The entry point consumers use instead of calling `ComputeKernel::dispatch`
 /// directly: owns the [`ComputeContext`](crate::ComputeContext) (and its sequential/parallel
@@ -10,25 +12,22 @@ pub struct ComputeScheduler {
     context: ComputeContext,
 }
 
-impl Default for ComputeScheduler {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl ComputeScheduler {
-    pub fn new() -> Self {
+    /// A scheduler over a CPU-only context on `device`.
+    #[must_use]
+    pub fn new(device: Arc<dyn ComputeDevice>) -> Self {
         Self {
-            context: ComputeContext::new(),
+            context: ComputeContext::new(device),
         }
     }
 
     /// Below `threshold` work items, a dispatch runs sequentially on the
     /// calling thread rather than fanning out across `compute-driver`'s
     /// worker threads.
-    pub fn with_parallel_threshold(threshold: usize) -> Self {
+    #[must_use]
+    pub fn with_parallel_threshold(device: Arc<dyn ComputeDevice>, threshold: usize) -> Self {
         Self {
-            context: ComputeContext::new().with_parallel_threshold(threshold),
+            context: ComputeContext::new(device).with_parallel_threshold(threshold),
         }
     }
 

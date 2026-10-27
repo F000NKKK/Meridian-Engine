@@ -124,6 +124,7 @@ where
 
 #[cfg(test)]
 mod tests {
+    use meridian_compute_driver::cpu_context;
     use meridian_compute_runtime::DispatchSize;
     use meridian_gac_core::{FloatFlavor, Motor3, Vec3};
     use meridian_physics_core::collision::{BroadPhase, ColliderShape};
@@ -156,7 +157,7 @@ mod tests {
         let mut broad_phase = BroadPhase::<FloatFlavor>::new();
         let expected = broad_phase.find_candidate_pairs(&bodies).to_vec();
 
-        let context = ComputeContext::new();
+        let context = cpu_context();
         let kernel = BroadPhasePairsKernel::new(bodies);
         kernel.dispatch(&context, DispatchSize::linear(6));
 
@@ -176,7 +177,7 @@ mod tests {
         let mut broad_phase = BroadPhase::<FloatFlavor>::new();
         let expected = broad_phase.find_candidate_pairs(&bodies).to_vec();
 
-        let context = ComputeContext::new();
+        let context = cpu_context();
         let kernel = BroadPhasePairsKernel::new(bodies);
         kernel.dispatch(&context, DispatchSize::linear(1770));
 

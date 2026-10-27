@@ -1,6 +1,6 @@
 //! Hardware tests of the GPU broad-phase kernel.
 
-use meridian_compute_runtime::ComputeContext;
+use meridian_compute_driver::gpu_context;
 use meridian_gac_core::{FloatFlavor, Vec3};
 use meridian_physics_core::dynamics::RigidBody;
 
@@ -24,7 +24,7 @@ fn sphere_at(x: f32) -> RigidBody<FloatFlavor> {
 #[cfg(feature = "hw-tests")]
 #[tokio::test]
 async fn gpu_pairs_match_direct_find_candidate_pairs() {
-    let context = match ComputeContext::new().with_gpu().await {
+    let context = match gpu_context().await {
         Ok(ctx) => ctx,
         Err(err) => {
             eprintln!("skipping: no GPU device available ({err})");
@@ -52,7 +52,7 @@ async fn gpu_pairs_match_direct_find_candidate_pairs() {
 #[cfg(feature = "hw-tests")]
 #[tokio::test]
 async fn gpu_pairs_match_direct_find_candidate_pairs_large_batch() {
-    let context = match ComputeContext::new().with_gpu().await {
+    let context = match gpu_context().await {
         Ok(ctx) => ctx,
         Err(err) => {
             eprintln!("skipping: no GPU device available ({err})");

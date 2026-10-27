@@ -1127,18 +1127,37 @@ name = "meridian-asset-core"
 version = "0.13.0"
 dependencies = [
  "meridian-foundation",
+]
+
+[[package]]
+name = "meridian-asset-png"
+version = "0.1.0"
+dependencies = [
+ "meridian-asset-core",
  "png",
+]
+
+[[package]]
+name = "meridian-asset-symphonia"
+version = "0.1.0"
+dependencies = [
+ "meridian-asset-core",
  "symphonia",
  "symphonia-adapter-libopus",
+]
+
+[[package]]
+name = "meridian-audio-app"
+version = "0.1.0"
+dependencies = [
+ "meridian-audio-core",
 ]
 
 [[package]]
 name = "meridian-audio-core"
 version = "0.19.0"
 dependencies = [
- "meridian-audio-driver",
  "meridian-gac-core",
- "tokio",
 ]
 
 [[package]]
@@ -1147,6 +1166,8 @@ version = "0.12.0"
 dependencies = [
  "cpal",
  "crossbeam-channel",
+ "meridian-audio-app",
+ "meridian-audio-core",
  "meridian-foundation",
  "meridian-platform-core",
  "tokio",
@@ -1156,6 +1177,7 @@ dependencies = [
 name = "meridian-compute-driver"
 version = "0.18.0"
 dependencies = [
+ "meridian-compute-runtime",
  "meridian-gpu-driver",
  "meridian-platform-core",
  "tokio",
@@ -1165,8 +1187,6 @@ dependencies = [
 name = "meridian-compute-runtime"
 version = "0.20.0"
 dependencies = [
- "meridian-compute-driver",
- "meridian-gpu-driver",
  "tokio",
 ]
 
@@ -1264,6 +1284,7 @@ dependencies = [
 name = "meridian-gac-compute"
 version = "0.23.0"
 dependencies = [
+ "meridian-compute-driver",
  "meridian-compute-runtime",
  "meridian-gac-core",
  "meridian-gpu-driver",
@@ -1296,11 +1317,9 @@ name = "meridian-graphics-core"
 version = "0.26.0"
 dependencies = [
  "criterion",
- "meridian-asset-core",
  "meridian-ecs-core",
  "meridian-foundation",
  "meridian-gac-core",
- "meridian-graphics-driver",
  "meridian-memory-core",
  "meridian-resource-core",
  "tokio",
@@ -1310,9 +1329,14 @@ dependencies = [
 name = "meridian-graphics-driver"
 version = "0.18.0"
 dependencies = [
+ "meridian-asset-core",
  "meridian-foundation",
+ "meridian-gac-core",
  "meridian-gpu-driver",
+ "meridian-graphics-core",
+ "meridian-memory-core",
  "meridian-platform-core",
+ "meridian-rendering-app",
  "tokio",
  "wgpu",
 ]
@@ -1347,6 +1371,7 @@ dependencies = [
 name = "meridian-physics-compute"
 version = "0.6.0"
 dependencies = [
+ "meridian-compute-driver",
  "meridian-compute-runtime",
  "meridian-foundation",
  "meridian-gac-compute",
@@ -1368,18 +1393,20 @@ dependencies = [
 ]
 
 [[package]]
-name = "meridian-physics-driver"
-version = "0.10.0"
-dependencies = [
- "meridian-platform-core",
-]
-
-[[package]]
 name = "meridian-platform-core"
 version = "0.12.0"
 dependencies = [
  "meridian-foundation",
  "winit",
+]
+
+[[package]]
+name = "meridian-rendering-app"
+version = "0.1.0"
+dependencies = [
+ "meridian-asset-core",
+ "meridian-graphics-core",
+ "meridian-memory-core",
 ]
 
 [[package]]
@@ -1404,7 +1431,13 @@ name = "meridian-sdk"
 version = "0.5.0"
 dependencies = [
  "meridian-asset-core",
+ "meridian-asset-png",
+ "meridian-asset-symphonia",
+ "meridian-audio-app",
  "meridian-audio-core",
+ "meridian-audio-driver",
+ "meridian-compute-driver",
+ "meridian-compute-runtime",
  "meridian-dsl-core",
  "meridian-dsl-macros",
  "meridian-engine-core",
@@ -1414,7 +1447,9 @@ dependencies = [
  "meridian-graphics-driver",
  "meridian-physics-core",
  "meridian-platform-core",
+ "meridian-rendering-app",
  "meridian-ui-core",
+ "png",
 ]
 
 [[package]]

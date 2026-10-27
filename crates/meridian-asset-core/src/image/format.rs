@@ -5,7 +5,7 @@
 pub enum ImageFormat {
     /// `BM` + `BITMAPINFOHEADER` — see [`super::BmpDecoder`].
     Bmp,
-    /// The 8-byte PNG signature — see [`super::PngDecoder`].
+    /// The 8-byte PNG signature — see the `PngDecoder` of `meridian-asset-png`.
     Png,
 }
 

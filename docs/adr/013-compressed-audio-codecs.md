@@ -2,6 +2,11 @@
 
 ## Status
 
+Location update: the codecs moved out of `asset-core` into the adapter
+crates `meridian-asset-png` and `meridian-asset-symphonia`
+([ADR 024](024-wave-5-ports-and-adapters.md)); the decision below is
+unchanged.
+
 Accepted — supersedes the "compressed WAV/OGG need an external decoder
 crate, added when a concrete asset needs one" deferral in `asset-core`'s
 module doc and docs/roadmap.md. The concrete asset exists now

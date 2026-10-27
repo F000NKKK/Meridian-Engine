@@ -6,4 +6,4 @@ mod physics_compute_stage;
 mod stage_ordering;
 mod subsystems;
 
-pub(crate) use fixtures::{falling_body, subsystem_pair};
+pub(crate) use fixtures::{falling_body, sequential_context, subsystem_pair};

@@ -190,6 +190,9 @@ fn compute_stage_dispatches_its_kernel_through_tick() {
         ComputeStage::new(
             CountingKernel(dispatch_count.clone()),
             DispatchSize { x: 10, y: 1, z: 1 },
+            meridian_compute_runtime::ComputeScheduler::new(Arc::new(
+                meridian_compute_runtime::testing::SequentialDevice,
+            )),
         ),
     );
 

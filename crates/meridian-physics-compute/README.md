@@ -19,7 +19,7 @@ The entry points are documented on [docs.rs](https://docs.rs/meridian-physics-co
 
 ## Depends on / used by
 
-- Depends on: [`meridian-compute-runtime`](../meridian-compute-runtime), [`meridian-foundation`](../meridian-foundation), [`meridian-gac-compute`](../meridian-gac-compute), [`meridian-gac-core`](../meridian-gac-core), [`meridian-gpu-driver`](../meridian-gpu-driver), [`meridian-numeric-core`](../meridian-numeric-core), [`meridian-physics-core`](../meridian-physics-core)
+- Depends on: [`meridian-compute-driver`](../meridian-compute-driver), [`meridian-compute-runtime`](../meridian-compute-runtime), [`meridian-foundation`](../meridian-foundation), [`meridian-gac-compute`](../meridian-gac-compute), [`meridian-gac-core`](../meridian-gac-core), [`meridian-gpu-driver`](../meridian-gpu-driver), [`meridian-numeric-core`](../meridian-numeric-core), [`meridian-physics-core`](../meridian-physics-core)
 - Used by: [`meridian-engine-core`](../meridian-engine-core)
 
 ## License

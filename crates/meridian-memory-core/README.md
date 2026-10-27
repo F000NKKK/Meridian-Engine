@@ -23,7 +23,7 @@ assert_eq!(pool.get(handle), None);
 ## Depends on / used by
 
 - Depends on: no workspace crate
-- Used by: [`meridian-ecs-core`](../meridian-ecs-core), [`meridian-graphics-core`](../meridian-graphics-core), [`meridian-resource-core`](../meridian-resource-core), [`meridian-ui-core`](../meridian-ui-core)
+- Used by: [`meridian-ecs-core`](../meridian-ecs-core), [`meridian-graphics-core`](../meridian-graphics-core), [`meridian-graphics-driver`](../meridian-graphics-driver), [`meridian-rendering-app`](../meridian-rendering-app), [`meridian-resource-core`](../meridian-resource-core), [`meridian-ui-core`](../meridian-ui-core)
 
 ## License
 

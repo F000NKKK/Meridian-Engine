@@ -5,7 +5,7 @@ Spatial audio built on the GAC: mixer, DSP graph, listener and emitter frames.
 **Layer and context:** domain · audio
 
 - **For:** Spatial audio: `Listener`, `Emitter`, `Mixer`, `spatial_gains`, attenuation and a DSP node graph.
-- **Not for:** device I/O: opening streams is `meridian-audio-driver`.
+- **Not for:** device I/O: the `AudioSink` port is `meridian-audio-app`, and opening streams is `meridian-audio-driver`, which implements it.
 
 ## Usage
 
@@ -15,12 +15,13 @@ The entry points are documented on [docs.rs](https://docs.rs/meridian-audio-core
 
 | Feature | Enables |
 |---|---|
+| `testing` | `testing::RecordingSink` and `testing::run_contract` for adapters' tests |
 | `hw-tests` | Tests that need a real GPU or audio device |
 
 ## Depends on / used by
 
-- Depends on: [`meridian-audio-driver`](../meridian-audio-driver), [`meridian-gac-core`](../meridian-gac-core)
-- Used by: [`meridian-engine-core`](../meridian-engine-core), [`meridian-sdk`](../meridian-sdk)
+- Depends on: [`meridian-gac-core`](../meridian-gac-core)
+- Used by: [`meridian-audio-app`](../meridian-audio-app), [`meridian-audio-driver`](../meridian-audio-driver), [`meridian-engine-core`](../meridian-engine-core), [`meridian-sdk`](../meridian-sdk)
 
 ## License
 

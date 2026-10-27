@@ -1,7 +1,9 @@
 //! Tests of this module.
 
 use std::f32::consts::PI;
+use std::sync::Arc;
 
+use meridian_compute_driver::CpuComputeDevice;
 use meridian_compute_runtime::{ComputeScheduler, DispatchSize};
 use meridian_gac_core::{FixedMotor3, FixedRotor, FixedVec3, Motor3, Rotor, Vec3};
 use meridian_numeric_core::Fixed;
@@ -31,7 +33,7 @@ fn motor_transform_kernel_matches_gac_core_compose_directly() {
     // Force the parallel path (default threshold is 1024; 2000 items
     // clears it, but be explicit so this test doesn't silently start
     // exercising only the sequential path if the default changes).
-    let scheduler = ComputeScheduler::with_parallel_threshold(1);
+    let scheduler = ComputeScheduler::with_parallel_threshold(Arc::new(CpuComputeDevice::new()), 1);
     scheduler.run(&kernel, DispatchSize::linear(locals.len() as u32));
 
     let results = kernel.results();
@@ -66,7 +68,7 @@ fn motor_compose_kernel_handles_independent_parents_per_pair() {
         .collect();
 
     let kernel = MotorComposeKernel::new(pairs.clone());
-    let scheduler = ComputeScheduler::with_parallel_threshold(1);
+    let scheduler = ComputeScheduler::with_parallel_threshold(Arc::new(CpuComputeDevice::new()), 1);
     scheduler.run(&kernel, DispatchSize::linear(pairs.len() as u32));
 
     let results = kernel.results();
@@ -81,7 +83,7 @@ fn motor_compose_kernel_handles_independent_parents_per_pair() {
 fn dispatch_size_smaller_than_batch_only_processes_that_many() {
     let locals = vec![Motor3::translation(Vec3::new(1.0, 0.0, 0.0)); 10];
     let kernel = MotorTransformKernel::new(Motor3::identity(), locals);
-    let scheduler = ComputeScheduler::new();
+    let scheduler = ComputeScheduler::new(Arc::new(CpuComputeDevice::new()));
     scheduler.run(&kernel, DispatchSize::linear(3));
 
     let results = kernel.results();
@@ -124,7 +126,7 @@ fn fixed_motor_transform_kernel_matches_gac_core_compose_directly() {
         .collect();
 
     let kernel = FixedMotorTransformKernel::new(parent, locals.clone());
-    let scheduler = ComputeScheduler::with_parallel_threshold(1);
+    let scheduler = ComputeScheduler::with_parallel_threshold(Arc::new(CpuComputeDevice::new()), 1);
     scheduler.run(&kernel, DispatchSize::linear(locals.len() as u32));
 
     let results = kernel.results();
@@ -158,7 +160,7 @@ fn fixed_motor_compose_kernel_handles_independent_parents_per_pair() {
         .collect();
 
     let kernel = FixedMotorComposeKernel::new(pairs.clone());
-    let scheduler = ComputeScheduler::with_parallel_threshold(1);
+    let scheduler = ComputeScheduler::with_parallel_threshold(Arc::new(CpuComputeDevice::new()), 1);
     scheduler.run(&kernel, DispatchSize::linear(pairs.len() as u32));
 
     let results = kernel.results();

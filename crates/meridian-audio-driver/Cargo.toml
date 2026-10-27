@@ -11,11 +11,14 @@ readme = "README.md"
 [dependencies]
 meridian-foundation = { workspace = true }
 meridian-platform-core = { workspace = true }
+meridian-audio-core = { workspace = true }
+meridian-audio-app = { workspace = true }
 cpal = { workspace = true }
 crossbeam-channel = { workspace = true }
 
 [dev-dependencies]
 tokio = { workspace = true }
+meridian-audio-app = { workspace = true, features = ["testing"] }
 
 [features]
 # Tests that need a real GPU or audio device; CI has neither (docs/adr/020).

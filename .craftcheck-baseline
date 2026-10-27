@@ -1,12 +1,3 @@
-crates/meridian-asset-core/src/audio/compressed.rs	C101		1
-crates/meridian-asset-core/src/audio/compressed.rs	C108	AnyAudioDecoder	1
-crates/meridian-asset-core/src/audio/compressed.rs	C108	AudioFormat	1
-crates/meridian-asset-core/src/audio/compressed.rs	C108	FlacDecoder	1
-crates/meridian-asset-core/src/audio/compressed.rs	C108	Mp3Decoder	1
-crates/meridian-asset-core/src/audio/compressed.rs	C108	OpusDecoder	1
-crates/meridian-asset-core/src/audio/compressed.rs	C108	VorbisDecoder	1
-crates/meridian-asset-core/src/audio/wav.rs	C108	WavDecoder	1
-crates/meridian-asset-core/src/image/bmp.rs	C108	BmpDecoder	1
 crates/meridian-audio-core/src/effects/binaural/mod.rs	C101		1
 crates/meridian-audio-core/src/effects/binaural/mod.rs	C108	BinauralConfig	1
 crates/meridian-audio-core/src/effects/binaural/mod.rs	C108	BinauralRenderer	1
@@ -24,7 +15,6 @@ crates/meridian-foundation/src/crash_reporting.rs	C108	CrashReportConfig	1
 crates/meridian-foundation/src/crash_reporting.rs	S701		1
 crates/meridian-gac-compute/src/fixed_wgsl/arithmetic_lib.rs	C101		1
 crates/meridian-gac-compute/src/fixed_wgsl/tests.rs	C101		1
-crates/meridian-graphics-core/src/bloom/pass.rs	C101		1
 crates/meridian-graphics-core/src/mesh_handle.rs	C108	MeshMarker	1
 crates/meridian-graphics-core/src/scene.rs	C101		1
 crates/meridian-graphics-core/src/scene.rs	C108	BlendMode	1
@@ -41,9 +31,9 @@ crates/meridian-graphics-core/src/scene.rs	C108	Scene3d	1
 crates/meridian-graphics-core/src/scene.rs	C108	Sprite	1
 crates/meridian-graphics-core/src/scene.rs	C108	View	1
 crates/meridian-graphics-core/src/shader_handle.rs	C108	ShaderMarker	1
-crates/meridian-graphics-core/src/submission/scene_renderer.rs	C101		1
-crates/meridian-graphics-core/src/submission/tests.rs	C101		1
 crates/meridian-graphics-core/src/texture_handle.rs	C108	TextureMarker	1
+crates/meridian-graphics-driver/src/bloom/pass.rs	C101		1
+crates/meridian-graphics-driver/src/submission/scene_renderer.rs	C101		1
 crates/meridian-mel-build/src/binding/property_path.rs	S701		1
 crates/meridian-mel-build/src/generated_module.rs	S701		1
 crates/meridian-mel-build/src/ui_bindings.rs	S701		1

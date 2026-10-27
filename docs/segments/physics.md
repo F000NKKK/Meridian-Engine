@@ -9,7 +9,6 @@ owns what and what the segment plans to do next.
 
 | Crate | Tier | Role |
 |---|---|---|
-| `meridian-physics-driver` | 2 | Execution backend only: `PhysicsBackend` (CPU/GPU capabilities), `PhysicsSync` (step generation counter). No collision algorithms. |
 | `meridian-physics-core` | 6 | The simulation: `RigidBody`, `ColliderShape`, `Contact`, `BroadPhase`, `NarrowPhase`, `ConstraintSolver`, `Integrator`, written once in `collision/` and `dynamics/` over `GaFlavor`; each has thin `float.rs`/`fixed.rs` aliases. `soft_body/` is the separate mass-spring domain. |
 | `meridian-physics-compute` | 7 | Adapter to `compute-runtime`: batched kernels for all five rigid-body pipeline steps (CPU `parallel_for`), WGSL soft-body kernels, WGSL broad-phase overlap kernel. |
 
@@ -30,7 +29,7 @@ Skills that apply: `meridian-subsystem-core-keeper`,
 
 ## Current state (2026-10-27)
 
-- `cargo test -p meridian-physics-core -p meridian-physics-driver
+- `cargo test -p meridian-physics-core
   -p meridian-physics-compute`: 55 tests, all green.
 - Shapes: sphere and cuboid. Broad phase: x-axis sweep-and-prune. Narrow
   phase: sphere-sphere, sphere-cuboid, cuboid-cuboid SAT with up to 4-point
@@ -50,19 +49,13 @@ a task.
 ### Hygiene (small, safe)
 
 1. **Unused dependencies in `physics-core/Cargo.toml`.** `meridian-gac-compute`,
-   `meridian-compute-runtime`, `meridian-physics-driver` and
+   `meridian-compute-runtime` and
    `meridian-ecs-core` are declared but not referenced in `src/`. They
    overstate the crate graph that `check-deps` validates. Remove them or
    use them deliberately.
 2. **Stale crate docs.** `physics-core/src/lib.rs` still says no
    `compute-runtime` dispatch is wired in (it is, via `physics-compute`).
-   `physics-driver/src/lib.rs` says the GPU backend waits for
-   `graphics-driver`, but `meridian-gpu-driver` exists and the WGSL
-   kernels already use it.
-3. **`PhysicsSync` and `PhysicsBackend` are not used by the pipeline.**
-   Either wire them in (batch-size cutoffs, consumer change detection) or
-   document them as intentionally unused.
-4. **Panic audit.** `unwrap`/`expect` calls in non-test code paths of
+3. **Panic audit.** `unwrap`/`expect` calls in non-test code paths of
    `physics-compute` (for example mutex locks in the constraint-solver
    kernel) should be reviewed against the standards `team/standards` is
    writing in Craftbook.

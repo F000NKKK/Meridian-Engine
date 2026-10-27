@@ -14,7 +14,7 @@ The entry points are documented on [docs.rs](https://docs.rs/meridian-ui-core); 
 ## Depends on / used by
 
 - Depends on: [`meridian-foundation`](../meridian-foundation), [`meridian-memory-core`](../meridian-memory-core)
-- Used by: [`meridian-mel-build`](../meridian-mel-build), [`meridian-sdk`](../meridian-sdk)
+- Used by: [`meridian-mel-build`](../meridian-mel-build), [`meridian-sdk`](../meridian-sdk), [`meridian-ui-render`](../meridian-ui-render)
 
 ## License
 

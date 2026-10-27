@@ -19,5 +19,8 @@ meridian-audio-core = { workspace = true }
 meridian-compute-runtime = { workspace = true }
 meridian-physics-compute = { workspace = true }
 
+[dev-dependencies]
+meridian-compute-runtime = { workspace = true, features = ["testing"] }
+
 [lints]
 workspace = true

@@ -1,18 +1,14 @@
-# Physics design — `meridian-physics-driver` + `meridian-physics-core`
+# Physics design — `meridian-physics-core`
 
 ## The split
 
-`physics-driver` is execution only: memory backend, SIMD/GPU dispatch,
-synchronization. It owns **no** collision algorithms, no BVH, no
-broad-phase structure — those are domain logic, not execution backend, and
-belong to `physics-core`. This is a narrower scope than the
-`graphics-driver`/`audio-driver` pattern might suggest at first glance:
-BVH/spatial-hashing are how physics *reasons about space*, not how it
-*executes work*, so they stay in `physics-core` even though they're
-"low-level" in the algorithmic sense. See
-[dependency-rules.md](dependency-rules.md) rule 9. `physics-core` does not
-depend on `physics-driver` (the edge was never used and is removed); the
-driver is deleted in wave 5 ([ADR 019](adr/019-ports-in-domain-drivers-as-adapters.md)).
+Physics has no driver crate. BVH/spatial-hashing are how physics *reasons
+about space*, not how it *executes work*, so they are domain logic in
+`physics-core`; batched execution is `physics-compute`'s job. See
+[dependency-rules.md](dependency-rules.md) rule 9. The unused
+`physics-driver` was deleted in wave 5
+([ADR 019](adr/019-ports-in-domain-drivers-as-adapters.md)); its CPU
+capability report is `platform-core::CpuCapabilities`.
 
 `physics-core`'s whole engine — `RigidBody`, `ColliderShape`, `Contact`,
 `BroadPhase`, `NarrowPhase`, `ConstraintSolver`, `Integrator` — is written
@@ -201,12 +197,6 @@ had to grow — a hypothetical future refinement, not a present gap. All
 five rigid-body pipeline steps (`Integrator`, `BroadPhase`, `NarrowPhase`'s
 two query shapes, `ConstraintSolver`) are batched now.
 
-`physics-driver`'s `PhysicsBackend` reports real CPU thread count (via
-`platform-core::DeviceCapabilities`, the same shared shape
-`compute-driver::ComputeCapabilities` uses) and `PhysicsSync` is a real
-monotonic generation counter consumers can poll to know physics has
-advanced — both implemented, neither wired into `physics-core`'s pipeline
-yet.
 
 ## Determinism
 

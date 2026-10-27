@@ -4,7 +4,7 @@ use meridian_audio_core::{AttenuationModel, Channel, Emitter, Listener, Mixer, S
 use meridian_gac_core::{Motor3, Vec3};
 use meridian_physics_core::{ColliderShape, RigidBody};
 
-use super::{falling_body, subsystem_pair};
+use super::{falling_body, sequential_context, subsystem_pair};
 use crate::*;
 
 #[test]
@@ -131,7 +131,11 @@ fn physics_step_stage_matches_direct_step_call() {
     runtime.add_stage(
         "physics",
         &[],
-        PhysicsStepStage::new(1.0 / 60.0, PhysicsDispatchMode::Sequential),
+        PhysicsStepStage::new(
+            1.0 / 60.0,
+            PhysicsDispatchMode::Sequential,
+            sequential_context(),
+        ),
     );
     let state = runtime.state().clone();
 

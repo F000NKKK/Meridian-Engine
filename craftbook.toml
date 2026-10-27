@@ -75,8 +75,23 @@ layer = "domain"
 context = "assets"
 
 [[crate]]
+name = "meridian-asset-png"
+layer = "infra"
+context = "assets"
+
+[[crate]]
+name = "meridian-asset-symphonia"
+layer = "infra"
+context = "assets"
+
+[[crate]]
 name = "meridian-graphics-core"
 layer = "domain"
+context = "rendering"
+
+[[crate]]
+name = "meridian-rendering-app"
+layer = "app"
 context = "rendering"
 
 [[crate]]
@@ -91,11 +106,6 @@ context = "physics"
 profile = "perf"
 
 [[crate]]
-name = "meridian-physics-driver"
-layer = "infra"
-context = "physics"
-
-[[crate]]
 name = "meridian-physics-compute"
 layer = "infra"
 context = "physics"
@@ -103,6 +113,11 @@ context = "physics"
 [[crate]]
 name = "meridian-audio-core"
 layer = "domain"
+context = "audio"
+
+[[crate]]
+name = "meridian-audio-app"
+layer = "app"
 context = "audio"
 
 [[crate]]

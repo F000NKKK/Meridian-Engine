@@ -10,10 +10,10 @@
 
 use meridian_gac_core::icosphere;
 use meridian_graphics_core::{
-    BloomPass, MaterialRegistry, MeshHandle, MeshRegistry, MeshSource, SceneRenderer,
-    TextureHandle, TextureRegistry,
+    MaterialRegistry, MeshHandle, MeshRegistry, MeshSource, TextureHandle,
 };
-use meridian_graphics_driver::{DepthTexture, Device, Surface};
+use meridian_graphics_driver::{Device, GpuFrameRecorder, Surface};
+use meridian_rendering_app::FrameRecorder;
 
 use crate::assets::AssetCache;
 
@@ -254,50 +254,42 @@ pub fn ground_mesh_source(half_size: f32, uv_tiles: f32) -> MeshSource {
     }
 }
 
-/// The GPU-side bundle a windowed application builds once: the device/
-/// surface/depth target, `graphics-core`'s scene renderer and bloom
-/// pass, and empty mesh/material/texture registries ready to fill.
-/// Constructed from an already-open `Device`/`Surface` (the windowed
-/// handshake itself stays in the application's own `on_ready`, which is
-/// the only place that needs to name `winit`/`wgpu`-adjacent types at
-/// all).
+/// What a windowed application builds once: the GPU recorder (device,
+/// swapchain, renderer, bloom, textures), empty mesh and material registries to
+/// fill, and the asset cache.
 ///
-/// **Owns an [`AssetCache`]** for [`load_texture`](Self::load_texture)/
-/// [`load_mesh_obj`](Self::load_mesh_obj) — thin forwarding methods so
-/// existing call sites (`base.load_texture(path)`) don't need to change;
-/// the actual decode/cache/register logic lives in [`crate::assets`],
-/// which has nothing to do with scene composition (see that module's
-/// own doc comment for why it's split out from this one).
+/// Constructed from an already-open `Device`/`Surface` (the windowed handshake
+/// itself stays in the application's own `on_ready`, the only place that needs
+/// to name `winit`/`wgpu`-adjacent types at all). Drawing goes through
+/// [`FrameRecorder`] on [`gpu`](Self::gpu); loading goes through the cache's
+/// forwarding methods [`load_texture`](Self::load_texture) and
+/// [`load_mesh_obj`](Self::load_mesh_obj), whose decode/cache/register logic
+/// lives in [`crate::assets`].
 #[derive(Debug)]
 pub struct GraphicsSession {
-    pub device: Device,
-    pub surface: Surface,
-    pub depth: DepthTexture,
-    pub renderer: SceneRenderer,
-    pub bloom: BloomPass,
+    pub gpu: GpuFrameRecorder,
     pub meshes: MeshRegistry,
     pub materials: MaterialRegistry,
-    pub textures: TextureRegistry,
     pub assets: AssetCache,
 }
 
 impl GraphicsSession {
-    /// Builds with `graphics-core`'s default shadow map resolution
-    /// (`SceneRenderer::DEFAULT_SHADOW_MAP_SIZE`) — see
-    /// [`with_shadow_map_size`](Self::with_shadow_map_size) to pick a
-    /// specific one (sharper-but-costlier vs. cheaper-but-blockier
-    /// shadows; there's no single right answer across every scene's
-    /// scale and hardware budget).
+    /// Builds with the default shadow map resolution — see
+    /// [`with_shadow_map_size`](Self::with_shadow_map_size) to pick a specific
+    /// one (sharper-but-costlier vs. cheaper-but-blockier shadows).
+    #[must_use]
     pub fn new(device: Device, surface: Surface, width: u32, height: u32) -> Self {
         Self::with_shadow_map_size(
             device,
             surface,
             width,
             height,
-            meridian_graphics_core::DEFAULT_SHADOW_MAP_SIZE,
+            meridian_graphics_driver::DEFAULT_SHADOW_MAP_SIZE,
         )
     }
 
+    /// Builds with a chosen shadow map resolution.
+    #[must_use]
     pub fn with_shadow_map_size(
         device: Device,
         surface: Surface,
@@ -305,39 +297,36 @@ impl GraphicsSession {
         height: u32,
         shadow_map_size: u32,
     ) -> Self {
-        let depth = device.create_depth_texture(width, height);
-        let renderer = SceneRenderer::with_shadow_map_size(&device, &surface, shadow_map_size);
-        let bloom = BloomPass::new(&device, width, height, &surface);
         Self {
-            device,
-            surface,
-            depth,
-            renderer,
-            bloom,
+            gpu: GpuFrameRecorder::with_shadow_map_size(
+                device,
+                surface,
+                width,
+                height,
+                shadow_map_size,
+            ),
             meshes: MeshRegistry::new(),
             materials: MaterialRegistry::new(),
-            textures: TextureRegistry::new(),
             assets: AssetCache::new(),
         }
     }
 
-    /// Rebuilds every size-dependent piece (depth buffer, bloom's
-    /// offscreen targets) after a window resize — `SceneRenderer` itself
-    /// has no size dependency (its pipelines don't name a resolution),
-    /// so it isn't rebuilt.
+    /// Rebuilds every size-dependent piece after a window resize — see
+    /// [`FrameRecorder::resize`].
     pub fn resize(&mut self, width: u32, height: u32) {
-        self.surface.resize(&self.device, width, height);
-        self.depth = self.device.create_depth_texture(width, height);
-        self.bloom = BloomPass::new(&self.device, width, height, &self.surface);
+        self.gpu.resize(width, height);
     }
 
     /// Forwards to [`AssetCache::load_texture`].
     pub fn load_texture(&mut self, path: &str) -> TextureHandle {
-        self.assets
-            .load_texture(&self.device, &mut self.textures, path)
+        self.assets.load_texture(&mut self.gpu, path)
     }
 
     /// Forwards to [`AssetCache::load_mesh_obj`].
+    ///
+    /// # Errors
+    ///
+    /// The file's read, decode or mesh-validation error, as text.
     pub fn load_mesh_obj(&mut self, path: &str) -> Result<MeshHandle, String> {
         self.assets.load_mesh_obj(&mut self.meshes, path)
     }

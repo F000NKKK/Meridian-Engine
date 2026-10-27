@@ -1,6 +1,7 @@
 //! The upload, dispatch and read-back sequence both flavors' soft-body
 //! kernels share.
 
+use meridian_compute_driver::GpuComputeDevice;
 use meridian_compute_runtime::ComputeContext;
 use meridian_gpu_driver::{Buffer, BufferUsage, ComputePipeline};
 
@@ -15,7 +16,7 @@ fn upload(
     usage: BufferUsage,
     gpu_missing: &'static str,
 ) -> Buffer {
-    let gpu = context.gpu().expect(gpu_missing);
+    let gpu = context.gpu::<GpuComputeDevice>().expect(gpu_missing);
     let buffer = gpu.allocate_buffer(bytes.len(), usage);
     gpu.write_buffer(&buffer, bytes);
     buffer
@@ -30,7 +31,7 @@ pub(super) async fn run(
     inputs: &StepInputs,
     gpu_missing: &'static str,
 ) -> (Vec<u8>, Vec<u8>) {
-    let gpu = context.gpu().expect(gpu_missing);
+    let gpu = context.gpu::<GpuComputeDevice>().expect(gpu_missing);
     let storage = BufferUsage::Storage;
     let params = upload(context, &inputs.params, BufferUsage::Uniform, gpu_missing);
     let positions_in = upload(context, &inputs.positions, storage, gpu_missing);

@@ -52,15 +52,14 @@ depend on crates in tiers `0..N`, never a same-tier or higher-tier one
 (that's what makes the graph a DAG):
 
 ```text
-tier 0  foundation, memory-core, task-core, dsl-macros
+tier 0  compute-runtime, dsl-macros, foundation, memory-core, task-core
 tier 1  asset-core, dsl-core, numeric-core, platform-core, resource-core, ui-core
-tier 2  audio-driver, gac-core, gpu-driver, mel-build, physics-driver
-tier 3  audio-core, compute-driver, ecs-core, graphics-driver, physics-core
-tier 4  compute-runtime, graphics-core, scene
-tier 5  editor-protocol, gac-compute
-tier 6  editor-host, physics-compute
-tier 7  editor-tcp, engine-core
-tier 8  sdk
+tier 2  asset-png, asset-symphonia, gac-core, gpu-driver, mel-build
+tier 3  audio-core, compute-driver, ecs-core, physics-core
+tier 4  audio-app, gac-compute, graphics-core, scene
+tier 5  audio-driver, editor-protocol, physics-compute, rendering-app, ui-render
+tier 6  editor-host, engine-core, graphics-driver
+tier 7  editor-tcp, sdk
 ```
 
 `meridian-dsl-core`/`meridian-dsl-macros` are the two crates behind the
@@ -178,18 +177,20 @@ meridian-gac-core   meridian-compute-runtime
 for non-GAC compute (e.g. GPU culling) — both edges omitted from the main
 diagram above for readability. `physics-core` has neither edge: its batching
 lives in `physics-compute`. Also omitted: `meridian-audio-core`'s
-dependency on `meridian-gac-core`/`meridian-audio-driver`/
+dependency on `meridian-gac-core`/
 `meridian-resource-core` and `meridian-graphics-core`'s/
 `meridian-physics-core`'s own direct dependency on `meridian-resource-core`
 (handle types their `MeshRegistry`/`ColliderMeshHandle` etc. use) — see
 ["All edges, exactly"](#all-edges-exactly) for the complete, non-abridged
 list.
 
-`meridian-gac-compute` also depends directly on `meridian-gpu-driver` —
-not `meridian-compute-driver` (still forbidden by rule 5: a kernel
-dispatches through `compute-runtime::ComputeContext`, never around it).
-`compute-runtime::ComputeContext::gpu()` returns a
-`compute-driver::GpuComputeDevice`, whose buffer/shader/pipeline methods
+`meridian-gac-compute` and `meridian-physics-compute` are adapters of the
+compute context: they depend on `meridian-compute-driver` (the adapter that
+implements `compute-runtime`'s `ComputeDevice` and `GpuBackend` ports) and on
+`meridian-gpu-driver`. A kernel still dispatches through
+`compute-runtime::ComputeContext`, never around it; it reaches the GPU with
+`ComputeContext::gpu::<compute_driver::GpuComputeDevice>()`, whose
+buffer/shader/pipeline methods
 are typed in terms of `gpu-driver`'s own resource types
 (`Buffer`/`BufferUsage`/`Shader`/`ComputePipeline`) — a real GPU-dispatching
 `ComputeKernel` has to name those types (a bind-group's usage flags, a
@@ -258,17 +259,20 @@ bottom-up.
 - `meridian-resource-core` -> `meridian-memory-core`
 - `meridian-ecs-core` -> `meridian-gac-core`, `meridian-memory-core`
 - `meridian-gpu-driver` -> `meridian-foundation`, `meridian-platform-core`
-- `meridian-graphics-driver` -> `meridian-foundation`, `meridian-gpu-driver`, `meridian-platform-core`
-- `meridian-compute-driver` -> `meridian-gpu-driver`, `meridian-platform-core`
-- `meridian-audio-driver` -> `meridian-foundation`, `meridian-platform-core`
-- `meridian-physics-driver` -> `meridian-platform-core`
-- `meridian-compute-runtime` -> `meridian-compute-driver` (pending, wave 5)
-- `meridian-gac-compute` -> `meridian-compute-runtime`, `meridian-gac-core`, `meridian-gpu-driver`, `meridian-numeric-core`
+- `meridian-rendering-app` -> `meridian-asset-core`, `meridian-graphics-core`, `meridian-memory-core`
+- `meridian-graphics-driver` -> `meridian-asset-core`, `meridian-foundation`, `meridian-gac-core`, `meridian-gpu-driver`, `meridian-graphics-core`, `meridian-memory-core`, `meridian-platform-core`, `meridian-rendering-app`
+- `meridian-compute-driver` -> `meridian-compute-runtime`, `meridian-gpu-driver`, `meridian-platform-core`
+- `meridian-audio-app` -> `meridian-audio-core`
+- `meridian-audio-driver` -> `meridian-audio-app`, `meridian-audio-core`, `meridian-foundation`, `meridian-platform-core`
+- `meridian-compute-runtime` -> (none; it owns the `ComputeDevice` and `GpuBackend` ports)
+- `meridian-gac-compute` -> `meridian-compute-driver`, `meridian-compute-runtime`, `meridian-gac-core`, `meridian-gpu-driver`, `meridian-numeric-core`
 - `meridian-asset-core` -> `meridian-foundation`
-- `meridian-graphics-core` -> `meridian-asset-core`, `meridian-ecs-core`, `meridian-foundation`, `meridian-gac-core`, `meridian-graphics-driver` (pending, wave 5), `meridian-memory-core`, `meridian-resource-core`
-- `meridian-audio-core` -> `meridian-audio-driver` (pending, wave 5), `meridian-gac-core`
+- `meridian-asset-png` -> `meridian-asset-core`
+- `meridian-asset-symphonia` -> `meridian-asset-core`
+- `meridian-graphics-core` -> `meridian-ecs-core`, `meridian-foundation`, `meridian-gac-core`, `meridian-memory-core`, `meridian-resource-core`
+- `meridian-audio-core` -> `meridian-gac-core`
 - `meridian-physics-core` -> `meridian-gac-core`, `meridian-numeric-core`, `meridian-resource-core`
-- `meridian-physics-compute` -> `meridian-compute-runtime`, `meridian-foundation`, `meridian-gac-compute`, `meridian-gac-core`, `meridian-gpu-driver`, `meridian-numeric-core`, `meridian-physics-core`
+- `meridian-physics-compute` -> `meridian-compute-driver`, `meridian-compute-runtime`, `meridian-foundation`, `meridian-gac-compute`, `meridian-gac-core`, `meridian-gpu-driver`, `meridian-numeric-core`, `meridian-physics-core`
 - `meridian-engine-core` -> `meridian-audio-core`, `meridian-compute-runtime`, `meridian-ecs-core`, `meridian-foundation`, `meridian-gac-core`, `meridian-physics-compute` (pending, wave 6), `meridian-physics-core`, `meridian-platform-core` (pending, wave 6), `meridian-task-core` (pending, wave 6)
 - `meridian-scene` -> `meridian-ecs-core`, `meridian-gac-core`
 - `meridian-editor-protocol` -> `meridian-ecs-core`, `meridian-scene`
@@ -279,7 +283,7 @@ bottom-up.
 - `meridian-mel-build` -> `meridian-dsl-core`, `meridian-ui-core`
 - `meridian-ui-core` -> `meridian-foundation`, `meridian-memory-core`
 - `meridian-ui-render` -> `meridian-gac-core`, `meridian-graphics-core`, `meridian-ui-core`
-- `meridian-sdk` -> `meridian-asset-core`, `meridian-audio-core`, `meridian-dsl-core`, `meridian-dsl-macros`, `meridian-engine-core`, `meridian-foundation`, `meridian-gac-core`, `meridian-graphics-core`, `meridian-graphics-driver`, `meridian-physics-core`, `meridian-platform-core`, `meridian-ui-core`
+- `meridian-sdk` -> `meridian-asset-core`, `meridian-asset-png`, `meridian-asset-symphonia`, `meridian-audio-app`, `meridian-audio-core`, `meridian-audio-driver`, `meridian-compute-driver`, `meridian-compute-runtime`, `meridian-dsl-core`, `meridian-dsl-macros`, `meridian-engine-core`, `meridian-foundation`, `meridian-gac-core`, `meridian-graphics-core`, `meridian-graphics-driver`, `meridian-physics-core`, `meridian-platform-core`, `meridian-rendering-app`, `meridian-ui-core`
 
 `meridian-engine-core` has no edge to `meridian-graphics-core` or
 `meridian-asset-core`: `Runtime::tick` doesn't render a frame or load an
@@ -314,9 +318,10 @@ crates it belongs to (wave 6). Applications depend on `sdk` alone.
 1. **A domain or application crate never depends on a driver.** Drivers
    are adapters: they depend on the crate that owns the port and implement
    it ([ADR 019](adr/019-ports-in-domain-drivers-as-adapters.md)). Only the
-   composition root (`sdk`, examples) names a concrete driver. Today's
-   `graphics-core → graphics-driver`, `audio-core → audio-driver` and
-   `compute-runtime → compute-driver` edges are pending migration (wave 5).
+   composition root (`sdk`, examples) names a concrete driver. Audio (`audio-driver → audio-app`), compute
+   (`compute-driver → compute-runtime`), rendering
+   (`graphics-driver → rendering-app`) and assets (`asset-png`/`asset-symphonia`
+   → `asset-core`) are inverted ([ADR 024](adr/024-wave-5-ports-and-adapters.md)).
 
 2. **A driver never depends on a different subsystem's driver or domain.**
    An adapter depends on the port crate of its own context and on the
@@ -350,7 +355,8 @@ crates it belongs to (wave 6). Applications depend on `sdk` alone.
    for subsystem crates.** `physics-core` and `graphics-core` reach compute
    through `compute-runtime` (directly, or via an adapter crate like
    `gac-compute` — see rule 10), never by depending on `compute-driver`
-   directly, and never by re-implementing scheduling/dispatch themselves.
+   directly (only adapter crates and the composition root do), and never
+   by re-implementing scheduling/dispatch themselves.
    Any future `animation-core`, `particles-core`, or `ai-core` follows the
    same rule.
 6. **`meridian-gac-core` stays pure geometric algebra.** Scalar types, SIMD
@@ -371,12 +377,11 @@ crates it belongs to (wave 6). Applications depend on `sdk` alone.
    reloaded does not. It must never define a manager type (same rule as
    asset-core, rule 4) and must depend on nothing but `memory-core`. See
    [ADR 006](adr/006-resource-core-separation.md).
-9. **`meridian-physics-driver` owns no collision algorithms and has no
-   dependents.** It only reports CPU capabilities; BVH construction, spatial
-   hashing and broad-phase structures are domain logic in `physics-core`
-   (see [physics-design.md](physics-design.md)). `physics-core` no longer
-   depends on it; the crate is deleted in wave 5 and its capability report
-   moves to the platform context (ADR 019).
+9. **Physics has no driver crate.** The unused `meridian-physics-driver`
+   (a capability report and a step counter nobody called) was deleted in
+   wave 5 (ADR 019); `CpuCapabilities` already lives in `platform-core`.
+   BVH construction, spatial hashing and broad-phase structures are domain
+   logic in `physics-core` (see [physics-design.md](physics-design.md)).
 
 10. **`meridian-gac-core` and `meridian-compute-runtime` never depend on
     each other, in either direction.** `gac-core` stays pure geometric

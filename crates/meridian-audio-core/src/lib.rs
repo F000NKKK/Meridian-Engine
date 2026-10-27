@@ -27,7 +27,6 @@
 #![forbid(unsafe_code)]
 
 mod attenuation_model;
-mod audio_output;
 mod channel;
 pub mod effects;
 mod emitter;
@@ -42,7 +41,6 @@ mod speaker_layout;
 mod tests;
 
 pub use attenuation_model::AttenuationModel;
-pub use audio_output::AudioOutput;
 pub use channel::Channel;
 pub use effects::{
     AcousticMedium, BinauralConfig, BinauralRenderer, Declicker, DspGraph, DspNode, Gain,

@@ -15,7 +15,7 @@ pub struct ViewUniforms<'a> {
     pub ambient_ground: [f32; 3],
     /// Ambient color above the horizon.
     pub ambient_sky: [f32; 3],
-    /// The view's lights; those beyond [`MAX_LIGHTS`](super::MAX_LIGHTS) are dropped.
+    /// The view's lights; those beyond the adapter's light cap are dropped.
     pub lights: &'a [Light],
 }
 

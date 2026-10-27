@@ -57,7 +57,7 @@ Meridian-Engine — небольшой устойчивый набор крей�
 | [`meridian-graphics-core`](crates/meridian-graphics-core) | rendering | Граф рендера, сцены, отсечение, освещение, материалы, камера, bloom |
 | [`meridian-physics-core`](crates/meridian-physics-core) | physics | Твёрдые тела, коллизии, решатель, интегратор, мягкие тела |
 | [`meridian-audio-core`](crates/meridian-audio-core) | audio | Пространственный микшер, DSP-граф, слушатель и источники |
-| [`meridian-asset-core`](crates/meridian-asset-core) | assets | Декодеры изображений, мешей, звука и шейдеров |
+| [`meridian-asset-core`](crates/meridian-asset-core) | assets | Порт `Decoder`, CPU-типы ассетов и чистые парсеры BMP, WAV, OBJ и шейдеров |
 | [`meridian-ui-core`](crates/meridian-ui-core) | ui | Удерживаемое дерево UI в стиле WPF, раскладка, hit-testing |
 
 **Приложение**
@@ -65,6 +65,8 @@ Meridian-Engine — небольшой устойчивый набор крей�
 | Crate | Context | Что даёт |
 |---|---|---|
 | [`meridian-compute-runtime`](crates/meridian-compute-runtime) | compute | Контекст вычислений, интерфейсы ядер, размер диспетчеризации и разделение |
+| [`meridian-audio-app`](crates/meridian-audio-app) | audio | Порт `AudioSink` с фейком и контрактным набором тестов |
+| [`meridian-rendering-app`](crates/meridian-rendering-app) | rendering | Порты `FrameRecorder`, `MeshStore`, `TextureStore` с фейками и контрактными наборами |
 | [`meridian-engine-core`](crates/meridian-engine-core) | runtime | `Runtime`: планировщик кадра, события, подсистемы физики и звука, стадии |
 
 **Инфраструктура (адаптеры)**
@@ -76,8 +78,9 @@ Meridian-Engine — небольшой устойчивый набор крей�
 | [`meridian-gpu-driver`](crates/meridian-gpu-driver) | compute | Общее устройство `wgpu`, буферы, шейдеры, вычислительные конвейеры |
 | [`meridian-compute-driver`](crates/meridian-compute-driver) | compute | Диспетчеризация вычислений на CPU-SIMD и GPU |
 | [`meridian-graphics-driver`](crates/meridian-graphics-driver) | rendering | Графическое устройство, поверхности, конвейеры рендера |
+| [`meridian-asset-png`](crates/meridian-asset-png) | assets | Адаптер-декодер PNG на крейте `png` |
+| [`meridian-asset-symphonia`](crates/meridian-asset-symphonia) | assets | Адаптер-декодер MP3, OGG/Vorbis, FLAC, OGG/Opus и потокового звука |
 | [`meridian-audio-driver`](crates/meridian-audio-driver) | audio | Устройство вывода звука через `cpal` |
-| [`meridian-physics-driver`](crates/meridian-physics-driver) | physics | Отчёт о бэкенде выполнения физики (будет удалён, ADR 019) |
 | [`meridian-gac-compute`](crates/meridian-gac-compute) | geometry | Пакетные ядра `Motor3` на CPU-SIMD и GPU |
 | [`meridian-physics-compute`](crates/meridian-physics-compute) | physics | Пакетные ядра твёрдых и мягких тел |
 | [`meridian-scene`](crates/meridian-scene) | data | Документы `.mscene` на Substrate Data, загрузка и сохранение `World` |
@@ -135,7 +138,7 @@ fn main() {
 
 ```mermaid
 flowchart LR
-    I[interface<br/>sdk, dsl-macros, examples] --> A[application<br/>engine-core, compute-runtime]
+    I[interface<br/>sdk, dsl-macros, examples] --> A[application<br/>engine-core, compute-runtime, audio-app, rendering-app]
     A --> D[domain<br/>graphics, physics, audio, assets, ui]
     X[infrastructure<br/>drivers, adapters, scene, editor-protocol, editor-host, editor-tcp] --> D
     K[shared kernel<br/>foundation, numeric, gac, memory, resource, ecs, dsl-core]

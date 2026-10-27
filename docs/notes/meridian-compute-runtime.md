@@ -5,16 +5,16 @@ most 30 lines). Each section belongs to the module named in its heading.
 
 ## `lib`
 
-[`ComputeContext::with_gpu`] adds `compute-driver`'s real GPU backend
-(`GpuComputeDevice`, built on `wgpu` via `meridian_gpu_driver` — see
-that crate's module doc) alongside the CPU one; [`ComputeContext::gpu`]
-is what a [`ComputeKernel`] reaches for when it wants to dispatch on
-the GPU specifically (this crate doesn't pick a backend on a kernel's
-behalf — that decision belongs to whoever composes the `ComputeContext`
-in the first place, e.g. `gac-compute`'s `Fixed` kernels choosing GPU
-dispatch explicitly). GPU device acquisition is a genuine I/O
-operation, so `with_gpu` is a real `async fn` — see
-[ADR 009](../adr/009-async-io-via-tokio.md).
+This crate owns the ports `ComputeDevice` (CPU dispatch) and `GpuBackend`
+(a GPU, as far as the application layer needs to know it); `compute-driver`
+implements them (ADR 019). [`ComputeContext::with_gpu`] takes an already
+acquired `Arc<dyn GpuBackend>`, e.g. `compute-driver`'s `GpuComputeDevice`
+(built on `wgpu` via `meridian_gpu_driver`); acquiring it is the adapter's
+genuine I/O and its `async fn` (see [ADR 009](../adr/009-async-io-via-tokio.md)).
+[`ComputeContext::gpu`]`::<T>()` is what a [`ComputeKernel`] adapter reaches
+for when it wants to dispatch on the GPU specifically: it downcasts to the
+adapter type it knows. This crate doesn't pick a backend on a kernel's
+behalf; the composition root builds the devices and the `ComputeContext`.
 
 [`HybridKernel`]/[`ComputeContext::run_hybrid`] are the actual "split
 one dispatch across both backends at once" mechanism — plain
