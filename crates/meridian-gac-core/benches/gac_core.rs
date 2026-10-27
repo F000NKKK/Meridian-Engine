@@ -28,5 +28,28 @@ fn motor_compose(c: &mut Criterion) {
     });
 }
 
-criterion_group!(benches, rotor_transform, motor_compose);
+fn motor_batch(c: &mut Criterion) {
+    let motor = Motor3::from_rotation_translation(
+        Rotor::from_axis_angle(Vec3::new(0.0, 0.0, 1.0), 0.3),
+        Vec3::new(1.0, 2.0, 0.0),
+    );
+    let points: Vec<Vec3> = (0..10_000_u16)
+        .map(|i| Vec3::new(f32::from(i) * 0.01, f32::from(i % 97), 0.0))
+        .collect();
+    c.bench_function("motor_transform_point_x10000", |b| {
+        b.iter(|| {
+            let mut sum = Vec3::ZERO;
+            for &p in &points {
+                sum = sum + black_box(motor).transform_point(p);
+            }
+            sum
+        });
+    });
+    c.bench_function("motor_transform_vector", |b| {
+        b.iter(|| black_box(motor).transform_vector(black_box(Vec3::X)));
+    });
+    c.bench_function("motor_to_mat4", |b| b.iter(|| black_box(motor).to_mat4()));
+}
+
+criterion_group!(benches, rotor_transform, motor_compose, motor_batch);
 criterion_main!(benches);

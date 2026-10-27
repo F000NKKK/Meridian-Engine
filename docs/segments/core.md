@@ -95,6 +95,12 @@ change that closed them.
 7. **Compute buffer reuse.** `compute-runtime` reallocates GPU buffers and
    bind groups per dispatch (roadmap, deferred). Build it when a per-frame
    caller exists.
+9. **Done: `Motor3` point transform fast path.** `transform_point` /
+   `transform_vector` / `to_mat4` use the hand-expanded sandwich (rotor 3x3
+   plus origin) instead of two 16-component products: 1.16 µs -> 8 ns per
+   point, 10k points 5.6 ms -> 82 µs (`cargo bench -p meridian-gac-core`).
+   `FixedMotor3` still uses the generic product; expand it the same way when
+   a deterministic hot path shows up.
 8. **Benchmarks.** `ecs-core` has criterion benches; add them for
    `task-core` and the `gac-compute` batch kernels so items 3, 5 and 7 are
    decided on numbers.
