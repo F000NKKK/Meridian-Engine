@@ -20,18 +20,21 @@ fn close(a: Vec3, b: Vec3) -> bool {
 
 #[test]
 fn transform_point_matches_the_full_sandwich_product() {
-    let axes = [Vec3::new(1.0, 2.0, 3.0), Vec3::new(-0.3, 0.9, 0.2), Vec3::Y];
+    let cases = [
+        (Vec3::new(1.0, 2.0, 3.0), 0.4, 0.0),
+        (Vec3::new(-0.3, 0.9, 0.2), 1.3, 0.25),
+        (Vec3::Y, 2.2, 0.5),
+    ];
     let points = [
         Vec3::ZERO,
         Vec3::X,
         Vec3::new(0.3, -1.2, 4.5),
         Vec3::new(-7.0, 2.0, 0.5),
     ];
-    for (i, axis) in axes.into_iter().enumerate() {
-        let angle = 0.4 + 0.9 * i as f32;
+    for (axis, angle, z) in cases {
         let motor = Motor3::from_rotation_translation(
             Rotor::from_axis_angle(axis, angle),
-            Vec3::new(1.5, -2.0, 0.25 * i as f32),
+            Vec3::new(1.5, -2.0, z),
         );
         for point in points {
             assert!(close(motor.transform_point(point), sandwich(motor, point)));

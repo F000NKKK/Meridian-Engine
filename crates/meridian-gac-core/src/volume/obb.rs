@@ -45,8 +45,8 @@ impl<F: GaFlavor> Shape<F> for Obb<F> {
         let local_direction = self.frame.inverse().transform_vector(direction);
         // A zero component picks the positive corner, as `Aabb::support`
         // does: `signum` would turn the sign of `-0.0` into the answer.
-        let corner = |extent: F::Scalar, direction: F::Scalar| {
-            if direction >= F::Scalar::ZERO {
+        let corner = |extent: F::Scalar, component: F::Scalar| {
+            if component >= F::Scalar::ZERO {
                 extent
             } else {
                 -extent

@@ -33,8 +33,8 @@ fn motor_batch(c: &mut Criterion) {
         Rotor::from_axis_angle(Vec3::new(0.0, 0.0, 1.0), 0.3),
         Vec3::new(1.0, 2.0, 0.0),
     );
-    let points: Vec<Vec3> = (0..10_000)
-        .map(|i| Vec3::new(i as f32 * 0.01, (i % 97) as f32, 0.0))
+    let points: Vec<Vec3> = (0..10_000_u16)
+        .map(|i| Vec3::new(f32::from(i) * 0.01, f32::from(i % 97), 0.0))
         .collect();
     c.bench_function("motor_transform_point_x10000", |b| {
         b.iter(|| {
