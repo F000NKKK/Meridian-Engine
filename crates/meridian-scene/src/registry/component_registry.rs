@@ -67,7 +67,7 @@ impl ComponentRegistry {
         self.entries.iter().map(describe).collect()
     }
 
-    /// Reads `.mscene` `text` into `world`; see [`DocumentReader`] for the rules.
+    /// Reads `.mscene` `text` into `world`; see `DocumentReader` for the rules.
     ///
     /// # Errors
     ///
