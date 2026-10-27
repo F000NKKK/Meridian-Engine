@@ -10,10 +10,7 @@ readme = "README.md"
 
 [dependencies]
 meridian-gac-core = { workspace = true }
-meridian-gac-compute = { workspace = true }
 meridian-numeric-core = { workspace = true }
-meridian-ecs-core = { workspace = true }
-meridian-compute-runtime = { workspace = true }
 meridian-resource-core = { workspace = true }
 
 [lints]

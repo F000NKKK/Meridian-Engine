@@ -26,7 +26,7 @@ assert!(bodies[0].velocity.y < 0.0);
 
 ## Depends on / used by
 
-- Depends on: [`meridian-compute-runtime`](../meridian-compute-runtime), [`meridian-ecs-core`](../meridian-ecs-core), [`meridian-gac-compute`](../meridian-gac-compute), [`meridian-gac-core`](../meridian-gac-core), [`meridian-numeric-core`](../meridian-numeric-core), [`meridian-resource-core`](../meridian-resource-core)
+- Depends on: [`meridian-gac-core`](../meridian-gac-core), [`meridian-numeric-core`](../meridian-numeric-core), [`meridian-resource-core`](../meridian-resource-core)
 - Used by: [`meridian-engine-core`](../meridian-engine-core), [`meridian-physics-compute`](../meridian-physics-compute), [`meridian-sdk`](../meridian-sdk)
 
 ## License
