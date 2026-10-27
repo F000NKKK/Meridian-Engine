@@ -627,8 +627,11 @@ priority before writing implementations is keeping that document and the
     `dsl-core` side is done (line/column spans, the `x:` prefix, dotted
     names and property elements, parsed markup extensions, typed
     `ParseErrorKind`), and the `meridian-mel-build` generator
-    (`.mel` -> `.g.rs`, `mel_include!`; used by `magic_figures`).
-    Compiled `{x:Bind}` bindings and event dispatch are next.
+    (`.mel` -> `.g.rs`, `mel_include!`; used by `magic_figures`), whose
+    `{x:Bind}` compiler parses and validates bindings and type-checks
+    them against the `x:ViewModel` at build time. Writing bound values
+    into elements waits for `team/ui-ux`'s binding target model; event
+    dispatch is next.
 
 ## Scaling beyond a tech demo (Minecraft/Satisfactory-class scope)
 

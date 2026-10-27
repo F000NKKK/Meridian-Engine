@@ -72,8 +72,18 @@ the prior art to copy from is Yog-Mod-Loader's `.yui` -> `.g.rs` pipeline
    (`on_*` attributes -> code-behind methods), waiting for an engine
    event source to raise them, and porting `physic_figures` once markup
    hot reload (item 8) keeps run-time editing.
-6. **`{x:Bind}` expression compiler.** The Yog `x:Bind` subset compiled to
-   Rust, `Mode`/`BindBack`/`Fallback`, type errors mapped to `.mel` lines.
+6. **`{x:Bind}` expression compiler.** Done, part 1: the Yog `x:Bind`
+   subset (members, calls, `Type::path`s, literals, `!`, `==`, `!=`,
+   `?.`) is parsed into `BindingExpr` and rendered as Rust over `vm`;
+   `Mode`/`BindBack`/`Fallback` are validated (an `x:ViewModel` and an
+   `x:Name` are required, `TwoWay` needs a member path or `BindBack`,
+   `Fallback` needs a `?.`); the generated `type_check_bindings` makes
+   `rustc` check every binding against the view model, under a
+   `// @mel file:line:column` marker. Part 2, once `team/ui-ux` lands the
+   element/property model: generated `apply_bindings` (OneWay/OneTime)
+   and write-back from the target's change list (TwoWay), and accepting
+   `{x:Bind}` attributes in built tags (today `text_attr` rejects them,
+   so `build` fails for a document that has bindings).
 7. **Resources.** `Resources` + `x:Key` in markup and an external
    resource file (Yog's `.yres` analogue, in Substrate-Data text) with
    generated typed accessors, referenced as `@res:Set.name`.

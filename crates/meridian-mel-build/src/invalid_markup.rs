@@ -23,4 +23,25 @@ pub enum InvalidMarkup {
     /// Two different `x:Name`s that map to the same `Name` variant.
     #[error("x:Name '{second}' generates the same identifier as '{first}'")]
     NameCollision { first: String, second: String },
+    /// An `{x:Bind}` in a document without a root `x:ViewModel`.
+    #[error("{{x:Bind}} needs an x:ViewModel on the root element")]
+    BindingWithoutViewModel,
+    /// An `{x:Bind}` on an element without an `x:Name` to address it by.
+    #[error("{{x:Bind}} on <{0}> needs an x:Name on that element")]
+    BindingWithoutName(String),
+    #[error("{{x:Bind}} takes exactly one expression")]
+    BindingArity,
+    #[error("{0}")]
+    BindingExpression(crate::BindingExprError),
+    #[error("unknown {{x:Bind}} argument '{0}' (known: Mode, BindBack, Fallback)")]
+    UnknownBindingArgument(String),
+    #[error("invalid value for {{x:Bind}} argument '{0}'")]
+    InvalidBindingArgument(String),
+    /// `Mode=TwoWay` on an expression that is not a member path, without
+    /// `BindBack`.
+    #[error("Mode=TwoWay needs a member path to write back to, or BindBack=method")]
+    TwoWayNeedsTarget,
+    /// `Fallback=` on an expression without `?.`, which never meets `None`.
+    #[error("Fallback= only applies to an expression with '?.'")]
+    FallbackWithoutOptional,
 }
