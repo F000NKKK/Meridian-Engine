@@ -33,10 +33,10 @@ pub fn requests() -> Vec<Request> {
             entity: entity(),
             component: component(),
         },
-        Request::PatchComponent {
+        Request::SetComponent {
             entity: entity(),
             component: component(),
-            patch: value(),
+            value: value(),
         },
         Request::SpawnEntity,
         Request::DespawnEntity { entity: entity() },
@@ -71,6 +71,7 @@ pub fn errors() -> Vec<RequestError> {
         RequestError::InvalidValue {
             diagnostics: vec![Diagnostic::from("not a number")],
         },
+        RequestError::Unsupported,
     ]
 }
 

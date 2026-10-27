@@ -35,9 +35,12 @@ pub enum RequestError {
         /// The component it lacks.
         component: ComponentName,
     },
-    /// A patch that isn't a value of the component's shape.
+    /// A `value` that is not of the component's shape.
     InvalidValue {
         /// Every problem, with its path in the value.
         diagnostics: Vec<Diagnostic>,
     },
+    /// The request isn't one this host knows (a newer editor's, or one the
+    /// negotiated version doesn't include).
+    Unsupported,
 }

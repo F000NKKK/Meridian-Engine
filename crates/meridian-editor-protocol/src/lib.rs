@@ -13,8 +13,11 @@
 //! [`Request`], [`Response`], [`Event`], [`RequestError`] and the other
 //! message enums, fields only at the end of a struct, and nothing is
 //! removed or reordered; golden tests pin it. A change that cannot be
-//! made that way bumps [`ProtocolVersion`]. Messages, versioning and how
-//! the IDE consumes them: docs/editor-protocol.md.
+//! made that way bumps [`ProtocolVersion`]. So does any change to the
+//! written shape of what the messages embed from Substrate Data:
+//! `Diagnostic`, `ComponentShape` (and its `ShapeDoc`) and the `Value`
+//! model. Messages, versioning and how the IDE consumes them:
+//! docs/editor-protocol.md.
 
 mod ids;
 mod message;

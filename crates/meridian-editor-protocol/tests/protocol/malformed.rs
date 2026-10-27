@@ -1,6 +1,10 @@
 //! Broken streams give typed errors, never panics.
 
-use meridian_editor_protocol::{FrameError, Request, RequestEnvelope, read_message, write_message};
+use meridian_editor_protocol::{
+    FrameError, HostMessage, Request, RequestEnvelope, RequestError, RequestId, Response,
+    read_message, write_message,
+};
+use substrate_data::Value;
 use substrate_data::{Code, Problem};
 
 use crate::samples;
@@ -103,4 +107,55 @@ fn a_field_of_a_newer_peer_is_reported_not_skipped() {
             .iter()
             .any(|p| p.code == Some(Code::Data(Problem::UnknownField)))
     );
+}
+
+/// The host pattern for requests it cannot read: read the frame as a
+/// `Value`, take the `id`, then read the envelope; on failure answer
+/// `Failed { Unsupported }` with that id.
+fn answer(stream: &[u8]) -> HostMessage {
+    let value = read_message::<Value>(&mut &stream[..])
+        .expect("a frame")
+        .expect("a message");
+    let id = value
+        .get("id")
+        .and_then(|id| substrate_data::read_value::<RequestId>(id).ok())
+        .expect("the request has an id");
+    match substrate_data::read_value::<RequestEnvelope>(&value) {
+        Ok(_) => HostMessage::Response {
+            id,
+            response: Response::Done,
+        },
+        Err(_) => HostMessage::Response {
+            id,
+            response: Response::Failed {
+                error: RequestError::Unsupported,
+            },
+        },
+    }
+}
+
+#[test]
+fn an_unknown_request_is_answered_unsupported_with_its_id() {
+    let stream = framed_text(r#"{ id: 41, request: { type: "warp_drive", speed: 9 } }"#);
+    assert_eq!(
+        answer(&stream),
+        HostMessage::Response {
+            id: RequestId::new(41),
+            response: Response::Failed {
+                error: RequestError::Unsupported
+            }
+        }
+    );
+}
+
+#[test]
+fn a_known_request_is_not_answered_unsupported() {
+    let stream = framed_text(r#"{ id: 5, request: { type: "play" } }"#);
+    assert!(matches!(
+        answer(&stream),
+        HostMessage::Response {
+            response: Response::Done,
+            ..
+        }
+    ));
 }

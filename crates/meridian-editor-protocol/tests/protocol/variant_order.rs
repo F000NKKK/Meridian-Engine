@@ -22,7 +22,7 @@ fn request_variants_are_pinned() {
             "describe",
             "list_entities",
             "get_component",
-            "patch_component",
+            "set_component",
             "spawn_entity",
             "despawn_entity",
             "play",
@@ -56,7 +56,8 @@ fn response_and_error_variants_are_pinned() {
             "no_such_entity",
             "no_such_component",
             "component_missing",
-            "invalid_value"
+            "invalid_value",
+            "unsupported"
         ]
     );
 }
