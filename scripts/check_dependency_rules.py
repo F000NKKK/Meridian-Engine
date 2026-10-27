@@ -54,7 +54,11 @@ ALLOWED = {
     "meridian-ecs-core": {"meridian-memory-core", "meridian-gac-core"},
     "meridian-asset-core": {"meridian-foundation"},
     "meridian-graphics-driver": {"meridian-foundation", "meridian-platform-core", "meridian-gpu-driver"},
-    "meridian-audio-driver": {"meridian-foundation", "meridian-platform-core"},
+    "meridian-audio-driver": {
+        "meridian-foundation",
+        "meridian-platform-core",
+        "meridian-audio-core",
+    },
     "meridian-graphics-core": {
         "meridian-foundation",
         "meridian-gac-core",
@@ -114,6 +118,7 @@ ALLOWED = {
         "meridian-graphics-core",
         "meridian-physics-core",
         "meridian-audio-core",
+        "meridian-audio-driver",
         "meridian-engine-core",
         "meridian-dsl-core",
         "meridian-dsl-macros",
@@ -126,7 +131,6 @@ ALLOWED = {
 # wave inverts them. Never add to this table.
 PENDING = {
     ("meridian-graphics-core", "meridian-graphics-driver"): "migration pending (wave 5)",
-    ("meridian-audio-core", "meridian-audio-driver"): "migration pending (wave 5)",
     ("meridian-compute-runtime", "meridian-compute-driver"): "migration pending (wave 5)",
     ("meridian-engine-core", "meridian-task-core"): "migration pending (wave 6)",
     ("meridian-engine-core", "meridian-platform-core"): "migration pending (wave 6)",

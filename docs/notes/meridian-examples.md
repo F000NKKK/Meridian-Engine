@@ -22,7 +22,7 @@ uses — so all three tracks pan/attenuate through
 `audio-core::BinauralRenderer` as you fly around, mixed down to one
 output stream in a single `render` call per frame (all three source
 files happen to share a sample rate, so one `BinauralRenderer`/
-`AudioOutput` pair suffices — see [`load_music_tracks`]). This
+`AudioStream` pair suffices — see [`load_music_tracks`]). This
 example doesn't use `meridian_sdk::Runtime` at all — no rigid bodies
 (pure kinematic orbit motion), and [`MusicRig`]'s real per-sample
 `BinauralRenderer` synthesis doesn't reduce to a `Runtime::Stage`

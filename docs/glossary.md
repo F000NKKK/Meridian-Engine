@@ -133,7 +133,7 @@ the other, in the same change.
 | Mixer | Renders emitters into speaker channels. | `Mixer` |
 | DSP graph | Effects applied to a signal, in order. | `DspGraph`, `DspNode` |
 | Binaural rendering | Headphone spatialization by head-related delays and filters. | `BinauralRenderer` |
-| Audio output | The device stream samples are pushed to. | `AudioOutput`, `AudioStream` |
+| Audio sink | The port through which mixed samples leave the audio domain; the platform adapter implements it. | `AudioSink`, `AudioStream` |
 
 ## Runtime
 

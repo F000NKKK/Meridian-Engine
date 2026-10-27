@@ -36,9 +36,11 @@ pub use meridian_asset_core::{
 };
 // -- meridian-audio-core: spatial audio --
 pub use meridian_audio_core::{
-    AcousticMedium, AttenuationModel, AudioOutput, BinauralRenderer, Channel, Declicker, DspNode,
+    AcousticMedium, AttenuationModel, AudioSink, BinauralRenderer, Channel, Declicker, DspNode,
     Emitter, Listener, Mixer, SpeakerLayout,
 };
+// -- meridian-audio-driver: the platform audio adapter (composition root) --
+pub use meridian_audio_driver::{AudioStream, open_output};
 // -- meridian-engine-core: Runtime — the single frame-work entry point
 // (see this crate's own module doc's "Runtime is the single frame-work
 // entry point" section) --

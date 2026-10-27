@@ -62,7 +62,7 @@ dependencies need one of these:
 may only shrink.
 
 - Domain and application crates that still depend on adapters
-  (`graphics-core → graphics-driver`, `audio-core → audio-driver`,
+  (`graphics-core → graphics-driver`,
   `compute-runtime → compute-driver`, …): ADR 019, wave 5.
 - `graphics-core → asset-core` is a domain-to-domain edge declared as a
   published language; Craftbook requires customer–supplier between two domain
@@ -71,5 +71,5 @@ may only shrink.
 - `sdk → dsl-macros` (runtime → scene-markup interface crate) has no edge;
   resolved when the DSL tags leave `sdk` (ADR 020 D3, wave 6).
 - I/O in the diagnostics kernel (`foundation`'s tokio file sink, crash
-  report) and `audio-core::AudioOutput::open` being `async`: ADR 020 D7 and
-  ADR 019, waves 5–6.
+  report): ADR 020 D7, wave 6. (`audio-core::AudioOutput::open` left the
+  domain in wave 5.)

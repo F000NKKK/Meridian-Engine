@@ -55,21 +55,3 @@ fn render_interleaved_pads_short_sources_with_silence() {
     assert!(out[0] > 0.0);
     assert_eq!(&out[2..], &[0.0, 0.0, 0.0, 0.0]);
 }
-
-#[cfg(feature = "hw-tests")]
-#[tokio::test]
-async fn audio_output_opens_for_every_layout_or_skips() {
-    for layout in [SpeakerLayout::mono(), SpeakerLayout::stereo_headphones()] {
-        match AudioOutput::open(&layout, 48000, None).await {
-            Ok(output) => {
-                let silence = vec![0.0f32; 64 * layout.speakers.len()];
-                output.push_interleaved(&silence);
-                assert!(output.can_push(1));
-            }
-            Err(err) => {
-                eprintln!("skipping: no audio device available ({err})");
-                return;
-            }
-        }
-    }
-}

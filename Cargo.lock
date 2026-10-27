@@ -1136,9 +1136,7 @@ dependencies = [
 name = "meridian-audio-core"
 version = "0.19.0"
 dependencies = [
- "meridian-audio-driver",
  "meridian-gac-core",
- "tokio",
 ]
 
 [[package]]
@@ -1147,6 +1145,7 @@ version = "0.12.0"
 dependencies = [
  "cpal",
  "crossbeam-channel",
+ "meridian-audio-core",
  "meridian-foundation",
  "meridian-platform-core",
  "tokio",
@@ -1398,6 +1397,7 @@ version = "0.5.0"
 dependencies = [
  "meridian-asset-core",
  "meridian-audio-core",
+ "meridian-audio-driver",
  "meridian-dsl-core",
  "meridian-dsl-macros",
  "meridian-engine-core",
