@@ -37,9 +37,9 @@ Deliberately separate from [`scene`]: this module never touches
 scene composition, only decode+cache+register (see its own doc
 comment for the full `asset-core`/here/`resource-core` layering).
 - [`scene`]/[`camera`] — windowed-app scaffolding (procedural mesh
-builders, `GraphicsBase`, `FlyCamera`) every windowed application
+builders, `GraphicsSession`, `FlyCamera`) every windowed application
 needs identically; not domain logic, just reusable application
-plumbing. `GraphicsBase` owns an [`assets::AssetCache`], but the
+plumbing. `GraphicsSession` owns an [`assets::AssetCache`], but the
 loading logic itself lives in [`assets`], not here.
 - [`render`] — [`render_frame`], the shadow-pass/submit/present
 sequence every windowed app repeats each redraw, and [`RenderStage`],

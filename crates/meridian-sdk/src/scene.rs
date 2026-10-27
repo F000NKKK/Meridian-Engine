@@ -3,7 +3,7 @@
 //! positions, normals, UVs, indices — not raw bytes, all procedural, no
 //! file I/O — see [`crate::assets`] for loading meshes/textures *from*
 //! files) and the `SceneRenderer`/`BloomPass`/registry/asset-cache
-//! bundle ([`GraphicsBase`]) an application builds once. No application
+//! bundle ([`GraphicsSession`]) an application builds once. No application
 //! hand-rolls a pipeline or vertex buffer itself — that's exactly what
 //! `graphics-core`'s submission bridge exists to replace (see
 //! docs/graphics-design.md).
@@ -19,7 +19,7 @@ use crate::assets::AssetCache;
 
 /// Builds a [`MeshSource`] for an icosphere of the given `radius`,
 /// centered at its own local origin (world placement is
-/// `Renderable3D::frame`'s job — `Motor3` has no scale component, so
+/// `Renderable3d::frame`'s job — `Motor3` has no scale component, so
 /// radius has to be baked into the mesh itself, not applied per
 /// instance). Normals are the unit-length vertex directions, UVs an
 /// equirectangular projection.
@@ -141,7 +141,7 @@ pub fn cube_mesh_source(half_extent: f32) -> MeshSource {
 
 /// A square-based pyramid: base half-extent `base_half_extent`, apex
 /// `height` above the base, centered on the base's own middle (so a
-/// `Renderable3D::frame` translation places the base center, not the
+/// `Renderable3d::frame` translation places the base center, not the
 /// centroid). Flat per-face normals (5 faces: 1 base quad + 4 triangular
 /// sides), windings verified the same way as [`cube_mesh_source`]'s —
 /// see that function's doc comment for why this matters.
@@ -214,7 +214,7 @@ fn normalize(v: [f32; 3]) -> [f32; 3] {
 
 /// A flat quad in the local `y = 0` plane, `half_size` from center to
 /// edge, its UVs tiled `uv_tiles` times across — the floor's mesh, with
-/// world placement left to `Renderable3D::frame`.
+/// world placement left to `Renderable3d::frame`.
 pub fn ground_mesh_source(half_size: f32, uv_tiles: f32) -> MeshSource {
     MeshSource {
         positions: vec![
@@ -251,7 +251,7 @@ pub fn ground_mesh_source(half_size: f32, uv_tiles: f32) -> MeshSource {
 /// which has nothing to do with scene composition (see that module's
 /// own doc comment for why it's split out from this one).
 #[derive(Debug)]
-pub struct GraphicsBase {
+pub struct GraphicsSession {
     pub device: Device,
     pub surface: Surface,
     pub depth: DepthTexture,
@@ -263,7 +263,7 @@ pub struct GraphicsBase {
     pub assets: AssetCache,
 }
 
-impl GraphicsBase {
+impl GraphicsSession {
     /// Builds with `graphics-core`'s default shadow map resolution
     /// (`SceneRenderer::DEFAULT_SHADOW_MAP_SIZE`) — see
     /// [`with_shadow_map_size`](Self::with_shadow_map_size) to pick a

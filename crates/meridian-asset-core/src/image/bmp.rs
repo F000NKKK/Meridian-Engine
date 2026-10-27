@@ -1,7 +1,7 @@
 //! Hand-rolled uncompressed BMP decoder — simple enough to own outright,
 //! unlike PNG (see `png_decoder`).
 
-use crate::{DecodeError, Decoder, ImageData, need, u16_le, u32_le};
+use crate::{DecodeError, Decoder, ImageAsset, need, u16_le, u32_le};
 
 fn i32_le(bytes: &[u8], offset: usize) -> i32 {
     i32::from_le_bytes([
@@ -17,10 +17,10 @@ fn i32_le(bytes: &[u8], offset: usize) -> i32 {
 #[derive(Debug, Default)]
 pub struct BmpDecoder;
 
-impl Decoder<ImageData> for BmpDecoder {
+impl Decoder<ImageAsset> for BmpDecoder {
     type Error = DecodeError;
 
-    fn decode(&self, bytes: &[u8]) -> Result<ImageData, DecodeError> {
+    fn decode(&self, bytes: &[u8]) -> Result<ImageAsset, DecodeError> {
         need(bytes, 54)?; // 14-byte file header + 40-byte BITMAPINFOHEADER
         if &bytes[0..2] != b"BM" {
             return Err(DecodeError::BadMagic { expected: "BM" });
@@ -83,7 +83,7 @@ impl Decoder<ImageData> for BmpDecoder {
             }
         }
 
-        Ok(ImageData {
+        Ok(ImageAsset {
             width,
             height,
             pixels,

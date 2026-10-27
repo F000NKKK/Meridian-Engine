@@ -6,7 +6,7 @@ most 30 lines). Each section belongs to the module named in its heading.
 ## `examples/magic_figures`
 
 Rendering goes entirely through `graphics-core`'s submission bridge
-(`meridian_sdk::GraphicsBase` bundles `SceneRenderer`/`BloomPass`/the
+(`meridian_sdk::GraphicsSession` bundles `SceneRenderer`/`BloomPass`/the
 three registries — the same base `physic_figures` builds): the floor
 is a real Blinn-Phong-lit material under one directional light +
 ambient; each shape is `unlit` + `emissive` in its own color, so it
@@ -69,7 +69,7 @@ gives the pyramid entity a `Cuboid` collider roughly bounding its
 mesh (it settles and rests like a box).
 
 Shares its base with `magic_figures` (`meridian_sdk::scene`'s
-`GraphicsBase`): same mesh builders, same lighting model. No bloom
+`GraphicsSession`): same mesh builders, same lighting model. No bloom
 emissive glow here beyond the visible "sun" sphere — these are
 ordinary lit, textured physics props, not the "magic" glowing
 shapes.

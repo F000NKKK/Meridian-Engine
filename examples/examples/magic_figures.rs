@@ -26,8 +26,8 @@ use meridian_examples::scene_loader::load_dsl_scene;
 use meridian_sdk::dsl::{self, dsl_tag};
 use meridian_sdk::{
     AcousticMedium, AppHandler, AudioOutput, AudioTrack, BinauralRenderer, Declicker, Device,
-    DspNode, Emitter, FlyCamera, GraphicsBase, InputState, KeyCode, Light, Listener, Material,
-    Motor3, Renderable3D, Rotor, Scene3D, SpeakerLayout, Vec3, Window, cube_mesh_source,
+    DspNode, Emitter, FlyCamera, GraphicsSession, InputState, KeyCode, Light, Listener, Material,
+    Motor3, Renderable3d, Rotor, Scene3d, SpeakerLayout, Vec3, Window, cube_mesh_source,
     ground_mesh_source, icosphere_mesh_source, load_audio_track, look_at_rotor,
     pyramid_mesh_source, run_windowed_app,
 };
@@ -292,7 +292,7 @@ fn orbit_position(shape: &ShapeSpec, elapsed: f32) -> Vec3 {
 /// `SUN_DIRECTION` — see `physic_figures::sun_renderable`'s identical
 /// doc comment for why the visual elevation is flattened relative to
 /// the physically-exact light direction.
-fn sun_renderable(base: &mut GraphicsBase) -> Renderable3D {
+fn sun_renderable(base: &mut GraphicsSession) -> Renderable3d {
     let mesh = base
         .meshes
         .register(icosphere_mesh_source(1, SUN_VISUAL_RADIUS))
@@ -305,14 +305,14 @@ fn sun_renderable(base: &mut GraphicsBase) -> Renderable3D {
     });
     let visual_direction = Vec3::new(SUN_DIRECTION.x, -0.5, SUN_DIRECTION.z).normalize();
     let position = visual_direction * -SUN_DISTANCE;
-    Renderable3D {
+    Renderable3d {
         mesh,
         material,
         frame: Motor3::translation(position),
         billboard: false,
         // Sitting along the light's own incoming direction, this would
         // otherwise occlude the light for the whole scene below it —
-        // see `Renderable3D::casts_shadow`'s own doc comment.
+        // see `Renderable3d::casts_shadow`'s own doc comment.
         casts_shadow: false,
     }
 }
@@ -329,8 +329,8 @@ struct App {
 }
 
 struct GpuState {
-    base: GraphicsBase,
-    scene: Scene3D,
+    base: GraphicsSession,
+    scene: Scene3d,
     /// Per-shape index into `scene.renderables`, in the same order as
     /// `App::shapes`, so `on_redraw` can update each shape's frame every
     /// tick without re-walking `shapes`.
@@ -373,7 +373,7 @@ impl AppHandler for App {
             .tokio_runtime
             .block_on(Device::new_windowed(target, width, height))
             .expect("failed to create windowed GPU device");
-        let mut base = GraphicsBase::new(device, surface, width, height);
+        let mut base = GraphicsSession::new(device, surface, width, height);
 
         let floor_texture = base.load_texture(&asset_path("assets/textures/floor.png"));
         let floor_material = base.materials.register(Material {
@@ -386,7 +386,7 @@ impl AppHandler for App {
             .register(ground_mesh_source(14.0, 10.0))
             .expect("floor mesh must be valid");
 
-        let mut renderables = vec![Renderable3D {
+        let mut renderables = vec![Renderable3d {
             mesh: floor_mesh,
             material: floor_material,
             frame: Motor3::identity(),
@@ -417,7 +417,7 @@ impl AppHandler for App {
                 ..Default::default()
             });
             shape_renderable_indices.push(renderables.len());
-            renderables.push(Renderable3D {
+            renderables.push(Renderable3d {
                 mesh,
                 material,
                 frame: Motor3::translation(orbit_position(shape, 0.0)),
@@ -453,12 +453,12 @@ impl AppHandler for App {
             });
         }
 
-        let scene = Scene3D {
+        let scene = Scene3d {
             renderables,
             lights,
             ambient_ground: [0.012, 0.012, 0.016],
             ambient_sky: [0.02, 0.02, 0.028],
-            ..Scene3D::default()
+            ..Scene3d::default()
         };
 
         self.gpu = Some(GpuState {

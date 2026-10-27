@@ -13,14 +13,8 @@
 
 pub mod fixed;
 pub mod float;
+mod numeric_backend;
 
 pub use fixed::Fixed;
 pub use float::{EPSILON, Scalar, approx_eq};
-
-/// A numeric backend (scalar fallback vs. a SIMD-batched implementation).
-pub trait NumericBackend {
-    /// The batched representation this backend operates on.
-    type Batch;
-
-    fn feature_flags(&self) -> meridian_foundation::FeatureFlags;
-}
+pub use numeric_backend::NumericBackend;

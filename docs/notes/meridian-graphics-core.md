@@ -54,7 +54,7 @@ writing a *shared* uniform once per draw would race (every draw only
 executes once the whole command buffer is submitted, by which point
 the last write wins for *all* of them — the same footgun the
 soft-body examples' buffer-lifetime comments call out). So each
-[`Renderable3D`]'s world-space position/normal, its UV (if textured)
+[`Renderable3d`]'s world-space position/normal, its UV (if textured)
 and its material's tint/emissive are baked into a fresh vertex buffer
 at [`SceneRenderer::prepare`] time, once per instance, per frame —
 correct today, and exactly the CPU-side cost docs/graphics-design.md's

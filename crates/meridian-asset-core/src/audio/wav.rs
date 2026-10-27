@@ -1,17 +1,17 @@
 //! Hand-rolled PCM WAV decoder — simple enough to own outright, unlike
-//! the compressed formats (see `compressed_audio`).
+//! the compressed formats (see `compressed`).
 
-use crate::{AudioData, DecodeError, Decoder, need, u16_le, u32_le};
+use crate::{AudioClip, DecodeError, Decoder, need, u16_le, u32_le};
 
 /// Decodes PCM WAV (`fmt ` chunk with `audioFormat == 1`, 16-bit samples
 /// only). Chunk-based, so it tolerates extra chunks before `data`.
 #[derive(Debug, Default)]
 pub struct WavDecoder;
 
-impl Decoder<AudioData> for WavDecoder {
+impl Decoder<AudioClip> for WavDecoder {
     type Error = DecodeError;
 
-    fn decode(&self, bytes: &[u8]) -> Result<AudioData, DecodeError> {
+    fn decode(&self, bytes: &[u8]) -> Result<AudioClip, DecodeError> {
         need(bytes, 12)?;
         if &bytes[0..4] != b"RIFF" {
             return Err(DecodeError::BadMagic { expected: "RIFF" });
@@ -69,7 +69,7 @@ impl Decoder<AudioData> for WavDecoder {
             .map(|s| i16::from_le_bytes([s[0], s[1]]))
             .collect();
 
-        Ok(AudioData {
+        Ok(AudioClip {
             sample_rate,
             channels,
             samples,

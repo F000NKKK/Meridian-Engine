@@ -161,7 +161,7 @@ impl Device {
     }
 
     /// An `Rgba8UnormSrgb`, sampleable color texture — the shape a
-    /// decoded `asset-core::ImageData` (already RGBA8) uploads into for
+    /// decoded `asset-core::ImageAsset` (already RGBA8) uploads into for
     /// use as a material's albedo. sRGB, matching this crate's swapchain
     /// format choice (see [`Device::new_windowed`]'s doc comment), so a
     /// texture authored in sRGB (almost every image file is) reads back

@@ -2,7 +2,7 @@
 //! and docs/adr/013-compressed-audio-codecs.md for why PNG's DEFLATE
 //! payload isn't hand-rolled the way BMP is.
 
-use crate::{DecodeError, Decoder, ImageData, need};
+use crate::{DecodeError, Decoder, ImageAsset, need};
 
 /// Decodes PNG (any color type/bit depth the `png` crate itself
 /// supports) into RGBA8, always — palette, grayscale and
@@ -11,10 +11,10 @@ use crate::{DecodeError, Decoder, ImageData, need};
 #[derive(Debug, Default)]
 pub struct PngDecoder;
 
-impl Decoder<ImageData> for PngDecoder {
+impl Decoder<ImageAsset> for PngDecoder {
     type Error = DecodeError;
 
-    fn decode(&self, bytes: &[u8]) -> Result<ImageData, DecodeError> {
+    fn decode(&self, bytes: &[u8]) -> Result<ImageAsset, DecodeError> {
         const SIGNATURE: [u8; 8] = [0x89, b'P', b'N', b'G', 0x0d, 0x0a, 0x1a, 0x0a];
         need(bytes, SIGNATURE.len())?;
         if bytes[..SIGNATURE.len()] != SIGNATURE {
@@ -59,7 +59,7 @@ impl Decoder<ImageData> for PngDecoder {
             }
         };
 
-        Ok(ImageData {
+        Ok(ImageAsset {
             width: info.width,
             height: info.height,
             pixels,

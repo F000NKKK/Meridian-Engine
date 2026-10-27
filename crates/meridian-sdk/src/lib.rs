@@ -31,7 +31,8 @@ pub use camera::{FlyCamera, look_at_rotor};
 pub use dsl::dsl_core;
 pub use render::{RenderStage, render_frame};
 pub use scene::{
-    GraphicsBase, cube_mesh_source, ground_mesh_source, icosphere_mesh_source, pyramid_mesh_source,
+    GraphicsSession, cube_mesh_source, ground_mesh_source, icosphere_mesh_source,
+    pyramid_mesh_source,
 };
 
 // -- meridian-gac-core: spatial math --
@@ -45,8 +46,8 @@ pub use meridian_physics_core::{
 // -- meridian-graphics-core: scene/material/lighting/submission --
 pub use meridian_graphics_core::{
     BloomPass, Camera, DEFAULT_SHADOW_MAP_SIZE, DrawBuffers, Frustum, Light, Material,
-    MaterialHandle, MaterialRegistry, MeshHandle, MeshRegistry, MeshSource, Renderable3D, Scene2D,
-    Scene3D, SceneRenderer, TextureHandle, TextureRegistry, submit_scene3d,
+    MaterialHandle, MaterialRegistry, MeshHandle, MeshRegistry, MeshSource, Renderable3d, Scene2d,
+    Scene3d, SceneRenderer, TextureHandle, TextureRegistry, submit_scene3d,
 };
 
 // -- meridian-graphics-driver: the GPU device a windowed app opens once --
@@ -67,7 +68,7 @@ pub use meridian_audio_core::{
 
 // -- meridian-asset-core: decoding --
 pub use meridian_asset_core::{
-    AnyAudioDecoder, AnyImageDecoder, AudioAsset, DecodeStrategy, Decoder, ImageData,
+    AnyAudioDecoder, AnyImageDecoder, AudioAsset, DecodeStrategy, Decoder, ImageAsset,
     StreamingAudioDecoder, open_audio,
 };
 

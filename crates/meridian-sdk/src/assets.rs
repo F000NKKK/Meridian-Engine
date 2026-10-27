@@ -5,7 +5,7 @@
 //! once, no matter how many times an application asks for it).
 //!
 //! **Layering, explicitly:** `asset-core` only decodes bytes into
-//! CPU-side data (`ImageData`/`MeshData`) — it has no idea what a path,
+//! CPU-side data (`ImageAsset`/`MeshAsset`) — it has no idea what a path,
 //! a cache, or a GPU handle is (rule 4: asset-core stays a decoder,
 //! never a manager). `resource-core`'s generational handles are what
 //! `MeshRegistry`/`TextureRegistry` (in `graphics-core`) already build
@@ -19,7 +19,7 @@
 use std::collections::{HashMap, VecDeque};
 
 use meridian_asset_core::{
-    AnyImageDecoder, AudioAsset, DecodeStrategy, Decoder, ImageData, ObjDecoder,
+    AnyImageDecoder, AudioAsset, DecodeStrategy, Decoder, ImageAsset, ObjDecoder,
     StreamingAudioDecoder, open_audio,
 };
 use meridian_graphics_core::{
@@ -37,7 +37,7 @@ use meridian_graphics_driver::Device;
 /// the one that owns the asset directory; a caller with assets under
 /// its own crate joins `env!("CARGO_MANIFEST_DIR")` itself before
 /// calling this.
-pub fn load_image_asset(path: &str) -> ImageData {
+pub fn load_image_asset(path: &str) -> ImageAsset {
     let bytes = std::fs::read(path).unwrap_or_else(|e| panic!("failed to read asset {path}: {e}"));
     AnyImageDecoder
         .decode(&bytes)
@@ -198,7 +198,7 @@ pub fn load_audio_track(path: &str) -> Result<(AudioTrack, u32), String> {
 }
 
 /// Path-keyed cache over texture/mesh loading — an application (or
-/// [`crate::scene::GraphicsBase`], which owns one) calls
+/// [`crate::scene::GraphicsSession`], which owns one) calls
 /// [`load_texture`](Self::load_texture)/[`load_mesh_obj`](Self::load_mesh_obj)
 /// as many times as it wants for the same path (a texture shared by
 /// several materials, a mesh instanced by several entities); only the

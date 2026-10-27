@@ -153,7 +153,7 @@ Every crate has a real implementation now, including every `*-driver`
 hand-written `dlopen`/`LoadLibrary` FFI). `graphics-driver` has a real
 *windowed* `wgpu` `Device` (`Device::new_windowed`, a real swapchain
 `Surface`), and `graphics-core`'s scene/material/lighting/submission
-bridge (`Scene3D`, `SceneRenderer`, real Blinn-Phong lit draws through
+bridge (`Scene3d`, `SceneRenderer`, real Blinn-Phong lit draws through
 it) is real too — proven end-to-end by the `magic_figures`/
 `physic_figures` examples.
 

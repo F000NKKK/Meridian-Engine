@@ -214,7 +214,7 @@ identified by leading magic bytes (`AudioFormat::detect` /
 `AnyAudioDecoder`), never by file extension — the concrete asset that
 justified the external codec crates is `examples/assets/audio/`; see
 [ADR 013](adr/013-compressed-audio-codecs.md). Audio decoding lives in
-the `audio/` barrel module (`wav`/`compressed_audio`/`audio_streaming`),
+the `audio/` barrel module (`wav`/`compressed`/`streaming`),
 and `open_audio(bytes, &DecodeStrategy)` is its thin loading interface:
 full decode vs. incremental streaming resolved entirely by
 configuration (force either, or `Auto` by estimated decoded size), with
@@ -470,7 +470,7 @@ just isn't `physic_figures`' driver anymore, since a single fixed
 physics step is `Runtime`'s job now that `Runtime` has the API for it.
 
 **Shadow mapping and hemisphere ambient are real now, not future
-work.** `Scene3D::ambient_ground`/`ambient_sky` replace the old flat
+work.** `Scene3d::ambient_ground`/`ambient_sky` replace the old flat
 `ambient` fill — a two-color hemisphere gradient lerped by each
 fragment's world-normal.y, a disclosed lightweight step toward real
 image-based lighting (a full convolved-cubemap IBL pipeline is still
@@ -510,7 +510,7 @@ shape) while the `FlyCamera` pose doubles as the shared `audio-core`
 listener (same local-forward-`+X` `Motor3` convention), so panning and
 distance attenuation track the camera live; `physic_figures` runs the
 same shapes as real `physics-core` rigid bodies settling onto a
-textured floor, sharing `meridian_sdk::scene::GraphicsBase` with
+textured floor, sharing `meridian_sdk::scene::GraphicsSession` with
 `magic_figures`. Every crate not named above
 has a real, tested implementation; see each crate's own section above
 for specifics. This staged order is intentional — see "Why implementation
@@ -652,7 +652,7 @@ rest are not started.
 
 1. **Per-instance vertex rebaking, every frame, is the sharpest wall.**
    `graphics-core::submission::bake_draw_buffers` reuploads a fresh
-   vertex buffer for *every* `Renderable3D` on *every*
+   vertex buffer for *every* `Renderable3d` on *every*
    `SceneRenderer::prepare` call, whether or not that instance moved
    since the last frame (see that function's own doc comment — "correct
    now, batch later" was an explicit, disclosed trade-off, not an
@@ -735,7 +735,7 @@ rest are not started.
    unstarted. This is its own multi-month subsystem, not an add-on to
    an existing crate.
 7. **No UI framework.** Inventory, crafting, HUD, building-placement
-   previews — `graphics-core::Scene2D`/`Sprite` exist (a layer-sorted
+   previews — `graphics-core::Scene2d`/`Sprite` exist (a layer-sorted
    2D plane) but there's no widget/layout/input-routing system built on
    top. Every UI element today would be hand-assembled sprites with
    hand-rolled input handling.

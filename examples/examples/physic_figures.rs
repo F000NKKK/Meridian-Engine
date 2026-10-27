@@ -25,11 +25,11 @@ use meridian_examples::scene_loader::load_dsl_scene;
 use meridian_sdk::dsl;
 use meridian_sdk::{
     AppHandler, AudioSubsystem, Camera, ColliderShape, ConstraintSolver, Device, FlyCamera,
-    GraphicsBase, InputState, KeyCode, Light, Material, MaterialHandle, MeshHandle, Mixer, Motor3,
-    PhysicsDispatchMode, PhysicsStepStage, PhysicsSubsystem, RenderStage, Renderable3D, RigidBody,
-    Runtime, Scene3D, SpeakerLayout, StageContext, StageId, Vec3, Window, cube_mesh_source,
-    ground_mesh_source, icosphere_mesh_source, look_at_rotor, pyramid_mesh_source,
-    run_windowed_app,
+    GraphicsSession, InputState, KeyCode, Light, Material, MaterialHandle, MeshHandle, Mixer,
+    Motor3, PhysicsDispatchMode, PhysicsStepStage, PhysicsSubsystem, RenderStage, Renderable3d,
+    RigidBody, Runtime, Scene3d, SpeakerLayout, StageContext, StageId, Vec3, Window,
+    cube_mesh_source, ground_mesh_source, icosphere_mesh_source, look_at_rotor,
+    pyramid_mesh_source, run_windowed_app,
 };
 
 /// The one directional light's travel direction — shared by the light
@@ -200,7 +200,7 @@ fn mesh_render_frame(mesh_shape: &str, collider: ColliderShape, body_frame: Moto
 /// shadow camera's fixed volume like everything else, but at that
 /// distance and size it never occludes anything the play area's shadow
 /// would need.
-fn sun_renderable(base: &mut GraphicsBase) -> Renderable3D {
+fn sun_renderable(base: &mut GraphicsSession) -> Renderable3d {
     let mesh = base
         .meshes
         .register(icosphere_mesh_source(1, SUN_VISUAL_RADIUS))
@@ -223,14 +223,14 @@ fn sun_renderable(base: &mut GraphicsBase) -> Renderable3D {
     // "a first-time viewer can actually find it."
     let visual_direction = Vec3::new(SUN_DIRECTION.x, -0.5, SUN_DIRECTION.z).normalize();
     let position = visual_direction * -SUN_DISTANCE;
-    Renderable3D {
+    Renderable3d {
         mesh,
         material,
         frame: Motor3::translation(position),
         billboard: false,
         // Sitting along the light's own incoming direction, this would
         // otherwise occlude the light for the whole scene below it —
-        // see `Renderable3D::casts_shadow`'s own doc comment.
+        // see `Renderable3d::casts_shadow`'s own doc comment.
         casts_shadow: false,
     }
 }
@@ -368,7 +368,7 @@ impl AppHandler for App {
             .tokio_runtime
             .block_on(Device::new_windowed(target, width, height))
             .expect("failed to create windowed GPU device");
-        let mut base = GraphicsBase::new(device, surface, width, height);
+        let mut base = GraphicsSession::new(device, surface, width, height);
 
         let render_entities: Vec<RenderEntity> = self
             .scene_entities
@@ -410,10 +410,10 @@ impl AppHandler for App {
             [0.05, 0.05, 0.08, 1.0],
             move |ctx: &StageContext| {
                 let bodies = &ctx.physics().bodies;
-                let mut renderables: Vec<Renderable3D> = render_entities
+                let mut renderables: Vec<Renderable3d> = render_entities
                     .iter()
                     .zip(bodies.iter())
-                    .map(|(re, body)| Renderable3D {
+                    .map(|(re, body)| Renderable3d {
                         mesh: re.mesh,
                         material: re.material,
                         frame: mesh_render_frame(&re.mesh_shape, re.collider, body.frame),
@@ -422,7 +422,7 @@ impl AppHandler for App {
                     })
                     .collect();
                 renderables.push(sun.clone());
-                Scene3D {
+                Scene3d {
                     renderables,
                     lights: lights.clone(),
                     camera: *render_camera

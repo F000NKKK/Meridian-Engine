@@ -108,9 +108,7 @@ pub trait AppHandler {
     /// Called when the window's client-area size changed (new size in
     /// physical pixels) — the point at which a caller should reconfigure
     /// its `graphics-driver::Surface`.
-    fn on_resized(&mut self, width: u32, height: u32) {
-        let _ = (width, height);
-    }
+    fn on_resized(&mut self, _width: u32, _height: u32) {}
 
     /// Called when the OS asked the window to close (close button,
     /// Alt+F4, ...). Returning `true` (the default) lets

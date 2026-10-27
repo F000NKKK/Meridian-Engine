@@ -3,8 +3,7 @@
 The ubiquitous language of Meridian-Engine, one section per bounded context
 (Craftbook ch. 7 §7.1; contexts in [context-map.md](context-map.md)). The
 code uses these words and these words name the code: renaming one renames
-the other, in the same change. Terms marked *rename* are scheduled for a new
-name by the Craftbook migration (wave in brackets).
+the other, in the same change.
 
 ## Geometry
 
@@ -39,7 +38,7 @@ name by the Craftbook migration (wave in brackets).
 |---|---|---|
 | Entity | An id with no data of its own. | `Entity` |
 | Component | Plain data attached to an entity. | `Component` |
-| Archetype | The set of entities with exactly the same component types; stored column by column. | `ArchetypeData` (*rename* to `Archetype`, wave 2) |
+| Archetype | The set of entities with exactly the same component types; stored column by column. | `Archetype` |
 | World | Owns every entity and archetype. | `World` |
 | Query | Iteration over every entity that has given components. | `Query`, `QueryMut` |
 | Transform | An entity's motor in world space; the one spatial component ECS knows. | `Transform` |
@@ -88,9 +87,9 @@ name by the Craftbook migration (wave in brackets).
 | Term | Meaning | In code |
 |---|---|---|
 | Decoder | Turns bytes already in memory into a CPU-side value. | `Decoder` |
-| Image | Decoded RGBA8 pixels with width and height. | `ImageData` (*rename* to `Image`, wave 2) |
-| Mesh (asset) | Decoded vertex positions, normals, UVs and indices. | `MeshData` (*rename* to `MeshAsset`, wave 2) |
-| Audio clip | Decoded PCM samples with rate and channel count. | `AudioData` (*rename* to `AudioClip`, wave 2) |
+| ImageAsset | Decoded RGBA8 pixels with width and height. | `ImageAsset` |
+| Mesh (asset) | Decoded vertex positions, normals, UVs and indices. | `MeshAsset` |
+| Audio clip | Decoded PCM samples with rate and channel count. | `AudioClip` |
 | Streaming decode | Decoding audio packet by packet instead of all at once. | `StreamingAudioDecoder` |
 | Shader source | WGSL text loaded as an asset. | `ShaderSource` |
 
@@ -98,9 +97,9 @@ name by the Craftbook migration (wave in brackets).
 
 | Term | Meaning | In code |
 |---|---|---|
-| Scene | What one frame draws: renderables, lights, camera. | `Scene3D` (*rename* to `Scene3d`, wave 2), `Scene2D` |
-| Renderable | A mesh drawn with a material at a motor. | `Renderable3D` (*rename* to `Renderable3d`, wave 2) |
-| Camera | Projection and view motor. | `Camera`, `Camera2D` |
+| Scene | What one frame draws: renderables, lights, camera. | `Scene3d`, `Scene2d` |
+| Renderable | A mesh drawn with a material at a motor. | `Renderable3d` |
+| Camera | Projection and view motor. | `Camera`, `Camera2d` |
 | Light | A directional, point or spot light. | `Light` |
 | Material | How a surface is shaded. | `Material`, `MaterialRegistry` |
 | Mesh registry | GPU meshes by handle. | `MeshRegistry`, `MeshHandle` |
