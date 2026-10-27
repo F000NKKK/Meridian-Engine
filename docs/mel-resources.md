@@ -99,6 +99,13 @@ key written `Set.name` is the `.mres` entry, so `{StaticResource
 Strings.title}` and `@res:Strings.title` are the same. An unknown key, a
 bad block or a second block on one element is a build error at its line.
 
+## Reloading
+
+A changed `.mres` or `.mel` is picked up at run time by parsing the
+document again with the new `ResourceSets` (`MelDocument::parse_with`) and
+handing its `ui` to `LiveUi::reload`; resource values are resolved while
+parsing, so a changed entry reaches the attributes that use it.
+
 ## Not yet
 
 Culture variants (`Strings.ru_ru.mres`) and run-time language switching,

@@ -104,9 +104,17 @@ the prior art to copy from is Yog-Mod-Loader's `.yui` -> `.g.rs` pipeline
    [mel-resources.md](../mel-resources.md)). Still open: culture variants
    and run-time language switching, `{name}` placeholders,
    file/image/sound entries, styles and templates, `{DynamicResource}`.
-8. **Hot reload of markup.** Re-parse changed `.mel`/resources at run
-   time and rebuild the affected scene part; code-behind changes still
-   need a rebuild.
+8. **Hot reload of markup.** First step done: `LiveUi` (mel-build)
+   takes a re-parsed `UiNode` and, when the document has the same
+   elements, `x:Name`s and children, sets the attributes that changed (or
+   resets removed ones to the property default) with plain `UiTree`
+   calls, so every `NodeId` and `Names` stays valid. A different shape
+   answers `Reload::Restructured` and leaves the tree alone; the host then
+   rebuilds with the compiled `build_ui`. Still open: the host loop that
+   watches the files and feeds `.mres` changes in (async file watching,
+   ADR 009, belongs in the host, not in mel-build), `x:Bind` expressions
+   (they are compiled code-behind, so a changed binding needs a rebuild),
+   and subtree rebuilds that keep unchanged `NodeId`s.
 9. **Host API and script language.** One trait-based host API for all
    code-behind backends; then the own `.mel` script language
    (domain-blind lexer/parser/interpreter, `Fixed` path for fixed-step

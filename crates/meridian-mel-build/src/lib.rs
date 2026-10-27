@@ -30,6 +30,7 @@ mod build_error;
 mod code_writer;
 mod compile;
 mod generated_module;
+mod hot_reload;
 mod invalid_markup;
 mod mel_document;
 mod named_element;
@@ -49,6 +50,7 @@ pub use binding::{
 pub use build_error::BuildError;
 pub use compile::{compile_dir, compile_file, compile_file_with};
 pub use generated_module::GeneratedModule;
+pub use hot_reload::{LiveUi, Reload};
 pub use invalid_markup::InvalidMarkup;
 pub use mel_document::MelDocument;
 pub use named_element::NamedElement;
@@ -56,6 +58,6 @@ pub use resources::{
     GeneratedResources, LocalResources, ResourceEntry, ResourceError, ResourceProblem, ResourceSet,
     ResourceSets, ResourceValue,
 };
-pub(crate) use resources::{RESOURCE_TAGS, read_markup_value};
+pub(crate) use resources::{ResourceTag, read_markup_value};
 pub use ui_literal::UiLiteral;
 pub use ui_node::UiNode;
