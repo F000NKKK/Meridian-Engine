@@ -16,6 +16,10 @@
 //!   against a `meridian-ui-core` tree (ADR 018); `rustc` checks every
 //!   binding against the view model.
 //!
+//! `.mres` resource sets (`docs/mel-resources.md`) found next to the markup
+//! become `Set` structs of typed constants, and `@res:Set.name` attribute
+//! values are replaced by their values.
+//!
 //! The document is validated while generating, so a malformed `.mel`
 //! fails `cargo build` with `file:line:column`, not the program at run
 //! time. Called from a `build.rs` through [`compile_dir`]; nothing here
@@ -29,6 +33,7 @@ mod generated_module;
 mod invalid_markup;
 mod mel_document;
 mod named_element;
+mod resources;
 mod ui_bindings;
 mod ui_build;
 mod ui_literal;
@@ -41,10 +46,14 @@ pub use binding::{
     PropertyPath,
 };
 pub use build_error::BuildError;
-pub use compile::{compile_dir, compile_file};
+pub use compile::{compile_dir, compile_file, compile_file_with};
 pub use generated_module::GeneratedModule;
 pub use invalid_markup::InvalidMarkup;
 pub use mel_document::MelDocument;
 pub use named_element::NamedElement;
+pub use resources::{
+    GeneratedResources, ResourceEntry, ResourceError, ResourceProblem, ResourceSet, ResourceSets,
+    ResourceValue,
+};
 pub use ui_literal::UiLiteral;
 pub use ui_node::UiNode;

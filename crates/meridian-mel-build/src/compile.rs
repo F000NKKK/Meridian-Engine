@@ -1,57 +1,122 @@
-//! Compiling `.mel` files into `.g.rs` files from a build script.
+//! Compiling `.mel` and `.mres` files into `.g.rs` files from a build
+//! script.
 
 use std::path::{Path, PathBuf};
 
-use crate::{BuildError, GeneratedModule, MelDocument};
+use crate::{
+    BuildError, GeneratedModule, GeneratedResources, MelDocument, ResourceError, ResourceProblem,
+    ResourceSet, ResourceSets,
+};
 
-/// Compiles every `*.mel` under `dir` (recursively) into
+/// Compiles every `*.mres` and `*.mel` under `dir` (recursively) into
 /// `$OUT_DIR/mel/<path relative to dir>.g.rs`, so
-/// `assets/scenes/hud/main.mel` becomes `mel_include!("hud/main")`, and
+/// `assets/scenes/hud/main.mel` becomes `mel_include!("hud/main")` and
+/// `assets/scenes/Strings.mres` becomes `mel_include!("Strings")`, and
 /// asks Cargo to rerun the build script when anything under `dir`
-/// changes. Returns the generated files.
+/// changes. Resource sets are read first: a `.mel` may name any of them
+/// with `@res:Set.name`. Returns the generated files.
 pub fn compile_dir(dir: impl AsRef<Path>) -> Result<Vec<PathBuf>, BuildError> {
     let dir = dir.as_ref();
     let out_dir = std::env::var_os("OUT_DIR").ok_or(BuildError::OutDirMissing)?;
-    let out_dir = PathBuf::from(out_dir).join("mel");
     println!("cargo:rerun-if-changed={}", dir.display());
-    let mut sources = Vec::new();
-    find_mel_files(dir, &mut sources)?;
-    sources.sort();
-    sources
-        .iter()
-        .map(|source| {
-            let relative = source
-                .strip_prefix(dir)
-                .map_err(|_| BuildError::OutsideDir {
-                    file: source.clone(),
-                    dir: dir.to_path_buf(),
-                })?;
-            compile_file(source, &out_dir.join(relative).with_extension("g.rs"))
-        })
-        .collect()
+    compile_tree(dir, &PathBuf::from(out_dir).join("mel"))
+}
+
+/// [`compile_dir`] with the output directory given.
+fn compile_tree(dir: &Path, out_dir: &Path) -> Result<Vec<PathBuf>, BuildError> {
+    let mut files = Files::default();
+    find_files(dir, &mut files)?;
+    files.mel.sort();
+    files.mres.sort();
+    let target = |source: &Path| -> Result<PathBuf, BuildError> {
+        let relative = source
+            .strip_prefix(dir)
+            .map_err(|_| BuildError::OutsideDir {
+                file: source.to_path_buf(),
+                dir: dir.to_path_buf(),
+            })?;
+        Ok(out_dir.join(relative).with_extension("g.rs"))
+    };
+    let mut sets = ResourceSets::default();
+    let mut generated = Vec::new();
+    for source in &files.mres {
+        let set = read_set(source)?;
+        let file = format!("{}.mres", set.name);
+        write(
+            &target(source)?,
+            &GeneratedResources::render(&set, &file).code,
+            &mut generated,
+        )?;
+        if !sets.insert(set.clone()) {
+            let error = ResourceError {
+                path: source.clone(),
+                line: 1,
+                column: 1,
+                problem: ResourceProblem::DuplicateSet(set.name),
+            };
+            return Err(error.into());
+        }
+    }
+    for source in &files.mel {
+        generated.push(compile_file_with(source, &target(source)?, &sets)?);
+    }
+    Ok(generated)
 }
 
 /// Compiles one `.mel` file into `target`, creating its directory.
 pub fn compile_file(source: &Path, target: &Path) -> Result<PathBuf, BuildError> {
+    compile_file_with(source, target, &ResourceSets::default())
+}
+
+/// Like [`compile_file`], resolving `@res:Set.name` against `resources`.
+pub fn compile_file_with(
+    source: &Path,
+    target: &Path,
+    resources: &ResourceSets,
+) -> Result<PathBuf, BuildError> {
     let source = source.canonicalize().map_err(|error| io(source, error))?;
     let text = std::fs::read_to_string(&source).map_err(|error| io(&source, error))?;
-    let document = MelDocument::parse(&source, &text)?;
+    let document = MelDocument::parse_with(&source, &text, resources)?;
     let module = GeneratedModule::render(&document);
-    if let Some(parent) = target.parent() {
-        std::fs::create_dir_all(parent).map_err(|error| io(parent, error))?;
-    }
-    std::fs::write(target, module.code).map_err(|error| io(target, error))?;
+    write(target, &module.code, &mut Vec::new())?;
     Ok(target.to_path_buf())
 }
 
-fn find_mel_files(dir: &Path, found: &mut Vec<PathBuf>) -> Result<(), BuildError> {
+/// Reads `<Set>.mres`; the set is named after the file.
+fn read_set(source: &Path) -> Result<ResourceSet, BuildError> {
+    let text = std::fs::read_to_string(source).map_err(|error| io(source, error))?;
+    let name = source
+        .file_stem()
+        .map_or_else(String::new, |stem| stem.to_string_lossy().into_owned());
+    Ok(ResourceSet::parse(source, &name, &text)?)
+}
+
+fn write(target: &Path, code: &str, written: &mut Vec<PathBuf>) -> Result<(), BuildError> {
+    if let Some(parent) = target.parent() {
+        std::fs::create_dir_all(parent).map_err(|error| io(parent, error))?;
+    }
+    std::fs::write(target, code).map_err(|error| io(target, error))?;
+    written.push(target.to_path_buf());
+    Ok(())
+}
+
+/// The sources found under a directory.
+#[derive(Default)]
+struct Files {
+    mel: Vec<PathBuf>,
+    mres: Vec<PathBuf>,
+}
+
+fn find_files(dir: &Path, found: &mut Files) -> Result<(), BuildError> {
     let entries = std::fs::read_dir(dir).map_err(|error| io(dir, error))?;
     for entry in entries {
         let path = entry.map_err(|error| io(dir, error))?.path();
         if path.is_dir() {
-            find_mel_files(&path, found)?;
+            find_files(&path, found)?;
         } else if path.extension().is_some_and(|ext| ext == "mel") {
-            found.push(path);
+            found.mel.push(path);
+        } else if path.extension().is_some_and(|ext| ext == "mres") {
+            found.mres.push(path);
         }
     }
     Ok(())
@@ -102,6 +167,47 @@ mod tests {
         // Cargo sets OUT_DIR only while compiling, never for a test run.
         let error = compile_dir(scratch("no-out-dir")).unwrap_err();
         assert!(matches!(error, BuildError::OutDirMissing));
+    }
+
+    #[test]
+    fn directory_compiles_resources_and_markup_together() {
+        let dir = scratch("tree");
+        std::fs::create_dir_all(dir.join("ui")).unwrap();
+        std::fs::write(dir.join("ui/Strings.mres"), r#"{ title: "Yog" }"#).unwrap();
+        std::fs::write(
+            dir.join("ui/hud.mel"),
+            r#"<TextBlock x:Name="label" text="@res:Strings.title" />"#,
+        )
+        .unwrap();
+        let out = dir.join("out");
+        let files = compile_tree(&dir, &out).unwrap();
+        assert_eq!(files.len(), 2);
+        let strings = std::fs::read_to_string(out.join("ui/Strings.g.rs")).unwrap();
+        assert!(
+            strings.contains("pub const TITLE: &'static str = \"Yog\";"),
+            "{strings}"
+        );
+        let hud = std::fs::read_to_string(out.join("ui/hud.g.rs")).unwrap();
+        assert!(hud.contains(r#""Yog")?;"#), "{hud}");
+    }
+
+    #[test]
+    fn unknown_resource_and_duplicate_sets_fail_the_build() {
+        let dir = scratch("bad-res");
+        std::fs::write(dir.join("a.mel"), r#"<TextBlock text="@res:Nope.x" />"#).unwrap();
+        let error = compile_tree(&dir, &dir.join("out")).unwrap_err();
+        assert!(
+            error.to_string().contains("no resource 'Nope.x'"),
+            "{error}"
+        );
+
+        let dir = scratch("dup-set");
+        std::fs::create_dir_all(dir.join("a")).unwrap();
+        std::fs::create_dir_all(dir.join("b")).unwrap();
+        std::fs::write(dir.join("a/Strings.mres"), "{}").unwrap();
+        std::fs::write(dir.join("b/Strings.mres"), "{}").unwrap();
+        let error = compile_tree(&dir, &dir.join("out")).unwrap_err();
+        assert!(error.to_string().contains("defined twice"), "{error}");
     }
 
     #[test]

@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 
 use meridian_dsl_core::{Attribute, Element, MarkupValue, parse};
 
-use crate::{BuildError, InvalidMarkup, NamedElement, PropertyBinding, UiNode};
+use crate::{BuildError, InvalidMarkup, NamedElement, PropertyBinding, ResourceSets, UiNode};
 
 const ROOT_ONLY: [&str; 2] = ["Class", "ViewModel"];
 const ANYWHERE: [&str; 2] = ["Name", "Key"];
@@ -27,9 +27,18 @@ pub struct MelDocument {
 }
 
 impl MelDocument {
-    /// Parses and checks `source`; `path` is only used in errors and in
-    /// the generated `include_str!`.
+    /// Parses and checks `source` with no resources; `path` is only used
+    /// in errors and in the generated `include_str!`.
     pub fn parse(path: &Path, source: &str) -> Result<Self, BuildError> {
+        Self::parse_with(path, source, &ResourceSets::default())
+    }
+
+    /// Like [`Self::parse`], resolving `@res:Set.name` against `resources`.
+    pub fn parse_with(
+        path: &Path,
+        source: &str,
+        resources: &ResourceSets,
+    ) -> Result<Self, BuildError> {
         let root = parse(source).map_err(|error| BuildError::Parse {
             path: path.to_path_buf(),
             error,
@@ -46,7 +55,7 @@ impl MelDocument {
         let root = document.root.clone();
         document.collect(&root, true)?;
         if UiNode::is_ui_root(&root) {
-            let ui = UiNode::from_element(&root, &document.names)
+            let ui = UiNode::from_element(&root, &document.names, resources)
                 .map_err(|(span, reason)| BuildError::invalid(path, span, reason))?;
             document.ui = Some(ui);
         }

@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use meridian_dsl_core::{ParseError, Span};
 
-use crate::InvalidMarkup;
+use crate::{InvalidMarkup, ResourceError};
 
 #[derive(Debug, thiserror::Error)]
 pub enum BuildError {
@@ -28,6 +28,8 @@ pub enum BuildError {
         #[source]
         error: ParseError,
     },
+    #[error(transparent)]
+    Resource(#[from] ResourceError),
     /// Something the parser accepts but `.mel` code-behind does not.
     #[error("{}:{span}: {reason}", path.display())]
     Invalid {

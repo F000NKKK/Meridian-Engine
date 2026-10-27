@@ -11,4 +11,5 @@ readme = "README.md"
 [dependencies]
 meridian-dsl-core = { workspace = true }
 meridian-ui-core = { workspace = true }
+substrate-data = { workspace = true }
 thiserror = { workspace = true }

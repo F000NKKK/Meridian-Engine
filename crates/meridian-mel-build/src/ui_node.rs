@@ -4,7 +4,7 @@
 use meridian_dsl_core::{Attribute, Element, MarkupValue, Span};
 use meridian_ui_core::ElementKind;
 
-use crate::{InvalidMarkup, NamedElement, PropertyPath, UiLiteral};
+use crate::{InvalidMarkup, NamedElement, PropertyPath, ResourceSets, UiLiteral};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UiNode {
@@ -28,8 +28,12 @@ impl UiNode {
     }
 
     /// Checks `element` and its subtree; `names` are the document's
-    /// `x:Name`s.
-    pub fn from_element(element: &Element, names: &[NamedElement]) -> Result<Self, UiNodeError> {
+    /// `x:Name`s and `resources` resolve `@res:` references.
+    pub fn from_element(
+        element: &Element,
+        names: &[NamedElement],
+        resources: &ResourceSets,
+    ) -> Result<Self, UiNodeError> {
         let tag = element.name.to_string();
         let Some(kind) = element_kind(element) else {
             return Err((element.span, InvalidMarkup::UnknownElement(tag)));
@@ -45,14 +49,14 @@ impl UiNode {
             .iter()
             .filter(|attr| attr.name.prefix().is_none())
         {
-            if let Some(literal) = literal(&tag, attr)? {
+            if let Some(literal) = literal(&tag, attr, resources)? {
                 literals.push(literal);
             }
         }
         let children = element
             .children
             .iter()
-            .map(|child| Self::from_element(child, names))
+            .map(|child| Self::from_element(child, names, resources))
             .collect::<Result<_, _>>()?;
         Ok(Self {
             kind,
@@ -71,7 +75,11 @@ fn element_kind(element: &Element) -> Option<ElementKind> {
 }
 
 /// `None` for an `{x:Bind}`, which `apply_bindings` writes.
-fn literal(tag: &str, attr: &Attribute) -> Result<Option<UiLiteral>, UiNodeError> {
+fn literal(
+    tag: &str,
+    attr: &Attribute,
+    resources: &ResourceSets,
+) -> Result<Option<UiLiteral>, UiNodeError> {
     let text = match &attr.value {
         MarkupValue::Text(text) => text,
         MarkupValue::Extension(extension) if extension.name.is_directive("Bind") => {
@@ -83,10 +91,13 @@ fn literal(tag: &str, attr: &Attribute) -> Result<Option<UiLiteral>, UiNodeError
         }
     };
     let path = PropertyPath::resolve(tag, &attr.name).map_err(|reason| (attr.span, reason))?;
+    let text = resources
+        .resolve(text)
+        .map_err(|reason| (attr.span, reason))?;
     Ok(Some(UiLiteral {
         path,
         property: attr.name.to_string(),
-        text: text.clone(),
+        text,
         span: attr.span,
     }))
 }

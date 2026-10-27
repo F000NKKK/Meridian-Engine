@@ -12,7 +12,7 @@ fn node(source: &str) -> Result<UiNode, InvalidMarkup> {
         column: 1,
     };
     let names = [NamedElement::new("title", span).unwrap()];
-    UiNode::from_element(&root, &names).map_err(|(_, reason)| reason)
+    UiNode::from_element(&root, &names, &ResourceSets::default()).map_err(|(_, reason)| reason)
 }
 
 #[test]
@@ -66,4 +66,26 @@ fn rejects_what_the_tree_cannot_build() {
 fn ui_roots_are_recognised_by_tag() {
     assert!(UiNode::is_ui_root(&parse("<Grid />").unwrap()));
     assert!(!UiNode::is_ui_root(&parse("<Scene />").unwrap()));
+}
+
+#[test]
+fn resource_references_are_resolved_in_attributes() {
+    let mut resources = ResourceSets::default();
+    let set = crate::ResourceSet::parse(
+        std::path::Path::new("Strings.mres"),
+        "Strings",
+        r#"{ title: "Yog" }"#,
+    )
+    .unwrap();
+    resources.insert(set);
+    let root = parse(r#"<TextBlock text="@res:Strings.title" />"#).unwrap();
+    let node = UiNode::from_element(&root, &[], &resources).unwrap();
+    assert_eq!(node.literals[0].text, "Yog");
+    let missing = parse(r#"<TextBlock text="@res:Strings.nope" />"#).unwrap();
+    assert_eq!(
+        UiNode::from_element(&missing, &[], &resources)
+            .unwrap_err()
+            .1,
+        InvalidMarkup::UnknownResource("Strings.nope".to_string())
+    );
 }

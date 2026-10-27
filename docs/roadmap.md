@@ -652,7 +652,9 @@ priority before writing implementations is keeping that document and the
     `ui-core` properties and generates `Names`, `apply_bindings` and
     `write_back_bindings` (type-checked against the `x:ViewModel`).
     A document with a UI root also gets `build_ui`, which creates the
-    `UiTree` from the markup. Event dispatch and resources are next.
+    `UiTree` from the markup, and `.mres` resource sets
+    ([mel-resources.md](mel-resources.md)) generate typed constants and
+    resolve `@res:Set.name` in attributes. Event dispatch is next.
 
 ## Scaling beyond a tech demo (Minecraft/Satisfactory-class scope)
 

@@ -19,9 +19,14 @@ pub(crate) fn render_build_ui(code: &mut CodeWriter, path: &Path, root: &UiNode)
     code.line(format!(
         "pub fn build_ui(tree: &mut {UI}::UiTree) -> Result<({UI}::NodeId, Names), {UI}::UiError> {{"
     ));
-    let mut named = Vec::new();
-    let mut next = 0;
-    render_node(code, path, root, None, &mut next, &mut named);
+    let mut writer = NodeWriter {
+        code,
+        path,
+        next: 0,
+        named: Vec::new(),
+    };
+    writer.node(root, None);
+    let named = writer.named;
     code.line("    Ok((n0, Names {");
     for (field, index) in named {
         code.line(format!("        {field}: n{index},"));
@@ -29,40 +34,45 @@ pub(crate) fn render_build_ui(code: &mut CodeWriter, path: &Path, root: &UiNode)
     code.line("    }))\n}");
 }
 
-fn render_node(
-    code: &mut CodeWriter,
-    path: &Path,
-    node: &UiNode,
-    parent: Option<usize>,
-    next: &mut usize,
-    named: &mut Vec<(String, usize)>,
-) {
-    let index = *next;
-    *next += 1;
-    code.line(format!(
-        "    let n{index} = tree.create({UI}::ElementKind::{:?});",
-        node.kind
-    ));
-    if let Some(field) = &node.field {
-        named.push((field.clone(), index));
-    }
-    for literal in &node.literals {
-        code.line(format!(
-            "    // @mel {}:{} {}",
-            path.display(),
-            literal.span,
-            literal.property
+/// Numbers the elements `n0`, `n1`, ... as it writes them.
+struct NodeWriter<'a> {
+    code: &'a mut CodeWriter,
+    path: &'a Path,
+    next: usize,
+    /// `Names` field and element number of every `x:Name`.
+    named: Vec<(String, usize)>,
+}
+
+impl NodeWriter<'_> {
+    fn node(&mut self, node: &UiNode, parent: Option<usize>) {
+        let index = self.next;
+        self.next += 1;
+        self.code.line(format!(
+            "    let n{index} = tree.create({UI}::ElementKind::{:?});",
+            node.kind
         ));
-        code.line(format!(
-            "    tree.set_literal(n{index}, {}.meta().id, {:?})?;",
-            literal.path.to_rust(),
-            literal.text
-        ));
-    }
-    if let Some(parent) = parent {
-        code.line(format!("    tree.append_child(n{parent}, n{index})?;"));
-    }
-    for child in &node.children {
-        render_node(code, path, child, Some(index), next, named);
+        if let Some(field) = &node.field {
+            self.named.push((field.clone(), index));
+        }
+        for literal in &node.literals {
+            self.code.line(format!(
+                "    // @mel {}:{} {}",
+                self.path.display(),
+                literal.span,
+                literal.property
+            ));
+            self.code.line(format!(
+                "    tree.set_literal(n{index}, {}.meta().id, {:?})?;",
+                literal.path.to_rust(),
+                literal.text
+            ));
+        }
+        if let Some(parent) = parent {
+            self.code
+                .line(format!("    tree.append_child(n{parent}, n{index})?;"));
+        }
+        for child in &node.children {
+            self.node(child, Some(index));
+        }
     }
 }
