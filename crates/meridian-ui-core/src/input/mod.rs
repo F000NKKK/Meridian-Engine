@@ -8,6 +8,7 @@ mod modifiers;
 mod outcome;
 mod pointer_button;
 mod ui_event;
+mod ui_event_tag;
 
 pub use event::InputEvent;
 pub use key::Key;
@@ -15,3 +16,4 @@ pub use modifiers::Modifiers;
 pub use outcome::InputOutcome;
 pub use pointer_button::PointerButton;
 pub use ui_event::{UiEvent, UiEventKind};
+pub use ui_event_tag::UiEventTag;

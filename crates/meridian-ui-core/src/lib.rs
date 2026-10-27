@@ -36,7 +36,9 @@ pub use color::Color;
 pub use error::UiError;
 pub use geometry::{Point, Rect, Size, Thickness};
 pub use hit_test::hit_test;
-pub use input::{InputEvent, InputOutcome, Key, Modifiers, PointerButton, UiEvent, UiEventKind};
+pub use input::{
+    InputEvent, InputOutcome, Key, Modifiers, PointerButton, UiEvent, UiEventKind, UiEventTag,
+};
 pub use layout::{FixedAdvanceText, TextMeasurer, compute_layout};
 pub use node::{ElementKind, NodeId};
 pub use property::{LiteralError, Property, PropertyId, PropertyMeta, PropertyType, PropertyValue};

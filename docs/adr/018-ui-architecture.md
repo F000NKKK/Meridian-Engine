@@ -108,7 +108,9 @@ Key and text events go to the focused element. The result is a queue of
 `PointerEntered`/`Left`, `KeyPressed`, `Text`, `FocusGained`/`Lost`)
 drained with `drain_events`; the code-behind (or generated glue) handles
 them, and bubbling is the ancestor path (`UiTree::ancestors`) rather than
-a handler registry in this crate. Removing a node clears any focus, hover
+a handler registry in this crate. `UiEventKind::tag()` gives the
+payload-free `UiEventTag` (`bubbles()`, `attribute()`,
+`from_attribute("click")`) that generated code matches handlers on. Removing a node clears any focus, hover
 or press state pointing at it. No pointer capture, drag, gesture or
 gamepad navigation yet.
 
