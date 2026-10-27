@@ -119,14 +119,11 @@ Steps 4-6 are real and tested:
   backend" switch — there's no such thing for an arbitrary Rust closure,
   since it has no WGSL equivalent a compiler can derive; a kernel author
   has to write both implementations by hand, same as `fixed_wgsl` does.
-  Known follow-up, not built yet: `run_gpu`/`dispatch` currently
-  (re)allocate GPU buffers and rebuild bind groups on every call — the
-  *pipeline* is built once and reused (`FixedArithmeticKernels::new`,
-  `DoublingKernel::new` in the hybrid test), but buffer/bind-group reuse
-  across repeated calls (persistent buffers sized once, rewritten per
-  call) is not, which would matter for a kernel dispatched every frame on
-  cheap/simple operations — deliberately deferred rather than built
-  speculatively ahead of a concrete caller that needs it.
+  Buffer and bind-group reuse is built for the soft-body kernels
+  (`compute-wgpu::{ScratchSlot, GenerationCache, ScratchPool}`): buffers are
+  sized once and rewritten per call, the bind group is rebuilt only when a
+  buffer grew. Other kernels still allocate per call until a per-frame caller
+  needs them converted.
 
 `physics-domain`'s rigid-body engine (`BroadPhase`/`NarrowPhase`/
 `ConstraintSolver`/`Integrator`) was, until now, only ever driven by a

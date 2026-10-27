@@ -11,6 +11,7 @@ pub mod fixed;
 mod fixed_wgsl;
 pub mod float;
 mod float_wgsl;
+mod scratch;
 mod step_inputs;
 
 #[cfg(test)]

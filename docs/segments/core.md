@@ -104,9 +104,16 @@ change that closed them.
    `Pending::cancel` are in. `asset-http` (`HttpSource`, plain `http` only,
    [ADR 028](../adr/028-http-asset-source.md)) is the network source. Open: `https`,
    which waits for a decision on the `ring` licence.
-7. **Compute buffer reuse.** `compute-app` reallocates GPU buffers and
-   bind groups per dispatch (roadmap, deferred). Build it when a per-frame
-   caller exists.
+7. **Done: compute buffer reuse.** `compute-wgpu` has `ScratchSlot` (a GPU
+   buffer rewritten in place, reallocated only when the data outgrows it),
+   `GenerationCache` (a bind group rebuilt only when a slot reallocated) and
+   `ScratchPool` (one scratch set per in-flight dispatch). The soft-body
+   kernels in `physics-wgpu` use them; a step no longer allocates nine buffers
+   and a bind group. On the software Vulkan adapter (lavapipe) a step went from
+   ~1.96 ms to ~1.90 ms, within noise: allocation is cheap there, so the win on
+   real hardware is unmeasured. `gac-wgpu`'s `FixedArithmeticKernels` and the
+   `physics-wgpu` broad phase still allocate per call; convert them when a
+   per-frame caller appears.
 9. **Done: `Motor3` point transform fast path.** `transform_point` /
    `transform_vector` / `to_mat4` use the hand-expanded sandwich (rotor 3x3
    plus origin) instead of two 16-component products: 1.16 µs -> 8 ns per
