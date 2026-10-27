@@ -8,7 +8,9 @@
 //! - `Name`, one enum variant per `x:Name`, with `as_str` and `ALL`;
 //! - `Class` / `ViewModel`, type aliases for the root's `x:Class` /
 //!   `x:ViewModel`, so a typo in the code-behind path fails the build;
-//! - `build(registry)` and `find(root, name)`;
+//! - `build(registry)` and `find(root, name)` for a scene document;
+//! - for a UI document (root is a `meridian-ui-core` element), `build_ui`
+//!   instead, which creates the elements in a `UiTree`;
 //! - with `{x:Bind}` attributes, `Names` (a `NodeId` per `x:Name`),
 //!   `apply_one_time_bindings`, `apply_bindings` and `write_back_bindings`
 //!   against a `meridian-ui-core` tree (ADR 018); `rustc` checks every
@@ -28,6 +30,9 @@ mod invalid_markup;
 mod mel_document;
 mod named_element;
 mod ui_bindings;
+mod ui_build;
+mod ui_literal;
+mod ui_node;
 
 pub(crate) use binding::snake_case;
 pub use binding::{
@@ -41,3 +46,5 @@ pub use generated_module::GeneratedModule;
 pub use invalid_markup::InvalidMarkup;
 pub use mel_document::MelDocument;
 pub use named_element::NamedElement;
+pub use ui_literal::UiLiteral;
+pub use ui_node::UiNode;

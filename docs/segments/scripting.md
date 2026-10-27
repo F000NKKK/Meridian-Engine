@@ -87,10 +87,16 @@ the prior art to copy from is Yog-Mod-Loader's `.yui` -> `.g.rs` pipeline
    each statement under a `// @mel file:line:column` marker, so `rustc`
    checks every binding against the view model. The view-model dirty
    flag that decides *when* `apply_bindings` runs is the caller's for now.
-   Still open: building the `UiTree` from the markup (tag -> `ElementKind`,
-   attribute literals through `PropertyType::parse`), which also fills
-   `Names`, and accepting `{x:Bind}` attributes in tags built by
-   `build_scene` (today `text_attr` rejects them).
+   A document whose root is a `ui-core` element (`Border`, `StackPanel`,
+   `DockPanel`, `Grid`, `TextBlock`) also gets `build_ui(tree)`, which
+   creates the elements in markup order, sets plain attributes through
+   `tree.set_literal` (parsed by `PropertyType::parse`, `@@` escapes `@`)
+   and returns the root with `Names`. Unknown tags, unknown properties,
+   property elements and non-`{x:Bind}` extensions are build errors with
+   their `.mel` line. Still open: references (`@kind:id`, `@res:`) in
+   attributes, property elements (`<Grid.RowDefinitions>`), and accepting
+   `{x:Bind}` in tags built by `build_scene` (today `text_attr` rejects
+   them).
 7. **Resources.** `Resources` + `x:Key` in markup and an external
    resource file (Yog's `.yres` analogue, in Substrate-Data text) with
    generated typed accessors, referenced as `@res:Set.name`.
