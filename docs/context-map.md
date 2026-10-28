@@ -57,6 +57,7 @@ dependencies need one of these:
 | ui → text | customer–supplier | `ui-scene2d` measures and draws text through `text-domain` faces and the glyph atlas (ADR 023) |
 | ui → rendering | customer–supplier | `ui-scene2d` extracts the UI tree into `rendering-domain::Scene2d` (ADR 021) |
 | data → rendering | customer–supplier | `meridian-data-substrate` stores rendering components (`LightSource`) through a file form |
+| data → assets | published language | `meridian-data-substrate` uses `asset-domain`'s `AssetKey` (the `@asset:` reference) in scene components |
 | editor → data | customer–supplier | the protocol carries scene documents and entity refs |
 | scene-markup → runtime | anticorruption layer | markup tags translated into runtime commands |
 

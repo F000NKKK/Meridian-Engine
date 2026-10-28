@@ -16,7 +16,7 @@ substrate_data::kind!(AssetPathKind = "asset": AssetKey);
 pub struct AssetKey(Box<str>);
 
 impl AssetKey {
-    /// `path` as a asset path.
+    /// `path` as an asset path.
     ///
     /// # Errors
     ///

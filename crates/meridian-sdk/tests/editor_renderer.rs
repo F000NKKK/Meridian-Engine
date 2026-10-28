@@ -128,9 +128,54 @@ fn a_scene_file_with_asset_references_is_bound_and_drawn() {
         .expect("the scene loads");
     let unbound = renderer.bind_references(&mut world, &mut BuiltinAssets::default());
     assert_eq!(unbound.len(), 1);
+    let ball = world
+        .get::<MeshRenderer>(ball_entity(&world))
+        .expect("bound");
+    let colour = renderer
+        .session_mut()
+        .render
+        .materials
+        .get(ball.material)
+        .expect("registered")
+        .base_color_factor;
+    assert!(
+        colour[0] > 0.5,
+        "the default material is a light grey, not black"
+    );
     assert_eq!(unbound[0].missing.as_str(), "meshes/nowhere.obj");
     let pixels = renderer
         .render(&world, &EditorCamera::default())
         .expect("a frame");
     assert!(varied(pixels), "the bound sphere shows up");
+}
+
+fn ball_entity(world: &World) -> meridian_ecs::Entity {
+    world
+        .query::<MeshRenderer>()
+        .map(|(entity, _)| entity)
+        .next()
+        .expect("one entity is bound")
+}
+
+#[test]
+fn a_metal_thumbnail_has_a_dark_backdrop_and_a_bright_reflection() {
+    let Some(mut renderer) = renderer() else {
+        return;
+    };
+    let gold = Material {
+        base_color_factor: [1.0, 0.77, 0.34, 1.0],
+        metallic: 1.0,
+        roughness: 0.25,
+        ..Material::default()
+    };
+    let pixels = renderer
+        .thumbnail(meridian_sdk::ThumbnailSubject::Material(gold), 96)
+        .expect("a thumbnail");
+    let luma = |at: usize| u32::from(pixels[at * 4]) + u32::from(pixels[at * 4 + 1]);
+    assert!(luma(0) < 150, "the backdrop is dark");
+    let brightest = (0..96 * 96).map(luma).max().unwrap_or(0);
+    assert!(brightest > 350, "the key light shows in the metal");
+    // The viewport sky comes back after a thumbnail.
+    let world = World::new();
+    assert!(renderer.render(&world, &EditorCamera::default()).is_some());
 }

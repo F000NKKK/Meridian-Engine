@@ -24,6 +24,7 @@
 #![forbid(unsafe_code)]
 
 mod asset_id;
+mod asset_key;
 pub mod audio;
 mod audio_clip;
 mod bytes;
@@ -32,6 +33,7 @@ mod decoder;
 mod hdr_image_asset;
 pub mod image;
 mod image_asset;
+mod material;
 mod mesh_asset;
 mod meta;
 mod model;
@@ -43,6 +45,7 @@ mod shader_source_decoder;
 mod tests;
 
 pub use asset_id::{AssetId, AssetIdError, AssetKind};
+pub use asset_key::{AssetKey, AssetKeyError, AssetPathKind};
 pub use audio::{AudioFormat, WavDecoder};
 pub use audio_clip::AudioClip;
 pub(crate) use bytes::{need, u16_le, u32_le};
@@ -51,6 +54,7 @@ pub use decoder::Decoder;
 pub use hdr_image_asset::HdrImageAsset;
 pub use image::{BmpDecoder, HdrDecoder, ImageFormat};
 pub use image_asset::ImageAsset;
+pub use material::{MATERIAL_FORMAT, MaterialAsset, MaterialBlend, MaterialError};
 pub use mesh_asset::MeshAsset;
 pub use meta::{AssetMeta, ImporterName, ImporterNameError, META_FORMAT, MetaError};
 pub use model::{

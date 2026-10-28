@@ -7,6 +7,7 @@ use meridian_rendering_domain::{
     Background, EnvironmentMap, Light, Scene3d, Sky, extract_scene3d, look_at_upright,
 };
 
+use super::studio::studio_environment;
 use super::{EditorCamera, EditorRendererError};
 use crate::GraphicsSession;
 
@@ -15,6 +16,8 @@ const SUN: Vec3 = Vec3 {
     y: -1.0,
     z: -0.3,
 };
+/// The flat dark backdrop behind a thumbnail, linear.
+const STUDIO_BACKDROP: [f64; 4] = [0.05, 0.055, 0.065, 1.0];
 const CLEAR: [f64; 4] = [0.18, 0.2, 0.24, 1.0];
 
 /// Renders ECS worlds and scenes to RGBA8 pixels with no window: an editor
@@ -26,6 +29,11 @@ pub struct EditorRenderer {
     pub(super) session: GraphicsSession,
     pub(super) size: (u32, u32),
     pub(super) pixels: Vec<u8>,
+    /// The sky of the viewport, kept to put back after a thumbnail.
+    sky: Option<EnvironmentMap>,
+    /// The studio of thumbnails, built the first time one is made.
+    studio: Option<EnvironmentMap>,
+    studio_active: bool,
 }
 
 impl EditorRenderer {
@@ -54,13 +62,15 @@ impl EditorRenderer {
             sun_radius: 0.06,
             ..Sky::default()
         };
-        if let Ok(map) = EnvironmentMap::from_sky(&sky) {
-            session.render.recorder.set_environment(Some(&map));
-        }
+        let sky = EnvironmentMap::from_sky(&sky).ok();
+        session.render.recorder.set_environment(sky.as_ref());
         Ok(Self {
             session,
             size: (width.max(1), height.max(1)),
             pixels: Vec::new(),
+            sky,
+            studio: None,
+            studio_active: false,
         })
     }
 
@@ -97,6 +107,7 @@ impl EditorRenderer {
     /// Draws a ready-made scene with its own camera (sky, a default sun and
     /// ambient light are added where it has none).
     pub fn render_scene(&mut self, mut scene: Scene3d) -> Option<&[u8]> {
+        self.use_environment(false);
         if scene.lights.is_empty() {
             scene.lights.push(default_sun());
             scene.ambient_ground = [0.12, 0.1, 0.09];
@@ -105,6 +116,33 @@ impl EditorRenderer {
         scene.background = Background::Environment { blur: 0.0 };
         self.pixels = self.session.render_to_pixels(&scene, CLEAR)?;
         Some(&self.pixels)
+    }
+
+    /// Draws `scene` as a thumbnail: lit and reflected by the studio, which
+    /// over a dark backdrop. The scene's own lights are used as given.
+    pub(super) fn render_studio(&mut self, mut scene: Scene3d) -> Option<Vec<u8>> {
+        self.use_environment(true);
+        scene.ambient_ground = [0.0; 3];
+        scene.ambient_sky = [0.0; 3];
+        if scene.lights.is_empty() {
+            scene.lights.push(studio_key());
+        }
+        scene.background = Background::Clear;
+        self.session.render_to_pixels(&scene, STUDIO_BACKDROP)
+    }
+
+    /// Makes the studio (`true`) or the viewport sky (`false`) the one the
+    /// recorder lights with; nothing happens when it already is.
+    fn use_environment(&mut self, studio: bool) {
+        if self.studio_active == studio {
+            return;
+        }
+        if studio && self.studio.is_none() {
+            self.studio = Some(studio_environment());
+        }
+        let map = if studio { &self.studio } else { &self.sky };
+        self.session.render.recorder.set_environment(map.as_ref());
+        self.studio_active = studio;
     }
 
     #[expect(clippy::cast_precision_loss, reason = "frame sizes are far below 2^24")]
@@ -118,5 +156,19 @@ fn default_sun() -> Light {
         direction: Motor3::from_rotation_translation(look_at_upright(Vec3::ZERO, SUN), Vec3::ZERO),
         color: [1.0, 0.96, 0.9],
         intensity: 1.1,
+    }
+}
+
+/// A soft key from above left of the camera, so a form reads as round
+/// beside what the studio's soft boxes light.
+fn studio_key() -> Light {
+    let travel = Vec3::new(0.5, -0.7, -0.6);
+    Light::Directional {
+        direction: Motor3::from_rotation_translation(
+            look_at_upright(Vec3::ZERO, travel),
+            Vec3::ZERO,
+        ),
+        color: [1.0, 0.97, 0.92],
+        intensity: 0.7,
     }
 }
