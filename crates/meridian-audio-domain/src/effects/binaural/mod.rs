@@ -268,12 +268,27 @@ impl BinauralRenderer {
         sources: &[(Emitter, &[f32])],
         frames: usize,
     ) -> Vec<f32> {
+        let mut out = vec![0.0f32; frames * 2];
+        self.render_into(listener, sources, &mut out);
+        out
+    }
+
+    /// [`render`](Self::render) into a caller-owned stereo buffer (`out`
+    /// holds `out.len() / 2` frames and is overwritten), so a loop can
+    /// reuse one block buffer.
+    pub fn render_into(
+        &mut self,
+        listener: &Listener,
+        sources: &[(Emitter, &[f32])],
+        out: &mut [f32],
+    ) {
+        let frames = out.len() / 2;
+        out.fill(0.0);
         while self.sources.len() < sources.len() {
             self.sources
                 .push(BinauralSourceState::new(self.max_itd_samples()));
         }
 
-        let mut out = vec![0.0f32; frames * 2];
         for (index, (emitter, samples)) in sources.iter().enumerate() {
             let target = self.targets(listener, emitter);
             let state = &mut self.sources[index];
@@ -298,7 +313,6 @@ impl BinauralRenderer {
             }
             state.prev = Some(target);
         }
-        out
     }
 }
 

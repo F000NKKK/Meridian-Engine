@@ -60,13 +60,12 @@ Linux still needs `libasound2-dev`.
 
 Not started; ordered by suggested priority. Items wait for an explicit task.
 
-1. **Allocation-free hot path.** `pan`/`spatial_gains` allocate and re-sort
-   per emitter per call, `Mixer::mix` allocates per call, and
-   `render_interleaved`/`BinauralRenderer::render` return fresh `Vec`s per
-   block. Cache sorted directional speakers in `SpeakerLayout`, add
-   `*_into(&mut [f32])` variants. Measure first.
-2. **Verify the NaN fix.** Confirm a test covers a non-finite emitter
-   position end to end through `spatial_gains`/`Mixer`.
+1. ~~Allocation-free hot path~~ — done: `SpeakerLayout::pan_into`
+   (no sort, no allocation), `spatial_gains_into`, `Mixer::mix_into` /
+   `render_interleaved_into` (stack scratch up to 16 speakers) and
+   `BinauralRenderer::render_into`; the allocating forms wrap them.
+2. ~~Verify the NaN fix~~ — done: a test drives a NaN emitter position
+   through the mixer.
 3. **`docs/audio-design.md`.** Listener-local axes, VBAP edge rules,
    binaural model, latency/ring sizing exist only in module docs and the
    roadmap. Write it and link from `architecture.md`.
