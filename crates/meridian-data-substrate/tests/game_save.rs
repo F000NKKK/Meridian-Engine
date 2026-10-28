@@ -155,21 +155,18 @@ fn the_header_and_scene_read_without_the_state() {
         .unwrap();
     assert_eq!(header.game, "demo");
     assert_eq!(scene.entities().len(), 2);
-    // Loading the state finds the damage, and spawns nothing.
+    // A stream is read as it is used (substrate-data 0.4): loading succeeds and
+    // the damage is found when the recording is walked to its end.
     let mut world = World::new();
-    let err = registry()
+    let loaded = registry()
         .load_game::<Progress>(
             &bytes,
             &mut world,
             &mut NoResolver,
             &mut PrefabLibrary::new(),
         )
-        .unwrap_err();
-    assert_eq!(world.entities().count(), 0);
-    assert!(
-        matches!(err, SaveError::State(_) | SaveError::Malformed { .. }),
-        "{err}"
-    );
+        .unwrap();
+    assert!(loaded.state.recording.iter().any(|item| item.is_err()));
 }
 
 #[test]
