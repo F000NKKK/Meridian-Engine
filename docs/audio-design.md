@@ -96,7 +96,9 @@ reused), one `BlockRenderer` and a post-effect chain. `render_block` advances
 every voice by the same frame count, spatializes them and applies the effects.
 `with_max_voices` caps the scene: adding a voice to a full scene drops done
 voices first, then steals the lowest-`Voice::priority` voice (oldest among
-equals); a new voice that every voice outranks is dropped. It is plain data; the lock is
+equals); a new voice that every voice outranks is dropped. Buses group voices:
+`add_bus` / `add_voice_to` / `set_bus_gain` scale the voices on a bus (per block,
+no ramp), and `BusId::MASTER` scales the finished mix before the post effects. It is plain data; the lock is
 `runtime-app::Shared`.
 
 ## Output and latency
