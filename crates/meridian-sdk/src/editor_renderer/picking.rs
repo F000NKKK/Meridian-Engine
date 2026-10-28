@@ -1,0 +1,101 @@
+//! Which entity is under a point of the viewport.
+
+use meridian_ecs::{Entity, GlobalTransform, Transform, World};
+use meridian_gac::{Motor3, Vec3};
+use meridian_rendering_domain::{MeshRenderer, MeshSource};
+
+use super::{EditorCamera, EditorRenderer};
+
+/// A ray: where it starts and the unit direction it points.
+#[derive(Debug, Clone, Copy)]
+pub(super) struct Ray {
+    pub(super) origin: Vec3,
+    pub(super) direction: Vec3,
+}
+
+impl EditorCamera {
+    /// The ray through the viewport point `(ndc_x, ndc_y)` (each in `[-1, 1]`,
+    /// `+y` up) of a frame of `aspect` (width over height).
+    pub(super) fn ray(&self, aspect: f32, ndc_x: f32, ndc_y: f32) -> Ray {
+        let frame = self.camera(aspect).frame;
+        let half_height = (self.fov_y * 0.5).tan();
+        // A camera frame looks along local +X, with +Y up and +Z to the right.
+        let local = Vec3::new(1.0, ndc_y * half_height, ndc_x * half_height * aspect);
+        Ray {
+            origin: self.eye(),
+            direction: frame.transform_vector(local).normalize(),
+        }
+    }
+}
+
+impl EditorRenderer {
+    /// The entity drawn at the viewport point `(ndc_x, ndc_y)` (each in
+    /// `[-1, 1]`, `+y` up, the point's place in the frame `render` draws), the
+    /// nearest one when several overlap; `None` over empty space. Tests the ray
+    /// against the triangles of each entity's mesh at its current frame.
+    #[must_use]
+    pub fn pick(
+        &self,
+        world: &World,
+        camera: &EditorCamera,
+        ndc_x: f32,
+        ndc_y: f32,
+    ) -> Option<Entity> {
+        let ray = camera.ray(self.aspect(), ndc_x, ndc_y);
+        let meshes = &self.session.render.meshes;
+        world
+            .query::<MeshRenderer>()
+            .filter_map(|(entity, renderer)| {
+                let source = meshes.get(renderer.mesh)?;
+                let distance = hit_distance(source, frame_of(world, entity)?, ray)?;
+                Some((entity, distance))
+            })
+            .min_by(|a, b| a.1.total_cmp(&b.1))
+            .map(|(entity, _)| entity)
+    }
+}
+
+/// An entity's world frame, as the renderer draws it.
+pub(super) fn frame_of(world: &World, entity: Entity) -> Option<Motor3> {
+    let local = world.get::<Transform>(entity)?;
+    Some(
+        world
+            .get::<GlobalTransform>(entity)
+            .map_or(local.motor, |global| global.motor),
+    )
+}
+
+/// How far along `ray` it meets the nearest triangle of `source` placed at
+/// `frame`, if it does.
+fn hit_distance(source: &MeshSource, frame: Motor3, ray: Ray) -> Option<f32> {
+    let local = Ray {
+        origin: frame.inverse().transform_point(ray.origin),
+        direction: frame.inverse().transform_vector(ray.direction),
+    };
+    let point = |index: u32| {
+        let [x, y, z] = *source.positions.get(index as usize)?;
+        Some(Vec3::new(x, y, z))
+    };
+    source
+        .indices
+        .chunks_exact(3)
+        .filter_map(|tri| triangle_hit(local, point(tri[0])?, point(tri[1])?, point(tri[2])?))
+        .min_by(f32::total_cmp)
+}
+
+/// Möller–Trumbore, both faces.
+fn triangle_hit(ray: Ray, first: Vec3, second: Vec3, third: Vec3) -> Option<f32> {
+    let (edge1, edge2) = (second - first, third - first);
+    let pivot = ray.direction.cross(edge2);
+    let det = edge1.dot(pivot);
+    if det.abs() < 1e-9 {
+        return None;
+    }
+    let inverse = 1.0 / det;
+    let to_origin = ray.origin - first;
+    let along1 = to_origin.dot(pivot) * inverse;
+    let offset = to_origin.cross(edge1);
+    let along2 = ray.direction.dot(offset) * inverse;
+    let distance = edge2.dot(offset) * inverse;
+    (along1 >= 0.0 && along2 >= 0.0 && along1 + along2 <= 1.0 && distance > 0.0).then_some(distance)
+}

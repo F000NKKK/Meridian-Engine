@@ -6,10 +6,9 @@ use meridian_rendering_domain::{
     Material, MaterialHandle, MeshHandle, Renderable3d, Scene3d, icosphere_mesh_source,
 };
 
-use super::framing::bounding_sphere;
-use super::{
-    AssetBinder, EditorCamera, EditorRenderer, ThumbnailError, ThumbnailSubject, bind_material,
-};
+use super::{ThumbnailError, ThumbnailSubject};
+use crate::editor_renderer::framing::bounding_sphere;
+use crate::editor_renderer::{AssetBinder, EditorCamera, EditorRenderer, bind_material};
 
 /// Bumped whenever a thumbnail would look different for the same asset, so a
 /// cache keyed with it drops its old images.

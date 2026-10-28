@@ -5,8 +5,8 @@ use meridian_data_substrate::{AssetKey, MeshReference};
 use meridian_ecs::{Entity, World};
 use meridian_rendering_domain::{MaterialHandle, MeshHandle, MeshRenderer, TextureHandle};
 
-use super::EditorRenderer;
 use crate::GraphicsSession;
+use crate::editor_renderer::EditorRenderer;
 
 /// Turns an `@asset:` path into something drawable: the application's
 /// answer to "what is `meshes/hero.obj`?". The path is data from a file, so
