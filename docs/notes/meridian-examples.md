@@ -59,10 +59,10 @@ Run with:
 The render benchmark (ADR 049): draws one fixed scene headless (no window, no
 vsync) for N frames on a fixed clock and reports the CPU time of updating and of
 recording/submitting, and the GPU time of every pass from timestamp queries.
-Scenes: `helmet` (any glTF via `--model`, default `assets/models/DamagedHelmet.glb`,
+Scenes: `helmet` (any glTF via `--model`, default `examples/assets/models/DamagedHelmet.glb`,
 IBL and bloom), `shadows` (floor, forty props, sun, point and two moving spot
 lights), `instances` (4096 cubes), `crowd` (100 animated skinned models, default
-`assets/models/CesiumMan.glb`). The table goes to stderr, one JSON line to stdout
+`examples/assets/models/CesiumMan.glb`). The table goes to stderr, one JSON line to stdout
 (and to `--json FILE`); `--dump DIR` writes every measured frame as a `.ppm`.
 The resolution is `MERIDIAN_WINDOW=<w>x<h>` (default 1920x1080).
 

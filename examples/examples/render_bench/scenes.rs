@@ -48,8 +48,8 @@ impl SceneKind {
     /// The glTF file a scene needs when `--model` is not given.
     fn default_model(self) -> &'static str {
         match self {
-            Self::Crowd => "assets/models/CesiumMan.glb",
-            _ => "assets/models/DamagedHelmet.glb",
+            Self::Crowd => "examples/assets/models/CesiumMan.glb",
+            _ => "examples/assets/models/DamagedHelmet.glb",
         }
     }
 }

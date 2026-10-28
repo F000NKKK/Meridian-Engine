@@ -7,7 +7,7 @@
 //! ```
 //!
 //! `helmet` and `crowd` load a glTF file (`--model`, else
-//! `assets/models/DamagedHelmet.glb` and `assets/models/CesiumMan.glb`);
+//! `examples/assets/models/DamagedHelmet.glb` and `examples/assets/models/CesiumMan.glb`);
 //! `shadows` and `instances` are procedural. It renders offscreen on a
 //! headless device (no window, no vsync) at 1920 x 1080 unless
 //! `MERIDIAN_WINDOW=<width>x<height>` says otherwise; `--fps` is the scene

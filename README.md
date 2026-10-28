@@ -136,6 +136,50 @@ Both examples build their scene from a `.meui` file under
 [`examples/assets/scenes/`](examples/assets/scenes) and import everything through
 `meridian_sdk`.
 
+### Rendering demos and the render benchmark
+
+Needs a GPU with Vulkan, Metal or DX12 drivers (a software adapter works but is
+slow) and, on Linux, `libasound2-dev`. From a clone:
+
+```sh
+git clone https://github.com/F000NKKK/Meridian-Engine && cd Meridian-Engine
+scripts/fetch_sample_models.sh          # Khronos DamagedHelmet, Fox, CesiumMan -> examples/assets/models/
+```
+
+Every command below builds in release mode and opens a window:
+
+```sh
+# the helmet: image-based light from a procedural sky, bloom, an orbiting camera
+./build.sh run gltf_viewer -- examples/assets/models/DamagedHelmet.glb 1.5
+# Fox running (animation 2) and CesiumMan walking
+MERIDIAN_ANIMATION=2 ./build.sh run gltf_viewer -- examples/assets/models/Fox.glb 1.4
+./build.sh run gltf_viewer -- examples/assets/models/CesiumMan.glb 1.4
+# bloom and shadows: three glowing shapes / rigid bodies on a floor
+./build.sh run magic_figures
+./build.sh run physic_figures
+```
+
+`gltf_viewer` takes the model and the camera distance in model radii; the camera
+orbits by itself. `MERIDIAN_WINDOW=1920x1080` sets the window size, `MERIDIAN_ENV`
+a sky (`none`, six cube faces or a `.hdr`), `MERIDIAN_CYCLE=<seconds>` plays a
+file's animations in turn. In `magic_figures` and `physic_figures` fly with
+W A S D, Space/Ctrl for up/down, Shift to go faster and the mouse to look; Esc
+releases or grabs the cursor. PowerShell sets variables with
+`$env:MERIDIAN_ANIMATION=2` before the command.
+
+The render benchmark draws four fixed scenes (helmet with image-based light,
+shadows with a moving point and spot light, 4096 instances, 100 skinned
+characters) with no window for 300 frames at 1920x1080 and prints the CPU time
+and the GPU time of every pass:
+
+```sh
+scripts/run_render_bench.sh             # writes bench_results.jsonl, one JSON line per scene
+```
+
+Send back `bench_results.jsonl` (it names the GPU). A single scene:
+`./build.sh run render_bench -- shadows --frames 300 --json shadows.json`
+(`--dump DIR` also saves every frame as an image for video).
+
 ## 🏗️ Architecture
 
 Dependencies point inwards: interface → application → domain ← infrastructure,
