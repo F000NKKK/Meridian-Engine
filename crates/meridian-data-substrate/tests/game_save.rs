@@ -97,7 +97,7 @@ fn a_save_round_trips_scene_and_state() {
         (1, "caves", 4200, 3)
     );
     assert_eq!(state.recording.len(), 50_000);
-    assert_eq!(state.recording.iter().nth(98), Some(Ok(1)));
+    assert_eq!(state.recording.iter().nth(98), Some(1));
 
     let keys: Vec<&str> = loaded
         .scene
