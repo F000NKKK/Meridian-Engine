@@ -1,7 +1,9 @@
 //! A decoded glTF model registered with the GPU ports: one mesh and one
 //! material per part (ADR 030).
 
-use meridian_asset_domain::{Decoder, ImageAsset, ModelAsset};
+use std::collections::HashMap;
+
+use meridian_asset_domain::{Decoder, EncodedImage, ImageAsset, ModelAsset, ModelMaterial};
 use meridian_rendering_app::{MeshStore, TextureStore};
 use meridian_rendering_domain::{Material, MeshHandle, MeshSource, TextureHandle, smooth_normals};
 
@@ -28,24 +30,10 @@ pub(crate) fn register(
     meshes: &mut impl MeshStore,
     textures: &mut impl TextureStore,
 ) -> Result<Vec<ModelPiece>, String> {
-    let mut colour: Vec<Option<Option<TextureHandle>>> = vec![None; model.images.len()];
-    let mut linear = colour.clone();
+    let mut uploads = ImageUploads::new(&model.images, textures);
     let mut pieces = Vec::with_capacity(model.parts.len());
     for part in model.parts {
-        let albedo = part.material.base_color_image.and_then(|index| {
-            *colour[index].get_or_insert_with(|| {
-                upload(&model.images[index].bytes, index, |image| {
-                    textures.upload(image)
-                })
-            })
-        });
-        let metallic_roughness = part.material.metallic_roughness_image.and_then(|index| {
-            *linear[index].get_or_insert_with(|| {
-                upload(&model.images[index].bytes, index, |image| {
-                    textures.upload_linear(image)
-                })
-            })
-        });
+        let material = uploads.material(&part.material);
         let normals = if part.normals.is_empty() {
             smooth_normals(&part.positions, &part.indices)
         } else {
@@ -64,17 +52,67 @@ pub(crate) fn register(
                 indices: part.indices,
             })
             .map_err(|err| err.to_string())?;
-        let material = Material {
-            albedo,
-            metallic_roughness,
-            base_color_factor: part.material.base_color,
-            metallic: part.material.metallic,
-            roughness: part.material.roughness,
-            ..Material::default()
-        };
         pieces.push(ModelPiece { mesh, material });
     }
     Ok(pieces)
+}
+
+/// The model's images as uploaded textures, each at most once per way of
+/// reading it: colour data (base colour, emissive) or linear data (everything
+/// else), since one image can serve both.
+struct ImageUploads<'a, S> {
+    images: &'a [EncodedImage],
+    textures: &'a mut S,
+    colour: HashMap<usize, Option<TextureHandle>>,
+    linear: HashMap<usize, Option<TextureHandle>>,
+}
+
+impl<'a, S: TextureStore> ImageUploads<'a, S> {
+    fn new(images: &'a [EncodedImage], textures: &'a mut S) -> Self {
+        Self {
+            images,
+            textures,
+            colour: HashMap::new(),
+            linear: HashMap::new(),
+        }
+    }
+
+    fn colour(&mut self, index: Option<usize>) -> Option<TextureHandle> {
+        let index = index?;
+        let (images, textures) = (self.images, &mut *self.textures);
+        *self
+            .colour
+            .entry(index)
+            .or_insert_with(|| upload(&images[index].bytes, index, |image| textures.upload(image)))
+    }
+
+    fn linear(&mut self, index: Option<usize>) -> Option<TextureHandle> {
+        let index = index?;
+        let (images, textures) = (self.images, &mut *self.textures);
+        *self.linear.entry(index).or_insert_with(|| {
+            upload(&images[index].bytes, index, |image| {
+                textures.upload_linear(image)
+            })
+        })
+    }
+
+    /// The renderer's material for `source`, with its textures uploaded.
+    fn material(&mut self, source: &ModelMaterial) -> Material {
+        Material {
+            albedo: self.colour(source.base_color_image),
+            metallic_roughness: self.linear(source.metallic_roughness_image),
+            normal: self.linear(source.normal_image),
+            occlusion: self.linear(source.occlusion_image),
+            emissive_map: self.colour(source.emissive_image),
+            base_color_factor: source.base_color,
+            metallic: source.metallic,
+            roughness: source.roughness,
+            normal_scale: source.normal_scale,
+            occlusion_strength: source.occlusion_strength,
+            emissive: source.emissive,
+            ..Material::default()
+        }
+    }
 }
 
 /// Decodes `bytes` and hands the image to `put`; a failure is logged and
@@ -95,7 +133,7 @@ fn upload(
 
 #[cfg(test)]
 mod tests {
-    use meridian_asset_domain::{EncodedImage, ModelMaterial, ModelPart};
+    use meridian_asset_domain::ModelPart;
     use meridian_rendering_app::testing::FakeTextureStore;
     use meridian_rendering_domain::MeshRegistry;
 
@@ -127,7 +165,7 @@ mod tests {
             base_color_image: Some(index),
             metallic: 0.25,
             roughness: 0.75,
-            metallic_roughness_image: None,
+            ..ModelMaterial::default()
         }
     }
 
@@ -189,6 +227,36 @@ mod tests {
             "one image, read as colour and as linear data, is two textures"
         );
         assert_eq!(first.metallic_roughness, second.metallic_roughness);
+    }
+
+    #[test]
+    fn normal_occlusion_and_emissive_maps_are_uploaded_by_how_they_are_read() {
+        let material = ModelMaterial {
+            normal_image: Some(0),
+            normal_scale: 0.5,
+            occlusion_image: Some(0),
+            occlusion_strength: 0.25,
+            emissive: [1.0, 0.5, 0.0],
+            emissive_image: Some(0),
+            ..ModelMaterial::default()
+        };
+        let model = ModelAsset {
+            parts: vec![triangle(material)],
+            images: vec![EncodedImage { bytes: png_1x1() }],
+        };
+        let pieces = register(
+            model,
+            &mut MeshRegistry::new(),
+            &mut FakeTextureStore::new(),
+        )
+        .unwrap();
+        let made = pieces[0].material;
+        assert_eq!(made.normal, made.occlusion, "both are linear data");
+        assert_ne!(made.normal, made.emissive_map, "emissive is colour data");
+        assert_eq!(
+            (made.normal_scale, made.occlusion_strength, made.emissive),
+            (0.5, 0.25, [1.0, 0.5, 0.0])
+        );
     }
 
     #[test]

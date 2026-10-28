@@ -17,6 +17,7 @@ mod gpu_mesh;
 mod instance_data;
 mod main_pipelines;
 mod mesh_cache;
+mod neutral_textures;
 mod prepared_batch;
 mod prepared_scene;
 mod registries;

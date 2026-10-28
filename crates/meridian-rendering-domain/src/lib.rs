@@ -47,8 +47,8 @@ pub use sprites::{
     batch_scene2d, batch_scene2d_clipped,
 };
 pub use submission::{
-    BatchKey, DrawBatch, DrawItem, DrawState, MaterialRegistry, MeshRegistry, MeshRegistryError,
-    MeshSource, OrderedDraw, SHADOW_VOLUME_HALF_EXTENT, ShadowLight, ViewUniforms,
-    directional_shadow_camera, order_draws, plan_batches,
+    BatchKey, DrawBatch, DrawItem, DrawState, MaterialMaps, MaterialRegistry, MeshRegistry,
+    MeshRegistryError, MeshSource, OrderedDraw, SHADOW_VOLUME_HALF_EXTENT, ShadowLight,
+    ViewUniforms, directional_shadow_camera, order_draws, plan_batches,
 };
 pub use texture_handle::{TextureHandle, TextureMarker};

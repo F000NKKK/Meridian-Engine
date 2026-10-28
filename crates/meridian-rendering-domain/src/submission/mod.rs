@@ -16,7 +16,7 @@ mod tests;
 mod view_uniforms;
 
 pub use draw_order::{
-    BatchKey, DrawBatch, DrawItem, DrawState, OrderedDraw, order_draws, plan_batches,
+    BatchKey, DrawBatch, DrawItem, DrawState, MaterialMaps, OrderedDraw, order_draws, plan_batches,
 };
 pub use registries::*;
 pub use shadows::*;

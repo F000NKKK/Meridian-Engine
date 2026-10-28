@@ -88,7 +88,9 @@ Not started; ordered by suggested priority. Items wait for an explicit task.
 9. **Metallic-roughness materials — done (2026-10-28).**
    [ADR 032](../adr/032-metallic-roughness-materials.md): `roughness`/`metallic`
    factors, the glTF metallic-roughness map (linear upload), GGX shading.
-   Normal, occlusion and emissive maps are next if a model needs them.
+   Normal, occlusion and emissive maps followed in
+   [ADR 033](../adr/033-normal-occlusion-and-emissive-maps.md) (derivative
+   tangent frame; emissive-mapped surfaces do not bloom yet).
 10. **Larger, ADR-gated:** HDR (`Rgba16Float` + tone mapping), shadow
    cascades/frustum fitting, point-light shadows, IBL, skinned glTF and
    animation (no vocabulary yet), concrete backend crates.

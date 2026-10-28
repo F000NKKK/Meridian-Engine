@@ -151,6 +151,37 @@ fn a_material_gives_its_base_colour_factors_and_texture() {
 }
 
 #[test]
+fn a_material_gives_its_normal_occlusion_and_emissive_slots() {
+    let extra = r#",
+  "materials": [{
+    "normalTexture": {"index": 0, "scale": 0.5},
+    "occlusionTexture": {"index": 0, "strength": 0.25},
+    "emissiveTexture": {"index": 0},
+    "emissiveFactor": [1, 0.5, 0]}],
+  "textures": [{"source": 0}],
+  "images": [{"bufferView": 4, "mimeType": "image/png"}]"#;
+    let json = document("", "", r#","material": 0"#, extra).replace(
+        r#"{"buffer": 0, "byteOffset": 96, "byteLength": 6}"#,
+        r#"{"buffer": 0, "byteOffset": 96, "byteLength": 6},
+    {"buffer": 0, "byteOffset": 96, "byteLength": 4}"#,
+    );
+    let model = GltfDecoder.decode(&glb(&json, &triangle_bin())).unwrap();
+    let material = model.parts[0].material;
+    assert_eq!(
+        (material.normal_image, material.normal_scale),
+        (Some(0), 0.5)
+    );
+    assert_eq!(
+        (material.occlusion_image, material.occlusion_strength),
+        (Some(0), 0.25)
+    );
+    assert_eq!(
+        (material.emissive_image, material.emissive),
+        (Some(0), [1.0, 0.5, 0.0])
+    );
+}
+
+#[test]
 fn a_gltf_with_data_uris_decodes_without_a_second_file() {
     let bin = triangle_bin();
     let encoded = base64_encode(&bin);

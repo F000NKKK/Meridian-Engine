@@ -660,7 +660,7 @@ the rest are not started.
 
 1. **Instancing is real; the per-frame instance upload is what is left.**
    `rendering-wgpu` uploads each registered mesh once (`MeshCache`, local
-   space, dropped when the mesh is unregistered) and writes one 100-byte
+   space, dropped when the mesh is unregistered) and writes one record (120 bytes, ADR 033)
    record per drawn renderable (model matrix, colour, emissive, gloss) into
    a single instance buffer per frame; opaque renderables with equal
    `BatchKey`s (mesh, albedo, lighting, shadow casting) draw in one

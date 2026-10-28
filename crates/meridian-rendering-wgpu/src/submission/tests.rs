@@ -151,6 +151,8 @@ fn an_instance_record_fills_its_layout_and_carries_matrix_and_surface() {
         emissive: [0.5, 0.6, 0.7],
         roughness: 0.25,
         metallic: 0.75,
+        normal_scale: 0.5,
+        occlusion_strength: 0.125,
         ..Material::default()
     };
     let frame = Motor3::translation(Vec3::new(1.0, 2.0, 3.0));
@@ -174,6 +176,35 @@ fn an_instance_record_fills_its_layout_and_carries_matrix_and_surface() {
     );
     assert_eq!([float(20), float(21), float(22)], [0.5, 0.6, 0.7]);
     assert_eq!([float(23), float(24)], [0.25, 0.75]);
+    assert_eq!([float(25), float(26)], [0.5, 0.125]);
+    // No emissive map: the factor stays in the plain slot, the mapped one is zero.
+    assert_eq!([float(27), float(28), float(29)], [0.0; 3]);
+}
+
+#[test]
+fn a_mapped_emissive_goes_to_its_own_slot_and_bloom_reads_none() {
+    use super::instance_data::push_instance;
+
+    let material = Material {
+        emissive: [0.5, 0.6, 0.7],
+        emissive_map: Some(meridian_rendering_domain::TextureHandle::new(
+            meridian_memory::Handle {
+                index: 0,
+                generation: 0,
+            },
+        )),
+        ..Material::default()
+    };
+    let mut bytes = Vec::new();
+    push_instance(&mut bytes, &Motor3::identity(), &material);
+    let float =
+        |index: usize| f32::from_le_bytes(bytes[index * 4..index * 4 + 4].try_into().unwrap());
+    assert_eq!(
+        [float(20), float(21), float(22)],
+        [0.0; 3],
+        "bloom reads none"
+    );
+    assert_eq!([float(27), float(28), float(29)], [0.5, 0.6, 0.7]);
 }
 
 #[test]

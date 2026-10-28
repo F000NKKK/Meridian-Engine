@@ -5,6 +5,7 @@ use meridian_rendering_domain::{ShadowLight, ViewUniforms};
 
 use super::main_pipelines::{MainBindings, MainPipelines};
 use super::mesh_cache::MeshCache;
+use super::neutral_textures::NeutralTextures;
 use super::{
     DrawKind, MAX_LIGHTS, PreparedBatch, PreparedScene, SceneAssets, ShadowDepthPass, bake_batches,
     lit_uniform_bytes, mat4_to_bytes,
@@ -39,12 +40,8 @@ pub struct SceneRenderer {
     /// render-target-only `DepthTexture`.
     pub(crate) shadow_map: Texture,
     pub(crate) shadow_sampler: Sampler,
-    /// A 1x1 white colour texture: the albedo of a draw that has only a
-    /// metallic-roughness map.
-    pub(crate) white_albedo: Texture,
-    /// A 1x1 white linear texture: the metallic-roughness map of a draw that
-    /// has none, leaving the material's factors as they are.
-    pub(crate) white_surface: Texture,
+    /// What a draw binds for each map its material lacks.
+    pub(crate) neutral: NeutralTextures,
     shadow_depth: ShadowDepthPass,
 }
 
@@ -54,12 +51,6 @@ pub struct SceneRenderer {
 /// caller that wants sharper (or cheaper, blockier) shadows picks their
 /// own value via [`SceneRenderer::with_shadow_map_size`] instead.
 pub const DEFAULT_SHADOW_MAP_SIZE: u32 = 2048;
-
-/// `texture` (1x1) filled with opaque white.
-fn white(device: &Device, texture: Texture) -> Texture {
-    device.write_texture(&texture, &[255; 4]);
-    texture
-}
 
 impl SceneRenderer {
     /// Builds a renderer with [`DEFAULT_SHADOW_MAP_SIZE`] — see
@@ -102,8 +93,7 @@ impl SceneRenderer {
             sampler,
             shadow_map,
             shadow_sampler,
-            white_albedo: white(device, device.create_texture_2d(1, 1)),
-            white_surface: white(device, device.create_linear_texture_2d(1, 1)),
+            neutral: NeutralTextures::new(device),
             shadow_depth,
         };
 

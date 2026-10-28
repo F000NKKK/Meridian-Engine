@@ -283,8 +283,11 @@ driver.
    lit shaders' GGX/Smith/Schlick model ([ADR 032](adr/032-metallic-roughness-materials.md));
    they replaced the Blinn-Phong `shininess`/`specular` pair.
    `Material::metallic_roughness` (glTF layout, uploaded linear through
-   `TextureStore::upload_linear`) scales them per texel; lit textured draws
-   bind it at slot 5. With no
+   `TextureStore::upload_linear`) scales them per texel. Normal, occlusion
+   and emissive maps ([ADR 033](adr/033-normal-occlusion-and-emissive-maps.md))
+   join it: a lit textured draw binds all five maps (slots 1 and 5-8),
+   neutral 1x1 textures standing in for missing ones. The instance record is
+   now 120 bytes. With no
    environment map the hemisphere ambient stands in for reflections.
    **Material states are real:** `DrawState::of(material)` (domain) maps
    `blend` and `always_on_top` to `Opaque`, `Transparent` (alpha blended,
@@ -298,7 +301,7 @@ driver.
    surfaces bloom as if solid.
    **Instancing is real:** a mesh uploads once to `MeshCache` (local-space
    position, normal and UV) and every drawn renderable becomes one
-   100-byte record (model matrix, colour or tint, emissive, gloss) in a
+   record (model matrix, colour or tint, emissive, surface and map strengths) in a
    per-frame instance buffer bound in vertex slot 1; the model matrix is
    applied in the vertex shader, so CPU vertex baking is gone.
    `rendering-domain::plan_batches` groups opaque renderables with equal

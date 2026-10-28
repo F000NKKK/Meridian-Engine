@@ -37,6 +37,7 @@ mod lit_textures;
 mod sampled_texture;
 mod sampler;
 mod shader;
+mod surface_textures;
 #[cfg(test)]
 mod tests;
 mod texture;
@@ -51,4 +52,5 @@ pub use lit_textures::LitTextures;
 pub use sampled_texture::SampledTexture;
 pub use sampler::Sampler;
 pub use shader::Shader;
+pub use surface_textures::SurfaceTextures;
 pub use texture::Texture;
