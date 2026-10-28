@@ -10,7 +10,7 @@ use meridian_rendering_wgpu::{Device, GpuFrameRecorder, Surface};
 
 use crate::any_image_decoder::AnyImageDecoder;
 use crate::assets::AssetCache;
-use crate::model_loading::ModelPiece;
+use crate::model_loading::LoadedModel;
 
 /// What a windowed application builds once: a [`RenderSession`] over the wgpu
 /// [`GpuFrameRecorder`] (device, swapchain, renderer, bloom, textures, plus the
@@ -75,7 +75,7 @@ impl GraphicsSession {
     /// # Errors
     ///
     /// The file's read, decode or registration error, as text.
-    pub fn load_model_gltf(&mut self, path: &str) -> Result<Vec<ModelPiece>, String> {
+    pub fn load_model_gltf(&mut self, path: &str) -> Result<LoadedModel, String> {
         self.assets
             .load_model_gltf(&mut self.render.meshes, &mut self.render.recorder, path)
     }

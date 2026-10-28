@@ -18,6 +18,9 @@ pub enum MeshRegistryError {
     UvCountMismatch { positions: usize, uvs: usize },
     /// `normals.len()` doesn't match `positions.len()`.
     NormalCountMismatch { positions: usize, normals: usize },
+    /// The skin does not give every vertex exactly one set of joints and
+    /// weights.
+    SkinCountMismatch { positions: usize, skinned: usize },
 }
 
 impl core::fmt::Display for MeshRegistryError {
@@ -37,6 +40,12 @@ impl core::fmt::Display for MeshRegistryError {
             }
             MeshRegistryError::UvCountMismatch { positions, uvs } => {
                 write!(f, "{positions} positions but {uvs} uvs — must match")
+            }
+            MeshRegistryError::SkinCountMismatch { positions, skinned } => {
+                write!(
+                    f,
+                    "{positions} positions but {skinned} skinned vertices — must match"
+                )
             }
             MeshRegistryError::NormalCountMismatch { positions, normals } => {
                 write!(

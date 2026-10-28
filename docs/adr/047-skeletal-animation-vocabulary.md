@@ -5,8 +5,8 @@
 Accepted. Gives [ADR 030](030-gltf-static-models-through-an-asset-adapter.md)'s
 "skeleton and animation vocabulary" a home, and answers the open question of
 [ADR 007](007-batch-transforms-via-compute.md) (an `animation-core`). The
-vocabulary and its math (D1 to D4) and loading skins from glTF (D5) have landed;
-drawing them (D6) follows in its own change and amends this ADR.
+vocabulary and its math (D1 to D4), loading skins from glTF (D5) and drawing
+them (D6) have landed.
 
 ## Context
 
@@ -79,10 +79,27 @@ roots hang from different parents uses the first root's parent as `root`.
 Sample files (CesiumMan, Fox, BrainStem, RiggedSimple) decode with their
 skeletons and clips.
 
-**D6 — drawing a skin (change after that).** A skinned `Renderable3d` carries
-its joint matrices. The renderer skins on the GPU in a compute pass that writes
-a skinned vertex buffer per skinned instance, which the existing main, shadow
-and bloom passes then draw unchanged, so no pipeline gains a skinned variant.
+**D6 — drawing a skin.** A mesh is skinned when its `MeshSource` carries a
+`VertexSkin` (four joints and weights per vertex, which the registry checks
+against the vertex count); a `Renderable3d` of it is posed when it carries a
+`JointPalette` (one matrix per joint, shared by `Arc`), and drawn rigid when it
+carries none. The renderer poses on the GPU: a compute kernel in
+`rendering-wgpu` reads the mesh's bind-pose vertices (its vertex buffer is
+also a storage buffer), the joints and weights and the palette, and writes a
+posed copy of the vertices into a fresh `VertexStorage` buffer for that
+instance. A posed instance is a batch of its own (`BatchKey::own`), because
+its vertices are its own; the batch carries the posed buffer, and the main,
+shadow and bloom passes draw it with their ordinary pipelines, so no pipeline
+gains a skinned variant. The dispatches are recorded in `render_shadow_pass`,
+before any pass that draws the batches. A posed instance has no bounds, so it
+is never culled (its box is not its bind pose's). The kernel blends the four
+matrices by weight; normals are turned by the same blend and renormalised,
+which is exact for rigid joints and uniform scale. The application poses the
+model: `sdk`'s `ModelRig` holds the `Skeleton`s and `Clip`s of a loaded model
+(`AssetCache::load_model_gltf` returns a `LoadedModel` of pieces and rig) and
+`ModelRig::palettes(animation, time)` samples them, so a viewer advances a
+`Playback` each frame and assigns each piece its skeleton's palette
+(`gltf_viewer` plays `MERIDIAN_ANIMATION`, the first animation by default).
 
 ## Consequences
 
@@ -91,5 +108,10 @@ and bloom passes then draw unchanged, so no pipeline gains a skinned variant.
 - Models with skeletons can be animated by anything that holds a `Skeleton`, a
   `Clip` and a `Playback`, not only by the renderer.
 - A skeleton over 256 joints is refused rather than truncated.
+- Every posed instance costs one compute dispatch and two buffers (palette and
+  posed vertices) per frame, allocated afresh; pooling them is future work.
+- A posed instance is not instanced, culled or batched with others.
+- The sdk gains the edge `sdk -> animation-domain` (context `runtime ->
+  animation`).
 - Cubic-spline rotations are blended as raw quaternions and renormalised, as
   glTF specifies, not as arcs.

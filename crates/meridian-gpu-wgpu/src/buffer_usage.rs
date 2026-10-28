@@ -9,6 +9,9 @@ pub enum BufferUsage {
     Index,
     Uniform,
     Storage,
+    /// Written by a compute shader as storage, then read as a vertex buffer
+    /// (skinned meshes, ADR 047).
+    VertexStorage,
 }
 
 impl BufferUsage {
@@ -18,6 +21,7 @@ impl BufferUsage {
             BufferUsage::Index => wgpu::BufferUsages::INDEX,
             BufferUsage::Uniform => wgpu::BufferUsages::UNIFORM,
             BufferUsage::Storage => wgpu::BufferUsages::STORAGE,
+            BufferUsage::VertexStorage => wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::STORAGE,
         }
     }
 }

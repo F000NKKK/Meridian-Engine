@@ -10,6 +10,7 @@ fn triangle() -> MeshSource {
         normals: vec![[0.0, 0.0, 1.0]; 3],
         uvs: vec![[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]],
         indices: vec![0, 1, 2],
+        skin: None,
     }
 }
 

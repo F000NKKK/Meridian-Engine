@@ -1,0 +1,249 @@
+//! The skeletons and animations of a loaded model (ADR 047).
+
+use meridian_animation_domain::{
+    Channel, Clip, Interpolation, JointId, JointTransform, Keys, Pose, Skeleton, Track,
+};
+pub use meridian_animation_domain::{Playback, Repeat as AnimationRepeat};
+use meridian_asset_domain::{
+    ModelAsset, ModelChannel, ModelClip, ModelInterpolation, ModelProperty, ModelSkeleton,
+};
+use meridian_gac::{Rotor, Vec3};
+use meridian_rendering_domain::JointPalette;
+
+/// One animation of a skeleton.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SkeletonClip {
+    /// The skeleton's index in [`ModelRig::skeletons`].
+    pub skeleton: usize,
+    /// What it does to that skeleton's joints.
+    pub clip: Clip,
+}
+
+/// A glTF animation: the clips of the skeletons it moves, which play together.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct ModelAnimation {
+    /// One clip per skeleton the animation moves.
+    pub clips: Vec<SkeletonClip>,
+}
+
+impl ModelAnimation {
+    /// How long the animation runs: its longest clip.
+    #[must_use]
+    pub fn duration(&self) -> f32 {
+        self.clips
+            .iter()
+            .map(|entry| entry.clip.duration())
+            .fold(0.0, f32::max)
+    }
+}
+
+/// The skeletons of a model and the animations that move them.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct ModelRig {
+    /// One skeleton per skin of the file.
+    pub skeletons: Vec<Skeleton>,
+    /// The file's animations of joints.
+    pub animations: Vec<ModelAnimation>,
+}
+
+impl ModelRig {
+    /// The rig of `model`.
+    ///
+    /// # Errors
+    ///
+    /// A skeleton or animation the animation domain refuses (too many
+    /// joints, malformed keys), as text.
+    pub(crate) fn of(model: &ModelAsset) -> Result<Self, String> {
+        let skeletons = model
+            .skeletons
+            .iter()
+            .map(skeleton)
+            .collect::<Result<Vec<_>, _>>()?;
+        let animations = model
+            .clips
+            .iter()
+            .map(|clip| animation(clip, skeletons.len()))
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(Self {
+            skeletons,
+            animations,
+        })
+    }
+
+    /// The joint matrices of every skeleton with `animation` (an index into
+    /// [`animations`](Self::animations); none leaves the rest pose) sampled
+    /// at `time`.
+    #[must_use]
+    pub fn palettes(&self, animation: Option<usize>, time: f32) -> Vec<JointPalette> {
+        let clips = animation
+            .and_then(|index| self.animations.get(index))
+            .map(|animation| animation.clips.as_slice())
+            .unwrap_or_default();
+        self.skeletons
+            .iter()
+            .enumerate()
+            .map(|(index, skeleton)| {
+                let mut pose = Pose::rest(skeleton);
+                for entry in clips.iter().filter(|entry| entry.skeleton == index) {
+                    entry.clip.sample(time, &mut pose);
+                }
+                JointPalette::new(skeleton.joint_matrices(&pose))
+            })
+            .collect()
+    }
+}
+
+fn skeleton(source: &ModelSkeleton) -> Result<Skeleton, String> {
+    let joints = source
+        .joints
+        .iter()
+        .map(|joint| {
+            Ok(meridian_animation_domain::Joint {
+                parent: match joint.parent {
+                    Some(parent) => Some(joint_id(parent)?),
+                    None => None,
+                },
+                rest: JointTransform {
+                    translation: Vec3::new(
+                        joint.translation[0],
+                        joint.translation[1],
+                        joint.translation[2],
+                    ),
+                    rotation: Rotor::from_quaternion(joint.rotation),
+                    scale: Vec3::new(joint.scale[0], joint.scale[1], joint.scale[2]),
+                },
+                inverse_bind: joint.inverse_bind,
+            })
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+    Skeleton::new(joints, source.root).map_err(|err| err.to_string())
+}
+
+fn joint_id(index: usize) -> Result<JointId, String> {
+    JointId::from_index(index).ok_or_else(|| format!("joint {index} is out of range"))
+}
+
+fn animation(source: &ModelClip, skeletons: usize) -> Result<ModelAnimation, String> {
+    let mut clips = Vec::new();
+    for skeleton in 0..skeletons {
+        let channels = source
+            .channels
+            .iter()
+            .filter(|channel| channel.skeleton == skeleton)
+            .map(channel)
+            .collect::<Result<Vec<_>, _>>()?;
+        if !channels.is_empty() {
+            clips.push(SkeletonClip {
+                skeleton,
+                clip: Clip::new(channels),
+            });
+        }
+    }
+    Ok(ModelAnimation { clips })
+}
+
+fn channel(source: &ModelChannel) -> Result<Channel, String> {
+    let interpolation = match source.interpolation {
+        ModelInterpolation::Linear => Interpolation::Linear,
+        ModelInterpolation::Step => Interpolation::Step,
+        ModelInterpolation::CubicSpline => Interpolation::CubicSpline,
+    };
+    let track = match source.property {
+        ModelProperty::Translation => Track::Translation(keys(source, interpolation)?),
+        ModelProperty::Rotation => Track::Rotation(keys(source, interpolation)?),
+        ModelProperty::Scale => Track::Scale(keys(source, interpolation)?),
+    };
+    Ok(Channel {
+        target: joint_id(source.joint)?,
+        track,
+    })
+}
+
+/// The channel's flat values grouped `N` to a value.
+fn keys<const N: usize>(
+    source: &ModelChannel,
+    interpolation: Interpolation,
+) -> Result<Keys<N>, String> {
+    let values = source
+        .values
+        .chunks_exact(N)
+        .map(|chunk| std::array::from_fn(|i| chunk[i]))
+        .collect();
+    Keys::new(source.times.clone(), values, interpolation).map_err(|err| err.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use meridian_asset_domain::{ModelJoint, ModelSkeleton};
+
+    use super::*;
+
+    const IDENTITY: [[f32; 4]; 4] = [
+        [1.0, 0.0, 0.0, 0.0],
+        [0.0, 1.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.0],
+        [0.0, 0.0, 0.0, 1.0],
+    ];
+
+    fn joint(parent: Option<usize>, translation: [f32; 3]) -> ModelJoint {
+        ModelJoint {
+            parent,
+            translation,
+            rotation: [0.0, 0.0, 0.0, 1.0],
+            scale: [1.0; 3],
+            inverse_bind: IDENTITY,
+        }
+    }
+
+    /// A root and a child one unit above it, and a clip that slides the child
+    /// from one unit to three units above over two seconds.
+    fn model() -> ModelAsset {
+        ModelAsset {
+            skeletons: vec![ModelSkeleton {
+                joints: vec![joint(None, [0.0; 3]), joint(Some(0), [0.0, 1.0, 0.0])],
+                root: IDENTITY,
+            }],
+            clips: vec![ModelClip {
+                channels: vec![ModelChannel {
+                    skeleton: 0,
+                    joint: 1,
+                    property: ModelProperty::Translation,
+                    interpolation: ModelInterpolation::Linear,
+                    times: vec![0.0, 2.0],
+                    values: vec![0.0, 1.0, 0.0, 0.0, 3.0, 0.0],
+                }],
+            }],
+            ..ModelAsset::default()
+        }
+    }
+
+    #[test]
+    fn the_rest_palette_places_each_joint_where_it_sits_at_rest() {
+        let rig = ModelRig::of(&model()).expect("a valid rig");
+        let palettes = rig.palettes(None, 0.0);
+        assert_eq!(palettes[0].matrices()[1][3], [0.0, 1.0, 0.0, 1.0]);
+    }
+
+    #[test]
+    fn an_animation_moves_its_joint_along_its_keys() {
+        let rig = ModelRig::of(&model()).expect("a valid rig");
+        assert_eq!(rig.animations[0].duration(), 2.0);
+        let palettes = rig.palettes(Some(0), 1.0);
+        assert_eq!(palettes[0].matrices()[1][3], [0.0, 2.0, 0.0, 1.0]);
+        assert_eq!(palettes[0].matrices()[0][3], [0.0, 0.0, 0.0, 1.0]);
+    }
+
+    #[test]
+    fn an_unknown_animation_leaves_the_rest_pose() {
+        let rig = ModelRig::of(&model()).expect("a valid rig");
+        let palettes = rig.palettes(Some(9), 1.0);
+        assert_eq!(palettes[0].matrices()[1][3], [0.0, 1.0, 0.0, 1.0]);
+    }
+
+    #[test]
+    fn keys_the_animation_domain_refuses_are_an_error() {
+        let mut broken = model();
+        broken.clips[0].channels[0].times = vec![2.0, 0.0];
+        assert!(ModelRig::of(&broken).is_err());
+    }
+}

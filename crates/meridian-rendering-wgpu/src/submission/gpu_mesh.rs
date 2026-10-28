@@ -2,6 +2,7 @@
 
 use meridian_rendering_domain::MeshSource;
 
+use super::skinning::GpuSkin;
 use crate::{Buffer, BufferUsage, Device};
 
 /// A mesh's vertex and index buffers: local-space data, shared by every
@@ -11,6 +12,8 @@ pub(crate) struct GpuMesh {
     pub vertex_buffer: Buffer,
     pub index_buffer: Buffer,
     pub index_count: u32,
+    /// The joints and weights of a skinned mesh (ADR 047).
+    pub skin: Option<GpuSkin>,
 }
 
 impl GpuMesh {
@@ -30,7 +33,13 @@ impl GpuMesh {
             .iter()
             .flat_map(|index| index.to_le_bytes())
             .collect::<Vec<u8>>();
-        let vertex_buffer = device.create_buffer(vertices.len(), BufferUsage::Vertex);
+        // A skinned mesh's bind pose is also read by the skinning kernel.
+        let usage = if source.skin.is_some() {
+            BufferUsage::VertexStorage
+        } else {
+            BufferUsage::Vertex
+        };
+        let vertex_buffer = device.create_buffer(vertices.len(), usage);
         device.write_buffer(&vertex_buffer, &vertices);
         let index_buffer = device.create_buffer(indices.len(), BufferUsage::Index);
         device.write_buffer(&index_buffer, &indices);
@@ -38,6 +47,10 @@ impl GpuMesh {
             vertex_buffer,
             index_buffer,
             index_count: u32::try_from(source.indices.len()).unwrap_or(u32::MAX),
+            skin: source
+                .skin
+                .as_ref()
+                .map(|skin| GpuSkin::upload(device, skin)),
         }
     }
 }

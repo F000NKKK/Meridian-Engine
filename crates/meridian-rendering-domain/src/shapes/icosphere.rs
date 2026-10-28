@@ -42,5 +42,6 @@ pub fn icosphere_mesh_source(subdivisions: u32, radius: f32) -> MeshSource {
         normals,
         uvs,
         indices,
+        skin: None,
     }
 }

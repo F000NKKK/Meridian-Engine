@@ -18,6 +18,7 @@ mod render_pass;
 pub mod scene;
 mod shader_handle;
 mod shapes;
+mod skin;
 pub mod sprites;
 pub mod submission;
 #[cfg(test)]
@@ -49,6 +50,7 @@ pub use shapes::{
     cube_mesh_source, ground_mesh_source, icosphere_mesh_source, pyramid_mesh_source,
     smooth_normals,
 };
+pub use skin::{JointPalette, VertexSkin};
 pub use sprites::{
     ClipRect, ClipSpan, Overlay2d, ScissorRect, SpriteBatch, SpriteVertex, SpriteView,
     batch_scene2d, batch_scene2d_clipped,

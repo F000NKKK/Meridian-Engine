@@ -81,6 +81,7 @@ fn post_ring(base: &mut GraphicsSession) -> Vec<Renderable3d> {
                 frame: Motor3::translation(Vec3::new(angle.cos() * 5.0, 0.12, angle.sin() * 5.0)),
                 billboard: false,
                 casts_shadow: true,
+                palette: None,
             }
         })
         .collect()
@@ -103,5 +104,6 @@ fn sphere(
         frame: Motor3::translation(position),
         billboard: false,
         casts_shadow: false,
+        palette: None,
     }
 }

@@ -15,7 +15,7 @@ use meridian_ecs::{Component, Transform, World};
 use meridian_gac::{Aabb, Motor3};
 use meridian_resource::ResourceId;
 
-use crate::{Frustum, MeshHandle, TextureHandle};
+use crate::{Frustum, JointPalette, MeshHandle, TextureHandle};
 
 /// Typed identity for a material — see the module doc's handle note.
 #[derive(Debug)]
@@ -186,6 +186,9 @@ pub struct Renderable3d {
     /// *main* pass at all — a `casts_shadow: false` renderable still
     /// draws and still receives shadows from everything else normally.
     pub casts_shadow: bool,
+    /// The joint matrices of a skinned mesh for this frame (ADR 047); `None`
+    /// draws the mesh rigid. Ignored when the mesh has no skin.
+    pub palette: Option<JointPalette>,
 }
 
 /// Attaches a [`Renderable3d`] (minus its frame, which comes from the
@@ -345,6 +348,7 @@ pub fn extract_scene3d(world: &World, camera: crate::Camera) -> Scene3d {
                 frame: transform.motor,
                 billboard: renderer.billboard,
                 casts_shadow: true,
+                palette: None,
             })
         })
         .collect();
@@ -492,6 +496,7 @@ mod tests {
             frame: Motor3::translation(Vec3::new(10.0, 0.0, 0.0)),
             billboard: false,
             casts_shadow: true,
+            palette: None,
         };
         let behind = Renderable3d {
             mesh: MeshHandle::new(meridian_memory::Handle::default()),
@@ -499,6 +504,7 @@ mod tests {
             frame: Motor3::translation(Vec3::new(-10.0, 0.0, 0.0)),
             billboard: false,
             casts_shadow: true,
+            palette: None,
         };
         let scene = Scene3d {
             renderables: vec![ahead.clone(), behind],
@@ -523,6 +529,7 @@ mod tests {
             frame: Motor3::translation(Vec3::new(-10.0, 0.0, 0.0)),
             billboard: false,
             casts_shadow: true,
+            palette: None,
         };
         let scene = Scene3d {
             renderables: vec![renderable],

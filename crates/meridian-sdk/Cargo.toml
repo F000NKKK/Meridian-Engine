@@ -11,6 +11,7 @@ readme = "README.md"
 [dependencies]
 meridian-diagnostics = { workspace = true }
 meridian-gac = { workspace = true }
+meridian-animation-domain = { workspace = true }
 meridian-ecs = { workspace = true }
 meridian-data-substrate = { workspace = true }
 substrate-data = { workspace = true }

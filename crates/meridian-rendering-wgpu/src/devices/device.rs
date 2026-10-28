@@ -86,6 +86,28 @@ impl Device {
         self.0.create_shader(label, wgsl_source)
     }
 
+    /// A compute pipeline running `entry_point` of `shader`.
+    #[must_use]
+    pub fn create_compute_pipeline(
+        &self,
+        shader: &meridian_gpu_wgpu::Shader,
+        entry_point: &str,
+    ) -> meridian_gpu_wgpu::ComputePipeline {
+        self.0.create_compute_pipeline(shader, entry_point)
+    }
+
+    /// A bind group over `pipeline`'s layout with `buffers[i]` at
+    /// `@binding(i)`.
+    #[must_use]
+    pub fn create_compute_bind_group(
+        &self,
+        pipeline: &meridian_gpu_wgpu::ComputePipeline,
+        buffers: &[&meridian_gpu_wgpu::Buffer],
+    ) -> meridian_gpu_wgpu::BindGroup {
+        self.0
+            .create_bind_group(&pipeline.bind_group_layout(), buffers)
+    }
+
     /// Opens a new [`CommandBuffer`](crate::CommandBuffer) for recording. Nothing reaches the
     /// GPU until [`CommandBuffer::submit`](crate::CommandBuffer::submit) is called.
     pub fn create_command_buffer(&self) -> CommandBuffer<'_> {

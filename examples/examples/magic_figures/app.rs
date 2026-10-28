@@ -109,6 +109,7 @@ fn floor_renderable(base: &mut GraphicsSession) -> Renderable3d {
         frame: Motor3::identity(),
         billboard: false,
         casts_shadow: true,
+        palette: None,
     }
 }
 
@@ -141,6 +142,7 @@ fn shape_renderable(base: &mut GraphicsSession, shape: &ShapeSpec) -> Renderable
         frame: Motor3::translation(orbit_position(shape, 0.0)),
         billboard: false,
         casts_shadow: true,
+        palette: None,
     }
 }
 

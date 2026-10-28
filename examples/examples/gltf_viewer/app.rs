@@ -1,5 +1,8 @@
 //! The viewer's window, GPU state and frame loop.
 
+use meridian_sdk::assets::{
+    JointPalette, ModelAnimation, ModelPiece, ModelRig, Playback, VertexSkin,
+};
 use meridian_sdk::{
     AppHandler, Background, Camera, Device, EnvironmentMap, FrameRecorder, GraphicsSession,
     InputState, Light, Motor3, Renderable3d, Scene3d, Sky, Vec3, Window, look_at_rotor,
@@ -24,6 +27,12 @@ struct GpuState {
     scene: Scene3d,
     center: Vec3,
     radius: f32,
+    pieces: Vec<ModelPiece>,
+    rig: ModelRig,
+    /// The animation playing, an index into the rig's animations.
+    animation: Option<usize>,
+    playback: Playback,
+    last_frame: std::time::Instant,
 }
 
 impl App {
@@ -40,11 +49,13 @@ impl App {
 
 impl GpuState {
     fn build(mut base: GraphicsSession, path: &str) -> Self {
-        let pieces = base.load_model_gltf(path).unwrap_or_else(|err| {
+        let model = base.load_model_gltf(path).unwrap_or_else(|err| {
             meridian_sdk::log_error!("cannot load {path}: {err}");
             std::process::exit(1)
         });
-        let (center, radius) = bounds(&base, pieces.iter().map(|piece| piece.mesh));
+        let (pieces, rig) = (model.pieces, model.rig);
+        let animation = chosen_animation(&rig);
+        let (center, radius) = bounds(&base, &pieces, &rig);
         meridian_sdk::log_info!("{path}: {} parts, radius {radius:.2}", pieces.len());
         let renderables = pieces
             .iter()
@@ -54,6 +65,7 @@ impl GpuState {
                 frame: Motor3::identity(),
                 billboard: false,
                 casts_shadow: true,
+                palette: None,
             })
             .collect();
         light_with_sky(&mut base);
@@ -79,21 +91,67 @@ impl GpuState {
             scene,
             center,
             radius,
+            pieces,
+            rig,
+            animation,
+            playback: Playback::default(),
+            last_frame: std::time::Instant::now(),
+        }
+    }
+
+    /// Moves the playing animation on by the time since the last frame and
+    /// hands each skinned piece its joint matrices.
+    fn animate(&mut self) {
+        let now = std::time::Instant::now();
+        let delta = now.duration_since(self.last_frame).as_secs_f32();
+        self.last_frame = now;
+        let duration = self
+            .animation
+            .and_then(|index| self.rig.animations.get(index))
+            .map_or(0.0, ModelAnimation::duration);
+        self.playback.advance(delta, duration);
+        let palettes = self.rig.palettes(self.animation, self.playback.time);
+        for (renderable, piece) in self.scene.renderables.iter_mut().zip(&self.pieces) {
+            renderable.palette = piece
+                .skeleton
+                .and_then(|skeleton| palettes.get(skeleton).cloned());
         }
     }
 }
 
-/// The centre and radius of a sphere around every vertex of `meshes`.
-fn bounds(
-    base: &GraphicsSession,
-    meshes: impl Iterator<Item = meridian_sdk::MeshHandle>,
-) -> (Vec3, f32) {
+/// The animation `MERIDIAN_ANIMATION` names (an index), else the first one
+/// the file has.
+fn chosen_animation(rig: &ModelRig) -> Option<usize> {
+    let count = rig.animations.len();
+    if count == 0 {
+        return None;
+    }
+    let wanted = std::env::var("MERIDIAN_ANIMATION")
+        .ok()
+        .and_then(|value| value.parse::<usize>().ok())
+        .unwrap_or(0);
+    meridian_sdk::log_info!("{count} animations, playing {}", wanted.min(count - 1));
+    Some(wanted.min(count - 1))
+}
+
+/// The centre and radius of a sphere around every vertex of `pieces`, a
+/// skinned piece posed at rest.
+fn bounds(base: &GraphicsSession, pieces: &[ModelPiece], rig: &ModelRig) -> (Vec3, f32) {
+    let rest = rig.palettes(None, 0.0);
     let (mut low, mut high) = ([f32::MAX; 3], [f32::MIN; 3]);
-    for mesh in meshes {
-        let Some(source) = base.render.meshes.get(mesh) else {
+    for piece in pieces {
+        let Some(source) = base.render.meshes.get(piece.mesh) else {
             continue;
         };
-        for position in &source.positions {
+        let palette = piece
+            .skeleton
+            .and_then(|skeleton| rest.get(skeleton))
+            .map(JointPalette::matrices);
+        for (vertex, position) in source.positions.iter().enumerate() {
+            let position = match (palette, &source.skin) {
+                (Some(palette), Some(skin)) => rest_position(palette, skin, vertex, *position),
+                _ => *position,
+            };
             for axis in 0..3 {
                 low[axis] = low[axis].min(position[axis]);
                 high[axis] = high[axis].max(position[axis]);
@@ -114,6 +172,29 @@ fn bounds(
     )
 }
 
+/// `position` of `vertex` moved by the weighted joint matrices of `palette`.
+fn rest_position(
+    palette: &[[[f32; 4]; 4]],
+    skin: &VertexSkin,
+    vertex: usize,
+    position: [f32; 3],
+) -> [f32; 3] {
+    let mut moved = [0.0; 3];
+    for (joint, weight) in skin.joints[vertex].iter().zip(skin.weights[vertex]) {
+        let Some(matrix) = palette.get(usize::from(*joint)) else {
+            continue;
+        };
+        for (row, out) in moved.iter_mut().enumerate() {
+            let sum = matrix[0][row] * position[0]
+                + matrix[1][row] * position[1]
+                + matrix[2][row] * position[2]
+                + matrix[3][row];
+            *out += weight * sum;
+        }
+    }
+    moved
+}
+
 impl AppHandler for App {
     fn on_ready(&mut self, window: &Window) {
         let target = window.surface_target();
@@ -130,6 +211,7 @@ impl AppHandler for App {
         let Some(gpu) = &mut self.gpu else {
             return;
         };
+        gpu.animate();
         let angle = self.start.elapsed().as_secs_f32() * 0.4;
         let distance = gpu.radius * self.distance;
         let eye = gpu.center

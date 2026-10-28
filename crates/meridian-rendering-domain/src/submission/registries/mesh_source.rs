@@ -2,6 +2,8 @@
 
 use meridian_gac::{Aabb, Vec3};
 
+use crate::VertexSkin;
+
 /// The CPU-side source a [`MeshHandle`](crate::MeshHandle) resolves to: local-space
 /// positions, per-vertex normals and UVs, and triangle indices, decoded
 /// elsewhere (typically `asset-domain::ObjDecoder`/glTF once that lands)
@@ -16,6 +18,9 @@ pub struct MeshSource {
     pub normals: Vec<[f32; 3]>,
     pub uvs: Vec<[f32; 2]>,
     pub indices: Vec<u32>,
+    /// The joints and weights that move each vertex, for a skinned mesh
+    /// (ADR 047); its positions and normals are the bind pose.
+    pub skin: Option<VertexSkin>,
 }
 
 impl MeshSource {
@@ -44,6 +49,7 @@ mod tests {
             normals: Vec::new(),
             uvs: Vec::new(),
             indices: Vec::new(),
+            skin: None,
         }
     }
 

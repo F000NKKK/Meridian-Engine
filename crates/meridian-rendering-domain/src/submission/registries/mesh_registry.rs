@@ -38,6 +38,15 @@ impl MeshRegistry {
             });
         }
         let vertex_count = source.positions.len();
+        if let Some(skin) = &source.skin {
+            let skinned = skin.joints.len().max(skin.weights.len());
+            if skin.joints.len() != vertex_count || skin.weights.len() != vertex_count {
+                return Err(MeshRegistryError::SkinCountMismatch {
+                    positions: vertex_count,
+                    skinned,
+                });
+            }
+        }
         if let Some(&index) = source
             .indices
             .iter()
