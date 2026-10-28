@@ -2,7 +2,7 @@
 //! product `M P M~` it replaces.
 
 use meridian_gac::multivector::float::Multivector;
-use meridian_gac::{Motor3, Rotor, Vec3, blade};
+use meridian_gac::{Motor3, Rotor, Scale3, Vec3, blade};
 
 fn sandwich(motor: Motor3, point: Vec3) -> Vec3 {
     let mut pm = [0.0; 16];
@@ -168,4 +168,28 @@ mod fixed {
             .expect("three axes");
         assert!(drift <= 64, "round trip drifted {drift} units");
     }
+}
+
+#[test]
+fn stretched_scales_the_translation_and_keeps_the_rotation() {
+    let turn = Rotor::from_axis_angle(Vec3::Z, 0.7);
+    let motor = Motor3::from_rotation_translation(turn, Vec3::new(1.0, 2.0, 3.0));
+    let stretched = motor.stretched(Scale3::new(2.0, 3.0, 4.0).unwrap());
+
+    let origin = stretched.transform_point(Vec3::ZERO);
+    for (got, want) in [(origin.x, 2.0), (origin.y, 6.0), (origin.z, 12.0)] {
+        assert!((got - want).abs() < 1e-5, "{got} vs {want}");
+    }
+    let before = motor.transform_vector(Vec3::X);
+    let after = stretched.transform_vector(Vec3::X);
+    assert!((before - after).length() < 1e-5);
+}
+
+#[test]
+fn stretching_by_the_unit_scale_changes_nothing() {
+    let motor = Motor3::from_rotation_translation(
+        Rotor::from_axis_angle(Vec3::Y, 1.1),
+        Vec3::new(4.0, 5.0, 6.0),
+    );
+    assert_eq!(motor.stretched(Scale3::UNIT), motor);
 }

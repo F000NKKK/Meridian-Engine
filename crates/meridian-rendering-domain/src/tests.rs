@@ -1,6 +1,7 @@
 //! Tests of this module.
 
-use meridian_gac::{Aabb, Motor3, Projection, Sphere, Vec3, mat4_mul};
+use meridian_ecs::{Transform, World};
+use meridian_gac::{Aabb, Motor3, Projection, Scale3, Sphere, Vec3, mat4_mul};
 
 use super::*;
 
@@ -313,5 +314,43 @@ fn light_sources_are_extracted_as_lights_at_their_entity_frame() {
         lights
             .iter()
             .any(|light| matches!(light, Light::Directional { .. }))
+    );
+}
+
+#[test]
+fn extraction_draws_a_child_at_its_parents_world_scale() {
+    let mut world = World::new();
+    let renderer = MeshRenderer {
+        mesh: MeshHandle::new(meridian_memory::Handle::default()),
+        material: MaterialHandle::new(meridian_memory::Handle::default()),
+        billboard: false,
+    };
+    let parent = world.spawn();
+    world.insert(parent, Transform::default());
+    world.insert(parent, Scale3::uniform(2.0).unwrap());
+    let child = world.spawn();
+    world.insert(
+        child,
+        Transform {
+            motor: Motor3::translation(Vec3::new(1.0, 0.0, 0.0)),
+        },
+    );
+    world.insert(child, Scale3::new(1.0, 3.0, 1.0).unwrap());
+    world.insert(child, meridian_ecs::Parent(parent));
+    world.insert(child, renderer);
+
+    let unresolved = extract_scene3d(&world, Camera::default());
+    assert_eq!(
+        unresolved.renderables[0].scale.components(),
+        [1.0, 3.0, 1.0]
+    );
+
+    meridian_ecs::propagate_transforms(&mut world);
+    let resolved = extract_scene3d(&world, Camera::default());
+    let drawn = &resolved.renderables[0];
+    assert_eq!(drawn.scale.components(), [2.0, 6.0, 2.0]);
+    assert_eq!(
+        drawn.frame.transform_point(Vec3::ZERO),
+        Vec3::new(2.0, 0.0, 0.0)
     );
 }

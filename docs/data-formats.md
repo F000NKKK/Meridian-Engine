@@ -88,11 +88,15 @@ above zero; zero, negative (a reflection flips face winding and is not a motor),
 NaN and infinity are refused while reading, as are lists of the wrong length.
 The format of `.mscene` does not change (an additive component).
 
-Limits of version 1, on purpose: the scale is local, so a child does not inherit
-its parent's scale (`propagate_transforms` combines motors only), and physics and
-colliders ignore it. The renderer, culling bounds, picking and the selection box
-honour it; lit normals use the inverse transpose, so non-uniform scale shades
-correctly.
+The stored scale is the entity's own (local) one. In a hierarchy
+`propagate_transforms` multiplies it down the chain into
+`GlobalTransform::scale` and stretches a child's translation with its parent's
+scale (`T * R * S`, as in Unity): scale a parent by two and its children grow and
+move away from its origin with it. A turned parent with a non-uniform scale does
+not shear its children; only the per-axis product is kept. Physics and colliders
+still ignore the scale. The renderer, culling bounds, picking and the selection
+box use the world scale; lit normals use the inverse transpose, so non-uniform
+scale shades correctly.
 
 ## Math values
 
