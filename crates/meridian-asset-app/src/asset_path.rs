@@ -15,6 +15,13 @@ impl AssetPath {
         Self(path.into())
     }
 
+    /// The path of this asset's `.meta` sidecar: the same path with `.meta`
+    /// appended (`meshes/crate.obj` has `meshes/crate.obj.meta`).
+    #[must_use]
+    pub fn sidecar(&self) -> AssetPath {
+        AssetPath(format!("{}.meta", self.0))
+    }
+
     /// The `/`-separated text.
     #[must_use]
     pub fn as_str(&self) -> &str {

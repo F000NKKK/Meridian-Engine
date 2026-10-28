@@ -60,7 +60,7 @@ ALLOWED = {
     "meridian-ecs": {"meridian-memory", "meridian-gac"},
     "meridian-asset-domain": {"meridian-diagnostics"},
     "meridian-asset-app": {"meridian-asset-domain"},
-    "meridian-asset-fs": {"meridian-asset-app"},
+    "meridian-asset-fs": {"meridian-asset-app", "meridian-asset-domain"},
     "meridian-asset-http": {"meridian-asset-app"},
     "meridian-asset-gltf": {"meridian-asset-domain", "meridian-gac"},
     "meridian-asset-jpeg": {"meridian-asset-domain"},

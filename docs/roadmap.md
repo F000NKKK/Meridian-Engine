@@ -761,8 +761,15 @@ the rest are not started.
    [data-formats.md](data-formats.md#how-a-world-is-saved-and-restored)).
    **Not yet done:** a state-level `.msave` delta (a later `format`),
    saving a despawned or reparented generated entity,
-   `.meta`, `.mpak`, wiring the editor host into `runtime-app`'s frame
-   loop. **Wired into the sdk:** `meridian_sdk::persistence::WorldFiles` loads and
+   wiring the editor host into `runtime-app`'s frame loop, an importer
+   registry and `resource` id table that read `.meta`, and a `.mpak`
+   build-tool command (streaming writer). **Asset formats:** `.meta` (stable
+   `AssetId`, importer, settings, dependencies) and `.mpak` (checksummed
+   payloads + an SDAT index, random access by id or path, versioned
+   envelope with a lossless upgrade) are done in `meridian-asset-domain`;
+   `asset-app`'s `PackSource` serves a pack as a `ByteSource` and
+   `asset-fs`'s `FileReadAt` reads one by range, see
+   [data-formats.md](data-formats.md#asset-pack-mpak). **Wired into the sdk:** `meridian_sdk::persistence::WorldFiles` loads and
    saves `.mscene`/`.mprefab`/`.msave` by path, with `AssetPrefabSource`
    implementing `PrefabSource` over `asset-app`'s `AssetLoader` (reads on the
    background pool, ADR 027); a write port (`ByteSink`) is later.

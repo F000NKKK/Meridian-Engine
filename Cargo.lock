@@ -1198,6 +1198,8 @@ name = "meridian-asset-domain"
 version = "0.13.0"
 dependencies = [
  "meridian-diagnostics",
+ "substrate-data",
+ "thiserror 2.0.21",
 ]
 
 [[package]]

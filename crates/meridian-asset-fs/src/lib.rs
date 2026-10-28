@@ -6,8 +6,10 @@
 #![doc = include_str!("../README.md")]
 #![forbid(unsafe_code)]
 
+mod file_read_at;
 mod fs_source;
 #[cfg(test)]
 mod tests;
 
+pub use file_read_at::FileReadAt;
 pub use fs_source::FsSource;

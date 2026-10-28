@@ -5,7 +5,7 @@ use std::path::PathBuf;
 
 use meridian_asset_app::{AssetPath, ByteSource, SourceError};
 
-use super::FsSource;
+use super::{FileReadAt, FsSource};
 
 /// A fresh empty directory under the system temp dir, removed on drop.
 struct Scratch(PathBuf);
@@ -76,4 +76,58 @@ fn a_directory_is_unreadable_not_not_found() {
         matches!(result, Err(SourceError::Unreadable { .. })),
         "{result:?}"
     );
+}
+
+#[test]
+fn a_pack_file_is_read_by_range_through_the_file_adapter() {
+    use meridian_asset_app::PackSource;
+    use meridian_asset_domain::{AssetId, PackPath, PackWriter};
+
+    let scratch = Scratch::new("pack");
+    let mut writer = PackWriter::new();
+    let crate_path = PackPath::new("meshes/crate.obj").unwrap();
+    writer
+        .add(AssetId::from_bits(1), crate_path, b"mesh bytes")
+        .unwrap();
+    writer
+        .add(
+            AssetId::from_bits(2),
+            PackPath::new("a.bin").unwrap(),
+            &[5_u8; 1000],
+        )
+        .unwrap();
+    fs::write(scratch.0.join("content.mpak"), writer.finish()).expect("write pack");
+
+    let file = FileReadAt::open(scratch.0.join("content.mpak")).expect("open");
+    let source = PackSource::open(file).expect("a pack");
+    assert_eq!(
+        source.read(&AssetPath::new("meshes/crate.obj")),
+        Ok(b"mesh bytes".to_vec())
+    );
+    assert_eq!(source.read(&AssetPath::new("a.bin")), Ok(vec![5_u8; 1000]));
+    let missing = AssetPath::new("nope.bin");
+    assert_eq!(source.read(&missing), Err(SourceError::NotFound(missing)));
+    let escaping = AssetPath::new("../x");
+    assert_eq!(source.read(&escaping), Err(SourceError::Rejected(escaping)));
+}
+
+#[test]
+fn a_missing_pack_file_is_a_typed_error() {
+    let scratch = Scratch::new("nopack");
+    assert!(FileReadAt::open(scratch.0.join("nope.mpak")).is_err());
+}
+
+#[test]
+fn reads_past_the_end_are_out_of_range() {
+    use meridian_asset_domain::{ReadAt, ReadAtError};
+    let scratch = Scratch::new("range");
+    fs::write(scratch.0.join("f"), [1, 2, 3]).expect("write");
+    let file = FileReadAt::open(scratch.0.join("f")).expect("open");
+    let mut buf = [0_u8; 2];
+    file.read_exact_at(1, &mut buf).unwrap();
+    assert_eq!(buf, [2, 3]);
+    assert!(matches!(
+        file.read_exact_at(2, &mut buf),
+        Err(ReadAtError::OutOfRange { .. })
+    ));
 }
