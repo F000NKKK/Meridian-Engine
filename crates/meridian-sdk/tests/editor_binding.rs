@@ -27,6 +27,26 @@ fn varied(pixels: &[u8]) -> bool {
         .any(|pixel| pixel[..3] != pixels[..3])
 }
 
+/// A world loaded from the scene `text`, with `transform` and the rendering
+/// components registered.
+fn world_of(text: &str) -> World {
+    use meridian_data_substrate::{
+        ComponentName, ComponentRegistry, NoResolver, TransformCodec, register_rendering,
+    };
+
+    let mut registry = ComponentRegistry::new();
+    let name = ComponentName::new("transform").expect("a valid name");
+    registry
+        .register_with::<Transform, TransformCodec>(name)
+        .expect("registers once");
+    register_rendering(&mut registry).expect("registers once");
+    let mut world = World::new();
+    registry
+        .load_scene(text, &mut world, &mut NoResolver)
+        .expect("the scene loads");
+    world
+}
+
 fn looking(target: [f32; 3]) -> EditorCamera {
     EditorCamera {
         target,
@@ -150,26 +170,13 @@ impl meridian_sdk::AssetBinder for PairBinder {
 
 #[test]
 fn a_reference_to_a_model_draws_its_pieces_and_a_click_means_the_owner() {
-    use meridian_data_substrate::{
-        ComponentName, ComponentRegistry, NoResolver, register_rendering,
-    };
-
     let Some(mut renderer) = renderer() else {
         return;
     };
-    let mut registry = ComponentRegistry::new();
-    let name = ComponentName::new("transform").unwrap();
-    registry
-        .register_with::<Transform, meridian_data_substrate::TransformCodec>(name)
-        .unwrap();
-    register_rendering(&mut registry).unwrap();
     let text = r#"{ format: 1, entities: [ { id: "pair", components: {
         transform: { motor: { rotor: [1, 0, 0, 0] } },
         mesh_renderer: { mesh: "@asset:models/pair.gltf", material: "@asset:builtin/default" } } } ] }"#;
-    let mut world = World::new();
-    registry
-        .load_scene(text, &mut world, &mut NoResolver)
-        .unwrap();
+    let mut world = world_of(text);
     assert!(
         renderer
             .bind_references(&mut world, &mut PairBinder)
@@ -207,30 +214,17 @@ fn a_reference_to_a_model_draws_its_pieces_and_a_click_means_the_owner() {
 
 #[test]
 fn a_gltf_file_in_a_folder_is_bound_to_its_owner() {
-    use meridian_data_substrate::{
-        ComponentName, ComponentRegistry, NoResolver, register_rendering,
-    };
-
     let assets = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/assets");
     let Some(mut renderer) = renderer() else {
         return;
     };
-    let mut registry = ComponentRegistry::new();
-    let name = ComponentName::new("transform").unwrap();
-    registry
-        .register_with::<Transform, meridian_data_substrate::TransformCodec>(name)
-        .unwrap();
-    register_rendering(&mut registry).unwrap();
     let text = r#"{ format: 1, entities: [ { id: "fox", components: {
         transform: { motor: { rotor: [1, 0, 0, 0] } },
         mesh_renderer: { mesh: "@asset:models/Fox.glb", material: "@asset:builtin/default" } } },
         { id: "gone", components: {
         transform: { motor: { rotor: [1, 0, 0, 0] } },
         mesh_renderer: { mesh: "@asset:models/none.glb", material: "@asset:builtin/default" } } } ] }"#;
-    let mut world = World::new();
-    registry
-        .load_scene(text, &mut world, &mut NoResolver)
-        .unwrap();
+    let mut world = world_of(text);
     let mut folder = meridian_sdk::GltfFolder::new(assets);
     let unbound = renderer.bind_references(&mut world, &mut folder);
     assert_eq!(unbound.len(), 1, "only the missing file stays unbound");
