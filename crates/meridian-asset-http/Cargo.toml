@@ -5,15 +5,19 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "HTTP adapter for asset-app: reads asset bytes from a web server over plain http."
+description = "HTTP adapter for asset-app: reads asset bytes from a web server over http or https."
 readme = "README.md"
 
 [dependencies]
 meridian-asset-app = { workspace = true }
 percent-encoding = "2"
 thiserror = { workspace = true }
-# No TLS: `ureq`'s `rustls` brings `ring`, whose licence deny.toml does not allow (ADR 028).
-ureq = { version = "3", default-features = false }
+# `https` through rustls with `ring` and the Mozilla roots (ADR 028).
+ureq = { version = "3", default-features = false, features = ["rustls"] }
+
+[dev-dependencies]
+# The loopback TLS server of the tests; the same `ring` provider `ureq` uses.
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
 
 [lints]
 workspace = true

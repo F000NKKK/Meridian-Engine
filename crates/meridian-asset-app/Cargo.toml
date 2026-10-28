@@ -10,6 +10,7 @@ readme = "README.md"
 
 [dependencies]
 meridian-asset-domain = { workspace = true }
+thiserror = { workspace = true }
 
 [lints]
 workspace = true

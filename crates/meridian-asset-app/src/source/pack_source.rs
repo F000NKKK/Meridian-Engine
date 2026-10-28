@@ -2,7 +2,7 @@
 
 use meridian_asset_domain::{PackError, PackPath, PackReader, ReadAt};
 
-use crate::{AssetPath, ByteSource, SourceError};
+use crate::{AssetListing, AssetPath, ByteSource, SourceError};
 
 /// A [`ByteSource`] that serves the assets of a `.mpak`: the asset path is
 /// the path inside the pack, and the bytes are checked against the pack's
@@ -44,5 +44,18 @@ impl<R: ReadAt + Send + Sync> ByteSource for PackSource<R> {
                     reason: other.to_string(),
                 },
             })
+    }
+}
+
+impl<R: ReadAt + Send + Sync> AssetListing for PackSource<R> {
+    fn paths(&self) -> Result<Vec<AssetPath>, SourceError> {
+        let mut paths: Vec<AssetPath> = self
+            .reader
+            .entries()
+            .iter()
+            .map(|entry| AssetPath::new(entry.path.as_str()))
+            .collect();
+        paths.sort_by(|a, b| a.as_str().cmp(b.as_str()));
+        Ok(paths)
     }
 }

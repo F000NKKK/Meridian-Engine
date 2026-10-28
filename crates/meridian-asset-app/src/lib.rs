@@ -10,24 +10,25 @@
 
 mod asset_loader;
 mod asset_path;
-mod byte_source;
+mod catalog;
+mod import;
 mod load_error;
-mod pack_source;
-#[cfg(test)]
-mod pack_source_tests;
 mod pending;
 mod priority;
-mod source_error;
+mod source;
 mod spawn;
 #[cfg(test)]
 mod tests;
 
 pub use asset_loader::AssetLoader;
 pub use asset_path::AssetPath;
-pub use byte_source::ByteSource;
+pub use catalog::{AssetCatalog, CatalogEntry, CatalogError};
+pub use import::{
+    FromDecoder, ImportError, ImportFailure, Importer, ImporterRegistry, MetaReadError,
+    RegisterError, read_meta,
+};
 pub use load_error::LoadError;
-pub use pack_source::PackSource;
 pub use pending::Pending;
 pub use priority::Priority;
-pub use source_error::SourceError;
+pub use source::{AssetListing, ByteSource, OverlaySource, PackSource, SourceError};
 pub use spawn::Spawn;

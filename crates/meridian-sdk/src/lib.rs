@@ -9,6 +9,7 @@
 mod any_image_decoder;
 mod asset_loader;
 pub mod assets;
+pub mod content;
 pub mod dsl;
 mod fly_controls;
 mod headless;

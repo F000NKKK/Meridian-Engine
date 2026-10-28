@@ -13,7 +13,7 @@
 //! All numbers are little-endian. The payloads follow the header
 //! back to back, then the index.
 
-use super::checksum::crc32;
+use super::crc32::crc32;
 use super::header::HEADER_LEN;
 use super::{PACK_MAGIC, PACK_VERSION};
 use crate::pack::PackError;
