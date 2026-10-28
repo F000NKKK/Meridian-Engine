@@ -5,8 +5,8 @@
 Accepted. Gives [ADR 030](030-gltf-static-models-through-an-asset-adapter.md)'s
 "skeleton and animation vocabulary" a home, and answers the open question of
 [ADR 007](007-batch-transforms-via-compute.md) (an `animation-core`). The
-vocabulary and its math (D1 to D4) land first; loading skins from glTF (D5) and
-drawing them (D6) follow in their own changes and amend this ADR as they land.
+vocabulary and its math (D1 to D4) and loading skins from glTF (D5) have landed;
+drawing them (D6) follows in its own change and amends this ADR.
 
 ## Context
 
@@ -58,14 +58,26 @@ clip without owning it, so one clip drives many playbacks. `gac::Rotor` gains
 `from_quaternion`, `to_quaternion` and `slerp`, since quaternions are how glTF
 stores rotations and a rotor is the same thing.
 
-**D5 — what a glTF skin brings (next change).** `asset-domain` gets plain
-decoded data for it, typed by position: per-part joint indices and weights (four
-influences, as glTF's `JOINTS_0`/`WEIGHTS_0`), the skeleton a part is bound to,
-and the model's clips, each channel aimed at a (skeleton, joint) pair. glTF
-says the transform of a skinned mesh's node is ignored, so a skinned part keeps
-its vertices in the skin's space instead of taking the node's world matrix.
-Only joints are animated: animation of other nodes, morph targets and several
-skins per part are not read.
+**D5 — what a glTF skin brings.** `asset-domain` carries it as plain decoded
+data, typed by position, with no dependency on `animation-domain` (the
+application converts, as it does for images): `ModelAsset::skeletons` (one
+`ModelSkeleton` per glTF skin, joints parents first with rest translation,
+rotation, scale and inverse bind matrix, plus the `root` transform above the
+skin), `ModelAsset::clips` (a `ModelClip` per glTF animation that moves a
+joint, each `ModelChannel` aimed at a `(skeleton, joint)` pair with its
+`ModelProperty`, `ModelInterpolation`, times and flat values) and
+`ModelPart::skin` (`PartSkin`: skeleton index and four joints and weights per
+vertex, as `JOINTS_0`/`WEIGHTS_0`). `asset-gltf` reorders each skin's joints
+parents first (glTF lists them in any order) and remaps `JOINTS_0` and
+animation targets to that order; weights are renormalised, and a vertex with
+none follows its first joint. glTF says the transform of a skinned mesh's node
+is ignored, so a skinned part keeps its vertices as authored instead of taking
+the node's world matrix. A `JOINTS_0` index past the skin's joints is
+`GltfError::OutOfBounds`. Only joints are animated: animation of other nodes,
+morph targets and several skins per part are not read, and a skin whose
+roots hang from different parents uses the first root's parent as `root`.
+Sample files (CesiumMan, Fox, BrainStem, RiggedSimple) decode with their
+skeletons and clips.
 
 **D6 — drawing a skin (change after that).** A skinned `Renderable3d` carries
 its joint matrices. The renderer skins on the GPU in a compute pass that writes

@@ -174,6 +174,7 @@ mod tests {
         let model = ModelAsset {
             parts: vec![triangle(ModelMaterial::default())],
             images: Vec::new(),
+            ..ModelAsset::default()
         };
         let mut meshes = MeshRegistry::new();
         let pieces = register(model, &mut meshes, &mut FakeTextureStore::new()).unwrap();
@@ -188,6 +189,7 @@ mod tests {
         let model = ModelAsset {
             parts: vec![triangle(textured(0)), triangle(textured(0))],
             images: vec![EncodedImage { bytes: png_1x1() }],
+            ..ModelAsset::default()
         };
         let pieces = register(
             model,
@@ -213,6 +215,7 @@ mod tests {
         let model = ModelAsset {
             parts: vec![triangle(material), triangle(material)],
             images: vec![EncodedImage { bytes: png_1x1() }],
+            ..ModelAsset::default()
         };
         let pieces = register(
             model,
@@ -243,6 +246,7 @@ mod tests {
         let model = ModelAsset {
             parts: vec![triangle(material)],
             images: vec![EncodedImage { bytes: png_1x1() }],
+            ..ModelAsset::default()
         };
         let pieces = register(
             model,
@@ -266,6 +270,7 @@ mod tests {
             images: vec![EncodedImage {
                 bytes: b"\xff\xd8\xff jpeg".to_vec(),
             }],
+            ..ModelAsset::default()
         };
         let pieces = register(
             model,

@@ -800,8 +800,8 @@ the rest are not started.
    the natural next format, not a bigger OBJ. Static glTF models are done
    ([ADR 030](adr/030-gltf-static-models-through-an-asset-adapter.md)).
    Skeletal animation has its vocabulary and math in `animation-domain`
-   ([ADR 047](adr/047-skeletal-animation-vocabulary.md)); reading skins from
-   glTF and drawing them are the next steps.
+   ([ADR 047](adr/047-skeletal-animation-vocabulary.md)); `asset-gltf` reads
+   skins, joint weights and joint animations; drawing them is the next step.
 
 **Rough sequencing, if picking one order**: (4) (batched physics
 dispatch) is done. (1) and (2) next — they're the two things that make

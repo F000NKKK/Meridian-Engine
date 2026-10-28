@@ -18,7 +18,7 @@ fn triangle_bin() -> Vec<u8> {
     bin
 }
 
-fn glb(json: &str, bin: &[u8]) -> Vec<u8> {
+pub(crate) fn glb(json: &str, bin: &[u8]) -> Vec<u8> {
     fn chunk(kind: [u8; 4], data: &[u8], pad: u8) -> Vec<u8> {
         let mut data = data.to_vec();
         while !data.len().is_multiple_of(4) {

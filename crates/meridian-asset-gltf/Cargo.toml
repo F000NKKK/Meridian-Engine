@@ -5,7 +5,7 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "glTF 2.0 adapter for asset-domain: decodes .glb and self-contained .gltf static models on the gltf crate."
+description = "glTF 2.0 adapter for asset-domain: decodes .glb and self-contained .gltf models, with skins and joint animations, on the gltf crate."
 readme = "README.md"
 
 [dependencies]

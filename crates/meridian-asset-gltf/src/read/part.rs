@@ -2,21 +2,86 @@
 
 use gltf::Primitive;
 use gltf::mesh::{Mode, Semantic};
-use meridian_asset_domain::ModelPart;
+use meridian_asset_domain::{ModelPart, PartSkin};
 
-use crate::{GltfError, material_reader};
+use crate::GltfError;
+use crate::read::material;
+use crate::read::skin::SkinMap;
 
 type Matrix = [[f32; 4]; 4];
 
-/// Reads `primitive` in its own space, then places it with `world`.
+/// Where a primitive goes: placed by its node's `world`, or, when it has a
+/// skin whose joints and weights the primitive carries, bound to it.
+pub(crate) struct Placement<'a> {
+    pub(crate) world: &'a Matrix,
+    pub(crate) skin: Option<&'a SkinMap>,
+}
+
+/// Reads `primitive` in its own space, then places or skins it.
 pub(crate) fn read(
     primitive: &Primitive<'_>,
-    world: &Matrix,
+    placement: &Placement<'_>,
     buffers: &[Vec<u8>],
 ) -> Result<ModelPart, GltfError> {
     let mut part = load(primitive, buffers)?;
-    place(&mut part, world);
+    let skin = match placement.skin {
+        Some(map) => skin_of(primitive, buffers, map, part.positions.len())?,
+        None => None,
+    };
+    if skin.is_some() {
+        part.skin = skin;
+    } else {
+        place(&mut part, placement.world);
+    }
     Ok(part)
+}
+
+/// The four joints and weights per vertex, remapped to the skeleton's joint
+/// order; `None` when the primitive has no `JOINTS_0`/`WEIGHTS_0`.
+fn skin_of(
+    primitive: &Primitive<'_>,
+    buffers: &[Vec<u8>],
+    map: &SkinMap,
+    vertices: usize,
+) -> Result<Option<PartSkin>, GltfError> {
+    let reader = primitive.reader(|buffer| buffers.get(buffer.index()).map(Vec::as_slice));
+    let (Some(joints), Some(weights)) = (reader.read_joints(0), reader.read_weights(0)) else {
+        return Ok(None);
+    };
+    let joints: Vec<[u16; 4]> = joints
+        .into_u16()
+        .map(|four| remap(four, &map.remap))
+        .collect::<Result<_, _>>()?;
+    let weights: Vec<[f32; 4]> = weights.into_f32().map(normalised).collect();
+    if joints.len() != vertices || weights.len() != vertices {
+        return Err(GltfError::OutOfBounds("skin attribute count"));
+    }
+    Ok(Some(PartSkin {
+        skeleton: map.skeleton,
+        joints,
+        weights,
+    }))
+}
+
+fn remap(four: [u16; 4], remap: &[usize]) -> Result<[u16; 4], GltfError> {
+    let mut out = [0u16; 4];
+    for (slot, joint) in out.iter_mut().zip(four) {
+        let sorted = remap
+            .get(usize::from(joint))
+            .ok_or(GltfError::OutOfBounds("joint index"))?;
+        *slot = u16::try_from(*sorted).map_err(|_| GltfError::OutOfBounds("joint index"))?;
+    }
+    Ok(out)
+}
+
+/// `weights` scaled to sum to one; a vertex with none follows its first joint.
+fn normalised(weights: [f32; 4]) -> [f32; 4] {
+    let sum: f32 = weights.iter().sum();
+    if sum > f32::EPSILON {
+        weights.map(|weight| weight / sum)
+    } else {
+        [1.0, 0.0, 0.0, 0.0]
+    }
 }
 
 /// The primitive's attributes and indices, validated, untransformed.
@@ -57,7 +122,8 @@ fn load(primitive: &Primitive<'_>, buffers: &[Vec<u8>]) -> Result<ModelPart, Glt
         normals,
         uvs,
         indices,
-        material: material_reader::read(&primitive.material()),
+        material: material::read(&primitive.material()),
+        skin: None,
     })
 }
 
