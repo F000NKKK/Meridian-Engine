@@ -57,7 +57,7 @@ pub use meridian_compute_wgpu::{CpuComputeDevice, GpuComputeDevice, cpu_context,
 pub use meridian_diagnostics::{EngineError, log_error, log_info, log_warn, logging};
 pub use meridian_diagnostics_fs::{CrashReportConfig, FileLog, FileLogConfig, install_crash_hook};
 // -- meridian-gac: spatial math --
-pub use meridian_gac::{Aabb, Bivector3, Motor3, Projection, Rotor, Vec3};
+pub use meridian_gac::{Aabb, Bivector3, Motor3, Projection, Rotor, Scale3, Vec3};
 // -- meridian-physics-app / -compute: the world state and its steppers --
 pub use meridian_physics_app::{PhysicsStepper, PhysicsSubsystem, SequentialStepper};
 // -- meridian-physics-domain: rigid bodies --

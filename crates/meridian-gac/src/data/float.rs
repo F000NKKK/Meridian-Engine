@@ -7,7 +7,7 @@ use substrate_data::schema::NamedType;
 
 use super::blades::{motor_components, motor_multivector, rotor_components, rotor_multivector};
 use super::{MotorBlades, MotorForm, StoredScalar};
-use crate::{Bivector3, Motor3, Multivector, Rotor, Vec3};
+use crate::{Bivector3, Motor3, Multivector, Rotor, Scale3, Vec3};
 
 impl StoredScalar for Scalar {
     fn same_bits(self, other: Self) -> bool {
@@ -68,7 +68,20 @@ impl NamedType for Motor3 {
     }
 }
 
+impl NamedType for Scale3 {
+    const NAME: &'static str = "scale3";
+    type Stored = [Scalar; 3];
+    fn to_stored(&self) -> [Scalar; 3] {
+        self.components()
+    }
+    /// `None` for a zero, negative or non-finite axis.
+    fn from_stored([x, y, z]: [Scalar; 3]) -> Option<Self> {
+        Scale3::new(x, y, z).ok()
+    }
+}
+
 named_schema!(Vec3);
+named_schema!(Scale3);
 named_schema!(Bivector3);
 named_schema!(Rotor);
 named_schema!(Motor3);

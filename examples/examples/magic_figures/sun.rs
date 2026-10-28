@@ -1,6 +1,8 @@
 //! The sun: its direction, distance and visible disc.
 
-use meridian_sdk::{GraphicsSession, Material, Motor3, Renderable3d, Vec3, icosphere_mesh_source};
+use meridian_sdk::{
+    GraphicsSession, Material, Motor3, Renderable3d, Scale3, Vec3, icosphere_mesh_source,
+};
 
 /// The one directional light's travel direction and the visible "sun"
 /// sphere placed opposite it — see `physic_figures`' identical constants
@@ -32,6 +34,7 @@ pub(crate) fn sun_renderable(base: &mut GraphicsSession) -> Renderable3d {
     let visual_direction = Vec3::new(SUN_DIRECTION.x, -0.5, SUN_DIRECTION.z).normalize();
     let position = visual_direction * -SUN_DISTANCE;
     Renderable3d {
+        scale: Scale3::UNIT,
         mesh,
         material,
         frame: Motor3::translation(position),

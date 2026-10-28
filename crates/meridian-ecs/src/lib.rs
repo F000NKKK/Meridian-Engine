@@ -29,6 +29,7 @@ mod entity;
 mod entity_location;
 mod hierarchy;
 mod query;
+mod scale;
 mod snapshot;
 #[cfg(test)]
 mod tests;

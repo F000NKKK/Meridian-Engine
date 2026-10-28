@@ -1,23 +1,18 @@
 //! An offscreen renderer for tools: an editor viewport and asset thumbnails.
 
 mod binding;
-mod builtin_assets;
 mod camera;
 mod error;
 mod framing;
-mod material_binding;
+mod overlay;
+mod picking;
 mod renderer;
 mod studio;
-mod subject;
 mod thumbnail;
-mod thumbnail_error;
 
-pub use binding::{AssetBinder, TextureSlot, UnboundReference};
-pub use builtin_assets::BuiltinAssets;
+pub use binding::{AssetBinder, BuiltinAssets, TextureSlot, UnboundReference, bind_material};
 pub use camera::EditorCamera;
 pub use error::EditorRendererError;
-pub use material_binding::bind_material;
+pub use overlay::ViewOptions;
 pub use renderer::EditorRenderer;
-pub use subject::ThumbnailSubject;
-pub use thumbnail::THUMBNAIL_RENDERER_VERSION;
-pub use thumbnail_error::ThumbnailError;
+pub use thumbnail::{THUMBNAIL_RENDERER_VERSION, ThumbnailError, ThumbnailSubject};

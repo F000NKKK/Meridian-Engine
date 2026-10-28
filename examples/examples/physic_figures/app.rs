@@ -5,8 +5,8 @@ use std::sync::{Arc, Mutex};
 use meridian_examples::paths::asset_path;
 use meridian_sdk::{
     AppHandler, Camera, Device, FlyCamera, GraphicsSession, InputState, KeyCode, Light, Material,
-    Motor3, RenderStage, Renderable3d, RigidBody, Scene3d, StageId, Vec3, Window, fly_controls,
-    look_at_rotor,
+    Motor3, RenderStage, Renderable3d, RigidBody, Scale3, Scene3d, StageId, Vec3, Window,
+    fly_controls, look_at_rotor,
 };
 
 use crate::{
@@ -89,6 +89,7 @@ fn entity_renderables(entities: &[RenderEntity], bodies: &[RigidBody]) -> Vec<Re
         .iter()
         .zip(bodies.iter())
         .map(|(re, body)| Renderable3d {
+            scale: Scale3::UNIT,
             mesh: re.mesh,
             material: re.material,
             frame: mesh_render_frame(&re.mesh_shape, re.collider, body.frame),

@@ -171,6 +171,8 @@ pub struct Renderable3d {
     pub mesh: MeshHandle,
     pub material: MaterialHandle,
     pub frame: Motor3,
+    /// The scale along the renderable's own axes, applied before `frame`.
+    pub scale: meridian_gac::Scale3,
     /// Re-oriented to face the camera at extraction time — the common
     /// case for a world-space UI billboard or an impostor sprite.
     pub billboard: bool,
@@ -193,6 +195,26 @@ pub struct Renderable3d {
     /// in the order of its targets; targets past the end weigh zero, and a
     /// mesh without targets ignores them.
     pub morph_weights: Vec<f32>,
+}
+
+impl Renderable3d {
+    /// `local_bounds` (a mesh's box) scaled by this renderable's scale, then
+    /// moved by its frame: the box the renderable fills in the world.
+    #[must_use]
+    pub fn world_bounds(&self, local_bounds: &Aabb) -> Aabb {
+        scaled_world_bounds(local_bounds, self.scale, &self.frame)
+    }
+}
+
+/// `bounds` (a mesh's local box) scaled along its axes, then moved by
+/// `frame` into world space; see [`world_space_bounds`].
+#[must_use]
+pub fn scaled_world_bounds(bounds: &Aabb, scale: meridian_gac::Scale3, frame: &Motor3) -> Aabb {
+    let scaled = Aabb {
+        min: scale.apply(bounds.min),
+        max: scale.apply(bounds.max),
+    };
+    world_space_bounds(&scaled, frame)
 }
 
 /// Attaches a [`Renderable3d`] (minus its frame, which comes from the
@@ -354,7 +376,12 @@ pub fn extract_scene3d(world: &World, camera: crate::Camera) -> Scene3d {
             let frame = world
                 .get::<GlobalTransform>(entity)
                 .map_or(transform.motor, |global| global.motor);
+            let scale = world
+                .get::<meridian_gac::Scale3>(entity)
+                .copied()
+                .unwrap_or_default();
             Some(Renderable3d {
+                scale,
                 mesh: renderer.mesh,
                 material: renderer.material,
                 frame,
@@ -435,10 +462,7 @@ pub fn cull_scene3d(
         .renderables
         .iter()
         .filter(|renderable| match mesh_bounds(renderable.mesh) {
-            Some(local_bounds) => {
-                let bounds = world_space_bounds(&local_bounds, &renderable.frame);
-                frustum.intersects(&bounds)
-            }
+            Some(local_bounds) => frustum.intersects(&renderable.world_bounds(&local_bounds)),
             None => true,
         })
         .cloned()
@@ -508,6 +532,7 @@ mod tests {
     #[test]
     fn cull_scene3d_drops_renderables_outside_the_frustum() {
         let ahead = Renderable3d {
+            scale: meridian_gac::Scale3::UNIT,
             mesh: MeshHandle::new(meridian_memory::Handle::default()),
             material: MaterialHandle::new(meridian_memory::Handle::default()),
             frame: Motor3::translation(Vec3::new(10.0, 0.0, 0.0)),
@@ -517,6 +542,7 @@ mod tests {
             morph_weights: Vec::new(),
         };
         let behind = Renderable3d {
+            scale: meridian_gac::Scale3::UNIT,
             mesh: MeshHandle::new(meridian_memory::Handle::default()),
             material: MaterialHandle::new(meridian_memory::Handle::default()),
             frame: Motor3::translation(Vec3::new(-10.0, 0.0, 0.0)),
@@ -543,6 +569,7 @@ mod tests {
     #[test]
     fn cull_scene3d_keeps_renderables_with_unresolvable_bounds() {
         let renderable = Renderable3d {
+            scale: meridian_gac::Scale3::UNIT,
             mesh: MeshHandle::new(meridian_memory::Handle::default()),
             material: MaterialHandle::new(meridian_memory::Handle::default()),
             frame: Motor3::translation(Vec3::new(-10.0, 0.0, 0.0)),

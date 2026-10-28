@@ -1,10 +1,10 @@
 //! Turning a scene's renderables into instanced batches.
 
-use meridian_gac::{Aabb, Motor3, Vec3};
+use meridian_gac::{Aabb, Motor3, Scale3, Vec3};
 use meridian_rendering_domain::scene::{Material, Renderable3d, Scene3d};
 use meridian_rendering_domain::{
     BatchKey, DrawItem, DrawState, JointPalette, MaterialMaps, MeshHandle, MeshSource,
-    TextureHandle, plan_batches, world_space_bounds,
+    TextureHandle, plan_batches, scaled_world_bounds,
 };
 
 use super::batching::BindGroupCache;
@@ -20,6 +20,7 @@ struct Resolved<'a> {
     source: &'a MeshSource,
     material: &'a Material,
     frame: &'a Motor3,
+    scale: Scale3,
     /// The material's textures that are registered.
     maps: MaterialMaps,
     casts_shadow: bool,
@@ -43,6 +44,7 @@ impl<'a> Resolved<'a> {
             source,
             material,
             frame: &renderable.frame,
+            scale: renderable.scale,
             maps: MaterialMaps {
                 albedo: known(material.albedo),
                 metallic_roughness: known(material.metallic_roughness),
@@ -128,15 +130,14 @@ pub(crate) fn bake_batches(
     for planned in plan_batches(&items) {
         let lead = &resolved[planned.members[0]];
         renderer.meshes.ensure(device, lead.mesh, lead.source);
-        let local_bounds = lead.source.bounds();
         let job = pose(device, renderer, lead);
-        for &member in &planned.members {
-            let instance = &resolved[member];
-            push_instance(&mut bytes, instance.frame, instance.material);
-            // A posed mesh leaves its bind-pose box, so it is never culled.
-            let known = local_bounds.filter(|_| job.is_none());
-            bounds.push(known.map(|local| world_space_bounds(&local, instance.frame)));
-        }
+        push_members(
+            &mut bytes,
+            &mut bounds,
+            &resolved,
+            &planned.members,
+            lead.source.bounds().filter(|_| job.is_none()),
+        );
         let count = u32::try_from(planned.members.len()).unwrap_or(u32::MAX);
         batches.push(PreparedBatch {
             mesh: lead.mesh,
@@ -157,6 +158,25 @@ pub(crate) fn bake_batches(
         records: bytes,
         bounds,
         skin_jobs,
+    }
+}
+
+/// Appends the record and the world-space box of each of `members`. A posed
+/// mesh leaves its bind-pose box, so the caller passes `None` for it and it is
+/// never culled.
+fn push_members(
+    bytes: &mut Vec<u8>,
+    bounds: &mut Vec<Option<Aabb>>,
+    resolved: &[Resolved<'_>],
+    members: &[usize],
+    local_bounds: Option<Aabb>,
+) {
+    for &member in members {
+        let instance = &resolved[member];
+        push_instance(bytes, instance.frame, instance.scale, instance.material);
+        bounds.push(
+            local_bounds.map(|local| scaled_world_bounds(&local, instance.scale, instance.frame)),
+        );
     }
 }
 

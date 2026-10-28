@@ -2,7 +2,7 @@
 
 use meridian_rendering_domain::{Material, Scene3d};
 
-/// An asset to preview with [`EditorRenderer::thumbnail`](super::EditorRenderer::thumbnail).
+/// An asset to preview with [`EditorRenderer::thumbnail`](crate::editor_renderer::EditorRenderer::thumbnail).
 #[derive(Debug, Clone)]
 pub enum ThumbnailSubject {
     /// The glTF model at this path (`.glb`, or `.gltf` with its files beside it), at rest.

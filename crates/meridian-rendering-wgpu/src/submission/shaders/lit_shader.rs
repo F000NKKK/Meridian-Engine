@@ -247,7 +247,8 @@ fn vs_main(in: VertexInput) -> VertexOutput {
     var out: VertexOutput;
     let model = mat4x4<f32>(in.model_0, in.model_1, in.model_2, in.model_3);
     let world = model * vec4<f32>(in.position, 1.0);
-    let world_normal = (model * vec4<f32>(in.normal, 0.0)).xyz;
+    // The inverse transpose of a rotation times a per-axis scale: each axis column over its squared length.
+    let world_normal = in.model_0.xyz * (in.normal.x / dot(in.model_0.xyz, in.model_0.xyz)) + in.model_1.xyz * (in.normal.y / dot(in.model_1.xyz, in.model_1.xyz)) + in.model_2.xyz * (in.normal.z / dot(in.model_2.xyz, in.model_2.xyz));
     out.clip_position = u.view_proj * world;
     out.world_position = world.xyz;
     out.world_normal = world_normal;
@@ -355,7 +356,11 @@ fn vs_main(in: VertexInput) -> VertexOutput {
     var out: VertexOutput;
     let model = mat4x4<f32>(in.model_0, in.model_1, in.model_2, in.model_3);
     let world = model * vec4<f32>(in.position, 1.0);
-    let world_normal = (model * vec4<f32>(in.normal, 0.0)).xyz;
+    // The inverse transpose of the model's upper 3x3 for a rotation times a
+    // per-axis scale: each axis column divided by its squared length.
+    let world_normal = in.model_0.xyz * (in.normal.x / dot(in.model_0.xyz, in.model_0.xyz))
+        + in.model_1.xyz * (in.normal.y / dot(in.model_1.xyz, in.model_1.xyz))
+        + in.model_2.xyz * (in.normal.z / dot(in.model_2.xyz, in.model_2.xyz));
     out.clip_position = u.view_proj * world;
     out.world_position = world.xyz;
     out.world_normal = world_normal;

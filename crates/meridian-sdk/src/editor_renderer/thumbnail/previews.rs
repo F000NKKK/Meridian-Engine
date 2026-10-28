@@ -1,15 +1,14 @@
 //! Previews of single assets: a material on a sphere, a mesh, a model, a scene.
 
 use meridian_asset_domain::MaterialAsset;
-use meridian_gac::Motor3;
+use meridian_gac::{Motor3, Scale3};
 use meridian_rendering_domain::{
     Material, MaterialHandle, MeshHandle, Renderable3d, Scene3d, icosphere_mesh_source,
 };
 
-use super::framing::bounding_sphere;
-use super::{
-    AssetBinder, EditorCamera, EditorRenderer, ThumbnailError, ThumbnailSubject, bind_material,
-};
+use super::{ThumbnailError, ThumbnailSubject};
+use crate::editor_renderer::framing::bounding_sphere;
+use crate::editor_renderer::{AssetBinder, EditorCamera, EditorRenderer, bind_material};
 
 /// Bumped whenever a thumbnail would look different for the same asset, so a
 /// cache keyed with it drops its old images.
@@ -126,6 +125,7 @@ impl EditorRenderer {
 
 fn still(mesh: MeshHandle, material: MaterialHandle) -> Renderable3d {
     Renderable3d {
+        scale: Scale3::UNIT,
         mesh,
         material,
         frame: Motor3::identity(),

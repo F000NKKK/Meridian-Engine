@@ -40,6 +40,7 @@ pub mod motor;
 pub mod multivector;
 pub mod projection;
 pub mod rotor;
+pub mod scale;
 pub mod vector;
 pub mod volume;
 
@@ -64,6 +65,7 @@ pub use multivector::float::*;
 pub use projection::float::*;
 pub use rotor::fixed::*;
 pub use rotor::float::*;
+pub use scale::{Scale3, ScaleError};
 pub use vector::fixed::*;
 pub use vector::float::*;
 pub use volume::Shape;

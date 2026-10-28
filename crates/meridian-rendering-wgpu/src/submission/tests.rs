@@ -1,6 +1,6 @@
 //! Tests of the submission adapter.
 
-use meridian_gac::{Motor3, Vec3};
+use meridian_gac::{Motor3, Scale3, Vec3};
 use meridian_rendering_domain::scene::{Light, Material};
 use meridian_rendering_domain::{
     Camera, MAX_LOCAL_SHADOWS, ShadowCascades, ShadowLight, ViewUniforms,
@@ -182,7 +182,7 @@ fn an_instance_record_fills_its_layout_and_carries_matrix_and_surface() {
     };
     let frame = Motor3::translation(Vec3::new(1.0, 2.0, 3.0));
     let mut bytes = Vec::new();
-    push_instance(&mut bytes, &frame, &material);
+    push_instance(&mut bytes, &frame, Scale3::UNIT, &material);
 
     assert_eq!(
         u64::try_from(bytes.len()).unwrap(),
@@ -221,7 +221,7 @@ fn a_mapped_emissive_goes_to_its_own_slot_and_bloom_reads_none() {
         ..Material::default()
     };
     let mut bytes = Vec::new();
-    push_instance(&mut bytes, &Motor3::identity(), &material);
+    push_instance(&mut bytes, &Motor3::identity(), Scale3::UNIT, &material);
     let float =
         |index: usize| f32::from_le_bytes(bytes[index * 4..index * 4 + 4].try_into().unwrap());
     assert_eq!(

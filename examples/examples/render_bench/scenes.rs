@@ -10,7 +10,7 @@ use std::sync::Arc;
 use meridian_sdk::assets::{AnimationPlayer, JointPalette, ModelPiece, ModelRig};
 use meridian_sdk::{
     Background, EnvironmentMap, FrameRecorder, GraphicsSession, Light, Material, Motor3,
-    Renderable3d, Rotor, Scene3d, Sky, Vec3, cube_mesh_source, ground_mesh_source,
+    Renderable3d, Rotor, Scale3, Scene3d, Sky, Vec3, cube_mesh_source, ground_mesh_source,
     icosphere_mesh_source, look_at_rotor,
 };
 
@@ -139,6 +139,7 @@ fn renderable(
     frame: Motor3,
 ) -> Renderable3d {
     Renderable3d {
+        scale: Scale3::UNIT,
         mesh,
         material,
         frame,

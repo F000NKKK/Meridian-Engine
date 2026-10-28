@@ -2,7 +2,7 @@
 //! an always-on-top marker.
 
 use meridian_sdk::{
-    BlendMode, GraphicsSession, Material, Motor3, Renderable3d, Vec3, cube_mesh_source,
+    BlendMode, GraphicsSession, Material, Motor3, Renderable3d, Scale3, Vec3, cube_mesh_source,
     icosphere_mesh_source,
 };
 
@@ -76,6 +76,7 @@ fn post_ring(base: &mut GraphicsSession) -> Vec<Renderable3d> {
         .map(|index| {
             let angle = f32::from(index) / f32::from(POST_COUNT) * std::f32::consts::TAU;
             Renderable3d {
+                scale: Scale3::UNIT,
                 mesh,
                 material,
                 frame: Motor3::translation(Vec3::new(angle.cos() * 5.0, 0.12, angle.sin() * 5.0)),
@@ -100,6 +101,7 @@ fn sphere(
         .register(icosphere_mesh_source(2, radius))
         .expect("sphere mesh must be valid");
     Renderable3d {
+        scale: Scale3::UNIT,
         mesh,
         material: base.render.materials.register(material),
         frame: Motor3::translation(position),

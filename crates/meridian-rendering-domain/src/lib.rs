@@ -47,7 +47,7 @@ pub use render_pass::RenderPass;
 pub use scene::{
     BlendMode, Camera2d, FrameScene, Light, Material, MaterialHandle, Mesh, MeshRenderer,
     Renderable3d, Scene2d, Scene3d, Sprite, View, cull_scene3d, extract_scene3d,
-    world_space_bounds,
+    scaled_world_bounds, world_space_bounds,
 };
 pub use shader_handle::{ShaderHandle, ShaderMarker};
 pub use shapes::{
