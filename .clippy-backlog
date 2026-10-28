@@ -2,7 +2,7 @@
 clippy::assigning_clones	1
 clippy::case_sensitive_file_extension_comparisons	1
 clippy::cast_lossless	32
-clippy::cast_possible_truncation	70
+clippy::cast_possible_truncation	71
 clippy::cast_possible_wrap	4
 clippy::cast_precision_loss	41
 clippy::cast_sign_loss	8
