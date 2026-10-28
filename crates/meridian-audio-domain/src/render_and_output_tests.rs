@@ -123,12 +123,12 @@ fn pan_into_is_constant_power_around_the_whole_ring() {
 }
 
 #[test]
-fn non_finite_emitter_position_yields_finite_or_silent_output_without_panicking() {
+fn non_finite_emitter_position_renders_silence() {
     let mixer = Mixer::new(SpeakerLayout::surround_5_1());
     let source = [1.0f32];
     let emitter = emitter_at(Vec3::new(f32::NAN, 0.0, 0.0));
 
     let out = mixer.render_interleaved(&listener(), &[(emitter, &source)], 1);
 
-    assert_eq!(out.len(), 6);
+    assert_eq!(out, vec![0.0; 6]);
 }

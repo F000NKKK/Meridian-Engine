@@ -66,9 +66,7 @@ Not started; ordered by suggested priority. Items wait for an explicit task.
    `BinauralRenderer::render_into`; the allocating forms wrap them.
 2. ~~Verify the NaN fix~~ — done: a test drives a NaN emitter position
    through the mixer.
-3. **`docs/audio-design.md`.** Listener-local axes, VBAP edge rules,
-   binaural model, latency/ring sizing exist only in module docs and the
-   roadmap. Write it and link from `architecture.md`.
+3. ~~`docs/audio-design.md`~~ — done: [audio-design.md](../audio-design.md).
 4. ~~Emitter playback state~~ — done: `Voice` (+ `SampleSource`,
    `MemorySource`, `PlaybackState`) in `audio-domain`, `AudioScene` in
    `audio-app`, `StreamSink` (a `Send` handle to the cpal ring) in

@@ -161,7 +161,7 @@ implement them. A few edges still point outwards and only shrink
 - [`docs/dependency-rules.md`](docs/dependency-rules.md): which crate may depend on which
 - [`docs/context-map.md`](docs/context-map.md), [`docs/glossary.md`](docs/glossary.md): bounded contexts and their words
 - [`docs/roadmap.md`](docs/roadmap.md): current state and implementation order
-- Subsystem design: [GAC](docs/gac-design.md), [ECS](docs/ecs-design.md), [graphics](docs/graphics-design.md), [physics](docs/physics-design.md), [memory](docs/memory-model.md), [threading](docs/threading-model.md)
+- Subsystem design: [GAC](docs/gac-design.md), [ECS](docs/ecs-design.md), [graphics](docs/graphics-design.md), [physics](docs/physics-design.md), [audio](docs/audio-design.md), [memory](docs/memory-model.md), [threading](docs/threading-model.md)
 - Decisions: [`docs/adr/`](docs/adr/), notably [ADR 019](docs/adr/019-ports-in-domain-drivers-as-adapters.md) (ports in the domain, drivers as adapters) and [ADR 020](docs/adr/020-craftbook-adoption.md) (Craftbook adoption)
 
 ## 🛠️ Development

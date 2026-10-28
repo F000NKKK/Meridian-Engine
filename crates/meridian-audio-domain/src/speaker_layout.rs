@@ -122,9 +122,13 @@ impl SpeakerLayout {
 
     /// [`pan`](Self::pan) without allocating: writes the gain of
     /// `self.speakers[i]` into `gains[i]` (every slot is overwritten; a
-    /// slice shorter than the layout receives only the leading speakers).
+    /// slice shorter than the layout receives only the leading speakers). A
+    /// non-finite azimuth yields silence rather than NaN gains.
     pub fn pan_into(&self, azimuth_degrees: f32, gains: &mut [f32]) {
         gains.fill(0.0);
+        if !azimuth_degrees.is_finite() {
+            return;
+        }
         let Some(extent) = self.directional_extent() else {
             return;
         };
