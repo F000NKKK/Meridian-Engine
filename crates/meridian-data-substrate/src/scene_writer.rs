@@ -1,7 +1,7 @@
 //! [`SceneWriter`]: a scene's entities as `.mscene` text.
 
 use meridian_ecs::World;
-use substrate_data::{Id, Map, Schema, Value, text};
+use substrate_data::{Id, Map, Schema, Value, binary, text};
 
 use crate::document_keys::{COMPONENTS, ENTITIES, FORMAT_KEY, ID, NAME, PARENT, PREFAB};
 use crate::{
@@ -32,6 +32,18 @@ impl<'a> SceneWriter<'a> {
 
     /// The document, as text.
     pub(crate) fn text(&self) -> String {
+        text::to_string_pretty(&self.document())
+    }
+
+    /// The document, in the `SDAT` binary form: the canonical encoding of
+    /// its value, so lists of numbers are packed and entities (maps of one
+    /// shape) share their keys.
+    pub(crate) fn bytes(&self) -> Vec<u8> {
+        binary::encode(&self.document())
+    }
+
+    /// The document, as a value.
+    pub(crate) fn document(&self) -> Value {
         let mut doc = Map::new();
         doc.insert(FORMAT_KEY, Value::Int(i64::from(FORMAT)));
         if let Some(name) = self.scene.name() {
@@ -46,7 +58,7 @@ impl<'a> SceneWriter<'a> {
             ENTITIES,
             Value::List(alive.map(|e| self.entity(e)).collect()),
         );
-        text::to_string_pretty(&Value::Map(doc))
+        Value::Map(doc)
     }
 
     fn entity(&self, e: &SceneEntity) -> Value {

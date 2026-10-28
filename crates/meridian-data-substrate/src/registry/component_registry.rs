@@ -4,14 +4,12 @@ use std::any::TypeId;
 use std::collections::HashMap;
 use std::fmt;
 
-use meridian_ecs::{Component, World};
+use meridian_ecs::Component;
+use substrate_data::Schema;
 use substrate_data::with::{Plain, With};
-use substrate_data::{Resolve, Schema};
 
 use super::{ComponentShape, Entry, RegisterError, UnknownComponents};
-use crate::load::{DocumentReader, LoadError};
-use crate::scene_writer::SceneWriter;
-use crate::{ComponentName, SceneMap};
+use crate::ComponentName;
 
 /// The components a scene may hold, by name and by type.
 ///
@@ -65,27 +63,6 @@ impl ComponentRegistry {
             shape: (e.shape)().describe(),
         };
         self.entries.iter().map(describe).collect()
-    }
-
-    /// Reads `.mscene` `text` into `world`; see `DocumentReader` for the rules.
-    ///
-    /// # Errors
-    ///
-    /// [`LoadError`] with every problem in the document, placed; nothing is
-    /// spawned then.
-    pub fn load_scene(
-        &self,
-        text: &str,
-        world: &mut World,
-        resolver: &mut dyn Resolve,
-    ) -> Result<SceneMap, LoadError> {
-        DocumentReader::load(self, text, world, resolver)
-    }
-
-    /// `world`'s entities listed in `scene`, as `.mscene` text.
-    #[must_use]
-    pub fn save_scene(&self, world: &World, scene: &SceneMap) -> String {
-        SceneWriter::new(self, world, scene).text()
     }
 
     pub(crate) fn entry(&self, name: &ComponentName) -> Option<&Entry> {

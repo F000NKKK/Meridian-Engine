@@ -7,6 +7,7 @@ mod component_registry;
 mod component_shape;
 mod entry;
 mod register_error;
+mod scene_loading;
 mod unknown_components;
 
 pub use component_edit_error::ComponentEditError;

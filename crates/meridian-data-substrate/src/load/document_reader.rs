@@ -2,22 +2,21 @@
 
 use std::collections::HashMap;
 
-use meridian_ecs::World;
 use substrate_data::schema::is_metadata_key;
-use substrate_data::{
-    Bump, Diagnostic, Doc, Expected, Id, MapRef, Path, Reader, Resolve, Seg, ValueRef, text,
-};
+use substrate_data::{Expected, Id, MapRef, Path, Reader, Resolve, Seg, ValueRef};
 
+use super::SceneProblem;
 use super::document_draft::DocumentDraft;
 use super::document_resolver::DocumentResolver;
+use super::finding::Finding;
 use super::pending_entity::{ComponentsDraft, PendingEntity};
-use super::{LoadError, SceneIssue, SceneProblem};
+use super::reading::Reading;
 use crate::document_keys::{
     COMPONENTS, DOCUMENT, ENTITIES, ENTITY, FORMAT_KEY, ID, NAME, PARENT, PREFAB,
 };
 use crate::{
     ComponentName, ComponentRegistry, DisplayName, EntityKey, EntityKind, FORMAT, KeptComponent,
-    PrefabKind, SceneMap, UnknownComponents,
+    PrefabKind, UnknownComponents,
 };
 
 /// Reads an `.mscene` document against a registry, collecting every
@@ -29,52 +28,31 @@ pub(crate) struct DocumentReader<'r> {
     first_at: HashMap<EntityKey, usize>,
 }
 
-/// A problem found here, where it is, and whether at its key.
-struct Finding {
-    problem: SceneProblem,
-    path: Path,
-    on_key: bool,
-}
-
 impl<'r> DocumentReader<'r> {
-    /// Reads `text` into `world`: one entity per document entity, with its
-    /// registered components. `@entity:` references resolve within the
-    /// document, every other kind through `resolver`. All or nothing.
-    pub(crate) fn load(
+    /// Reads the document `root`: one draft entity per document entity,
+    /// with its registered components. `@entity:` references resolve within
+    /// the document, every other kind through `resolver`. Nothing is
+    /// spawned: the draft is all or nothing.
+    pub(crate) fn read(
         registry: &'r ComponentRegistry,
-        text: &str,
-        world: &mut World,
+        root: &ValueRef<'_>,
         resolver: &mut dyn Resolve,
-    ) -> Result<SceneMap, LoadError> {
-        let doc = text::parse(text).map_err(LoadError::syntax)?;
-        let arena = Bump::new();
-        let root = doc.value.borrow(&arena);
-        let mut resolver = DocumentResolver::new(&root, resolver);
+    ) -> Reading {
+        let mut resolver = DocumentResolver::new(root, resolver);
         let mut cx = Reader::with_resolver(&mut resolver);
         let mut reader = DocumentReader {
             registry,
             findings: Vec::new(),
             first_at: HashMap::new(),
         };
-        let draft = reader.read_document(&root, &mut cx);
+        let draft = reader.read_document(root, &mut cx);
         let problems = std::mem::take(&mut cx.problems);
-        match draft {
-            Some(draft) if problems.is_empty() && reader.findings.is_empty() => {
-                Ok(draft.spawn(world))
-            }
-            _ => Err(reader.error(problems, (text, &doc))),
+        let clean = problems.is_empty() && reader.findings.is_empty();
+        Reading {
+            draft: draft.filter(|_| clean),
+            problems,
+            findings: reader.findings,
         }
-    }
-
-    /// Every problem, placed.
-    fn error(self, problems: Vec<Diagnostic>, source: (&str, &Doc)) -> LoadError {
-        let data = problems
-            .into_iter()
-            .map(|d| substrate_data::placed(source.0, source.1, d));
-        let mut issues: Vec<SceneIssue> = data.map(SceneIssue::of_diagnostic).collect();
-        let found = self.findings.into_iter();
-        issues.extend(found.map(|f| SceneIssue::placed(f.problem, f.path, f.on_key, source)));
-        LoadError::new(issues)
     }
 
     fn find(&mut self, problem: SceneProblem, path: Path, on_key: bool) {
