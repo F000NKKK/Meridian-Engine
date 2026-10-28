@@ -94,6 +94,7 @@ fn entity_renderables(entities: &[RenderEntity], bodies: &[RigidBody]) -> Vec<Re
             frame: mesh_render_frame(&re.mesh_shape, re.collider, body.frame),
             billboard: false,
             casts_shadow: true,
+            palette: None,
         })
         .collect()
 }

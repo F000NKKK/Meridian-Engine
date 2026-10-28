@@ -12,6 +12,18 @@ pub struct CommandBuffer<'a> {
 }
 
 impl<'a> CommandBuffer<'a> {
+    /// Records a compute dispatch of `workgroups` workgroups against
+    /// `bind_group` (see [`Device::create_compute_bind_group`](crate::Device::create_compute_bind_group)).
+    pub fn dispatch_compute(
+        &mut self,
+        pipeline: &meridian_gpu_wgpu::ComputePipeline,
+        bind_group: &meridian_gpu_wgpu::BindGroup,
+        workgroups: u32,
+    ) {
+        self.inner
+            .dispatch_compute_with_bind_group(pipeline, bind_group, workgroups);
+    }
+
     /// Opens a render pass targeting `color_target` (typically a
     /// [`SurfaceFrame::view`](crate::SurfaceFrame::view)), cleared to `clear_color` (RGBA, `0.0..=1.0`)
     /// before anything is drawn, with an optional `depth` attachment

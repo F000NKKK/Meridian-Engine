@@ -6,7 +6,7 @@ use std::sync::Arc;
 use meridian_rendering_domain::{DrawState, MeshHandle, TextureHandle};
 
 use super::main_pipelines::PipelineKey;
-use crate::BindGroup;
+use crate::{BindGroup, Buffer};
 
 /// Which pipeline family draws a batch.
 #[derive(Debug, Clone)]
@@ -33,6 +33,9 @@ pub struct PreparedBatch {
     pub(crate) emissive_map: Option<TextureHandle>,
     /// This batch's records in the scene's instance buffer.
     pub(crate) instances: Range<u32>,
+    /// Vertices to draw instead of the mesh's own: a skinned instance's
+    /// posed copy (ADR 047).
+    pub(crate) vertices: Option<Arc<Buffer>>,
 }
 
 impl PreparedBatch {
@@ -78,6 +81,7 @@ mod tests {
             casts_shadow: true,
             emissive_map: None,
             instances: 0..1,
+            vertices: None,
         }
     }
 

@@ -313,6 +313,11 @@ to = "compute"
 relation = "customer-supplier"
 
 [[context_edge]]
+from = "runtime"
+to = "animation"
+relation = "customer-supplier"
+
+[[context_edge]]
 from = "scene-markup"
 to = "runtime"
 relation = "acl"

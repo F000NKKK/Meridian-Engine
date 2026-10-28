@@ -84,7 +84,7 @@ Not started; ordered by suggested priority. Items wait for an explicit task.
    decoder adapter `meridian-asset-gltf`, `AssetCache::load_model_gltf`.
    JPEG textures (`meridian-asset-jpeg`), external-file `.gltf` and `u32`
    mesh indices are done; checked on Khronos DamagedHelmet, Duck and Sponza
-   with the `gltf_viewer` example. Follow-ups: skins and animation.
+   with the `gltf_viewer` example. Skins and animation: item 23.
 9. **Metallic-roughness materials — done (2026-10-28).**
    [ADR 032](../adr/032-metallic-roughness-materials.md): `roughness`/`metallic`
    factors, the glTF metallic-roughness map (linear upload), GGX shading.
@@ -106,7 +106,7 @@ Not started; ordered by suggested priority. Items wait for an explicit task.
 20. Specular and horizon occlusion: [ADR 044](../adr/044-specular-and-horizon-occlusion.md).
 21. Spot lights and their shadows: [ADR 045](../adr/045-spot-lights-and-their-shadows.md).
 22. Main-pass frustum culling and bind-group reuse: [ADR 046](../adr/046-main-pass-culling-and-bind-group-reuse.md).
-23. Skeletal animation vocabulary ([ADR 047](../adr/047-skeletal-animation-vocabulary.md)): `animation-domain`, then glTF skins, then GPU skinning.
+23. Skeletal animation vocabulary ([ADR 047](../adr/047-skeletal-animation-vocabulary.md)): `animation-domain`, glTF skins, GPU skinning and clip playback in `gltf_viewer` (done).
 24. **Larger, ADR-gated:** concrete backend crates.
 
 ## Standards gaps

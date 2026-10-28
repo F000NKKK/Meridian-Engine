@@ -82,5 +82,6 @@ pub fn cube_mesh_source(half_extent: f32) -> MeshSource {
         normals,
         uvs,
         indices,
+        skin: None,
     }
 }

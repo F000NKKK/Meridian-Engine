@@ -10,6 +10,7 @@ use super::environment::GpuEnvironment;
 use super::main_pipelines::{MainBindings, MainPipelines};
 use super::mesh_cache::MeshCache;
 use super::registries::NeutralTextures;
+use super::skinning::SkinPipeline;
 use super::{
     ATLAS_COLUMNS, ATLAS_ROWS, CascadeCasters, DrawKind, LIT_UNIFORM_BYTES, MAX_LIGHTS,
     PreparedBatch, PreparedScene, SceneAssets, ShadowDepthPass, bake_batches, face_tile,
@@ -53,6 +54,8 @@ pub struct SceneRenderer {
     /// The environment lit surfaces are lit with (ADR 035), or a stand-in.
     pub(crate) environment: GpuEnvironment,
     shadow_depth: ShadowDepthPass,
+    /// Poses skinned meshes before the passes draw them (ADR 047).
+    pub(crate) skinning: SkinPipeline,
 }
 
 /// [`SceneRenderer::new`]'s default shadow resolution: texels along one side
@@ -124,6 +127,7 @@ impl SceneRenderer {
             neutral: NeutralTextures::new(device),
             environment,
             shadow_depth,
+            skinning: SkinPipeline::new(device),
         };
 
         renderer.clear_shadow_map(device);
@@ -233,6 +237,9 @@ impl SceneRenderer {
         }
         let frusta: Vec<Frustum> = tiles.iter().map(|tile| tile.frustum.clone()).collect();
         let baked = bake_batches(device, self, scene, assets);
+        for job in &baked.skin_jobs {
+            commands.dispatch_compute(self.skinning.pipeline(), &job.bind_group, job.workgroups);
+        }
         let casters = CascadeCasters::cull(&baked.batches, &baked.records, &baked.bounds, &frusta);
         let indices: Vec<usize> = tiles.iter().map(|tile| tile.index).collect();
         let draws = TileDraws {
@@ -327,7 +334,7 @@ impl SceneRenderer {
         let Some(mesh) = self.meshes.get(batch.mesh) else {
             return;
         };
-        pass.set_vertex_buffer(0, &mesh.vertex_buffer);
+        pass.set_vertex_buffer(0, batch.vertices.as_deref().unwrap_or(&mesh.vertex_buffer));
         pass.set_vertex_buffer(1, instances);
         pass.set_index_buffer_u32(&mesh.index_buffer);
         pass.draw_indexed_instanced(0..mesh.index_count, range);

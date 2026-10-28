@@ -82,6 +82,7 @@ mod tests {
             casts_shadow: true,
             emissive_map: None,
             instances,
+            vertices: None,
         }
     }
 

@@ -26,6 +26,7 @@ mod scene_assets;
 mod scene_renderer;
 mod shaders;
 mod shadows;
+mod skinning;
 mod submit_scene3d;
 #[cfg(test)]
 mod tests;

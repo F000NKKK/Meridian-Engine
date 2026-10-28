@@ -53,7 +53,7 @@ dependencies need one of these:
 | compute → platform | customer–supplier | GPU/CPU capability report |
 | audio → platform | customer–supplier | capability report |
 | physics → platform | customer–supplier | `CpuCapabilities` (`platform-winit`) |
-| runtime → physics, audio, rendering, platform, assets, compute, diagnostics | customer–supplier | each context's published API, called by runtime use cases |
+| runtime → physics, audio, rendering, animation, platform, assets, compute, diagnostics | customer–supplier | each context's published API, called by runtime use cases |
 | ui → text | customer–supplier | `ui-scene2d` measures and draws text through `text-domain` faces and the glyph atlas (ADR 023) |
 | ui → rendering | customer–supplier | `ui-scene2d` extracts the UI tree into `rendering-domain::Scene2d` (ADR 021) |
 | editor → data | customer–supplier | the protocol carries scene documents and entity refs |

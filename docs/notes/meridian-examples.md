@@ -47,7 +47,9 @@ Loads the glTF model named on the command line through
 model part, a directional sun and a sky ambient, and a camera orbiting the
 model's bounding sphere. The second argument is the camera distance in radii;
 below 1 the camera is inside the bounds, which is how Sponza is viewed.
-The models are not part of the repository (Khronos glTF-Sample-Assets).
+A skinned model plays its first animation (`MERIDIAN_ANIMATION=<n>` picks
+another), posed by the renderer's skinning kernel (ADR 047). The models are not
+part of the repository (Khronos glTF-Sample-Assets).
 
 Run with:
 ./build.sh run gltf_viewer -- path/to/model.glb

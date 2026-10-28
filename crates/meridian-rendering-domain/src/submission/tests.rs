@@ -3,6 +3,7 @@
 use meridian_gac::Vec3;
 
 use super::*;
+use crate::VertexSkin;
 use crate::scene::Material;
 
 fn triangle() -> MeshSource {
@@ -11,6 +12,7 @@ fn triangle() -> MeshSource {
         normals: vec![[0.0, 0.0, 1.0]; 3],
         uvs: vec![[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]],
         indices: vec![0, 1, 2],
+        skin: None,
     }
 }
 
@@ -87,6 +89,7 @@ fn mesh_registry_takes_meshes_beyond_the_u16_vertex_range() {
         normals: vec![[0.0, 0.0, 1.0]; count],
         uvs: vec![[0.0, 0.0]; count],
         indices: vec![0, 1, u32::try_from(count - 1).unwrap()],
+        skin: None,
     };
     assert!(registry.register(source).is_ok());
 }
@@ -231,6 +234,7 @@ fn key(mesh: crate::MeshHandle, state: DrawState) -> BatchKey {
         lit: true,
         state,
         casts_shadow: true,
+        own: None,
     }
 }
 
@@ -311,4 +315,38 @@ fn batches_follow_the_draw_state_order() {
 #[test]
 fn no_items_plan_no_batches() {
     assert!(plan_batches(&[]).is_empty());
+}
+
+#[test]
+fn posed_instances_of_one_mesh_each_get_their_own_batch() {
+    let (a, _) = mesh_handles();
+    let item = |own| DrawItem {
+        key: BatchKey {
+            own,
+            ..key(a, DrawState::Opaque)
+        },
+        distance_squared: 1.0,
+    };
+    let batches = plan_batches(&[item(Some(0)), item(Some(1)), item(None), item(None)]);
+    assert_eq!(batches.len(), 3);
+    assert!(batches.iter().any(|batch| batch.members == vec![2, 3]));
+}
+
+#[test]
+fn a_skin_must_give_every_vertex_joints_and_weights() {
+    let skin = |joints: usize, weights: usize| MeshSource {
+        skin: Some(VertexSkin {
+            joints: vec![[0; 4]; joints],
+            weights: vec![[1.0, 0.0, 0.0, 0.0]; weights],
+        }),
+        ..triangle()
+    };
+    let mut registry = MeshRegistry::new();
+    assert!(registry.register(skin(3, 3)).is_ok());
+    for (joints, weights) in [(2, 3), (3, 2), (0, 0)] {
+        assert!(matches!(
+            registry.register(skin(joints, weights)),
+            Err(MeshRegistryError::SkinCountMismatch { positions: 3, .. })
+        ));
+    }
 }
