@@ -7,10 +7,7 @@ use meridian_rendering_app::{FrameRecorder, RenderSession};
 use meridian_rendering_domain::{MeshHandle, TextureHandle};
 use meridian_rendering_wgpu::{Device, GpuFrameRecorder, Surface};
 
-mod environment_loading;
-
-use self::environment_loading::load_environment_map;
-use crate::assets::AssetCache;
+use crate::assets::{AssetCache, load_environment_map};
 use crate::model_loading::ModelPiece;
 
 /// What a windowed application builds once: a [`RenderSession`] over the wgpu
