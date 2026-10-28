@@ -3,7 +3,9 @@
 use core::ops::Range;
 
 use meridian_rendering_domain::scene::Scene3d;
-use meridian_rendering_domain::{EnvironmentMap, Frustum, LocalShadow, ShadowLight, ViewUniforms};
+use meridian_rendering_domain::{
+    EnvironmentMap, Frustum, LocalShadow, MeshRegistry, ShadowLight, ViewUniforms,
+};
 
 use super::batching::VisibleBatches;
 use super::environment::GpuEnvironment;
@@ -254,6 +256,14 @@ impl SceneRenderer {
             batches: visible.batches,
             shadow,
         }
+    }
+
+    /// Readies the renderer to bake a scene: drops the GPU copies of meshes
+    /// that are no longer registered and starts the frame's skinned
+    /// instances over (ADR 047).
+    pub(crate) fn begin_bake(&mut self, registry: &MeshRegistry) {
+        self.meshes.retain_registered(registry);
+        self.skinning.begin_frame();
     }
 
     /// Records the depth-only pass: each cascade draws only the casters that

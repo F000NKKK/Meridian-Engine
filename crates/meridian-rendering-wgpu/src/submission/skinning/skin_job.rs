@@ -8,7 +8,7 @@ use crate::{BindGroup, Buffer};
 /// instance's batch then draws instead of the mesh's own vertices.
 #[derive(Debug)]
 pub(crate) struct SkinJob {
-    pub(crate) bind_group: BindGroup,
+    pub(crate) bind_group: Arc<BindGroup>,
     pub(crate) workgroups: u32,
     pub(crate) posed: Arc<Buffer>,
 }
