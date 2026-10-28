@@ -1,6 +1,6 @@
 //! Command recording.
 
-use crate::{DepthTexture, RenderPass};
+use crate::{DepthTexture, PassProfiler, RenderPass};
 
 /// A recorded, submittable sequence of GPU commands. Wraps
 /// [`meridian_gpu_wgpu::CommandBuffer`], adding
@@ -9,9 +9,40 @@ use crate::{DepthTexture, RenderPass};
 #[derive(Debug)]
 pub struct CommandBuffer<'a> {
     pub(crate) inner: meridian_gpu_wgpu::CommandBuffer<'a>,
+    profiler: Option<&'a PassProfiler>,
+    next_label: Option<&'static str>,
 }
 
 impl<'a> CommandBuffer<'a> {
+    pub(crate) fn new(inner: meridian_gpu_wgpu::CommandBuffer<'a>) -> Self {
+        Self {
+            inner,
+            profiler: None,
+            next_label: None,
+        }
+    }
+
+    /// Times every pass recorded from now on with `profiler`.
+    #[must_use]
+    pub fn with_profiler(mut self, profiler: Option<&'a PassProfiler>) -> Self {
+        self.profiler = profiler;
+        self
+    }
+
+    /// Names the next pass in the profiler's report; a pass opened without a
+    /// name is reported under its kind.
+    pub fn label_next_pass(&mut self, label: &'static str) {
+        self.next_label = Some(label);
+    }
+
+    fn timestamp_writes(
+        &mut self,
+        kind: &'static str,
+    ) -> Option<wgpu::RenderPassTimestampWrites<'a>> {
+        let label = self.next_label.take().unwrap_or(kind);
+        self.profiler?.claim(label)
+    }
+
     /// Records a compute dispatch of `workgroups` workgroups against
     /// `bind_group` (see [`Device::create_compute_bind_group`](crate::Device::create_compute_bind_group)).
     pub fn dispatch_compute(
@@ -39,6 +70,7 @@ impl<'a> CommandBuffer<'a> {
         depth: Option<&'pass DepthTexture>,
     ) -> RenderPass<'pass> {
         let [r, g, b, a] = clear_color;
+        let timestamp_writes = self.timestamp_writes("colour pass");
         let raw = self
             .inner
             .encoder_mut()
@@ -61,7 +93,7 @@ impl<'a> CommandBuffer<'a> {
                     }),
                     stencil_ops: None,
                 }),
-                timestamp_writes: None,
+                timestamp_writes,
                 occlusion_query_set: None,
                 multiview_mask: None,
             });
@@ -80,6 +112,7 @@ impl<'a> CommandBuffer<'a> {
         &'pass mut self,
         color_target: &'pass wgpu::TextureView,
     ) -> RenderPass<'pass> {
+        let timestamp_writes = self.timestamp_writes("overlay pass");
         let raw = self
             .inner
             .encoder_mut()
@@ -95,7 +128,7 @@ impl<'a> CommandBuffer<'a> {
                     },
                 })],
                 depth_stencil_attachment: None,
-                timestamp_writes: None,
+                timestamp_writes,
                 occlusion_query_set: None,
                 multiview_mask: None,
             });
@@ -112,6 +145,7 @@ impl<'a> CommandBuffer<'a> {
         &'pass mut self,
         shadow_map: &'pass meridian_gpu_wgpu::Texture,
     ) -> RenderPass<'pass> {
+        let timestamp_writes = self.timestamp_writes("shadow");
         let raw = self
             .inner
             .encoder_mut()
@@ -126,7 +160,7 @@ impl<'a> CommandBuffer<'a> {
                     }),
                     stencil_ops: None,
                 }),
-                timestamp_writes: None,
+                timestamp_writes,
                 occlusion_query_set: None,
                 multiview_mask: None,
             });
@@ -134,7 +168,10 @@ impl<'a> CommandBuffer<'a> {
     }
 
     /// Submits every recorded command to the device's queue.
-    pub fn submit(self) {
+    pub fn submit(mut self) {
+        if let Some(profiler) = self.profiler {
+            profiler.resolve(self.inner.encoder_mut());
+        }
         self.inner.submit();
     }
 }

@@ -81,7 +81,7 @@ impl Device {
         let (device, queue) = adapter
             .request_device(&wgpu::DeviceDescriptor {
                 label: Some("meridian-gpu-wgpu device"),
-                required_features: wgpu::Features::empty(),
+                required_features: adapter.features() & wgpu::Features::TIMESTAMP_QUERY,
                 required_limits: wgpu::Limits::default(),
                 memory_hints: wgpu::MemoryHints::default(),
                 trace: wgpu::Trace::Off,
@@ -102,6 +102,15 @@ impl Device {
     /// Max-Q"`) — for logging/diagnostics, not parsed for behavior.
     pub fn adapter_name(&self) -> &str {
         &self.adapter_info.name
+    }
+
+    /// Whether the device was opened with timestamp queries (GPU pass timing),
+    /// which is requested whenever the adapter offers them.
+    #[must_use]
+    pub fn supports_timestamps(&self) -> bool {
+        self.device
+            .features()
+            .contains(wgpu::Features::TIMESTAMP_QUERY)
     }
 
     /// The raw `wgpu::Device` — an escape hatch for `rendering-wgpu`'s

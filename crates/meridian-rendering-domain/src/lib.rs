@@ -29,7 +29,7 @@ mod tonemap_config;
 mod tonemap_operator;
 
 pub use bloom_config::BloomConfig;
-pub use camera::{Camera, look_at_rotor};
+pub use camera::{Camera, look_at_rotor, look_at_upright};
 pub use environment::{
     Background, CubeFaces, EnvironmentError, EnvironmentLevel, EnvironmentMap, Sky,
     direction_to_uv, uv_to_direction,

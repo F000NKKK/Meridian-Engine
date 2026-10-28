@@ -51,6 +51,7 @@ impl TonemapPass {
         device.write_buffer(&uniform, &uniform_bytes(self.config));
         let bind_group =
             device.create_textured_bind_group(&self.pipeline, &uniform, scene, &self.sampler);
+        commands.label_next_pass("tonemap");
         let mut pass = commands.begin_render_pass(frame.view(), [0.0, 0.0, 0.0, 1.0], None);
         pass.set_pipeline(&self.pipeline);
         pass.set_bind_group(0, &bind_group);

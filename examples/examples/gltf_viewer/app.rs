@@ -6,6 +6,7 @@ use meridian_sdk::assets::{
 use meridian_sdk::{
     AppHandler, Background, Camera, Device, EnvironmentMap, FrameRecorder, GraphicsSession,
     InputState, Light, Motor3, Renderable3d, Scene3d, Sky, Vec3, Window, look_at_rotor,
+    look_at_upright,
 };
 
 const SUN: Vec3 = Vec3 {
@@ -18,7 +19,6 @@ pub(crate) struct App {
     tokio_runtime: tokio::runtime::Runtime,
     path: String,
     distance: f32,
-    start: std::time::Instant,
     gpu: Option<GpuState>,
 }
 
@@ -35,6 +35,8 @@ struct GpuState {
     cycle: Option<f32>,
     since_switch: f32,
     last_frame: std::time::Instant,
+    /// Scene time: the sum of every frame's step (see `fixed_dt`).
+    sim_time: f32,
 }
 
 impl App {
@@ -43,7 +45,6 @@ impl App {
             tokio_runtime: tokio::runtime::Runtime::new().expect("failed to start tokio runtime"),
             path,
             distance,
-            start: std::time::Instant::now(),
             gpu: None,
         }
     }
@@ -97,11 +98,10 @@ impl GpuState {
             pieces,
             rig,
             player: AnimationPlayer::new(animation),
-            cycle: std::env::var("MERIDIAN_CYCLE")
-                .ok()
-                .and_then(|value| value.parse().ok()),
+            cycle: cycle_seconds(),
             since_switch: 0.0,
             last_frame: std::time::Instant::now(),
+            sim_time: 0.0,
         }
     }
 
@@ -109,8 +109,10 @@ impl GpuState {
     /// hands each skinned piece its joint matrices and each morphed one its weights.
     fn animate(&mut self) {
         let now = std::time::Instant::now();
-        let delta = now.duration_since(self.last_frame).as_secs_f32();
+        let delta = meridian_examples::app_main::fixed_dt()
+            .unwrap_or_else(|| now.duration_since(self.last_frame).as_secs_f32());
         self.last_frame = now;
+        self.sim_time += delta;
         self.cycle_animations(delta);
         self.player.advance(&self.rig, delta);
         let layers = self.player.layers();
@@ -149,6 +151,13 @@ impl GpuState {
                 .crossfade_to(Some(next), 0.5, AnimationRepeat::Loop);
         }
     }
+}
+
+/// Seconds each animation plays before the next (`MERIDIAN_CYCLE`), if set.
+fn cycle_seconds() -> Option<f32> {
+    std::env::var("MERIDIAN_CYCLE")
+        .ok()
+        .and_then(|value| value.parse().ok())
 }
 
 /// The animation `MERIDIAN_ANIMATION` names (an index), else the first one
@@ -244,7 +253,7 @@ impl AppHandler for App {
             return;
         };
         gpu.animate();
-        let angle = self.start.elapsed().as_secs_f32() * 0.4;
+        let angle = gpu.sim_time * 0.4;
         let distance = gpu.radius * self.distance;
         let eye = gpu.center
             + Vec3::new(
@@ -258,7 +267,7 @@ impl AppHandler for App {
         )]
         let aspect = window.width() as f32 / window.height().max(1) as f32;
         gpu.scene.camera = Camera {
-            frame: Motor3::from_rotation_translation(look_at_rotor(eye, gpu.center), eye),
+            frame: Motor3::from_rotation_translation(look_at_upright(eye, gpu.center), eye),
             projection: meridian_sdk::Projection::perspective(
                 1.0,
                 aspect,

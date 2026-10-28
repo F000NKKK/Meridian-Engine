@@ -52,7 +52,8 @@ pub(crate) use sun::{SUN_DIRECTION, sun_renderable};
 
 fn main() {
     meridian_examples::app_main::install_diagnostics("magic_figures");
-    run_windowed_app("Meridian Engine — Magic Figures", 1024, 768, App::new())
+    let (width, height) = meridian_examples::app_main::window_size();
+    run_windowed_app("Meridian Engine — Magic Figures", width, height, App::new())
         .expect("windowed app exited with an error");
 }
 

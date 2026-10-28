@@ -52,6 +52,7 @@ impl OverlayPass {
         if prepared.is_empty() {
             return;
         }
+        commands.label_next_pass("overlays");
         let mut pass = commands.begin_render_pass_loaded(frame.view());
         for sprites in prepared {
             self.sprites.draw(&mut pass, sprites);

@@ -253,3 +253,16 @@ fn tonemap_operators_have_distinct_shader_indices() {
         [0.0, 1.0, 2.0]
     );
 }
+
+#[test]
+fn an_upright_look_at_never_rolls() {
+    for (yaw, height) in [(0.0_f32, 0.5), (1.0, 0.7), (2.5, 0.2), (4.0, -0.4)] {
+        let eye = Vec3::new(10.0 * yaw.sin(), 10.0 * height, 10.0 * yaw.cos());
+        let rotor = look_at_upright(eye, Vec3::ZERO);
+        let forward = rotor.transform_vector(Vec3::X);
+        let right = rotor.transform_vector(Vec3::Z);
+        let toward_target = (Vec3::ZERO - eye).normalize();
+        assert_vec3_approx(forward, toward_target);
+        assert!(right.y.abs() < 1e-4, "right axis leans: {right:?}");
+    }
+}

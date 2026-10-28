@@ -154,7 +154,8 @@ impl AppHandler for App {
         }
 
         let now = std::time::Instant::now();
-        let frame_dt = (now - self.last_frame).as_secs_f32().min(0.1);
+        let frame_dt = meridian_examples::app_main::fixed_dt()
+            .unwrap_or_else(|| (now - self.last_frame).as_secs_f32().min(0.1));
         self.last_frame = now;
         if self.cursor_grabbed {
             self.camera.update(fly_controls(input), frame_dt);

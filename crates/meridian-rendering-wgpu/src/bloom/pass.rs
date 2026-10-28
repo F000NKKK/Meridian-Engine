@@ -239,6 +239,7 @@ impl BloomPass {
 
         // Step 2: emissive-only bright pass.
         {
+            command_buffer.label_next_pass("bloom bright");
             let mut pass = command_buffer.begin_render_pass(
                 self.bright.view(),
                 [0.0, 0.0, 0.0, 1.0],
@@ -311,6 +312,7 @@ impl BloomPass {
             step.source,
             &self.sampler,
         );
+        command_buffer.label_next_pass("bloom blur");
         let mut pass =
             command_buffer.begin_render_pass(step.target.view(), [0.0, 0.0, 0.0, 1.0], None);
         pass.set_pipeline(&self.blur_pipeline);
@@ -335,6 +337,7 @@ impl BloomPass {
             &self.pong,
             &self.sampler,
         );
+        command_buffer.label_next_pass("bloom composite");
         let mut pass = command_buffer.begin_render_pass_loaded(target.view());
         pass.set_pipeline(&self.composite_pipeline);
         pass.set_bind_group(0, &bind_group);

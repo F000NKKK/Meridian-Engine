@@ -6,12 +6,12 @@
 //! nothing in `examples/` reaches into the composed crates, and this crate
 //! may depend on drivers `runtime-app` may not. Notes: docs/notes/meridian-sdk.md.
 #![forbid(unsafe_code)]
-
 mod any_image_decoder;
 mod asset_loader;
 pub mod assets;
 pub mod dsl;
 mod fly_controls;
+mod headless;
 mod model_files;
 mod model_loading;
 mod overlay_builder;
@@ -76,13 +76,13 @@ pub use meridian_rendering_domain::{
     FlyControls, Frustum, Light, Material, MaterialHandle, MaterialRegistry, MeshHandle,
     MeshRegistry, MeshSource, Overlay2d, Renderable3d, Scene2d, Scene3d, Sky, Sprite,
     TextureHandle, cube_mesh_source, ground_mesh_source, icosphere_mesh_source, look_at_rotor,
-    pyramid_mesh_source, smooth_normals,
+    look_at_upright, pyramid_mesh_source, smooth_normals,
 };
 // -- meridian-rendering-wgpu: the GPU device a windowed app opens once --
 pub use meridian_rendering_wgpu::{
     BloomPass, CommandBuffer, DEFAULT_SHADOW_MAP_SIZE, DepthTexture, Device, DeviceError,
-    GpuFrameRecorder, GpuTextureStore, PreparedBatch, RenderPass, SceneRenderer, Surface,
-    TextureRegistry, submit_scene3d,
+    GpuFrameRecorder, GpuTextureStore, PassTiming, PreparedBatch, RenderPass, SceneRenderer,
+    Surface, TextureRegistry, submit_scene3d,
 };
 // -- meridian-runtime-app / -threads: Runtime, the frame-work entry point, the job executor --
 pub use meridian_runtime_app::{

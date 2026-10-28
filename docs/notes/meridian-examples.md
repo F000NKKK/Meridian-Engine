@@ -54,6 +54,21 @@ part of the repository (Khronos glTF-Sample-Assets).
 Run with:
 ./build.sh run gltf_viewer -- path/to/model.glb
 
+## `examples/render_bench`
+
+The render benchmark (ADR 049): draws one fixed scene headless (no window, no
+vsync) for N frames on a fixed clock and reports the CPU time of updating and of
+recording/submitting, and the GPU time of every pass from timestamp queries.
+Scenes: `helmet` (any glTF via `--model`, default `assets/models/DamagedHelmet.glb`,
+IBL and bloom), `shadows` (floor, forty props, sun, point and two moving spot
+lights), `instances` (4096 cubes), `crowd` (100 animated skinned models, default
+`assets/models/CesiumMan.glb`). The table goes to stderr, one JSON line to stdout
+(and to `--json FILE`); `--dump DIR` writes every measured frame as a `.ppm`.
+The resolution is `MERIDIAN_WINDOW=<w>x<h>` (default 1920x1080).
+
+Run with:
+./build.sh run render_bench -- shadows --frames 300 --json bench.json
+
 ## `examples/ui_scroll`
 
 A `ScrollViewer` (ADR 018) over a stack of twelve coloured rows, its
