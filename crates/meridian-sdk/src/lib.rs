@@ -1,13 +1,11 @@
 //! Single application-facing entry point for Meridian-Engine.
 //!
 //! Layer: interface; bounded context: runtime (`craftbook.toml`, docs/context-map.md).
-//!
 //! **Applications depend on this crate alone.** Everything an app needs
-//! — spatial math, physics bodies, graphics scene/material types, the
-//! windowed-app loop, audio types, asset decoding, and `runtime-app`'s
-//! own [`Runtime`] — is re-exported from here; nothing in `examples/` reaches
-//! into the composed crates, and this crate may depend on drivers `runtime-app`
-//! may not. Notes: docs/notes/meridian-sdk.md.
+//! (spatial math, physics, graphics, the windowed-app loop, audio, asset
+//! decoding, `runtime-app`'s own [`Runtime`]) is re-exported from here;
+//! nothing in `examples/` reaches into the composed crates, and this crate
+//! may depend on drivers `runtime-app` may not. Notes: docs/notes/meridian-sdk.md.
 
 #![forbid(unsafe_code)]
 
@@ -92,8 +90,10 @@ pub use meridian_runtime_app::{
 };
 // -- meridian-runtime-threads: the threaded job executor --
 pub use meridian_runtime_threads::{BackgroundPool, TaskExecutor};
-/// The retained UI runtime (ADR 018), named by generated `.meui` glue.
+/// The retained UI runtime (ADR 018), named by generated `.meui` glue; and
+/// `ui_scene2d`, its extraction to a `Scene2d` (ADR 021).
 pub use meridian_ui_domain as ui_core;
+pub use meridian_ui_scene2d as ui_scene2d;
 pub use render::{RenderStage, compose_frame, render_frame};
 pub use runtime::parallel_runtime;
 pub use scene::GraphicsSession;

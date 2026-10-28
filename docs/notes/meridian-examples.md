@@ -52,6 +52,19 @@ The models are not part of the repository (Khronos glTF-Sample-Assets).
 Run with:
 ./build.sh run gltf_viewer -- path/to/model.glb
 
+## `examples/ui_scroll`
+
+A `ScrollViewer` (ADR 018) over a stack of twelve coloured rows, its
+`VerticalOffset` driven by the clock. Each frame the tree is laid out,
+`ui_scene2d::extract_clipped` turns it into sprites plus clip spans, and both go
+into an `Overlay2d` that `compose_frame` draws over the 3D frame; the sprite
+pass applies the spans as scissor rects (`batch_scene2d_clipped`), so only the
+rows inside the viewer's window show. Backgrounds only: text needs a font file
+and a glyph atlas upload, which the example leaves out.
+
+Run with:
+./build.sh run ui_scroll
+
 ## `examples/physic_figures`
 
 **Scene composition itself lives in

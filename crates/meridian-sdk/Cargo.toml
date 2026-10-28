@@ -37,6 +37,7 @@ meridian-compute-app = { workspace = true }
 meridian-markup = { workspace = true }
 meridian-markup-macros = { workspace = true }
 meridian-ui-domain = { workspace = true }
+meridian-ui-scene2d = { workspace = true }
 
 [dev-dependencies]
 png = { workspace = true }
