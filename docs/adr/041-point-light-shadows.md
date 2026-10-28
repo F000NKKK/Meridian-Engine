@@ -3,7 +3,9 @@
 ## Status
 
 Accepted. Extends [ADR 037](037-cascaded-shadow-maps.md) and
-[ADR 040](040-per-cascade-casters-and-blending.md).
+[ADR 040](040-per-cascade-casters-and-blending.md). D1 and D3 are refined by
+[ADR 043](043-nearest-point-light-shadows.md): the nearest four point lights
+cast shadows, and a face is half a cascade tile.
 
 ## Context
 

@@ -54,8 +54,8 @@ pub use sprites::{
     batch_scene2d, batch_scene2d_clipped,
 };
 pub use submission::{
-    BatchKey, DrawBatch, DrawItem, DrawState, MAX_SHADOW_DISTANCE, MaterialMaps, MaterialRegistry,
-    MeshRegistry, MeshRegistryError, MeshSource, OrderedDraw, POINT_SHADOW_FACES,
+    BatchKey, DrawBatch, DrawItem, DrawState, MAX_POINT_SHADOWS, MAX_SHADOW_DISTANCE, MaterialMaps,
+    MaterialRegistry, MeshRegistry, MeshRegistryError, MeshSource, OrderedDraw, POINT_SHADOW_FACES,
     POINT_SHADOW_NEAR, PointShadow, SHADOW_CASCADES, SHADOW_VOLUME_HALF_EXTENT, ShadowCascades,
     ShadowLight, ViewUniforms, directional_shadow_camera, order_draws, plan_batches,
 };
