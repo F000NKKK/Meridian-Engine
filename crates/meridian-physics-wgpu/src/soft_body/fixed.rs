@@ -57,7 +57,11 @@ pub struct FixedSoftBodyGpuKernel {
 
 impl FixedSoftBodyGpuKernel {
     /// `context` must already have a GPU backend
-    /// ([`ComputeContext::with_gpu`]), else [`GpuBackendMissing`].
+    /// ([`ComputeContext::with_gpu`]).
+    ///
+    /// # Errors
+    ///
+    /// [`GpuBackendMissing`] if `context` has no GPU backend.
     pub fn new(context: &ComputeContext) -> Result<Self, GpuBackendMissing> {
         let gpu = require_gpu(context, "FixedSoftBodyGpuKernel::new")?;
         let shader = gpu.create_shader("soft_body_step_fixed", &source());
@@ -73,6 +77,10 @@ impl FixedSoftBodyGpuKernel {
     /// writes the result back into `body` — bit-exact against
     /// `FixedSoftBodyIntegrator::step` for the same inputs (see the
     /// module doc).
+    ///
+    /// # Errors
+    ///
+    /// [`GpuBackendMissing`] if `context` has no GPU backend.
     pub async fn step(
         &self,
         context: &ComputeContext,

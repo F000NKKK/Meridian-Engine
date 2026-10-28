@@ -71,7 +71,11 @@ pub struct BroadPhaseGpuKernel {
 
 impl BroadPhaseGpuKernel {
     /// `context` must already have a GPU backend
-    /// ([`ComputeContext::with_gpu`]), else [`GpuBackendMissing`].
+    /// ([`ComputeContext::with_gpu`]).
+    ///
+    /// # Errors
+    ///
+    /// [`GpuBackendMissing`] if `context` has no GPU backend.
     pub fn new(context: &ComputeContext) -> Result<Self, GpuBackendMissing> {
         let gpu = require_gpu(context, "BroadPhaseGpuKernel::new")?;
         let shader = gpu.create_shader("broad_phase_overlap_f32", BROAD_PHASE_WGSL);
@@ -84,6 +88,10 @@ impl BroadPhaseGpuKernel {
     /// [`super::BroadPhasePairsKernel::pairs`]/
     /// `BroadPhase::find_candidate_pairs` produce — a drop-in GPU
     /// replacement for either, not just numerically similar.
+    ///
+    /// # Errors
+    ///
+    /// [`GpuBackendMissing`] if `context` has no GPU backend.
     pub async fn pairs(
         &self,
         context: &ComputeContext,
