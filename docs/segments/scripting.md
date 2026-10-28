@@ -124,7 +124,8 @@ the prior art to copy from is Yog-Mod-Loader's `.yui` -> `.g.rs` pipeline
    code-behind and needs a rebuild of the program, rebuilds that keep
    unchanged `NodeId`s, and the runtime-app wiring that calls `refresh`.
 9. **Host API and the Meridian language** (compiled, not a scripting
-   language: [ADR 022](../adr/022-meridian-language.md), compared against
+   language: [ADR 022](../adr/022-meridian-language.md),
+   architecture [mel-architecture.md](../mel-architecture.md), grammar [mel-grammar.md](../mel-grammar.md), compared against
    Yog's `.ys`). One trait-based host API for all code-behind backends;
    then the language: a domain-blind front end and typed IR, a Rust
    source backend first (like `ui-mel`), a WASM backend second, a
