@@ -27,14 +27,17 @@ vocabulary.
 
 **D2 — the data type is `asset-domain::ModelAsset`.** The domain owns the CPU
 result, as it owns `MeshAsset` and `ImageAsset`: a list of `ModelPart`s, one
-per primitive instance, each with its geometry (`positions`, optional
-`normals`, optional `uvs`, `u32` `indices`), its world transform (node
-hierarchy flattened, as a column-major `[[f32; 4]; 4]`), and a
-`ModelMaterial` (`base_color: [f32; 4]`, `base_color_image: Option<usize>`);
-plus the model's `images` as `EncodedImage { bytes, format }`. Images stay
-encoded: the decoder never decodes pixels, so it needs no image codec and does
-not depend on `asset-png`. The composition root decodes them with its image
-decoders.
+per primitive instance, each with `positions`, `normals` and `uvs` (empty when
+the source has none), `u32` `indices` and a `ModelMaterial` (`base_color:
+[f32; 4]`, `base_color_image: Option<usize>`), plus the model's `images` as
+`EncodedImage { bytes }`. The node hierarchy is flattened by the decoder: each
+part's positions and normals already carry the node's world transform
+(normals by the inverse transpose, winding reversed under a mirroring
+transform), so a part has no matrix and a node with scale needs nothing
+the renderer's rigid `Motor3` cannot hold. Images stay encoded and are
+identified by magic bytes: the decoder never decodes pixels, so it needs no
+image codec and does not depend on `asset-png`. The composition root decodes
+them with its image decoders.
 
 **D3 — the decoder is an adapter, `meridian-asset-gltf`.** It implements
 `Decoder<ModelAsset>` over the `gltf` crate (default features off, so no file
@@ -57,12 +60,13 @@ Meshes with more than 65 535 vertices are `GltfError::TooManyVertices` until
 the renderer takes `u32` indices (the existing `MeshSource` limit; this ADR
 does not widen it).
 
-**D6 — the sdk wires it.** `meridian-sdk` names the adapter (ADR 025 D4),
-registers each part's mesh and image with the existing registries and returns
-the parts as `Renderable3d` templates (mesh, material, local transform) that an
-application places with its own motor. Missing normals are filled with
-`smooth_normals`; missing UVs become zeros. The renderer and
-`rendering-domain` change nothing.
+**D6 — the sdk wires it.** `meridian-sdk` names the adapter (ADR 025 D4);
+`AssetCache::load_model_gltf` registers each part's mesh and its images with the
+existing ports and returns `ModelPiece { mesh, material }` values that an
+application places with one frame for the whole model. Missing normals are
+filled with `smooth_normals`; missing UVs become zeros. An image the sdk
+cannot decode (JPEG, until an adapter exists) is logged and its parts keep
+their base colour. The renderer and `rendering-domain` change nothing.
 
 ## Consequences
 

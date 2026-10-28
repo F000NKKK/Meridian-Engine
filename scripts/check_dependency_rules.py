@@ -62,6 +62,7 @@ ALLOWED = {
     "meridian-asset-app": {"meridian-asset-domain"},
     "meridian-asset-fs": {"meridian-asset-app"},
     "meridian-asset-http": {"meridian-asset-app"},
+    "meridian-asset-gltf": {"meridian-asset-domain", "meridian-gac"},
     "meridian-asset-png": {"meridian-asset-domain"},
     "meridian-asset-symphonia": {"meridian-asset-domain"},
     "meridian-rendering-wgpu": {
@@ -145,6 +146,7 @@ ALLOWED = {
         "meridian-gac",
         "meridian-platform-winit",
         "meridian-asset-domain",
+        "meridian-asset-gltf",
         "meridian-asset-png",
         "meridian-asset-symphonia",
         "meridian-rendering-wgpu",

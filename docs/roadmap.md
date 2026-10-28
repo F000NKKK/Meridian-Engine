@@ -782,8 +782,8 @@ the rest are not started.
    all — a blocker for any animated creature (Minecraft mobs) or
    animated machine (Satisfactory conveyors, at least beyond a
    procedural spin). glTF (which carries skinning data OBJ can't) is
-   the natural next format, not a bigger OBJ. Static glTF models are decided in
-   [ADR 030](adr/030-gltf-static-models-through-an-asset-adapter.md);
+   the natural next format, not a bigger OBJ. Static glTF models are done
+   ([ADR 030](adr/030-gltf-static-models-through-an-asset-adapter.md));
    skinning and animation stay open.
 
 **Rough sequencing, if picking one order**: (4) (batched physics

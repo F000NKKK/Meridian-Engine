@@ -30,6 +30,7 @@ meridian-asset-app = { path = "crates/meridian-asset-app", version = "0.1" }
 meridian-asset-fs = { path = "crates/meridian-asset-fs", version = "0.1" }
 meridian-asset-http = { path = "crates/meridian-asset-http", version = "0.1" }
 meridian-asset-png = { path = "crates/meridian-asset-png", version = "0.1" }
+meridian-asset-gltf = { path = "crates/meridian-asset-gltf", version = "0.1" }
 meridian-asset-symphonia = { path = "crates/meridian-asset-symphonia", version = "0.1" }
 meridian-ecs = { path = "crates/meridian-ecs", version = "0.15" }
 meridian-rendering-wgpu = { path = "crates/meridian-rendering-wgpu", version = "0.18" }
@@ -109,6 +110,13 @@ symphonia-adapter-libopus = "0.3"
 # pulling in `image`'s much larger multi-format surface for a
 # single-format need.
 png = "0.18"
+
+# glTF 2.0 container and accessor parsing for `asset-domain` models (ADR 030):
+# JSON schema validation, GLB chunks and typed accessor iteration are a
+# maintained format library's job. Default features are off: `import` would
+# read files and decode images inside the decoder, which this workspace keeps
+# in the loader and the application.
+gltf = { version = "1.4", default-features = false, features = ["utils"] }
 
 # Every Meridian-owned data format (scenes, prefabs, saves, editor
 # messages) is Substrate Data — see docs/adr/016-data-formats-on-substrate-data.md.

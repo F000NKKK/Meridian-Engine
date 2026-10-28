@@ -22,7 +22,7 @@ two layers today is listed under the one it is moving to; Craftbook's
 | scene-markup | shared kernel / published language | `markup` (kernel), `markup-macros` (interface) | markup elements, tags, the tag registry |
 | platform | infrastructure | `platform-winit` (infra) | window, input state, clock, CPU/GPU capabilities, dynamic libraries |
 | compute | application + adapters | `compute-app` (app), `compute-wgpu` (infra), `gpu-wgpu` (infra) | compute context, kernels, dispatch size, untyped buffers, GPU device |
-| assets | domain | `asset-domain` (domain: types, `Decoder` port, pure parsers), `asset-png`, `asset-symphonia` (infra: codec adapters) | decoded images, meshes, audio, shader sources, decoders |
+| assets | domain | `asset-domain` (domain: types, `Decoder` port, pure parsers), `asset-png`, `asset-gltf`, `asset-symphonia` (infra: codec adapters) | decoded images, meshes, audio, shader sources, decoders |
 | rendering | domain + adapter | `rendering-domain` (domain), `rendering-app` (app: ports `FrameRecorder`/`MeshStore`/`TextureStore`), `rendering-wgpu` (infra: wgpu recording, implements the ports) | scenes, cameras, lights, materials, render graph, frame submission |
 | physics | domain + adapters | `physics-domain` (domain, perf), `physics-app` (app: `PhysicsSubsystem`, the `PhysicsStepper` port), `physics-wgpu` (infra: batched stepper) | rigid bodies, colliders, contacts, solver, integrator, soft bodies |
 | audio | domain + adapter | `audio-domain` (domain), `audio-app` (app: `AudioSubsystem`, the `AudioSink` port), `audio-cpal` (infra: cpal, implements it) | listener, emitters, speakers, mixer, DSP graph |

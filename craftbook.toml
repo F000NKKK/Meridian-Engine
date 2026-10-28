@@ -95,6 +95,11 @@ layer = "infra"
 context = "assets"
 
 [[crate]]
+name = "meridian-asset-gltf"
+layer = "infra"
+context = "assets"
+
+[[crate]]
 name = "meridian-asset-png"
 layer = "infra"
 context = "assets"
