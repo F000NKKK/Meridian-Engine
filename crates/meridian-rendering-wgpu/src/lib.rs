@@ -34,6 +34,7 @@ mod depth_texture;
 mod devices;
 mod gpu_frame_recorder;
 mod gpu_texture_store;
+mod overlay_pass;
 mod render_pass;
 mod render_pipeline;
 mod shader_stages;
@@ -67,9 +68,9 @@ pub use render_pipeline::RenderPipeline;
 pub use shader_stages::ShaderStages;
 pub use sprites::{PreparedSprites, SPRITE_SHADER_WGSL, SPRITE_VERTEX_BYTES, SpriteRenderer};
 pub use submission::{
-    DEFAULT_SHADOW_MAP_SIZE, DrawBuffers, EMISSIVE_EXTRACT_SHADER_WGSL, MAX_LIGHTS, PreparedScene,
-    SHADOW_DEPTH_SHADER_WGSL, SceneAssets, SceneRenderer, TEXTURED_SHADER_WGSL, TextureRegistry,
-    UNLIT_SHADER_WGSL, submit_scene3d,
+    DEFAULT_SHADOW_MAP_SIZE, EMISSIVE_EXTRACT_SHADER_WGSL, MAX_LIGHTS, PreparedBatch,
+    PreparedScene, SHADOW_DEPTH_SHADER_WGSL, SceneAssets, SceneRenderer, TEXTURED_SHADER_WGSL,
+    TextureRegistry, UNLIT_SHADER_WGSL, submit_scene3d,
 };
 pub use surface::Surface;
 pub use surface_frame::SurfaceFrame;

@@ -3,24 +3,13 @@
 
 use meridian_compute_app::ComputeContext;
 use meridian_compute_wgpu::GpuComputeDevice;
-use meridian_gpu_wgpu::{Buffer, BufferUsage, ComputePipeline};
+use meridian_gpu_wgpu::{BufferUsage, ComputePipeline};
 
+use super::scratch::SoftBodyScratch;
 use super::step_inputs::StepInputs;
 
 /// Threads per workgroup of the soft-body step shaders.
 const WORKGROUP_SIZE: u32 = 64;
-
-fn upload(
-    context: &ComputeContext,
-    bytes: &[u8],
-    usage: BufferUsage,
-    gpu_missing: &'static str,
-) -> Buffer {
-    let gpu = context.gpu::<GpuComputeDevice>().expect(gpu_missing);
-    let buffer = gpu.allocate_buffer(bytes.len(), usage);
-    gpu.write_buffer(&buffer, bytes);
-    buffer
-}
 
 /// Uploads `inputs`, dispatches one thread per particle and reads the new
 /// positions and velocities back (in that order). `gpu_missing` is the panic message when
@@ -29,47 +18,56 @@ pub(super) async fn run(
     pipeline: &ComputePipeline,
     context: &ComputeContext,
     inputs: &StepInputs,
+    scratch: &mut SoftBodyScratch,
     gpu_missing: &'static str,
 ) -> (Vec<u8>, Vec<u8>) {
     let gpu = context.gpu::<GpuComputeDevice>().expect(gpu_missing);
     let storage = BufferUsage::Storage;
-    let params = upload(context, &inputs.params, BufferUsage::Uniform, gpu_missing);
-    let positions_in = upload(context, &inputs.positions, storage, gpu_missing);
-    let velocities_in = upload(context, &inputs.velocities, storage, gpu_missing);
-    let inverse_masses = upload(context, &inputs.inverse_masses, storage, gpu_missing);
-    let edge_offsets = upload(context, &inputs.edge_offsets, storage, gpu_missing);
-    let edge_neighbor = upload(context, &inputs.edge_neighbor, storage, gpu_missing);
-    let edge_params = upload(context, &inputs.edge_params, storage, gpu_missing);
-    let positions_out = gpu.allocate_buffer(inputs.positions.len(), storage);
-    let velocities_out = gpu.allocate_buffer(inputs.velocities.len(), storage);
+    let uploads = [
+        (&inputs.params, BufferUsage::Uniform),
+        (&inputs.positions, storage),
+        (&inputs.velocities, storage),
+        (&inputs.inverse_masses, storage),
+        (&inputs.edge_offsets, storage),
+        (&inputs.edge_neighbor, storage),
+        (&inputs.edge_params, storage),
+    ];
+    for (slot, (bytes, usage)) in scratch.slots.iter_mut().zip(uploads) {
+        slot.upload(gpu, bytes, usage);
+    }
+    let [.., positions_out, velocities_out] = &mut scratch.slots;
+    positions_out.reserve(gpu, inputs.positions.len(), storage);
+    velocities_out.reserve(gpu, inputs.velocities.len(), storage);
 
     let device = gpu.gpu_driver_device();
-    let bind_group = device.create_bind_group(
-        &pipeline.bind_group_layout(),
-        &[
-            &params,
-            &positions_in,
-            &velocities_in,
-            &inverse_masses,
-            &edge_offsets,
-            &edge_neighbor,
-            &edge_params,
-            &positions_out,
-            &velocities_out,
-        ],
-    );
+    let generations = scratch.generations();
+    let slots = &scratch.slots;
+    let bind_group = scratch.bind_group.reuse_or_build(&generations, || {
+        let buffers = slots
+            .each_ref()
+            .map(|slot| slot.buffer().expect("every slot was filled"));
+        device.create_bind_group(&pipeline.bind_group_layout(), &buffers)
+    });
     let mut commands = device.create_command_buffer();
     commands.dispatch_compute_with_bind_group(
         pipeline,
-        &bind_group,
+        bind_group,
         (inputs.particle_count as u32)
             .div_ceil(WORKGROUP_SIZE)
             .max(1),
     );
     commands.submit();
 
-    (
-        gpu.read_buffer(&positions_out).await,
-        gpu.read_buffer(&velocities_out).await,
-    )
+    // The output buffers may be larger than this step's data; cut the
+    // read-back to what the step produced.
+    let [.., positions_slot, velocities_slot] = &scratch.slots;
+    let mut positions = gpu
+        .read_buffer(positions_slot.buffer().expect("filled"))
+        .await;
+    positions.truncate(inputs.positions.len());
+    let mut velocities = gpu
+        .read_buffer(velocities_slot.buffer().expect("filled"))
+        .await;
+    velocities.truncate(inputs.velocities.len());
+    (positions, velocities)
 }

@@ -1,5 +1,5 @@
 //! [`EventHandler`]: one `event="{x:Bind method}"` of a named element
-//! (`docs/mel-events.md`).
+//! (`docs/meui-events.md`).
 
 use meridian_markup::{MarkupExtension, MarkupValue, Span};
 use meridian_ui_domain::UiEventTag;

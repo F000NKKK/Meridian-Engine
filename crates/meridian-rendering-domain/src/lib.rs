@@ -29,7 +29,7 @@ pub use fly::{FlyCamera, FlyControls};
 pub use frustum::Frustum;
 pub use graph_resource_id::GraphResourceId;
 pub use mesh_handle::{MeshHandle, MeshMarker};
-pub use render_graph::RenderGraph;
+pub use render_graph::{AllocationPlan, RenderGraph, ResourceLifetime};
 pub use render_graph_error::RenderGraphError;
 pub use render_pass::RenderPass;
 pub use scene::{
@@ -43,11 +43,12 @@ pub use shapes::{
     smooth_normals,
 };
 pub use sprites::{
-    ClipRect, ClipSpan, ScissorRect, SpriteBatch, SpriteVertex, SpriteView, batch_scene2d,
-    batch_scene2d_clipped,
+    ClipRect, ClipSpan, Overlay2d, ScissorRect, SpriteBatch, SpriteVertex, SpriteView,
+    batch_scene2d, batch_scene2d_clipped,
 };
 pub use submission::{
-    MaterialRegistry, MeshRegistry, MeshRegistryError, MeshSource, SHADOW_VOLUME_HALF_EXTENT,
-    ShadowLight, ViewUniforms, directional_shadow_camera,
+    BatchKey, DrawBatch, DrawItem, DrawState, MaterialRegistry, MeshRegistry, MeshRegistryError,
+    MeshSource, OrderedDraw, SHADOW_VOLUME_HALF_EXTENT, ShadowLight, ViewUniforms,
+    directional_shadow_camera, order_draws, plan_batches,
 };
 pub use texture_handle::{TextureHandle, TextureMarker};

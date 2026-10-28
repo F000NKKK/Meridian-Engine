@@ -43,10 +43,22 @@ etc. directly.
 Run with:
 ./build.sh run magic_figures
 
+## `examples/gltf_viewer`
+
+Loads the glTF model named on the command line through
+`GraphicsSession::load_model_gltf` (ADR 030): one mesh and one material per
+model part, a directional sun and a sky ambient, and a camera orbiting the
+model's bounding sphere. The second argument is the camera distance in radii;
+below 1 the camera is inside the bounds, which is how Sponza is viewed.
+The models are not part of the repository (Khronos glTF-Sample-Assets).
+
+Run with:
+./build.sh run gltf_viewer -- path/to/model.glb
+
 ## `examples/physic_figures`
 
 **Scene composition itself lives in
-`assets/scenes/physic_figures.mel`**, parsed through
+`assets/scenes/physic_figures.meui`**, parsed through
 `meridian_sdk::dsl` (via this workspace's shared
 `meridian_examples::scene_loader`) — every entity's position, mesh
 shape, texture and collider is data, not Rust code; this file only

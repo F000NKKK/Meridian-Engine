@@ -72,7 +72,7 @@ fn light_space_uv_and_depth(world_pos: vec3<f32>) -> vec3<f32> {
     return vec3<f32>(ndc.x * 0.5 + 0.5, 1.0 - (ndc.y * 0.5 + 0.5), ndc.z);
 }
 
-fn shade(world_pos: vec3<f32>, world_normal: vec3<f32>, base_color: vec3<f32>, shadow_factor: f32) -> vec3<f32> {
+fn shade(world_pos: vec3<f32>, world_normal: vec3<f32>, base_color: vec3<f32>, gloss: vec2<f32>, shadow_factor: f32) -> vec3<f32> {
     let n = normalize(world_normal);
     let view_dir = normalize(u.camera_pos.xyz - world_pos);
     var result = hemisphere_ambient(n) * base_color;
@@ -97,7 +97,7 @@ fn shade(world_pos: vec3<f32>, world_normal: vec3<f32>, base_color: vec3<f32>, s
         }
         let diffuse = max(dot(n, light_dir), 0.0);
         let half_dir = normalize(light_dir + view_dir);
-        let specular = pow(max(dot(n, half_dir), 0.0), 32.0) * 0.3;
+        let specular = pow(max(dot(n, half_dir), 0.0), gloss.x) * gloss.y;
         let radiance = light.color_intensity.rgb * light.color_intensity.a * attenuation;
         result = result + (base_color * diffuse + vec3<f32>(specular, specular, specular)) * radiance;
     }
@@ -137,8 +137,14 @@ fn compute_shadow_factor(world_pos: vec3<f32>, world_normal: vec3<f32>) -> f32 {
 struct VertexInput {
     @location(0) position: vec3<f32>,
     @location(1) normal: vec3<f32>,
-    @location(2) color: vec4<f32>,
-    @location(3) emissive: vec3<f32>,
+    @location(2) uv: vec2<f32>,
+    @location(3) model_0: vec4<f32>,
+    @location(4) model_1: vec4<f32>,
+    @location(5) model_2: vec4<f32>,
+    @location(6) model_3: vec4<f32>,
+    @location(7) color: vec4<f32>,
+    @location(8) emissive: vec3<f32>,
+    @location(9) gloss: vec2<f32>,
 };
 
 struct VertexOutput {
@@ -147,23 +153,28 @@ struct VertexOutput {
     @location(1) world_normal: vec3<f32>,
     @location(2) color: vec4<f32>,
     @location(3) emissive: vec3<f32>,
+    @location(4) gloss: vec2<f32>,
 };
 
 @vertex
 fn vs_main(in: VertexInput) -> VertexOutput {
     var out: VertexOutput;
-    out.clip_position = u.view_proj * vec4<f32>(in.position, 1.0);
-    out.world_position = in.position;
-    out.world_normal = in.normal;
+    let model = mat4x4<f32>(in.model_0, in.model_1, in.model_2, in.model_3);
+    let world = model * vec4<f32>(in.position, 1.0);
+    let world_normal = (model * vec4<f32>(in.normal, 0.0)).xyz;
+    out.clip_position = u.view_proj * world;
+    out.world_position = world.xyz;
+    out.world_normal = world_normal;
     out.color = in.color;
     out.emissive = in.emissive;
+    out.gloss = in.gloss;
     return out;
 }
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let shadow_factor = compute_shadow_factor(in.world_position, in.world_normal);
-    let shaded = shade(in.world_position, in.world_normal, in.color.rgb, shadow_factor) + in.emissive;
+    let shaded = shade(in.world_position, in.world_normal, in.color.rgb, in.gloss, shadow_factor) + in.emissive;
     return vec4<f32>(shaded, in.color.a);
 }
 "#;
@@ -202,8 +213,13 @@ struct VertexInput {
     @location(0) position: vec3<f32>,
     @location(1) normal: vec3<f32>,
     @location(2) uv: vec2<f32>,
-    @location(3) tint: vec4<f32>,
-    @location(4) emissive: vec3<f32>,
+    @location(3) model_0: vec4<f32>,
+    @location(4) model_1: vec4<f32>,
+    @location(5) model_2: vec4<f32>,
+    @location(6) model_3: vec4<f32>,
+    @location(7) color: vec4<f32>,
+    @location(8) emissive: vec3<f32>,
+    @location(9) gloss: vec2<f32>,
 };
 
 struct VertexOutput {
@@ -213,17 +229,22 @@ struct VertexOutput {
     @location(2) uv: vec2<f32>,
     @location(3) tint: vec4<f32>,
     @location(4) emissive: vec3<f32>,
+    @location(5) gloss: vec2<f32>,
 };
 
 @vertex
 fn vs_main(in: VertexInput) -> VertexOutput {
     var out: VertexOutput;
-    out.clip_position = u.view_proj * vec4<f32>(in.position, 1.0);
-    out.world_position = in.position;
-    out.world_normal = in.normal;
+    let model = mat4x4<f32>(in.model_0, in.model_1, in.model_2, in.model_3);
+    let world = model * vec4<f32>(in.position, 1.0);
+    let world_normal = (model * vec4<f32>(in.normal, 0.0)).xyz;
+    out.clip_position = u.view_proj * world;
+    out.world_position = world.xyz;
+    out.world_normal = world_normal;
     out.uv = in.uv;
-    out.tint = in.tint;
+    out.tint = in.color;
     out.emissive = in.emissive;
+    out.gloss = in.gloss;
     return out;
 }
 
@@ -232,7 +253,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let sampled = textureSample(albedo_tex, albedo_sampler, in.uv);
     let base_color = sampled.rgb * in.tint.rgb;
     let shadow_factor = compute_shadow_factor(in.world_position, in.world_normal);
-    let shaded = shade(in.world_position, in.world_normal, base_color, shadow_factor) + in.emissive;
+    let shaded = shade(in.world_position, in.world_normal, base_color, in.gloss, shadow_factor) + in.emissive;
     return vec4<f32>(shaded, sampled.a * in.tint.a);
 }
 "#;

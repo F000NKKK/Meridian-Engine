@@ -7,6 +7,7 @@ use crate::{FrameOutcome, FrameRecorder, FrameRequest};
 pub struct FakeFrameRecorder {
     size: [u32; 2],
     frames: usize,
+    overlays: usize,
     available: bool,
 }
 
@@ -17,6 +18,7 @@ impl FakeFrameRecorder {
         Self {
             size: [width, height],
             frames: 0,
+            overlays: 0,
             available: true,
         }
     }
@@ -33,6 +35,12 @@ impl FakeFrameRecorder {
         self.frames
     }
 
+    /// Overlays handed to presented frames so far.
+    #[must_use]
+    pub fn overlays_drawn(&self) -> usize {
+        self.overlays
+    }
+
     /// The current `[width, height]`.
     #[must_use]
     pub fn size(&self) -> [u32; 2] {
@@ -41,11 +49,12 @@ impl FakeFrameRecorder {
 }
 
 impl FrameRecorder for FakeFrameRecorder {
-    fn record_frame(&mut self, _request: &FrameRequest<'_>) -> FrameOutcome {
+    fn record_frame(&mut self, request: &FrameRequest<'_>) -> FrameOutcome {
         if !self.available {
             return FrameOutcome::TargetUnavailable;
         }
         self.frames += 1;
+        self.overlays += request.overlays.len();
         FrameOutcome::Presented
     }
 
@@ -78,6 +87,7 @@ mod tests {
             scene: &scene,
             meshes: &meridian_rendering_domain::MeshRegistry::new(),
             materials: &meridian_rendering_domain::MaterialRegistry::new(),
+            overlays: &[],
             clear_color: [0.0; 4],
         };
         assert_eq!(recorder.record_frame(&request), FrameOutcome::Presented);

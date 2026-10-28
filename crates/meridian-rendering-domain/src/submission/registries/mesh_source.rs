@@ -5,11 +5,8 @@
 /// elsewhere (typically `asset-domain::ObjDecoder`/glTF once that lands)
 /// and registered here once. `normals.len()`/`uvs.len()` must equal
 /// `positions.len()`, `indices.len()` must be a multiple of 3 (triangle
-/// list), and `positions.len()` must fit in `u16` — `rendering-wgpu`
-/// only supports `u16` index buffers today (see
-/// `meridian_rendering_wgpu::RenderPass::set_index_buffer_u16`'s own
-/// doc comment); meshes beyond 65535 vertices are a future `u32`-index
-/// follow-up, not something this bridge silently mishandles (see
+/// list), and every index must name a vertex. Indices are `u32` end to
+/// end, so a mesh may have more than 65535 vertices (see
 /// [`MeshRegistry::register`](crate::submission::MeshRegistry::register)).
 #[derive(Debug, Clone)]
 pub struct MeshSource {

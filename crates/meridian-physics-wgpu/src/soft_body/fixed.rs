@@ -18,7 +18,7 @@
 //! over `float`'s.
 
 use meridian_compute_app::ComputeContext;
-use meridian_compute_wgpu::GpuComputeDevice;
+use meridian_compute_wgpu::{GpuComputeDevice, ScratchPool};
 use meridian_gac::{FixedFlavor, FixedVec3};
 use meridian_gpu_wgpu::ComputePipeline;
 use meridian_numeric::Fixed;
@@ -27,6 +27,7 @@ use meridian_physics_domain::soft_body::fixed::{FixedSoftBody, FixedSoftBodyInte
 use super::csr::build_adjacency;
 use super::dispatch::run;
 use super::fixed_wgsl::source;
+use super::scratch::SoftBodyScratch;
 use super::step_inputs::{
     StepInputs, Word, edge_bytes, pack_vec3s, params_bytes, unpack_vec3s, words_to_bytes,
 };
@@ -54,6 +55,7 @@ fn vec3_from_words(words: [Word; 3]) -> FixedVec3 {
 #[derive(Debug)]
 pub struct FixedSoftBodyGpuKernel {
     pipeline: ComputePipeline,
+    scratch: ScratchPool<SoftBodyScratch>,
 }
 
 impl FixedSoftBodyGpuKernel {
@@ -63,7 +65,10 @@ impl FixedSoftBodyGpuKernel {
         let gpu = context.gpu::<GpuComputeDevice>().expect(GPU_MISSING_NEW);
         let shader = gpu.create_shader("soft_body_step_fixed", &source());
         let pipeline = gpu.create_compute_pipeline(&shader, "soft_body_step");
-        Self { pipeline }
+        Self {
+            pipeline,
+            scratch: ScratchPool::new(),
+        }
     }
 
     /// Advances every particle of `body` by one timestep `dt` on the GPU,
@@ -79,8 +84,16 @@ impl FixedSoftBodyGpuKernel {
         dt: Fixed,
     ) {
         let inputs = step_inputs(body, integrator, dt);
-        let (new_positions, new_velocities) =
-            run(&self.pipeline, context, &inputs, GPU_MISSING_STEP).await;
+        let mut scratch = self.scratch.take();
+        let (new_positions, new_velocities) = run(
+            &self.pipeline,
+            context,
+            &inputs,
+            &mut scratch,
+            GPU_MISSING_STEP,
+        )
+        .await;
+        self.scratch.put(scratch);
         let count = inputs.particle_count;
         body.positions = unpack_vec3s(&new_positions, count, vec3_from_words);
         body.velocities = unpack_vec3s(&new_velocities, count, vec3_from_words);

@@ -4,7 +4,7 @@ Job graph scheduler: worker threads and dependency tracking for parallel frame e
 
 **Layer and context:** infrastructure (adapter) · runtime
 
-- **For:** `JobGraph`: named jobs with dependencies, a `Scheduler` that runs them on worker threads, and `TaskExecutor`, the implementation of `meridian-runtime-app`'s `JobExecutor` port.
+- **For:** `JobGraph`: named jobs with dependencies, a `Scheduler` that runs them on worker threads, `TaskExecutor`, the implementation of `meridian-runtime-app`'s `JobExecutor` port, and `BackgroundPool`, threads for blocking background work (the `Spawn` port of `meridian-asset-app`).
 - **Not for:** domain-specific work: frame stages are composed in `meridian-runtime-app`.
 
 ## Usage
@@ -30,7 +30,7 @@ assert_eq!(counter.load(Ordering::SeqCst), 11);
 
 ## Depends on / used by
 
-- Depends on: [`meridian-runtime-app`](../meridian-runtime-app)
+- Depends on: [`meridian-asset-app`](../meridian-asset-app), [`meridian-runtime-app`](../meridian-runtime-app)
 - Used by: [`meridian-sdk`](../meridian-sdk)
 
 ## License

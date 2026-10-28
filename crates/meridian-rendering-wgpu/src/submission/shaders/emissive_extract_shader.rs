@@ -17,7 +17,11 @@ var<uniform> u: Uniforms;
 
 struct VertexInput {
     @location(0) position: vec3<f32>,
-    @location(1) emissive: vec3<f32>,
+    @location(3) model_0: vec4<f32>,
+    @location(4) model_1: vec4<f32>,
+    @location(5) model_2: vec4<f32>,
+    @location(6) model_3: vec4<f32>,
+    @location(8) emissive: vec3<f32>,
 };
 
 struct VertexOutput {
@@ -28,7 +32,8 @@ struct VertexOutput {
 @vertex
 fn vs_main(in: VertexInput) -> VertexOutput {
     var out: VertexOutput;
-    out.clip_position = u.view_proj * vec4<f32>(in.position, 1.0);
+    let model = mat4x4<f32>(in.model_0, in.model_1, in.model_2, in.model_3);
+    out.clip_position = u.view_proj * (model * vec4<f32>(in.position, 1.0));
     out.emissive = in.emissive;
     return out;
 }

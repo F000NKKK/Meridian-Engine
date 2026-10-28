@@ -1,7 +1,7 @@
 //! Tests of the submission adapter.
 
 use meridian_gac::{Motor3, Vec3};
-use meridian_rendering_domain::scene::Light;
+use meridian_rendering_domain::scene::{Light, Material};
 use meridian_rendering_domain::{Camera, ShadowLight, ViewUniforms};
 
 use super::{lit_uniform_bytes, mat4_to_bytes, *};
@@ -140,4 +140,64 @@ async fn texture_registry_round_trips_a_real_upload() {
     assert!(textures.get(handle).is_some());
     assert!(textures.unregister(handle).is_some());
     assert!(textures.get(handle).is_none());
+}
+
+#[test]
+fn an_instance_record_fills_its_layout_and_carries_matrix_and_gloss() {
+    use super::instance_data::push_instance;
+
+    let material = Material {
+        base_color_factor: [0.1, 0.2, 0.3, 0.4],
+        emissive: [0.5, 0.6, 0.7],
+        shininess: 8.0,
+        specular: 0.75,
+        ..Material::default()
+    };
+    let frame = Motor3::translation(Vec3::new(1.0, 2.0, 3.0));
+    let mut bytes = Vec::new();
+    push_instance(&mut bytes, &frame, &material);
+
+    assert_eq!(
+        u64::try_from(bytes.len()).unwrap(),
+        instance_vertex_layout().stride
+    );
+    let float =
+        |index: usize| f32::from_le_bytes(bytes[index * 4..index * 4 + 4].try_into().unwrap());
+    // The fourth matrix column is the translation, column-major.
+    assert_eq!(
+        [float(12), float(13), float(14), float(15)],
+        [1.0, 2.0, 3.0, 1.0]
+    );
+    assert_eq!(
+        [float(16), float(17), float(18), float(19)],
+        [0.1, 0.2, 0.3, 0.4]
+    );
+    assert_eq!([float(20), float(21), float(22)], [0.5, 0.6, 0.7]);
+    assert_eq!([float(23), float(24)], [8.0, 0.75]);
+}
+
+#[test]
+fn every_attribute_lies_within_its_layouts_stride() {
+    for layout in [
+        mesh_vertex_layout(),
+        instance_vertex_layout(),
+        position_only_mesh_layout(),
+        shadow_instance_layout(),
+        emissive_instance_layout(),
+    ] {
+        for attribute in &layout.attributes {
+            assert!(
+                attribute.offset + attribute.format.size() <= layout.stride,
+                "location {} overruns the stride",
+                attribute.location
+            );
+        }
+    }
+}
+
+#[test]
+fn the_default_material_keeps_the_original_highlight() {
+    let material = Material::default();
+    assert_eq!(material.shininess, 32.0);
+    assert_eq!(material.specular, 0.3);
 }

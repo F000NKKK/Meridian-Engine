@@ -51,34 +51,43 @@ windowed (`Surface`) devices. 30 `#[test]`s across the three crates.
 
 Not started; ordered by suggested priority. Items wait for an explicit task.
 
-1. **Docs drift (small, do first).** `graphics-design.md` step 3 and the
-   `submission.rs` module doc still call shadow mapping future work, while
-   `roadmap.md` and the code say it is real. `roadmap.md` also still has an
-   older paragraph saying extraction/lighting are scaffolds and the driver
-   is headless-only. Reconcile all three.
-2. **Material flags the bridge ignores (3D).** `BlendMode::AlphaBlend` and
-   `always_on_top` exist on `Material` but every draw is opaque and
-   depth-tested. Needs a sorted transparent pass and a no-depth overlay
-   pass in the render graph.
+1. **Docs drift — done (2026-10-27).** Shadow mapping, the windowed driver
+   and the Motor3 batching cost are reconciled across `graphics-design.md`
+   and `roadmap.md`.
+2. **Material flags (3D) — done (2026-10-27).** `BlendMode::AlphaBlend` and
+   `always_on_top` pick a `DrawState`; see graphics-design.md step 3.
+   Follow-ups: per-triangle sorting or order-independent transparency, and
+   keeping translucent surfaces out of bloom.
 3. **`Scene2d` path — done (2026-10-27).** `sprites/` in
    `rendering-domain`; see graphics-design.md step 5. Clip rectangles are done
-   too (`ClipSpan`/`ClipRect`, scissor per run). Follow-ups: bind-group
-   cache, atlas packing, glyph-atlas
-   textures once team/ui-ux has text, composing `[Scene3d, Scene2d]` in
-   `meridian-sdk`.
-4. **Per-instance data / instancing.** Vertices are baked to world space
-   and textured bind groups rebuilt every frame. Add a per-instance uniform
-   or storage buffer, then indirect draw and compute culling (GPU-driven
+   too (`ClipSpan`/`ClipRect`, scissor per run). Bind groups are shared per
+   texture within a scene. Glyph atlas packing lives in `text-domain`; a
+   general RGBA sprite atlas waits for a consumer. Composition `[Scene3d, Scene2d]` is
+   done (`FrameRequest::overlays`, `OverlayPass`, `compose_frame`).
+4. **Instancing — done (2026-10-27).** Meshes upload once, renderables
+   become instance records, opaque ones batch into instanced draws; see
+   graphics-design.md step 3. Follow-ups: skip rewriting unchanged
+   instances, then indirect draws and compute culling (GPU-driven
    direction in graphics-design.md).
-5. **Per-material roughness/specular.** Shininess is hard-coded to 32.
-6. **Render-graph resource lifetime.** Ordering is real; transient target
-   allocation/aliasing is not.
-7. **`Runtime::tick` integration.** Blocked on an architecture decision:
-   `runtime-app` must not depend on `rendering-wgpu`. Needs an ADR
-   (likely an app-side presenter trait owned by `meridian-sdk`).
-8. **Larger, ADR-gated:** HDR (`Rgba16Float` + tone mapping), shadow
-   cascades/frustum fitting, point-light shadows, IBL, glTF meshes (with
-   team/data), animation (no vocabulary yet), concrete backend crates.
+5. **Per-material highlights — done (2026-10-27).** `Material::shininess` and
+   `Material::specular`; roughness/metallic wait for a PBR shader.
+6. **Render-graph resource lifetime — planning done (2026-10-28).**
+   `RenderGraph::resource_lifetimes` and `plan_allocations` (CPU, tested) say
+   which transient targets can share one allocation. The real renderer
+   (`SceneRenderer`, bloom) does not build a `RenderGraph` yet, so no backend
+   consumes the plan; wiring a pool in `rendering-wgpu` waits for that.
+7. **`Runtime::tick` integration — done.** `meridian_sdk::RenderStage`
+   presents through the `FrameRecorder` port, so `runtime-app` never names
+   rendering; see [ADR 029](../adr/029-render-stage-presents-through-the-frame-recorder-port.md).
+8. **glTF static models — done (2026-10-28).** See
+   [ADR 030](../adr/030-gltf-static-models-through-an-asset-adapter.md);
+   decoder adapter `meridian-asset-gltf`, `AssetCache::load_model_gltf`.
+   JPEG textures (`meridian-asset-jpeg`), external-file `.gltf` and `u32`
+   mesh indices are done; checked on Khronos DamagedHelmet, Duck and Sponza
+   with the `gltf_viewer` example. Follow-ups: skins and animation, PBR maps.
+9. **Larger, ADR-gated:** HDR (`Rgba16Float` + tone mapping), shadow
+   cascades/frustum fitting, point-light shadows, IBL, skinned glTF and
+   animation (no vocabulary yet), concrete backend crates.
 
 ## Standards gaps
 

@@ -11,7 +11,7 @@ pub enum ResourceValue {
 }
 
 impl ResourceValue {
-    /// The value as an attribute of a `.mel` document spells it.
+    /// The value as an attribute of a `.meui` document spells it.
     pub fn literal(&self) -> String {
         match self {
             Self::Text(text) if text.starts_with('@') => format!("@{text}"),

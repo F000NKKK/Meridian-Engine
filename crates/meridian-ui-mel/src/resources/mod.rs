@@ -13,6 +13,7 @@ mod resource_set;
 mod resource_sets;
 mod resource_tag;
 mod resource_value;
+mod variants;
 
 pub use generated_resources::GeneratedResources;
 pub use local_resources::LocalResources;
@@ -24,3 +25,4 @@ pub use resource_set::ResourceSet;
 pub use resource_sets::ResourceSets;
 pub(crate) use resource_tag::ResourceTag;
 pub use resource_value::ResourceValue;
+pub use variants::Culture;

@@ -7,7 +7,7 @@ use meridian_sdk::{
     pyramid_mesh_source,
 };
 
-/// One `<Entity>` from `assets/scenes/physic_figures.mel`, flattened
+/// One `<Entity>` from `assets/scenes/physic_figures.meui`, flattened
 /// out of its typed `<Transform>`/`<Mesh>`/`<Material>`/`<RigidBody>`
 /// children into the plain fields this example actually needs — the
 /// DSL tree itself is only walked once, here, in [`load_scene`].
@@ -21,7 +21,7 @@ pub(crate) struct SceneEntity {
     pub(crate) collider: ColliderShape,
 }
 
-/// Parses `assets/scenes/physic_figures.mel` against
+/// Parses `assets/scenes/physic_figures.meui` against
 /// `meridian_sdk::dsl::default_registry()` (this scene only uses
 /// built-in tags — no custom `#[dsl_tag]` needed here, unlike
 /// `magic_figures`) and flattens every `<Entity>` into a [`SceneEntity`].
@@ -31,7 +31,7 @@ pub(crate) struct SceneEntity {
 /// a scene uses.
 pub(crate) fn load_scene() -> Vec<SceneEntity> {
     let registry = dsl::default_registry();
-    let root = load_dsl_scene("assets/scenes/physic_figures.mel", &registry);
+    let root = load_dsl_scene("assets/scenes/physic_figures.meui", &registry);
 
     root.children.iter().map(entity_from_node).collect()
 }

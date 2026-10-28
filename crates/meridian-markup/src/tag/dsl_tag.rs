@@ -16,7 +16,7 @@ pub trait DslTag: Sized + 'static {
 
 /// The text of the plain attribute `name` among `attrs`, for a
 /// [`DslTag`] impl building tag `tag`: `Ok(None)` when absent, an error
-/// when it is a markup extension (`{x:Bind ...}`), which only the `.mel`
+/// when it is a markup extension (`{x:Bind ...}`), which only the `.meui`
 /// generator can resolve (ADR 017), not a tag built straight from markup.
 pub fn text_attr<'a>(
     attrs: &'a [Attribute],
@@ -28,7 +28,7 @@ pub fn text_attr<'a>(
     };
     attr.text().map(Some).ok_or_else(|| TagParseError {
         message: format!(
-            "{tag}.{name}: a markup extension needs the .mel generator; this tag takes plain text"
+            "{tag}.{name}: a markup extension needs the .meui generator; this tag takes plain text"
         ),
     })
 }

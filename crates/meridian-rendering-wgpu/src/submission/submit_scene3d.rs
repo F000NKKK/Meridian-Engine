@@ -22,5 +22,5 @@ pub fn submit_scene3d(
     prepared: &PreparedScene,
 ) {
     renderer.set_view(device, &ViewUniforms::of_scene(scene, prepared.shadow));
-    renderer.draw(pass, &prepared.buffers);
+    renderer.draw(pass, prepared);
 }

@@ -9,6 +9,7 @@ description = "Job graph scheduler: worker threads and dependency tracking for p
 readme = "README.md"
 
 [dependencies]
+meridian-asset-app = { workspace = true }
 meridian-runtime-app = { workspace = true }
 
 [lints]

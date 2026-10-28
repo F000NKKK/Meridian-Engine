@@ -16,30 +16,36 @@
 //! archetype that has it. [`World::query_many`]/[`World::query_many_mut`]
 //! iterate two to four at once (`(&Position, &mut Velocity)`). The borrow
 //! checker is satisfied without `unsafe`: an archetype's columns live in a
-//! `HashMap`, and `HashMap::get_disjoint_mut` hands out several `&mut`
-//! columns after checking their keys differ. See docs/ecs-design.md.
+//! `HashMap`, and one pass over it hands each accessed column to exactly
+//! one tuple element. See docs/ecs-design.md.
 #![doc = include_str!("../README.md")]
 #![forbid(unsafe_code)]
 
 mod archetype;
 mod column;
+mod commands;
 mod component;
 mod entity;
 mod entity_location;
 mod query;
+mod snapshot;
 #[cfg(test)]
 mod tests;
+mod tick;
 mod transform;
 mod world;
 
 use archetype::Archetype;
 use column::{AnyColumn, Column};
+pub use commands::Commands;
 pub use component::Component;
 pub use entity::Entity;
 use entity_location::EntityLocation;
 pub use query::{
-    Fetch, OptionalRows, Query, QueryMany, QueryManyMut, QueryMut, ReadFetch, ReadSelection,
-    Selection, With, Without,
+    Changed, Fetch, OptionalRows, Query, QueryMany, QueryManyMut, QueryMut, ReadFetch,
+    ReadSelection, Selection, With, Without,
 };
+pub use snapshot::{Cloners, SnapshotError, WorldSnapshot};
+pub use tick::Tick;
 pub use transform::Transform;
 pub use world::World;

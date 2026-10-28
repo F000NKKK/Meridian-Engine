@@ -13,11 +13,11 @@ use meridian_physics_domain::soft_body::fixed::{
 use crate::soft_body::csr::{Adjacency, build_adjacency};
 use crate::soft_body::fixed::FixedSoftBodyGpuKernel;
 
-fn fv3(x: f64, y: f64, z: f64) -> FixedVec3 {
+pub(super) fn fv3(x: f64, y: f64, z: f64) -> FixedVec3 {
     FixedVec3::new(Fixed::from_num(x), Fixed::from_num(y), Fixed::from_num(z))
 }
 
-fn ground() -> Plane<FixedFlavor> {
+pub(super) fn ground() -> Plane<FixedFlavor> {
     Plane {
         normal: fv3(0.0, 1.0, 0.0),
         d: Fixed::ZERO,
@@ -25,7 +25,7 @@ fn ground() -> Plane<FixedFlavor> {
     .normalize()
 }
 
-fn ball(center: FixedVec3, radius: f64) -> FixedSoftBody {
+pub(super) fn ball(center: FixedVec3, radius: f64) -> FixedSoftBody {
     fixed_icosphere_soft_body(
         center,
         Fixed::from_num(radius),
@@ -48,7 +48,7 @@ fn ball(center: FixedVec3, radius: f64) -> FixedSoftBody {
 /// available, matching every other GPU-touching test in this
 /// workspace.
 #[cfg(feature = "hw-tests")]
-async fn kernel_or_skip() -> Option<(ComputeContext, FixedSoftBodyGpuKernel)> {
+pub(super) async fn kernel_or_skip() -> Option<(ComputeContext, FixedSoftBodyGpuKernel)> {
     let context = match gpu_context().await {
         Ok(ctx) => ctx,
         Err(err) => {

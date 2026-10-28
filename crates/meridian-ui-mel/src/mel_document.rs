@@ -1,4 +1,4 @@
-//! [`MelDocument`]: a parsed `.mel` document checked against the
+//! [`MelDocument`]: a parsed `.meui` document checked against the
 //! code-behind rules of ADR 017.
 
 use std::path::{Path, PathBuf};

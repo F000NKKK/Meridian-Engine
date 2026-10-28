@@ -12,6 +12,16 @@ pub enum VertexFormat {
 }
 
 impl VertexFormat {
+    /// The attribute's size in bytes.
+    #[cfg(test)]
+    pub(crate) const fn size(self) -> u64 {
+        match self {
+            VertexFormat::Float32x2 => 8,
+            VertexFormat::Float32x3 => 12,
+            VertexFormat::Float32x4 => 16,
+        }
+    }
+
     pub(crate) fn to_wgpu(self) -> wgpu::VertexFormat {
         match self {
             VertexFormat::Float32x2 => wgpu::VertexFormat::Float32x2,

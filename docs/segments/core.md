@@ -39,7 +39,7 @@ every domain adapter builds on.
   over; physics must reuse them, not copy them.
 - `team/audio`: `audio-cpal`, `audio-domain`. Core owns the audio decoders
   in `asset-domain`.
-- `team/scripting`: `markup`, `markup-macros`, the `.mel` extension. Core
+- `team/scripting`: `markup`, `markup-macros`, the `.meui` extension. Core
   owns `sdk::dsl` registration of built-in tags only as far as the SDK
   re-export surface goes.
 - `team/ui-ux`: no crate yet. When a UI crate appears, input routing stays
@@ -79,28 +79,49 @@ change that closed them.
 2. **Done: ECS filters.** `Option<&T>`, `Option<&mut T>`, `With<T>` and
    `Without<T>` elements for `query_many`/`query_many_mut`; the column pass
    no longer needs `get_disjoint_mut` (`query_many_mut` bench ~31 µs -> ~25 µs).
-3. **ECS change detection and entity commands.** Deferred
-   spawn/despawn/insert during iteration, and per-column change ticks so
-   rendering can skip unchanged instances (feeds roadmap "Scaling" item 1).
-4. **Persistence hooks.** Roadmap "Scaling" item 5. Core side: component
-   enumeration per entity (`World::component_types(entity)`) and a world
-   snapshot API; the format and `meridian-data-substrate` belong to `team/data`.
+3. **ECS change detection and entity commands.** Change detection is
+   **done**: a world clock and per-archetype-column ticks with a `Changed<T>`
+   filter, so rendering can skip unchanged instance batches (feeds roadmap
+   "Scaling" item 1). Deferred `Commands` (spawn/despawn/insert/remove
+   recorded during iteration, applied after) are **done** too.
+4. **Done: persistence hooks.** Roadmap "Scaling" item 5. Core side:
+   component enumeration per entity (`World::component_types(entity)`, sorted
+   `TypeId`s; the stable-name registry and serializers are the adapter's) and
+   an in-memory world snapshot (`World::snapshot(&Cloners)` / `restore`, with
+   entity generations; [ecs-design.md](../ecs-design.md#snapshots)). Agreed with
+   `team/data`: the on-disk format and `meridian-data-substrate` stay theirs
+   and need nothing more from `ecs`.
 5. **Done: persistent worker pool.** `Scheduler` spawns its workers once;
    `run` no longer spawns threads (1-job graph ~210 µs -> ~0.35 µs, 1 000-job
    chain 1.1 ms -> 0.33 ms, `cargo bench -p meridian-runtime-threads`). Work-stealing
    deques wait for a frame profile that shows queue contention.
-6. **Asynchronous asset I/O.** `asset-domain` decodes in-memory bytes only.
-   File and network loading with tokio belongs in a loader layer above it
-   (ADR 009), never inside the decoders.
-7. **Compute buffer reuse.** `compute-app` reallocates GPU buffers and
-   bind groups per dispatch (roadmap, deferred). Build it when a per-frame
-   caller exists.
+6. **Done: background asset loading** ([ADR 027](../adr/027-background-asset-loading.md)).
+   `asset-app` (`ByteSource`, `Spawn`, `AssetLoader`, `Pending`), `asset-fs`
+   (`FsSource`) and `runtime-threads::BackgroundPool`; a load returns at once
+   and costs ~2.5 µs per small file on 4 threads (`cargo bench -p
+   meridian-asset-fs`). Wired into `sdk` (`asset_loader`, `default_asset_loader`, `load_image`, loader
+   types re-exported). Priority (`Low`/`Normal`/`High`) and
+   `Pending::cancel` are in. `asset-http` (`HttpSource`, plain `http` only,
+   [ADR 028](../adr/028-http-asset-source.md)) is the network source. Open: `https`,
+   which waits for a decision on the `ring` licence.
+7. **Done: compute buffer reuse.** `compute-wgpu` has `ScratchSlot` (a GPU
+   buffer rewritten in place, reallocated only when the data outgrows it),
+   `GenerationCache` (a bind group rebuilt only when a slot reallocated) and
+   `ScratchPool` (one scratch set per in-flight dispatch). The soft-body
+   kernels in `physics-wgpu` use them; a step no longer allocates nine buffers
+   and a bind group. On the software Vulkan adapter (lavapipe) a step went from
+   ~1.96 ms to ~1.90 ms, within noise: allocation is cheap there, so the win on
+   real hardware is unmeasured. `gac-wgpu`'s `FixedArithmeticKernels` and the
+   `physics-wgpu` broad phase still allocate per call; convert them when a
+   per-frame caller appears.
 9. **Done: `Motor3` point transform fast path.** `transform_point` /
    `transform_vector` / `to_mat4` use the hand-expanded sandwich (rotor 3x3
    plus origin) instead of two 16-component products: 1.16 µs -> 8 ns per
    point, 10k points 5.6 ms -> 82 µs (`cargo bench -p meridian-gac`).
-   `FixedMotor3` still uses the generic product; expand it the same way when
-   a deterministic hot path shows up.
+   `FixedMotor3` has the same expansion (`transform_point` 1.50 µs -> 13 ns,
+   `transform_vector` 2.58 µs -> 10 ns); its results can differ from the old
+   product by a few units of the last place and stay bit-identical across
+   platforms.
 8. **Benchmarks.** `ecs` has criterion benches; add them for
    `runtime-threads` and the `gac-wgpu` batch kernels so items 3, 5 and 7 are
    decided on numbers.

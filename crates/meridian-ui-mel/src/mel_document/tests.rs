@@ -3,7 +3,7 @@
 use super::*;
 
 fn document(source: &str) -> Result<MelDocument, BuildError> {
-    MelDocument::parse(Path::new("scene.mel"), source)
+    MelDocument::parse(Path::new("scene.meui"), source)
 }
 
 fn rejection(source: &str) -> InvalidMarkup {
@@ -77,7 +77,7 @@ fn name_rules() {
 #[test]
 fn parse_errors_keep_the_path() {
     let error = document("<A>").unwrap_err();
-    assert!(error.to_string().starts_with("scene.mel:1:"), "{error}");
+    assert!(error.to_string().starts_with("scene.meui:1:"), "{error}");
 }
 
 #[test]

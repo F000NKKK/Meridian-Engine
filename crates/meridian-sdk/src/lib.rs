@@ -1,38 +1,39 @@
 //! Single application-facing entry point for Meridian-Engine.
 //!
-//! Layer: interface; bounded context: runtime (`craftbook.toml`,
-//! docs/context-map.md).
+//! Layer: interface; bounded context: runtime (`craftbook.toml`, docs/context-map.md).
 //!
 //! **Applications depend on this crate alone.** Everything an app needs
 //! — spatial math, physics bodies, graphics scene/material types, the
 //! windowed-app loop, audio types, asset decoding, and `runtime-app`'s
-//! own [`Runtime`] — is re-exported from here; nothing in `examples/`
-//! reaches into `meridian-gac`/`meridian-physics-domain`/
-//! `meridian-rendering-domain`/etc. directly. This is deliberately
-//! different from `runtime-app`'s own boundary (rule 7:
-//! `meridian-runtime-app` is the only crate allowed to depend on every
-//! `*-core`, because it's where cross-`*-core` *coordination logic*
-//! lives): this crate depends on the same set of crates for a different
-//! reason — application ergonomics and driver access `runtime-app`
-//! itself is forbidden from having.
-//!
-//! Design notes: docs/notes/meridian-sdk.md (`lib`).
+//! own [`Runtime`] — is re-exported from here; nothing in `examples/` reaches
+//! into the composed crates, and this crate may depend on drivers `runtime-app`
+//! may not. Notes: docs/notes/meridian-sdk.md.
 
 #![forbid(unsafe_code)]
 
 mod any_image_decoder;
+mod asset_loader;
 pub mod assets;
 pub mod dsl;
 mod fly_controls;
+mod model_files;
+mod model_loading;
+mod overlay_builder;
 pub mod render;
 mod runtime;
 pub mod scene;
 
 pub use any_image_decoder::AnyImageDecoder;
+pub use asset_loader::{asset_loader, default_asset_loader, load_image};
 pub use assets::{AssetCache, AudioTrack, load_audio_track, load_image_asset};
 pub use dsl::dsl_core;
 pub use fly_controls::fly_controls;
+pub use meridian_asset_app::{
+    AssetLoader, AssetPath, ByteSource, LoadError, Pending, Priority, SourceError, Spawn,
+};
 pub use meridian_asset_domain::{Decoder, ImageAsset};
+pub use meridian_asset_fs::FsSource;
+pub use meridian_asset_http::{HttpSource, HttpSourceError};
 pub use meridian_asset_png::PngDecoder;
 pub use meridian_asset_symphonia::{
     AnyAudioDecoder, AudioAsset, DecodeStrategy, StreamingAudioDecoder, open_audio,
@@ -74,15 +75,15 @@ pub use meridian_rendering_app::{
 };
 // -- meridian-rendering-domain: scene/material/lighting/submission --
 pub use meridian_rendering_domain::{
-    Camera, FlyCamera, FlyControls, Frustum, Light, Material, MaterialHandle, MaterialRegistry,
-    MeshHandle, MeshRegistry, MeshSource, Renderable3d, Scene2d, Scene3d, TextureHandle,
-    cube_mesh_source, ground_mesh_source, icosphere_mesh_source, look_at_rotor,
-    pyramid_mesh_source, smooth_normals,
+    BlendMode, Camera, Camera2d, ClipRect, ClipSpan, FlyCamera, FlyControls, Frustum, Light,
+    Material, MaterialHandle, MaterialRegistry, MeshHandle, MeshRegistry, MeshSource, Overlay2d,
+    Renderable3d, Scene2d, Scene3d, Sprite, TextureHandle, cube_mesh_source, ground_mesh_source,
+    icosphere_mesh_source, look_at_rotor, pyramid_mesh_source, smooth_normals,
 };
 // -- meridian-rendering-wgpu: the GPU device a windowed app opens once --
 pub use meridian_rendering_wgpu::{
     BloomPass, CommandBuffer, DEFAULT_SHADOW_MAP_SIZE, DepthTexture, Device, DeviceError,
-    DrawBuffers, GpuFrameRecorder, GpuTextureStore, RenderPass, SceneRenderer, Surface,
+    GpuFrameRecorder, GpuTextureStore, PreparedBatch, RenderPass, SceneRenderer, Surface,
     TextureRegistry, submit_scene3d,
 };
 // -- meridian-runtime-app: Runtime, the single frame-work entry point --
@@ -90,9 +91,9 @@ pub use meridian_runtime_app::{
     ComputeStage, EventSystem, Job, JobExecutor, PhysicsStepStage, Runtime, Shared, Stage, StageId,
 };
 // -- meridian-runtime-threads: the threaded job executor --
-pub use meridian_runtime_threads::TaskExecutor;
-/// The retained UI runtime (ADR 018), named by generated `.mel` glue.
+pub use meridian_runtime_threads::{BackgroundPool, TaskExecutor};
+/// The retained UI runtime (ADR 018), named by generated `.meui` glue.
 pub use meridian_ui_domain as ui_core;
-pub use render::{RenderStage, render_frame};
+pub use render::{RenderStage, compose_frame, render_frame};
 pub use runtime::parallel_runtime;
 pub use scene::GraphicsSession;

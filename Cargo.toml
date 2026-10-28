@@ -26,7 +26,12 @@ meridian-compute-wgpu = { path = "crates/meridian-compute-wgpu", version = "0.18
 meridian-compute-app = { path = "crates/meridian-compute-app", version = "0.20" }
 meridian-gac-wgpu = { path = "crates/meridian-gac-wgpu", version = "0.23" }
 meridian-asset-domain = { path = "crates/meridian-asset-domain", version = "0.13" }
+meridian-asset-app = { path = "crates/meridian-asset-app", version = "0.1" }
+meridian-asset-fs = { path = "crates/meridian-asset-fs", version = "0.1" }
+meridian-asset-http = { path = "crates/meridian-asset-http", version = "0.1" }
+meridian-asset-jpeg = { path = "crates/meridian-asset-jpeg", version = "0.1" }
 meridian-asset-png = { path = "crates/meridian-asset-png", version = "0.1" }
+meridian-asset-gltf = { path = "crates/meridian-asset-gltf", version = "0.1" }
 meridian-asset-symphonia = { path = "crates/meridian-asset-symphonia", version = "0.1" }
 meridian-ecs = { path = "crates/meridian-ecs", version = "0.15" }
 meridian-rendering-wgpu = { path = "crates/meridian-rendering-wgpu", version = "0.18" }
@@ -46,6 +51,7 @@ meridian-data-substrate = { path = "crates/meridian-data-substrate", version = "
 meridian-editor-domain = { path = "crates/meridian-editor-domain", version = "0.1" }
 meridian-editor-app = { path = "crates/meridian-editor-app", version = "0.1" }
 meridian-editor-tcp = { path = "crates/meridian-editor-tcp", version = "0.1" }
+meridian-text-domain = { path = "crates/meridian-text-domain", version = "0.1" }
 meridian-ui-domain = { path = "crates/meridian-ui-domain", version = "0.1" }
 meridian-ui-scene2d = { path = "crates/meridian-ui-scene2d", version = "0.1" }
 meridian-ui-mel = { path = "crates/meridian-ui-mel", version = "0.1" }
@@ -106,13 +112,26 @@ symphonia-adapter-libopus = "0.3"
 # single-format need.
 png = "0.18"
 
+# JPEG decoding for `asset-domain` images, the same class of decision as PNG:
+# baseline and progressive JPEG (Huffman, IDCT, colour conversion) is a codec
+# library's job. `zune-jpeg` is pure Rust and safe, with a small dependency
+# tree, and is what glTF models from the Khronos sample set need for textures.
+zune-jpeg = "0.5.15"
+
+# glTF 2.0 container and accessor parsing for `asset-domain` models (ADR 030):
+# JSON schema validation, GLB chunks and typed accessor iteration are a
+# maintained format library's job. Default features are off: `import` would
+# read files and decode images inside the decoder, which this workspace keeps
+# in the loader and the application.
+gltf = { version = "1.4", default-features = false, features = ["utils"] }
+
 # Every Meridian-owned data format (scenes, prefabs, saves, editor
 # messages) is Substrate Data — see docs/adr/016-data-formats-on-substrate-data.md.
 # `substrate-data` re-exports its `#[derive(Schema)]` (`substrate-data-derive`),
 # so this one entry is all a crate needs. Taken from crates.io; `0.2` takes
 # every compatible patch release. Used optionally (`data` feature) by
 # `numeric`/`gac`, and directly by `meridian-data-substrate`.
-substrate-data = "0.2"
+substrate-data = "0.3"
 
 [profile.release]
 lto = true

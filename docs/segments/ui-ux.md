@@ -11,10 +11,10 @@ backlog; architecture decisions still go to `docs/adr/`, status to
 |---|---|---|
 | UI rendering vocabulary (screen-space = `Scene2D` with pixel `Camera2D`, world-space = `Renderable3D` with `billboard`/`always_on_top`) | `meridian-rendering-domain` (`scene.rs`), [graphics-design.md](../graphics-design.md) "UI is a role, not a third scene kind" | Design accepted; `Scene2D`/`Sprite`/`Camera2D` exist; `always_on_top` and blend modes not acted on by the submission bridge yet |
 | Widgets, layout, focus, input routing | `meridian-ui-domain`, [ADR 018](../adr/018-ui-architecture.md) | Element tree, typed properties, layout, hit testing, focus and input routing done; no controls or styles yet |
-| Text: fonts, shaping, glyph atlas | future crate, own ADR | Not started |
+| Text: fonts, shaping, glyph atlas | `meridian-text-domain`, [ADR 023](../adr/023-own-font-stack.md) | TrueType parser, outlines, rasterizer, glyph atlas/cache and a simple shaper done; drawn by `ui-scene2d`; no OpenType/CFF, hinting or complex scripts |
 | Pointer/keyboard input feeding UI | `meridian-platform-winit::InputState` (consumer, not owner) | Key/mouse state exists; UI has its own `InputEvent`; the `platform-winit` adapter that fills it is not written; no IME composition, no gamepad |
 | Editor / IDLE UX (inspector, scene tree, viewport gizmos) | Meridian IDLE app (owned by **team/ide**); engine side through the editor protocol in `docs/data-formats.md` / substrate-data | We own UX requirements and engine-side hooks, team/ide owns the app |
-| Tree to `Scene2d` | `meridian-ui-scene2d`, [ADR 021](../adr/021-ui-extraction-and-extensibility.md) | `Background` fills extracted; text, borders, images, custom paint not yet; no sprite renderer consumes `Scene2d` |
+| Tree to `Scene2d` | `meridian-ui-scene2d`, [ADR 021](../adr/021-ui-extraction-and-extensibility.md) | `Background` fills and `TextBlock` glyphs extracted; borders, images, custom paint, clip spans not yet; no sprite renderer consumes `Scene2d` |
 
 ## Boundaries
 
@@ -38,7 +38,7 @@ backlog; architecture decisions still go to `docs/adr/`, status to
   texture upload, render order of the UI view.
 - **team/core** — input event stream in `platform-winit`, `Runtime::tick`
   frame composition.
-- **team/scripting** — UI markup in `.mel` (ADR 015 DSL) and bindings
+- **team/scripting** — UI markup in `.meui` (ADR 015 DSL) and bindings
   from scripts to widgets.
 - **team/data** — serialised UI/screen files and the editor protocol.
 - **team/ide** — Meridian IDLE app; we hand over UX specs and the
@@ -54,16 +54,16 @@ gets extracted to a neutral shared crate is a decision for the ADR.
 
 ## Direction from the owner
 
-2026-10-27: UI and its `.mel` markup follow the **WPF model** — retained
+2026-10-27: UI and its `.meui` markup follow the **WPF model** — retained
 element tree, layout panels (`Grid` with rows/columns in pixels/`Auto`/`*`,
 `StackPanel`, `DockPanel`), styles/templates, data binding — modelled on
 how `yog-ui` and Yog IDLE already do it. The UI-architecture ADR starts
 from this, not from an open choice between retained and immediate mode.
-Markup syntax is owned by team/scripting: ADR 017 (`.mel` markup and
+Markup syntax is owned by team/scripting: ADR 017 (`.meui` markup and
 code-behind, branch `claude/project-thread-h5kbvo`) — `x:Class`/
 `x:ViewModel`, `x:Name`, `x:Key`, dotted property elements and attached
 properties (`Grid.Row`), compiled `{x:Bind ...}` and `{StaticResource}`,
-`foo.mel` → `foo.g.rs` via `mel_include!`. The UI-architecture ADR maps
+`foo.meui` → `foo.g.rs` via `mel_include!`. The UI-architecture ADR maps
 that syntax onto the element model; ui-ux owns the runtime
 (`meridian-ui-domain`), scripting owns syntax, `markup` and codegen.
 
@@ -98,7 +98,7 @@ In order; nothing here starts without a task from the owner.
 7. **Example** — HUD overlay over `magic_figures` or `physic_figures`
    through `./build.sh run`.
 8. **World-space UI** — billboarded panels, health bars.
-9. **UI markup** — tags in the `.mel` DSL (with team/scripting).
+9. **UI markup** — tags in the `.meui` DSL (with team/scripting).
 10. **Editor UX spec** for Meridian IDLE (with team/ide) — viewport
     gizmos, inspector driven by `Shape` descriptions, scene tree.
 11. **Accessibility** — UI scale, contrast themes, keyboard-only

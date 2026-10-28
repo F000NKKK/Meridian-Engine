@@ -2,7 +2,7 @@
 
 use meridian_rendering_domain::SpriteVertex;
 
-use crate::{VertexAttributeDesc, VertexFormat, VertexLayout};
+use crate::{VertexAttributeDesc, VertexFormat, VertexLayout, VertexStep};
 
 /// Bytes in one encoded sprite vertex: 2 + 2 + 4 floats.
 pub const SPRITE_VERTEX_BYTES: usize = 32;
@@ -21,6 +21,7 @@ pub(crate) fn sprite_vertex_layout() -> VertexLayout {
             attribute(1, VertexFormat::Float32x2, 8),
             attribute(2, VertexFormat::Float32x4, 16),
         ],
+        step: VertexStep::Vertex,
     }
 }
 

@@ -22,7 +22,7 @@
 //! integrate" structure.
 
 use meridian_compute_app::ComputeContext;
-use meridian_compute_wgpu::GpuComputeDevice;
+use meridian_compute_wgpu::{GpuComputeDevice, ScratchPool};
 use meridian_gac::{FloatFlavor, Vec3};
 use meridian_gpu_wgpu::ComputePipeline;
 use meridian_physics_domain::soft_body::float::{SoftBody, SoftBodyIntegrator};
@@ -30,6 +30,7 @@ use meridian_physics_domain::soft_body::float::{SoftBody, SoftBodyIntegrator};
 use super::csr::build_adjacency;
 use super::dispatch::run;
 use super::float_wgsl::source;
+use super::scratch::SoftBodyScratch;
 use super::step_inputs::{
     StepInputs, Word, edge_bytes, pack_vec3s, params_bytes, unpack_vec3s, words_to_bytes,
 };
@@ -56,11 +57,12 @@ fn vec3_from_words(words: [Word; 3]) -> Vec3 {
 
 /// Compiled `soft_body_step` pipeline, built once against a
 /// [`ComputeContext`]'s GPU backend and reused across [`Self::step`]
-/// calls (topology/state buffers are still rebuilt every call — see
+/// calls; its GPU buffers and bind group are reused between steps (see
 /// [`crate`]'s module doc).
 #[derive(Debug)]
 pub struct SoftBodyGpuKernel {
     pipeline: ComputePipeline,
+    scratch: ScratchPool<SoftBodyScratch>,
 }
 
 impl SoftBodyGpuKernel {
@@ -72,7 +74,10 @@ impl SoftBodyGpuKernel {
         let gpu = context.gpu::<GpuComputeDevice>().expect(GPU_MISSING_NEW);
         let shader = gpu.create_shader("soft_body_step_f32", &source());
         let pipeline = gpu.create_compute_pipeline(&shader, "soft_body_step");
-        Self { pipeline }
+        Self {
+            pipeline,
+            scratch: ScratchPool::new(),
+        }
     }
 
     /// Advances every particle of `body` by one timestep `dt` on the GPU,
@@ -89,8 +94,16 @@ impl SoftBodyGpuKernel {
         dt: f32,
     ) {
         let inputs = step_inputs(body, integrator, dt);
-        let (new_positions, new_velocities) =
-            run(&self.pipeline, context, &inputs, GPU_MISSING_STEP).await;
+        let mut scratch = self.scratch.take();
+        let (new_positions, new_velocities) = run(
+            &self.pipeline,
+            context,
+            &inputs,
+            &mut scratch,
+            GPU_MISSING_STEP,
+        )
+        .await;
+        self.scratch.put(scratch);
         let count = inputs.particle_count;
         body.positions = unpack_vec3s(&new_positions, count, vec3_from_words);
         body.velocities = unpack_vec3s(&new_velocities, count, vec3_from_words);

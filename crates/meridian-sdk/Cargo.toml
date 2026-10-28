@@ -12,8 +12,13 @@ readme = "README.md"
 meridian-diagnostics = { workspace = true }
 meridian-gac = { workspace = true }
 meridian-platform-winit = { workspace = true }
+meridian-asset-app = { workspace = true }
 meridian-asset-domain = { workspace = true }
+meridian-asset-fs = { workspace = true }
+meridian-asset-http = { workspace = true }
 meridian-asset-png = { workspace = true }
+meridian-asset-jpeg = { workspace = true }
+meridian-asset-gltf = { workspace = true }
 meridian-asset-symphonia = { workspace = true }
 meridian-rendering-wgpu = { workspace = true }
 meridian-rendering-app = { workspace = true }
@@ -35,6 +40,7 @@ meridian-ui-domain = { workspace = true }
 
 [dev-dependencies]
 png = { workspace = true }
+meridian-rendering-app = { workspace = true, features = ["testing"] }
 
 [lints]
 workspace = true

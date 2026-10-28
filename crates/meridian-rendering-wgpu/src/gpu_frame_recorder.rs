@@ -4,6 +4,7 @@ use meridian_asset_domain::ImageAsset;
 use meridian_rendering_app::{FrameOutcome, FrameRecorder, FrameRequest, TextureStore};
 use meridian_rendering_domain::TextureHandle;
 
+use crate::overlay_pass::OverlayPass;
 use crate::{
     BloomInput, BloomPass, DEFAULT_SHADOW_MAP_SIZE, DepthTexture, Device, GpuTextureStore,
     SceneAssets, SceneRenderer, Surface, submit_scene3d,
@@ -23,7 +24,9 @@ pub struct GpuFrameRecorder {
     depth: DepthTexture,
     renderer: SceneRenderer,
     bloom: BloomPass,
+    overlays: OverlayPass,
     textures: GpuTextureStore,
+    size: [u32; 2],
 }
 
 impl GpuFrameRecorder {
@@ -47,6 +50,7 @@ impl GpuFrameRecorder {
         let depth = device.create_depth_texture(width, height);
         let renderer = SceneRenderer::with_shadow_map_size(&device, &surface, shadow_map_size);
         let bloom = BloomPass::new(&device, width, height, &surface);
+        let overlays = OverlayPass::new(&device, &surface);
         let textures = GpuTextureStore::new(device.clone());
         Self {
             device,
@@ -54,7 +58,9 @@ impl GpuFrameRecorder {
             depth,
             renderer,
             bloom,
+            overlays,
             textures,
+            size: [width, height],
         }
     }
 }
@@ -62,7 +68,7 @@ impl GpuFrameRecorder {
 impl FrameRecorder for GpuFrameRecorder {
     /// Records the shadow-casting depth pass (its own pass, before the main
     /// colour pass opens), acquires the swapchain frame, draws the scene, applies
-    /// bloom and presents. A lost or outdated swapchain skips the frame, logs
+    /// bloom, draws the overlays unblurred over it and presents. A lost or outdated swapchain skips the frame, logs
     /// it, and reports [`FrameOutcome::TargetUnavailable`] instead of leaving a
     /// gray window.
     fn record_frame(&mut self, request: &FrameRequest<'_>) -> FrameOutcome {
@@ -76,6 +82,13 @@ impl FrameRecorder for GpuFrameRecorder {
                 materials: request.materials,
                 textures: self.textures.registry(),
             },
+        );
+
+        let overlays = self.overlays.prepare(
+            &self.device,
+            self.textures.registry(),
+            request.overlays,
+            self.size,
         );
 
         let frame = match self.surface.acquire_frame() {
@@ -102,10 +115,11 @@ impl FrameRecorder for GpuFrameRecorder {
             &mut commands,
             &BloomInput {
                 renderer: &self.renderer,
-                draw_buffers: &prepared.buffers,
+                prepared: &prepared,
                 target_frame: &frame,
             },
         );
+        self.overlays.draw(&mut commands, &frame, &overlays);
         commands.submit();
         frame.present(&self.device);
         FrameOutcome::Presented
@@ -118,6 +132,7 @@ impl FrameRecorder for GpuFrameRecorder {
         self.surface.resize(&self.device, width, height);
         self.depth = self.device.create_depth_texture(width, height);
         self.bloom = BloomPass::new(&self.device, width, height, &self.surface);
+        self.size = [width, height];
     }
 }
 

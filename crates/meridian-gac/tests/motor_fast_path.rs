@@ -79,3 +79,93 @@ fn translation_only_motors_and_inverses_match() {
         }
     }
 }
+
+mod fixed {
+    use meridian_gac::multivector::fixed::FixedMultivector;
+    use meridian_gac::{FixedMotor3, FixedRotor, FixedVec3, blade};
+    use meridian_numeric::Fixed;
+
+    fn fx(value: f64) -> Fixed {
+        Fixed::from_num(value)
+    }
+
+    fn vec3(x: f64, y: f64, z: f64) -> FixedVec3 {
+        FixedVec3::new(fx(x), fx(y), fx(z))
+    }
+
+    fn sandwich(motor: FixedMotor3, point: FixedVec3) -> FixedVec3 {
+        let mut pm = [Fixed::ZERO; 16];
+        pm[blade::E123] = Fixed::ONE;
+        pm[blade::E023] = -point.x;
+        pm[blade::E013] = point.y;
+        pm[blade::E012] = -point.z;
+        let r = motor.0 * FixedMultivector(pm) * motor.0.reverse();
+        FixedVec3::new(-r.0[blade::E023], r.0[blade::E013], -r.0[blade::E012])
+    }
+
+    /// Within a few units of the last place of Q16.16.
+    fn close(a: FixedVec3, b: FixedVec3) -> bool {
+        let tolerance = 16;
+        [(a.x, b.x), (a.y, b.y), (a.z, b.z)]
+            .iter()
+            .all(|(l, r)| (l.to_bits() - r.to_bits()).abs() <= tolerance)
+    }
+
+    fn motors() -> Vec<FixedMotor3> {
+        let rotations = [
+            (vec3(1.0, 2.0, 3.0), 0.4),
+            (vec3(-0.3, 0.9, 0.2), 1.3),
+            (vec3(0.0, 1.0, 0.0), 2.2),
+        ];
+        rotations
+            .iter()
+            .map(|&(axis, angle)| {
+                FixedMotor3::from_rotation_translation(
+                    FixedRotor::from_axis_angle(axis, fx(angle)),
+                    vec3(1.5, -2.0, 0.25),
+                )
+            })
+            .collect()
+    }
+
+    #[test]
+    fn transform_point_matches_the_full_sandwich_product() {
+        let points = [
+            FixedVec3::ZERO,
+            vec3(1.0, 0.0, 0.0),
+            vec3(0.3, -1.2, 4.5),
+            vec3(-7.0, 2.0, 0.5),
+        ];
+        for motor in motors() {
+            for point in points {
+                assert!(close(motor.transform_point(point), sandwich(motor, point)));
+            }
+        }
+    }
+
+    #[test]
+    fn transform_vector_drops_the_translation() {
+        let v = vec3(0.3, -1.2, 4.5);
+        for motor in motors() {
+            let expected = sandwich(motor, v) - sandwich(motor, FixedVec3::ZERO);
+            assert!(close(motor.transform_vector(v), expected));
+        }
+    }
+
+    #[test]
+    fn composition_and_inverse_still_agree() {
+        let [a, b, _] = <[FixedMotor3; 3]>::try_from(motors()).expect("three motors");
+        let both = a.compose(b);
+        let p = vec3(0.7, -0.2, 1.9);
+        assert!(close(both.transform_point(p), sandwich(both, p)));
+        let back = both.inverse().transform_point(both.transform_point(p));
+        // Q16.16 truncation accumulates over two composed motors; the full
+        // product drifts by a comparable amount (a few tens of units).
+        let drift = [(back.x, p.x), (back.y, p.y), (back.z, p.z)]
+            .iter()
+            .map(|(l, r)| (l.to_bits() - r.to_bits()).abs())
+            .max()
+            .expect("three axes");
+        assert!(drift <= 64, "round trip drifted {drift} units");
+    }
+}

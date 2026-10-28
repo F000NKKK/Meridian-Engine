@@ -289,6 +289,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "byteorder"
+version = "1.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1fd0f2584146f6f2ef48085050886acf353beff7305ebd1ae69500e27c67f64b"
+
+[[package]]
 name = "bytes"
 version = "1.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -847,6 +853,42 @@ dependencies = [
 ]
 
 [[package]]
+name = "gltf"
+version = "1.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e3ce1918195723ce6ac74e80542c5a96a40c2b26162c1957a5cd70799b8cacf7"
+dependencies = [
+ "byteorder",
+ "gltf-json",
+ "lazy_static",
+ "serde_json",
+]
+
+[[package]]
+name = "gltf-derive"
+version = "1.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "14070e711538afba5d6c807edb74bcb84e5dbb9211a3bf5dea0dfab5b24f4c51"
+dependencies = [
+ "inflections",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.119",
+]
+
+[[package]]
+name = "gltf-json"
+version = "1.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e6176f9d60a7eab0a877e8e96548605dedbde9190a7ae1e80bbcc1c9af03ab14"
+dependencies = [
+ "gltf-derive",
+ "serde",
+ "serde_derive",
+ "serde_json",
+]
+
+[[package]]
 name = "glutin_wgl_sys"
 version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -908,6 +950,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e17592d60ebacc7d5e169f4663c5f84f9161cc90328abcfe8456f41e4dfcb284"
 
 [[package]]
+name = "http"
+version = "1.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "918d3568bebf352712bc2ef3d46a8bcf1a75b373be6539de198e9105cbbf9ce0"
+dependencies = [
+ "bytes",
+ "itoa",
+]
+
+[[package]]
+name = "httparse"
+version = "1.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6dbf3de79e51f3d586ab4cb9d5c3e2c14aa28ed23d180cf89b4df0454a69cc87"
+
+[[package]]
 name = "indexmap"
 version = "2.14.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -916,6 +974,12 @@ dependencies = [
  "equivalent",
  "hashbrown 0.17.1",
 ]
+
+[[package]]
+name = "inflections"
+version = "1.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a257582fdcde896fd96463bf2d40eefea0580021c0712a0e2b028b60b47a837a"
 
 [[package]]
 name = "itertools"
@@ -1123,10 +1187,54 @@ dependencies = [
 ]
 
 [[package]]
+name = "meridian-asset-app"
+version = "0.1.0"
+dependencies = [
+ "meridian-asset-domain",
+]
+
+[[package]]
 name = "meridian-asset-domain"
 version = "0.13.0"
 dependencies = [
  "meridian-diagnostics",
+]
+
+[[package]]
+name = "meridian-asset-fs"
+version = "0.1.0"
+dependencies = [
+ "criterion",
+ "meridian-asset-app",
+ "meridian-asset-domain",
+ "meridian-runtime-threads",
+]
+
+[[package]]
+name = "meridian-asset-gltf"
+version = "0.1.0"
+dependencies = [
+ "gltf",
+ "meridian-asset-domain",
+ "meridian-gac",
+]
+
+[[package]]
+name = "meridian-asset-http"
+version = "0.1.0"
+dependencies = [
+ "meridian-asset-app",
+ "percent-encoding",
+ "thiserror 2.0.21",
+ "ureq",
+]
+
+[[package]]
+name = "meridian-asset-jpeg"
+version = "0.1.0"
+dependencies = [
+ "meridian-asset-domain",
+ "zune-jpeg",
 ]
 
 [[package]]
@@ -1220,6 +1328,7 @@ dependencies = [
  "criterion",
  "meridian-gac",
  "meridian-memory",
+ "thiserror 2.0.21",
 ]
 
 [[package]]
@@ -1432,6 +1541,7 @@ name = "meridian-runtime-threads"
 version = "0.7.0"
 dependencies = [
  "criterion",
+ "meridian-asset-app",
  "meridian-runtime-app",
 ]
 
@@ -1439,7 +1549,12 @@ dependencies = [
 name = "meridian-sdk"
 version = "0.5.0"
 dependencies = [
+ "meridian-asset-app",
  "meridian-asset-domain",
+ "meridian-asset-fs",
+ "meridian-asset-gltf",
+ "meridian-asset-http",
+ "meridian-asset-jpeg",
  "meridian-asset-png",
  "meridian-asset-symphonia",
  "meridian-audio-app",
@@ -1463,6 +1578,14 @@ dependencies = [
  "meridian-runtime-threads",
  "meridian-ui-domain",
  "png",
+]
+
+[[package]]
+name = "meridian-text-domain"
+version = "0.1.0"
+dependencies = [
+ "meridian-text-domain",
+ "thiserror 2.0.21",
 ]
 
 [[package]]
@@ -1492,7 +1615,9 @@ dependencies = [
  "meridian-memory",
  "meridian-rendering-domain",
  "meridian-resource",
+ "meridian-text-domain",
  "meridian-ui-domain",
+ "thiserror 2.0.21",
 ]
 
 [[package]]
@@ -2611,21 +2736,22 @@ checksum = "6637bab7722d379c8b41ba849228d680cc12d0a45ba1fa2b48f2a30577a06731"
 
 [[package]]
 name = "substrate-data"
-version = "0.2.1"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a7cd10b1cb74869ec548849b6b9c2e24e7e864c07b76da7301f934759cd21f16"
+checksum = "024165a4cf791e4c12b79e882d11d3654342dff83f32264e420f79ffd8e03857"
 dependencies = [
  "base64",
  "bumpalo",
  "memchr",
  "substrate-data-derive",
+ "zmij",
 ]
 
 [[package]]
 name = "substrate-data-derive"
-version = "0.2.1"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7252e239386a0bd7ce822d9d317f64ad0537e19f0c47e54b2c7a9034ac6a2e0a"
+checksum = "cab9ed284375907b6e30701cbbf8193aff70eee00713d90745d920930677baa4"
 dependencies = [
  "proc-macro-crate",
  "proc-macro2",
@@ -2963,6 +3089,37 @@ name = "unicode-width"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b4ac048d71ede7ee76d585517add45da530660ef4390e49b098733c6e897f254"
+
+[[package]]
+name = "ureq"
+version = "3.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cde93ff05758a36a851a398a772b0b79a82fbe3c186a46f2696baaeaf84c966b"
+dependencies = [
+ "base64",
+ "log",
+ "percent-encoding",
+ "ureq-proto",
+ "utf8-zero",
+]
+
+[[package]]
+name = "ureq-proto"
+version = "0.6.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "841583fc36089d7d59419568ae157f43a5a03a2e5a81ba87c77d1596ef46e922"
+dependencies = [
+ "base64",
+ "http",
+ "httparse",
+ "log",
+]
+
+[[package]]
+name = "utf8-zero"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b8c0a043c9540bae7c578c88f91dda8bd82e59ae27c21baca69c8b191aaf5a6e"
 
 [[package]]
 name = "version_check"
@@ -3755,3 +3912,18 @@ name = "zmij"
 version = "1.0.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "29666d0abbfad1e3dc4dcf6144730dd3a3ab225bbbdac83319345b1b44ccfc1b"
+
+[[package]]
+name = "zune-core"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d56377fd46368984a170bc5aac5567e52ca5da874caa60bea39fcbca78fb658b"
+
+[[package]]
+name = "zune-jpeg"
+version = "0.5.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "27bc9d5b815bc103f142aa054f561d9187d191692ec7c2d1e2b4737f8dbd7296"
+dependencies = [
+ "zune-core",
+]

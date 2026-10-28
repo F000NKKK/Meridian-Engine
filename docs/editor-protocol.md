@@ -20,6 +20,12 @@ tagged by variant name (`{ type: "get_component", entity: …, component: … }`
 and structs by field name, so the bytes are self-describing, and a tool with
 no code for the message can read it by shape.
 
+The binary form is SDAT **version 2** (Substrate Data 0.3): peers write
+version 2 and read versions 1 and 2, so an editor or tool built against
+Substrate Data 0.2 (or a TypeScript/Java port older than 0.3) cannot read what
+a 0.3 host writes. Move both ends to 0.3 together; the golden frames in
+`tests/protocol/golden.rs` pin the version 2 bytes.
+
 `write_message` / `read_message` wrap those two calls and return a typed
 `FrameError` instead of an `io::Error` to unwrap:
 

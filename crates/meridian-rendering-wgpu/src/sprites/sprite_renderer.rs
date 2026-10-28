@@ -63,6 +63,8 @@ impl SpriteRenderer {
 
         let mut bytes = Vec::new();
         let mut runs = Vec::new();
+        let mut groups = Vec::new();
+        let mut group_of = Vec::new();
         let mut first = 0u32;
         for batch in batches.iter().filter(|b| !b.vertices.is_empty()) {
             let Some(texture) = textures.get(batch.texture) else {
@@ -80,14 +82,21 @@ impl SpriteRenderer {
                 .iter()
                 .for_each(|v| write_vertex(v, &mut bytes));
             let count = u32::try_from(batch.vertices.len()).unwrap_or(u32::MAX);
-            let bind_group = device.create_textured_bind_group(
-                &self.pipeline,
-                &camera_buffer,
-                texture,
-                &self.sampler,
-            );
+            let group = group_of
+                .iter()
+                .position(|&t| t == batch.texture)
+                .unwrap_or_else(|| {
+                    groups.push(device.create_textured_bind_group(
+                        &self.pipeline,
+                        &camera_buffer,
+                        texture,
+                        &self.sampler,
+                    ));
+                    group_of.push(batch.texture);
+                    groups.len() - 1
+                });
             runs.push(SpriteRun {
-                bind_group,
+                group,
                 vertices: first..first.saturating_add(count),
                 scissor,
             });
@@ -95,6 +104,7 @@ impl SpriteRenderer {
         }
         PreparedSprites {
             vertices: upload_vertices(device, &bytes),
+            groups,
             runs,
             viewport: view.viewport,
         }
@@ -116,7 +126,7 @@ impl SpriteRenderer {
                 height,
             });
             pass.set_scissor_rect(scissor.x, scissor.y, scissor.width, scissor.height);
-            pass.set_bind_group(0, &run.bind_group);
+            pass.set_bind_group(0, &prepared.groups[run.group]);
             pass.draw(run.vertices.clone());
         }
         pass.set_scissor_rect(0, 0, width, height);

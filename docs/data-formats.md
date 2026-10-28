@@ -175,7 +175,7 @@ document key. Nothing propagates transforms along it yet; instancing
 
 `describe()` returns a `ComponentShape { name, shape: ShapeDoc }` per
 registered component, in registration order — a `Schema` itself, so
-Meridian IDLE gets it as a frame and builds its inspector and `.mel`
+Meridian IDLE gets it as a frame and builds its inspector and `.meui`
 completion from it.
 
 ## Asset metadata (`.meta`)

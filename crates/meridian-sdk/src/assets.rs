@@ -17,8 +17,10 @@
 //! about file paths or decoders).
 
 use std::collections::{HashMap, VecDeque};
+use std::path::Path;
 
 use meridian_asset_domain::{Decoder, ImageAsset, ObjDecoder};
+use meridian_asset_gltf::GltfDecoder;
 use meridian_asset_symphonia::{AudioAsset, DecodeStrategy, StreamingAudioDecoder, open_audio};
 use meridian_rendering_app::{MeshStore, TextureStore};
 use meridian_rendering_domain::{
@@ -26,6 +28,8 @@ use meridian_rendering_domain::{
 };
 
 use crate::any_image_decoder::AnyImageDecoder;
+pub use crate::model_loading::ModelPiece;
+use crate::{model_files, model_loading};
 
 /// Reads and decodes a real image asset file, identified by its magic
 /// bytes (never its extension — the same rule
@@ -173,8 +177,9 @@ pub fn load_audio_track(path: &str) -> Result<(AudioTrack, u32), String> {
 /// first call actually reads, decodes and uploads it.
 #[derive(Debug, Default)]
 pub struct AssetCache {
-    texture_cache: HashMap<String, TextureHandle>,
-    mesh_cache: HashMap<String, MeshHandle>,
+    textures: HashMap<String, TextureHandle>,
+    meshes: HashMap<String, MeshHandle>,
+    models: HashMap<String, Vec<ModelPiece>>,
 }
 
 impl AssetCache {
@@ -188,12 +193,12 @@ impl AssetCache {
     /// same path returns the same handle without re-reading, decoding
     /// or uploading the file again.
     pub fn load_texture(&mut self, textures: &mut impl TextureStore, path: &str) -> TextureHandle {
-        if let Some(&handle) = self.texture_cache.get(path) {
+        if let Some(&handle) = self.textures.get(path) {
             return handle;
         }
         let image = load_image_asset(path);
         let handle = textures.upload(&image);
-        self.texture_cache.insert(path.to_string(), handle);
+        self.textures.insert(path.to_string(), handle);
         handle
     }
 
@@ -213,7 +218,7 @@ impl AssetCache {
         meshes: &mut impl MeshStore,
         path: &str,
     ) -> Result<MeshHandle, String> {
-        if let Some(&handle) = self.mesh_cache.get(path) {
+        if let Some(&handle) = self.meshes.get(path) {
             return Ok(handle);
         }
         let bytes = std::fs::read(path).map_err(|e| format!("failed to read {path}: {e}"))?;
@@ -231,7 +236,39 @@ impl AssetCache {
         let handle = meshes
             .add(source)
             .map_err(|e: MeshRegistryError| format!("{path}: {e}"))?;
-        self.mesh_cache.insert(path.to_string(), handle);
+        self.meshes.insert(path.to_string(), handle);
         Ok(handle)
+    }
+
+    /// Loads a `.glb` (or self-contained `.gltf`) model at `path` through
+    /// `asset-gltf::GltfDecoder` and registers each part's mesh and its
+    /// textures (ADR 030), cached by `path` like [`load_texture`](Self::load_texture).
+    /// Skins and animations are ignored. A `.gltf` that names external
+    /// buffers or images has them read from beside it.
+    ///
+    /// # Errors
+    ///
+    /// The file cannot be read, is not a supported glTF, or a part cannot be
+    /// registered (see [`MeshRegistryError`]).
+    pub fn load_model_gltf(
+        &mut self,
+        meshes: &mut impl MeshStore,
+        textures: &mut impl TextureStore,
+        path: &str,
+    ) -> Result<Vec<ModelPiece>, String> {
+        if let Some(pieces) = self.models.get(path) {
+            return Ok(pieces.clone());
+        }
+        let bytes = std::fs::read(path).map_err(|e| format!("failed to read {path}: {e}"))?;
+        let uris = GltfDecoder::required_uris(&bytes)
+            .map_err(|e| format!("failed to decode {path}: {e}"))?;
+        let base = Path::new(path).parent().unwrap_or_else(|| Path::new("."));
+        let files = model_files::read_all(base, &uris).map_err(|e| format!("{path}: {e}"))?;
+        let model = GltfDecoder::decode_with(&bytes, &files)
+            .map_err(|e| format!("failed to decode {path}: {e}"))?;
+        let pieces =
+            model_loading::register(model, meshes, textures).map_err(|e| format!("{path}: {e}"))?;
+        self.models.insert(path.to_string(), pieces.clone());
+        Ok(pieces)
     }
 }

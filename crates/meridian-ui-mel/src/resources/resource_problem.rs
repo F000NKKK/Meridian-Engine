@@ -12,6 +12,18 @@ pub enum ResourceProblem {
     InvalidSetName(String),
     #[error("resource set '{0}' is defined twice")]
     DuplicateSet(String),
+    /// `Strings.<tag>.mres` with a tag that is not a culture.
+    #[error("'{0}' is not a culture (letters and digits, '-' between parts: ru, en-gb)")]
+    InvalidCulture(String),
+    /// A variant of a set that has no `<Set>.mres`.
+    #[error("resource set '{0}' has a culture variant but no default '{0}.mres'")]
+    VariantWithoutDefault(String),
+    /// A variant entry the default set does not have.
+    #[error("variant '{set}' defines '{entry}', which the default set does not")]
+    VariantUnknownEntry { set: String, entry: String },
+    /// A variant entry of another type than the default's.
+    #[error("variant entry '{entry}' must have the same type as the default's")]
+    VariantTypeMismatch { entry: String },
     #[error("'{0}' is not a usable resource name (dotted identifiers: 'title', 'screen.title')")]
     InvalidName(String),
     /// Two names that generate the same constant.

@@ -13,7 +13,7 @@ struct AudioTag {
     file: String,
 }
 
-/// One shape's fixed identity, flattened out of `assets/scenes/magic_figures.mel`
+/// One shape's fixed identity, flattened out of `assets/scenes/magic_figures.meui`
 /// by [`load_scene`] — the DSL tree itself is only walked once, at
 /// startup.
 pub(crate) struct ShapeSpec {
@@ -30,7 +30,7 @@ pub(crate) struct ShapeSpec {
     pub(crate) spin_speed: f32,
 }
 
-/// Builds `assets/scenes/magic_figures.mel` (embedded and checked at
+/// Builds `assets/scenes/magic_figures.meui` (embedded and checked at
 /// compile time through the generated [`scene`] module, ADR 017) against
 /// the SDK's built-in tags plus this example's own
 /// [`Glow`](crate::Glow)/[`OrbitTag`](crate::OrbitTag)/[`AudioTag`], and
@@ -43,8 +43,8 @@ pub(crate) fn load_scene() -> Vec<ShapeSpec> {
     registry.register::<AudioTag>();
 
     let root = scene::build(&registry).unwrap_or_else(|e| {
-        meridian_sdk::log_error!("failed to build magic_figures.mel: {e}");
-        panic!("failed to build magic_figures.mel: {e}");
+        meridian_sdk::log_error!("failed to build magic_figures.meui: {e}");
+        panic!("failed to build magic_figures.meui: {e}");
     });
 
     scene::Name::ALL

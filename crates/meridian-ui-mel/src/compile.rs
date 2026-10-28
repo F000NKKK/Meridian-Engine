@@ -1,4 +1,4 @@
-//! Compiling `.mel` and `.mres` files into `.g.rs` files from a build
+//! Compiling `.meui` and `.mres` files into `.g.rs` files from a build
 //! script.
 
 use std::path::{Path, PathBuf};
@@ -6,12 +6,12 @@ use std::path::{Path, PathBuf};
 use crate::source_dir::{SourceFiles, insert_set, read_set};
 use crate::{BuildError, GeneratedModule, GeneratedResources, MelDocument, ResourceSets};
 
-/// Compiles every `*.mres` and `*.mel` under `dir` (recursively) into
+/// Compiles every `*.mres` and `*.meui` under `dir` (recursively) into
 /// `$OUT_DIR/mel/<path relative to dir>.g.rs`, so
-/// `assets/scenes/hud/main.mel` becomes `mel_include!("hud/main")` and
+/// `assets/scenes/hud/main.meui` becomes `mel_include!("hud/main")` and
 /// `assets/scenes/Strings.mres` becomes `mel_include!("Strings")`, and
 /// asks Cargo to rerun the build script when anything under `dir`
-/// changes. Resource sets are read first: a `.mel` may name any of them
+/// changes. Resource sets are read first: a `.meui` may name any of them
 /// with `@res:Set.name`. Returns the generated files.
 pub fn compile_dir(dir: impl AsRef<Path>) -> Result<Vec<PathBuf>, BuildError> {
     let dir = dir.as_ref();
@@ -36,21 +36,23 @@ fn compile_tree(dir: &Path, out_dir: &Path) -> Result<Vec<PathBuf>, BuildError> 
     let mut generated = Vec::new();
     for source in &files.mres {
         let set = read_set(source)?;
-        let file = format!("{}.mres", set.name);
-        write(
-            &target(source)?,
-            &GeneratedResources::render(&set, &file).code,
-            &mut generated,
-        )?;
+        if set.culture.is_none() {
+            let file = format!("{}.mres", set.name);
+            write(
+                &target(source)?,
+                &GeneratedResources::render(&set, &file).code,
+                &mut generated,
+            )?;
+        }
         insert_set(&mut sets, set, source)?;
     }
-    for source in &files.mel {
+    for source in &files.meui {
         generated.push(compile_file_with(source, &target(source)?, &sets)?);
     }
     Ok(generated)
 }
 
-/// Compiles one `.mel` file into `target`, creating its directory.
+/// Compiles one `.meui` file into `target`, creating its directory.
 pub fn compile_file(source: &Path, target: &Path) -> Result<PathBuf, BuildError> {
     compile_file_with(source, target, &ResourceSets::default())
 }
@@ -95,7 +97,7 @@ mod tests {
     #[test]
     fn compile_file_writes_the_module() {
         let dir = scratch("file");
-        let source = dir.join("hud.mel");
+        let source = dir.join("hud.meui");
         std::fs::write(&source, r#"<Scene><Entity x:Name="sun" /></Scene>"#).unwrap();
         let target = dir.join("out/hud.g.rs");
         compile_file(&source, &target).unwrap();
@@ -106,10 +108,10 @@ mod tests {
     #[test]
     fn malformed_file_fails_with_its_path() {
         let dir = scratch("bad");
-        let source = dir.join("bad.mel");
+        let source = dir.join("bad.meui");
         std::fs::write(&source, "<Scene>").unwrap();
         let error = compile_file(&source, &dir.join("bad.g.rs")).unwrap_err();
-        assert!(error.to_string().contains("bad.mel:1:"), "{error}");
+        assert!(error.to_string().contains("bad.meui:1:"), "{error}");
         assert!(!dir.join("bad.g.rs").exists());
     }
 
@@ -126,7 +128,7 @@ mod tests {
         std::fs::create_dir_all(dir.join("ui")).unwrap();
         std::fs::write(dir.join("ui/Strings.mres"), r#"{ title: "Yog" }"#).unwrap();
         std::fs::write(
-            dir.join("ui/hud.mel"),
+            dir.join("ui/hud.meui"),
             r#"<TextBlock x:Name="label" text="@res:Strings.title" />"#,
         )
         .unwrap();
@@ -143,9 +145,28 @@ mod tests {
     }
 
     #[test]
+    fn variants_generate_nothing_and_are_checked() {
+        let dir = scratch("variants");
+        std::fs::write(dir.join("Strings.mres"), r#"{ title: "Yog" }"#).unwrap();
+        std::fs::write(dir.join("Strings.ru.mres"), r#"{ title: "Йог" }"#).unwrap();
+        let files = compile_tree(&dir, &dir.join("out")).unwrap();
+        assert_eq!(files.len(), 1, "{files:?}");
+        std::fs::write(dir.join("Strings.ru.mres"), r#"{ nope: "x" }"#).unwrap();
+        let error = compile_tree(&dir, &dir.join("out")).unwrap_err();
+        assert!(
+            error.to_string().contains("which the default set does not"),
+            "{error}"
+        );
+        std::fs::write(dir.join("Strings.ru.mres"), "{}").unwrap();
+        std::fs::write(dir.join("Strings.r_u.mres"), "{}").unwrap();
+        let error = compile_tree(&dir, &dir.join("out")).unwrap_err();
+        assert!(error.to_string().contains("is not a culture"), "{error}");
+    }
+
+    #[test]
     fn unknown_resource_and_duplicate_sets_fail_the_build() {
         let dir = scratch("bad-res");
-        std::fs::write(dir.join("a.mel"), r#"<TextBlock text="@res:Nope.x" />"#).unwrap();
+        std::fs::write(dir.join("a.meui"), r#"<TextBlock text="@res:Nope.x" />"#).unwrap();
         let error = compile_tree(&dir, &dir.join("out")).unwrap_err();
         assert!(
             error.to_string().contains("no resource 'Nope.x'"),
@@ -164,7 +185,7 @@ mod tests {
     #[test]
     fn missing_file_is_an_io_error() {
         let dir = scratch("missing");
-        let error = compile_file(&dir.join("nope.mel"), &dir.join("nope.g.rs")).unwrap_err();
+        let error = compile_file(&dir.join("nope.meui"), &dir.join("nope.g.rs")).unwrap_err();
         assert!(matches!(error, BuildError::Io { .. }));
     }
 }

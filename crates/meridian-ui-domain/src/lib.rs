@@ -4,7 +4,7 @@
 //!
 //! This crate is the *runtime* half of the UI model in
 //! [ADR 018](../../docs/adr/018-ui-architecture.md). It owns no pixels and no
-//! markup syntax: `.mel` parsing and codegen belong to `markup` and
+//! markup syntax: `.meui` parsing and codegen belong to `markup` and
 //! `mel-build` (ADR 017), and turning the laid-out tree into `Scene2D`
 //! renderables is a later step above this crate.
 //!

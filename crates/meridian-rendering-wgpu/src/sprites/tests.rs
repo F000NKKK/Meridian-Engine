@@ -80,6 +80,7 @@ async fn prepared_scene_draws_into_an_offscreen_target_without_validation_errors
         &textures,
     );
     assert_eq!(prepared.draw_calls(), 1);
+    assert_eq!(prepared.bind_groups(), 1);
 
     let mut commands = device.create_command_buffer();
     {
@@ -87,4 +88,49 @@ async fn prepared_scene_draws_into_an_offscreen_target_without_validation_errors
         renderer.draw(&mut pass, &prepared);
     }
     commands.submit();
+}
+
+#[cfg(feature = "hw-tests")]
+#[tokio::test]
+async fn clipped_runs_of_one_texture_share_a_bind_group() {
+    use meridian_gac::{Motor3, Vec3};
+    use meridian_rendering_domain::scene::{Camera2d, Scene2d, Sprite};
+    use meridian_rendering_domain::{ClipRect, ClipSpan, SpriteView, batch_scene2d_clipped};
+
+    use crate::{ColorFormat, Device, TextureRegistry};
+
+    let Ok(device) = Device::new().await else {
+        eprintln!("skipping: no GPU device available");
+        return;
+    };
+    let mut textures = TextureRegistry::new();
+    let white = textures.upload_solid(&device, [255; 4]);
+    let renderer = SpriteRenderer::new_offscreen(&device, ColorFormat::SrgbRgba8);
+    let sprite = |layer: i32| Sprite {
+        texture: white,
+        source_rect: None,
+        size: [10.0, 10.0],
+        tint: [1.0; 4],
+        frame: Motor3::translation(Vec3::new(32.0, 32.0, 0.0)),
+        layer,
+    };
+    let scene = Scene2d {
+        camera: Camera2d::from_surface_size(64.0, 64.0),
+        sprites: vec![sprite(0), sprite(1), sprite(2)],
+    };
+    let clips = [ClipSpan {
+        layers: 1..=1,
+        rect: ClipRect {
+            origin: [0.0, 0.0],
+            size: [40.0, 40.0],
+        },
+    }];
+    let batches = batch_scene2d_clipped(&scene, &clips);
+    let view = SpriteView {
+        camera: scene.camera,
+        viewport: [64, 64],
+    };
+    let prepared = renderer.prepare(&device, view, &batches, &textures);
+    assert_eq!(prepared.draw_calls(), 3);
+    assert_eq!(prepared.bind_groups(), 1);
 }

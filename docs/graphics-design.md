@@ -33,9 +33,7 @@ Post Processing      -- real (bloom); HDR/tone-mapping still open
 `Camera`, frustum culling, render graph pass ordering, scene extraction,
 lighting and the submission bridge are all real and tested (`cargo test
 -p meridian-rendering-domain`) — see "Implementation order" below for the
-step-by-step history and exactly what's still open (shadow mapping,
-per-material roughness/specular, blend-mode/`always_on_top` handling,
-HDR). `rendering-wgpu` is real too, both headless (`Device::new`) and
+step-by-step history and exactly what's still open (HDR). `rendering-wgpu` is real too, both headless (`Device::new`) and
 windowed (`Device::new_windowed`, a real swapchain `Surface` —
 `Buffer`/`Texture`/`Shader`/compute `Pipeline`/`CommandBuffer` either
 way). `Animation` is the one row above with no work started yet — no
@@ -241,13 +239,9 @@ driver.
    `create_textured_bind_group` passthroughs, and `submission/` picks
    between two unlit pipelines per renderable — `TEXTURED_SHADER_WGSL`
    (samples `Material::albedo` when it resolves in the `TextureRegistry`)
-   or `UNLIT_SHADER_WGSL` (flat `base_color_factor` otherwise). Still
-   disclosed, not hidden, as scoped down: no *lighting* yet (both
-   pipelines are unlit — that's step 3), and no GPU instancing (no
-   per-instance uniform mechanism exists, so world-space vertices and
-   textured-draw bind groups are baked/rebuilt fresh every frame — see
-   the module doc's "no per-instance uniform" note and the
-   GPU-driven-rendering section below). Two windowed examples
+   or `UNLIT_SHADER_WGSL` (flat `base_color_factor` otherwise). Both were
+   unlit at this step; lighting is step 3. Instancing arrived later (see
+   step 3's last paragraph). Two windowed examples
    (`magic_figures`, `physic_figures`) have converged onto the bridge —
    a real PNG-textured checkerboard floor (`AnyImageDecoder`/
    `TextureRegistry::upload` on a decoded file, not a generated
@@ -271,32 +265,51 @@ driver.
    extra lights dropped and logged) and `Scene3d::ambient`; the existing
    `UNLIT_SHADER_WGSL`/`TEXTURED_SHADER_WGSL` stay for `Material::unlit`.
    `Material::emissive` bakes into every vertex regardless of family and
-   feeds bloom's bright-pass mask (see next). Meshes now carry per-vertex
-   normals (`MeshSource::normals`, transformed by `Motor3::transform_vector`
-   — rotation only, matching a normal's transform rule). **Bloom is
+   feeds bloom's bright-pass mask (see next). Meshes carry per-vertex
+   normals (`MeshSource::normals`); the shader rotates them with the
+   instance's model matrix, which for a rigid `Motor3` is exactly a
+   normal's transform rule. **Bloom is
    real** too, one layer up from the design's original "Post Processing"
    scaffold entry: `crate::bloom::BloomPass` redraws each frame's already-
-   baked `DrawBuffers` through an emissive-extraction pipeline into an
+   prepared batches through an emissive-extraction pipeline into an
    offscreen texture, separably Gaussian-blurs it (two full-screen-
    triangle passes, horizontal then vertical), and additively composites
    the result onto the already-rendered view via the new
    `CommandBuffer::begin_render_pass_loaded` (preserves existing content
    instead of clearing) — deliberately non-HDR (`Rgba8UnormSrgb`
    throughout; `Rgba16Float` + exposure is real future work if a scene
-   ever needs it). Still open: real per-material roughness/specular
-   control (shininess is fixed at 32 in the shader), shadow mapping, and
-   blend-mode/`always_on_top` handling (both fields exist on `Material`
-   but the submission bridge doesn't act on either yet — every draw is
-   still opaque, depth-tested).
-4. `Runtime::tick` integration — **not** blocked on vocabulary anymore
-   (steps 1-3 above cover it); blocked on an actual architecture
-   decision instead, since presenting a frame needs a windowed
-   `Device`/`Surface` (driver state) and `runtime-app` deliberately
-   never depends on `rendering-wgpu`. `magic_figures`/`physic_figures`
-   compose `rendering-domain::SceneRenderer` directly against their own
-   `Device`/`Surface` inside their own `winit` event loop today, rather
-   than through `Runtime::tick` — see docs/roadmap.md's
-   `Runtime`-adoption entry for the current state of that decision.
+   ever needs it). Highlights are per material:
+   `Material::shininess` (the Blinn-Phong exponent, default 32) and
+   `Material::specular` (strength, default 0.3) are baked into each vertex
+   as a `gloss` pair and read by the lit shaders; a PBR upgrade replaces
+   them with roughness/metallic.
+   **Material states are real:** `DrawState::of(material)` (domain) maps
+   `blend` and `always_on_top` to `Opaque`, `Transparent` (alpha blended,
+   depth tested but not written), `OnTopOpaque` and `OnTopTransparent`
+   (depth ignored). `order_draws` issues them in that order, translucent
+   draws farthest first by distance from the camera to the renderable's
+   origin (per renderable, not per triangle: intersecting translucent
+   meshes do not sort correctly), on-top draws after everything else.
+   `MainPipelines` holds one pipeline per family × lighting × state;
+   bloom still redraws every draw, so translucent and on-top emissive
+   surfaces bloom as if solid.
+   **Instancing is real:** a mesh uploads once to `MeshCache` (local-space
+   position, normal and UV) and every drawn renderable becomes one
+   100-byte record (model matrix, colour or tint, emissive, gloss) in a
+   per-frame instance buffer bound in vertex slot 1; the model matrix is
+   applied in the vertex shader, so CPU vertex baking is gone.
+   `rendering-domain::plan_batches` groups opaque renderables with equal
+   `BatchKey`s (mesh, resolved albedo, lighting, shadow casting) into one
+   instanced draw; blended and on-top renderables stay one draw each so
+   they can sort. The shadow and bloom passes read the same buffers.
+   Still open: the instance buffer is rewritten every frame, there is no
+   indirect or GPU-culled path. Mesh indices are `u32`.
+4. **Done.** `Runtime::tick` integration ([ADR 029](adr/029-render-stage-presents-through-the-frame-recorder-port.md)):
+   `meridian_sdk::RenderStage` is a `Stage` that presents through the
+   `rendering-app::FrameRecorder` port, so `runtime-app` never depends on
+   `rendering-wgpu`. `physic_figures` registers it after its physics stage;
+   `magic_figures` calls `render_frame`/`compose_frame` directly because its
+   audio rig does not fit the stage model.
 5. **Done.** The 2D sprite path (`sprites/`): `batch_scene2d` culls a
    `Scene2d` to its camera, orders sprites by `layer` (stable) and merges
    consecutive same-texture sprites into `SpriteBatch`es (CPU only, tested
@@ -316,10 +329,24 @@ driver.
    scissor per run (`ClipRect::to_scissor` rounds outward from camera units
    to pixels, so `SpriteView` carries the target size). Clipping is
    rectangular and axis-aligned in camera units; no rounded or rotated
-   clips. Still open: one bind group per run per
-   frame (no cache), no sprite atlas packing,
-   and `Motor3::transform_point` (about 350 ns) dominates batching cost.
-6. `ui-domain` (widgets/layout/input) and text rendering — separate,
+   clips. `prepare` creates one bind group per distinct texture
+   per scene (`PreparedSprites::bind_groups`), so clipped runs of one texture
+   share it; the bind group still lives one frame, because it holds that
+   frame's camera uniform. Batching 10 000 sprites takes about 0.3 ms
+   (`benches/sprite_batching.rs`, after the hand-expanded `Motor3` point
+   transform), so it no longer dominates. Glyph atlas packing lives in
+   `text-domain` (`GlyphAtlas`); a general RGBA sprite atlas waits for a
+   consumer.
+6. **Done.** Composing `[Scene3d, Scene2d]`: `FrameRequest` carries
+   `overlays: &[Overlay2d]` (a `Scene2d` plus its `ClipSpan`s, a
+   `rendering-domain` type); `RenderSession::render_with_overlays` hands them to
+   the `FrameRecorder`, and `GpuFrameRecorder` draws the 3D scene, applies
+   bloom, then draws each overlay unblurred and without depth over the result
+   (`OverlayPass`), in slice order. `meridian_sdk::compose_frame` and
+   `RenderStage::with_overlays` are the application entry points. Verified
+   headless under Xvfb + lavapipe with `magic_figures` (a translucent clipped
+   HUD over the bloomed scene, no `wgpu` validation errors).
+7. `ui-domain` (widgets/layout/input) and text rendering — separate,
    ADR-gated.
 
 ## GPU-driven rendering

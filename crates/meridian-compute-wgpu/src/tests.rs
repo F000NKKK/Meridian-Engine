@@ -1,10 +1,11 @@
 //! Tests of this crate.
 
+use std::ops::Range;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use meridian_compute_app::ComputeContext;
 use meridian_compute_app::testing::run_device_contract;
+use meridian_compute_app::{ComputeContext, ComputeDevice};
 
 use super::*;
 

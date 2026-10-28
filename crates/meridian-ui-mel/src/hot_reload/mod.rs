@@ -1,4 +1,4 @@
-//! Hot reload of a `.mel` UI document (backlog item 8): re-applies the
+//! Hot reload of a `.meui` UI document (backlog item 8): re-applies the
 //! changed attributes of a re-parsed document to the elements already in
 //! a `UiTree`, and watches the files that feed it.
 

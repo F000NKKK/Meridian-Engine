@@ -1,4 +1,4 @@
-//! The syntax tree a `.mel` document parses into: elements, attributes,
+//! The syntax tree a `.meui` document parses into: elements, attributes,
 //! names and attribute values.
 
 mod attribute;

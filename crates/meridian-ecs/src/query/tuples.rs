@@ -7,7 +7,7 @@ use std::slice;
 use super::columns::{typed, typed_mut};
 use super::selection::sealed::{ReadSelectionRows, SelectionRows};
 use super::{Fetch, ReadFetch, ReadSelection, Selection};
-use crate::{Archetype, Entity};
+use crate::{Archetype, Entity, Tick};
 
 /// Implements the query traits for one tuple arity. `nest_*` describe how
 /// the per-column iterators are zipped (`((a, b), c)` for three), and the
@@ -28,10 +28,13 @@ macro_rules! impl_query_tuple {
                     .collect()
             }
 
-            fn rows_mut(archetype: &mut Archetype) -> Option<Self::Rows<'_>> {
+            fn rows_mut(archetype: &mut Archetype, since: Tick, now: Tick) -> Option<Self::Rows<'_>> {
                 let Archetype { entities, columns, .. } = archetype;
                 $(
-                    if !$F::admits(columns.contains_key(&TypeId::of::<$F::Component>())) {
+                    if !$F::admits(
+                        columns.get(&TypeId::of::<$F::Component>()).map(|column| column.changed()),
+                        since,
+                    ) {
                         return None;
                     }
                 )+
@@ -42,6 +45,9 @@ macro_rules! impl_query_tuple {
                 for (id, column) in columns.iter_mut() {
                     $(
                         if $F::ACCESSES_COLUMN && *id == TypeId::of::<$F::Component>() {
+                            if $F::WRITES {
+                                column.mark_changed(now);
+                            }
                             $f = Some(column);
                         } else
                     )+ {}
@@ -56,10 +62,10 @@ macro_rules! impl_query_tuple {
         impl<$($F: Fetch),+> Selection for ($($F,)+) {}
 
         impl<$($F: ReadFetch),+> ReadSelectionRows for ($($F,)+) {
-            fn rows(archetype: &Archetype) -> Option<Self::Rows<'_>> {
+            fn rows(archetype: &Archetype, since: Tick) -> Option<Self::Rows<'_>> {
                 $(
                     let id = TypeId::of::<$F::Component>();
-                    if !$F::admits(archetype.columns.contains_key(&id)) {
+                    if !$F::admits(archetype.columns.get(&id).map(|column| column.changed()), since) {
                         return None;
                     }
                     let $f = $F::iter_shared(

@@ -119,14 +119,11 @@ Steps 4-6 are real and tested:
   backend" switch — there's no such thing for an arbitrary Rust closure,
   since it has no WGSL equivalent a compiler can derive; a kernel author
   has to write both implementations by hand, same as `fixed_wgsl` does.
-  Known follow-up, not built yet: `run_gpu`/`dispatch` currently
-  (re)allocate GPU buffers and rebuild bind groups on every call — the
-  *pipeline* is built once and reused (`FixedArithmeticKernels::new`,
-  `DoublingKernel::new` in the hybrid test), but buffer/bind-group reuse
-  across repeated calls (persistent buffers sized once, rewritten per
-  call) is not, which would matter for a kernel dispatched every frame on
-  cheap/simple operations — deliberately deferred rather than built
-  speculatively ahead of a concrete caller that needs it.
+  Buffer and bind-group reuse is built for the soft-body kernels
+  (`compute-wgpu::{ScratchSlot, GenerationCache, ScratchPool}`): buffers are
+  sized once and rewritten per call, the bind group is rebuilt only when a
+  buffer grew. Other kernels still allocate per call until a per-frame caller
+  needs them converted.
 
 `physics-domain`'s rigid-body engine (`BroadPhase`/`NarrowPhase`/
 `ConstraintSolver`/`Integrator`) was, until now, only ever driven by a
@@ -227,7 +224,7 @@ Step 8's physics half (`physics-driver`/`physics-domain`) is real: AABB
 broad phase, sphere-sphere/sphere-cuboid/cuboid-cuboid (SAT) narrow phase
 (see below for the `Cuboid` collider shape), an impulse-based constraint
 solver (linear *and* angular — see below), semi-implicit Euler
-integration. `rendering-wgpu` is real now, headless-only — see "Not yet
+integration. `rendering-wgpu` is real now, headless and windowed — see "Not yet
 decided" below for the `wgpu` details. `audio-cpal` is real, backed by
 `cpal` (see [ADR 012](adr/012-audio-output-via-cpal.md)): async device
 enumeration per ADR 009, and an `AudioStream` that bridges cpal's
@@ -313,10 +310,9 @@ resource reads/writes (Kahn's algorithm, the same pattern as `runtime-threads`'s
 `JobGraph`, applied to resource conflicts instead of explicit
 dependencies), rejecting write conflicts and cycles rather than guessing
 (`cargo test -p meridian-rendering-domain`). Scene extraction, lighting,
-materials-as-shading-inputs, animation and post processing remain scaffolds
-— they need an actual GPU resource to shade against, `rendering-wgpu`
-now has real headless `wgpu` resources (see "Not yet decided" below) but
-no window/swapchain yet, so nothing to present a shaded frame to.
+materials-as-shading-inputs and post processing (bloom) are real now, and
+`rendering-wgpu` presents to a window (see "Current state" below); only
+animation is still a scaffold.
 
 `meridian-gac` also grew a small shared geometric-primitives set:
 `Aabb` (moved here after it turned out `physics-domain` and `rendering-domain`
@@ -440,17 +436,12 @@ them through a job graph would be decorative; see
 docs/threading-model.md's `FrameScheduler` section for why, and what makes
 it load-bearing later. `rendering-domain`'s scene/material/lighting/
 submission layers are real now too (see the `submission` entry above:
-`SceneRenderer`, real `Blinn`-Phong lit draws, bloom) — but
-`rendering-domain` still isn't wired into `Runtime::tick` itself, for a
-different reason than "no vocabulary yet": presenting a frame needs a
-real windowed `Device`/`Surface`, which is driver state, and
-`runtime-app` deliberately never depends on `rendering-wgpu` (only
-`rendering-domain` — see dependency-rules.md's edge list; `runtime-app`
-does list `rendering-domain` as an allowed dependency, per rule 7, it's
-just not used yet); an application (`meridian-sdk`, which is allowed to
-depend on `*-driver` crates) calls `Runtime::tick_fixed` for physics and
-does its own render submission separately, the same split
-`physic_figures` uses today.
+`SceneRenderer`, real `Blinn`-Phong lit draws, bloom) — and
+presenting a frame is wired into `Runtime::tick` through
+`meridian_sdk::RenderStage`, a `Stage` over the `FrameRecorder` port
+([ADR 029](adr/029-render-stage-presents-through-the-frame-recorder-port.md)),
+so `runtime-app` still never depends on `rendering-wgpu`.
+`physic_figures` registers it after its physics stage.
 
 **`Runtime`/`SubsystemManager` are now proven end-to-end, not just
 tested in isolation.** `examples/physic_figures` drives its physics
@@ -620,10 +611,10 @@ priority before writing implementations is keeping that document and the
     own tags rather than picking from a fixed schema; see
     [ADR 015](adr/015-extensible-scene-dsl.md) and `meridian_sdk::dsl`'s
     own module doc). **Both examples now build their scenes from a real
-    `.mel` file** (`examples/assets/scenes/{physic_figures,magic_figures}.mel`,
+    `.meui` file** (`examples/assets/scenes/{physic_figures,magic_figures}.meui`,
     Meridian Engine Language — today just the tag/attribute DSL; the
     planned direction is WPF-style code-behind with compiled bindings,
-    see [ADR 017](adr/017-mel-markup-and-code-behind.md)),
+    see [ADR 017](adr/017-meui-markup-and-code-behind.md)),
     parsed via `dsl::build_scene` — `physic_figures` uses only the
     SDK's built-in tags (`Entity`/`Transform`/`Mesh`/`Material`/
     `RigidBody`); `magic_figures` additionally defines its own
@@ -640,24 +631,24 @@ priority before writing implementations is keeping that document and the
     (see the "shadow mapping and hemisphere ambient" entry above) — no
     longer an open item either. **Not yet done:** an app-shell schema
     (window title, logging, crash-report config) was considered and
-    deliberately deferred; `.mel` behavior (WPF-style code-behind,
+    deliberately deferred; `.meui` behavior (WPF-style code-behind,
     generated `.g.rs` glue, compiled `{x:Bind}` bindings, later an own
     script language) — decided in
-    [ADR 017](adr/017-mel-markup-and-code-behind.md). Started: the
+    [ADR 017](adr/017-meui-markup-and-code-behind.md). Started: the
     `markup` side is done (line/column spans, the `x:` prefix, dotted
     names and property elements, parsed markup extensions, typed
     `ParseErrorKind`), and the `meridian-ui-mel` generator
-    (`.mel` -> `.g.rs`, `mel_include!`; used by `magic_figures`), whose
+    (`.meui` -> `.g.rs`, `mel_include!`; used by `magic_figures`), whose
     `{x:Bind}` compiler parses and validates bindings, resolves them to
     `ui-domain` properties and generates `Names`, `apply_bindings` and
     `write_back_bindings` (type-checked against the `x:ViewModel`).
     A document with a UI root also gets `build_ui`, which creates the
     `UiTree` from the markup, and `.mres` resource sets
-    ([mel-resources.md](mel-resources.md)) generate typed constants and
+    ([meui-resources.md](meui-resources.md)) generate typed constants and
     resolve `@res:Set.name` in attributes; `<Owner.Resources>` blocks and
     `{StaticResource}` resolve at build time, and `LiveUi` patches changed
     attributes of a reparsed document into a live tree, and `HotDocument`
-    watches the `.mel`/`.mres` files (debounced, non-blocking) and
+    watches the `.meui`/`.mres` files (debounced, non-blocking) and
     patches or rebuilds the tree (hot reload). Event dispatch is next.
 
 ## Scaling beyond a tech demo (Minecraft/Satisfactory-class scope)
@@ -666,33 +657,30 @@ Everything above proves the engine works end-to-end for a small scene
 (a few dozen renderables, a handful of rigid bodies). A voxel-world game
 (Minecraft-like) or a large-factory simulation (Satisfactory-like) needs
 real capacity in several places that a small demo never exercises.
-Ordered roughly by "blocks everything else" first; items 2 and 4 are done,
+Ordered roughly by "blocks everything else" first; items 1 (partly), 2 and 4 are done,
 the rest are not started.
 
-1. **Per-instance vertex rebaking, every frame, is the sharpest wall.**
-   `rendering-domain::submission::draw_buffers` reuploads a fresh
-   vertex buffer for *every* `Renderable3d` on *every*
-   `SceneRenderer::prepare` call, whether or not that instance moved
-   since the last frame (see that function's own doc comment — "correct
-   now, batch later" was an explicit, disclosed trade-off, not an
-   oversight). A voxel world's static chunk meshes or a factory's
-   thousands of static machine models make this the first thing that
-   falls over — not a tuning problem, an architecture gap. Needed:
-   - A "this instance's baked bytes are unchanged, skip the reupload"
-     cache keyed by (mesh, material, frame), invalidated only when one
-     of those actually changes.
-   - Real instancing for repeated meshes (a Minecraft block face, a
-     Satisfactory conveyor segment) — one vertex/index buffer per mesh
-     shape, a per-instance transform/tint buffer, one draw call instead
-     of thousands. `rendering-wgpu`'s pipeline/bind-group primitives
-     don't have an instance-buffer path today; this is real driver-layer
-     work, not just a `rendering-domain` change.
+1. **Instancing is real; the per-frame instance upload is what is left.**
+   `rendering-wgpu` uploads each registered mesh once (`MeshCache`, local
+   space, dropped when the mesh is unregistered) and writes one 100-byte
+   record per drawn renderable (model matrix, colour, emissive, gloss) into
+   a single instance buffer per frame; opaque renderables with equal
+   `BatchKey`s (mesh, albedo, lighting, shadow casting) draw in one
+   instanced call (`rendering-domain::plan_batches`). Still open for a
+   voxel world's or factory's tens of thousands of static instances:
+   - A "this instance's record is unchanged, skip the reupload" cache, or a
+     persistent instance buffer patched in place, instead of rewriting every
+     record each frame.
+   - Indirect draws and GPU-side culling (the GPU-driven direction in
+     graphics-design.md), and a mesh path for more than 65 535 vertices.
 2. **Done: `ecs` multi-component queries.** `World::query_many`
    and `query_many_mut` take tuples of two to four `&T`/`&mut T`
    ("every entity with `Conveyor` *and* `ItemSlot` *and* `Position`").
    Elements can also be `Option<&T>`/`Option<&mut T>` and the
-   `With<T>`/`Without<T>` filters. Not built yet: parallel iteration and
-   change detection.
+   `With<T>`/`Without<T>` filters, and a `Changed<T>` filter fed by a world
+   clock (per-archetype-column granularity). `Commands` record spawn,
+   despawn, insert and remove during iteration and apply them afterwards.
+   Not built yet: parallel iteration.
 3. **`physics-domain::BroadPhase` is x-axis sweep-and-prune** (first
    step, done): `find_candidate_pairs` sorts AABBs by minimum x and only
    tests bodies that overlap along x, returning the same pairs in the same
@@ -762,9 +750,9 @@ the rest are not started.
    `meridian-editor-tcp` (one editor over loopback TCP, `tokio`); see
    [editor-domain.md](editor-domain.md#host). Parent links load as
    `meridian-data-substrate::Parent`, a stand-in until `ecs` gets a
-   hierarchy (it moves there then). **Not yet done:** transform
-   propagation along parents; `World::component_types(entity)` in
-   `ecs` (saving walks registered types until then); `.mprefab`
+   hierarchy (it moves there then). `ecs` now has `World::component_types(entity)`
+   and in-memory `World::snapshot`/`restore`. **Not yet done:** transform
+   propagation along parents; `.mprefab`
    instancing, `.meta`, `.msave` (voxel/chunk data via
    `substrate_data::Stream`), `.mpak`, wiring the editor host into
    `runtime-app`'s frame loop, and wiring scene loading into
@@ -777,23 +765,26 @@ the rest are not started.
    lockstep-style sync, but the actual transport/replication layer is
    unstarted. This is its own multi-month subsystem, not an add-on to
    an existing crate.
-7. **UI framework: runtime and fill output started, text not.**
+7. **UI framework: runtime, fill and text output started.**
    `meridian-ui-domain` ([ADR 018](adr/018-ui-architecture.md)) has the
    WPF-style element tree, typed properties, measure/arrange layout
    (`Border`, `StackPanel`, `DockPanel`, `Grid`, `TextBlock`) and hit
    testing, focus and input routing (`handle_input`, `UiEvent`s, a
-   consumed/ignored outcome), tested without a GPU. Still missing:
-   `meridian-ui-scene2d` extracts `Background` fills to `Scene2d`
+   consumed/ignored outcome), tested without a GPU.
+   `meridian-ui-scene2d` extracts `Background` fills and `TextBlock` glyphs to `Scene2d`
    ([ADR 021](adr/021-ui-extraction-and-extensibility.md)); there is no
-   sprite renderer for `Scene2d` yet. Still missing: text rendering,
-   controls, styles and templates. Markup literals (`"Auto"`, `"2*"`, `"4,2"`) parse through
+   sprite renderer for `Scene2d` yet. `meridian-text-domain`
+   ([ADR 023](adr/023-own-font-stack.md)) parses TrueType, rasterizes and
+   atlases glyphs. Still missing: controls, styles and templates. Markup literals (`"Auto"`, `"2*"`, `"4,2"`) parse through
    `PropertyType::parse`.
 8. **Asset pipeline stops at static meshes.** `asset-domain::ObjDecoder`
    has no skeletal/skinning support and there's no animation system at
    all — a blocker for any animated creature (Minecraft mobs) or
    animated machine (Satisfactory conveyors, at least beyond a
    procedural spin). glTF (which carries skinning data OBJ can't) is
-   the natural next format, not a bigger OBJ.
+   the natural next format, not a bigger OBJ. Static glTF models are done
+   ([ADR 030](adr/030-gltf-static-models-through-an-asset-adapter.md));
+   skinning and animation stay open.
 
 **Rough sequencing, if picking one order**: (4) (batched physics
 dispatch) is done. (1) and (2) next — they're the two things that make
@@ -876,7 +867,8 @@ sprint — treat this section as "what's missing," not "next release."
   `audio-cpal` still report `gpu: None` since neither dispatches to a
   GPU yet.
 - **Async I/O — decided: `tokio`, scoped to genuine I/O only, not applied
-  uniformly.** `rendering-wgpu::Device::new`/`read_buffer` (an OS/driver
+  uniformly** (asset file reads are the exception: background threads,
+  [ADR 027](adr/027-background-asset-loading.md)). `rendering-wgpu::Device::new`/`read_buffer` (an OS/driver
   handshake and waiting on in-flight GPU work — both genuinely unbounded
   wait, no useful CPU work to do meanwhile) are real `async fn`s now, not
   `pollster`-wrapped synchronous functions; `read_buffer`'s manual

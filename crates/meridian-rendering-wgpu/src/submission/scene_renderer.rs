@@ -1,17 +1,17 @@
 //! Pipelines and state that render a 3-D scene.
 
-use meridian_rendering_domain::scene::{Renderable3d, Scene3d};
+use meridian_rendering_domain::scene::Scene3d;
 use meridian_rendering_domain::{ShadowLight, ViewUniforms};
 
+use super::main_pipelines::{MainBindings, MainPipelines};
+use super::mesh_cache::MeshCache;
 use super::{
-    DrawBuffers, DrawKind, DrawRequest, MAX_LIGHTS, PreparedScene, SceneAssets, ShadowDepthPass,
-    TEXTURED_SHADER_WGSL, UNLIT_SHADER_WGSL, bake_draw_buffers, colored_vertex_layout,
-    lit_shader_wgsl, lit_textured_shader_wgsl, lit_uniform_bytes, mat4_to_bytes,
-    textured_vertex_layout,
+    DrawKind, MAX_LIGHTS, PreparedBatch, PreparedScene, SceneAssets, ShadowDepthPass, bake_batches,
+    lit_uniform_bytes, mat4_to_bytes,
 };
 use crate::{
-    BindGroup, Buffer, BufferUsage, CommandBuffer, Device, RenderPass as DriverRenderPass,
-    RenderPipeline, Sampler, ShaderStages, Surface, Texture, VertexLayout,
+    Buffer, BufferUsage, CommandBuffer, Device, RenderPass as DriverRenderPass, Sampler, Surface,
+    Texture,
 };
 
 /// Owns all four main pipelines (colored/textured × lit/unlit) plus the
@@ -26,12 +26,9 @@ use crate::{
 /// `bloom.rs`'s module doc and `uniform_buffer`).
 #[derive(Debug)]
 pub struct SceneRenderer {
-    colored_unlit_pipeline: RenderPipeline,
-    colored_unlit_bind_group: BindGroup,
-    colored_lit_pipeline: RenderPipeline,
-    colored_lit_bind_group: BindGroup,
-    pub(crate) textured_unlit_pipeline: RenderPipeline,
-    pub(crate) textured_lit_pipeline: RenderPipeline,
+    pub(crate) pipelines: MainPipelines,
+    /// Meshes uploaded so far; see [`MeshCache`].
+    pub(crate) meshes: MeshCache,
     pub(crate) uniform_buffer: Buffer,
     pub(crate) sampler: Sampler,
     /// A `Depth32Float` texture, both a render target (the shadow depth
@@ -66,26 +63,6 @@ impl SceneRenderer {
     }
 
     pub fn with_shadow_map_size(device: &Device, surface: &Surface, shadow_map_size: u32) -> Self {
-        let build = |label: &str, wgsl: &str, layout: &VertexLayout| {
-            main_pipeline(device, surface, label, wgsl, layout)
-        };
-        let colored_layout = colored_vertex_layout();
-        let textured_layout = textured_vertex_layout();
-        let colored_unlit_pipeline =
-            build("meridian-unlit-colored", UNLIT_SHADER_WGSL, &colored_layout);
-        let colored_lit_pipeline =
-            build("meridian-lit-colored", &lit_shader_wgsl(), &colored_layout);
-        let textured_unlit_pipeline = build(
-            "meridian-unlit-textured",
-            TEXTURED_SHADER_WGSL,
-            &textured_layout,
-        );
-        let textured_lit_pipeline = build(
-            "meridian-lit-textured",
-            &lit_textured_shader_wgsl(),
-            &textured_layout,
-        );
-
         let shadow_map = device.create_shadow_map_texture(shadow_map_size);
         let shadow_sampler = device.create_comparison_sampler();
         let shadow_depth = ShadowDepthPass::new(device);
@@ -94,23 +71,21 @@ impl SceneRenderer {
         // layout. The unlit pipelines only read the first 64 (view_proj)
         // but share this same buffer — one write serves every pipeline.
         let uniform_buffer = device.create_buffer(416, BufferUsage::Uniform);
-        let colored_unlit_bind_group =
-            device.create_uniform_bind_group(&colored_unlit_pipeline, &uniform_buffer);
-        let colored_lit_bind_group = device.create_shadow_bind_group(
-            &colored_lit_pipeline,
-            &uniform_buffer,
-            &shadow_map,
-            &shadow_sampler,
-        );
         let sampler = device.create_sampler();
 
+        let pipelines = MainPipelines::new(
+            device,
+            surface,
+            MainBindings {
+                uniform_buffer: &uniform_buffer,
+                shadow_map: &shadow_map,
+                shadow_sampler: &shadow_sampler,
+            },
+        );
+
         let renderer = Self {
-            colored_unlit_pipeline,
-            colored_unlit_bind_group,
-            colored_lit_pipeline,
-            colored_lit_bind_group,
-            textured_unlit_pipeline,
-            textured_lit_pipeline,
+            pipelines,
+            meshes: MeshCache::default(),
             uniform_buffer,
             sampler,
             shadow_map,
@@ -163,48 +138,13 @@ impl SceneRenderer {
         device.write_buffer(&self.uniform_buffer, &lit_uniform_bytes(view));
     }
 
-    /// Builds one [`DrawBuffers`](super::DrawBuffers) per renderable whose mesh/material both
-    /// resolve (a renderable naming a missing handle is silently skipped
-    /// — the caller controls registry contents, so a miss here means an
-    /// asset hasn't loaded yet, not a bug to panic over). Call this
-    /// *before* opening the render pass; pass the result to
-    /// [`draw`](Self::draw) once inside it.
-    pub fn prepare(
-        &self,
-        device: &Device,
-        renderables: &[Renderable3d],
-        assets: &SceneAssets<'_>,
-    ) -> Vec<DrawBuffers> {
-        renderables
-            .iter()
-            .filter_map(|renderable| {
-                let source = assets.meshes.get(renderable.mesh)?;
-                let material = assets.materials.get(renderable.material)?;
-                let albedo = material
-                    .albedo
-                    .and_then(|handle| assets.textures.get(handle));
-                Some(bake_draw_buffers(
-                    device,
-                    self,
-                    &DrawRequest {
-                        mesh: source,
-                        material,
-                        frame: &renderable.frame,
-                        albedo,
-                        casts_shadow: renderable.casts_shadow,
-                    },
-                ))
-            })
-            .collect()
-    }
-
     /// The shadow-casting depth pass: finds `scene`'s first
     /// `Light::Directional` (if any), builds its
     /// `directional_shadow_camera`, writes that light-space matrix
-    /// into the (separate) shadow uniform buffer, bakes `scene`'s draw
-    /// buffers (reused afterward by [`draw`](Self::draw) — never
+    /// into the (separate) shadow uniform buffer, bakes `scene` into
+    /// instanced batches (reused afterward by [`draw`](Self::draw) — never
     /// rebuilt), and records a depth-only pass into the internal shadow
-    /// map through `commands`. Returns the baked buffers plus the
+    /// map through `commands`. Returns the baked scene plus the
     /// [`ShadowLight`] for the caller to pass
     /// into [`set_view`](Self::set_view) before its own (separate, later)
     /// main color pass — see this module's own doc for why the shadow
@@ -218,7 +158,7 @@ impl SceneRenderer {
     /// matches — every light renders fully lit, the same as before
     /// shadows existed.
     pub fn render_shadow_pass(
-        &self,
+        &mut self,
         device: &Device,
         commands: &mut CommandBuffer<'_>,
         scene: &Scene3d,
@@ -229,85 +169,70 @@ impl SceneRenderer {
             &self.shadow_depth.uniform_buffer,
             &mat4_to_bytes(shadow.view_proj),
         );
-        let buffers = self.prepare(device, &scene.renderables, assets);
-        self.record_shadow_casters(commands, &buffers);
-        PreparedScene { buffers, shadow }
+        let baked = bake_batches(device, self, scene, assets);
+        self.record_shadow_casters(commands, &baked.batches, baked.instances.as_ref());
+        PreparedScene {
+            batches: baked.batches,
+            instances: baked.instances,
+            shadow,
+        }
     }
 
-    /// Records the depth-only pass of every shadow-casting entry.
-    fn record_shadow_casters(&self, commands: &mut CommandBuffer<'_>, buffers: &[DrawBuffers]) {
+    /// Records the depth-only pass of every shadow-casting batch.
+    fn record_shadow_casters(
+        &self,
+        commands: &mut CommandBuffer<'_>,
+        batches: &[PreparedBatch],
+        instances: Option<&Buffer>,
+    ) {
         let mut pass = commands.begin_shadow_pass(&self.shadow_map);
-        for entry in buffers.iter().filter(|entry| entry.casts_shadow) {
-            let (pipeline, bind_group) = match &entry.kind {
-                DrawKind::Colored => (
-                    &self.shadow_depth.colored_pipeline,
-                    &self.shadow_depth.colored_bind_group,
-                ),
-                DrawKind::Textured { .. } => (
-                    &self.shadow_depth.textured_pipeline,
-                    &self.shadow_depth.textured_bind_group,
-                ),
-            };
-            pass.set_pipeline(pipeline);
-            pass.set_bind_group(0, bind_group);
-            pass.set_vertex_buffer(0, &entry.vertex_buffer);
-            pass.set_index_buffer_u16(&entry.index_buffer);
-            pass.draw_indexed(0..entry.index_count);
+        let Some(instances) = instances else {
+            return;
+        };
+        pass.set_pipeline(&self.shadow_depth.pipeline);
+        pass.set_bind_group(0, &self.shadow_depth.bind_group);
+        for batch in batches.iter().filter(|batch| batch.casts_shadow) {
+            self.draw_batch(&mut pass, batch, instances);
         }
     }
 
-    /// Records one draw call per `buffers` entry against `pass`,
-    /// switching pipeline/bind group per entry's baked family and lit
-    /// flag — call inside the render pass, after
-    /// [`render_shadow_pass`](Self::render_shadow_pass) built `buffers`
+    /// Records one draw call per batch against `pass`, in the scene's draw
+    /// order (opaque, then translucent far to near, then on top), switching
+    /// pipeline and bind group per batch's family, lighting and state —
+    /// call inside the render pass, after
+    /// [`render_shadow_pass`](Self::render_shadow_pass) built `prepared`
     /// and [`set_view`](Self::set_view) wrote this frame's uniform.
-    pub fn draw(&self, pass: &mut DriverRenderPass<'_>, buffers: &[DrawBuffers]) {
-        for entry in buffers {
-            match &entry.kind {
-                DrawKind::Colored => {
-                    let pipeline = if entry.lit {
-                        &self.colored_lit_pipeline
-                    } else {
-                        &self.colored_unlit_pipeline
-                    };
-                    let bind_group = if entry.lit {
-                        &self.colored_lit_bind_group
-                    } else {
-                        &self.colored_unlit_bind_group
-                    };
-                    pass.set_pipeline(pipeline);
+    pub fn draw(&self, pass: &mut DriverRenderPass<'_>, prepared: &PreparedScene) {
+        let Some(instances) = &prepared.instances else {
+            return;
+        };
+        for batch in &prepared.batches {
+            let main = self.pipelines.get(batch.pipeline_key());
+            pass.set_pipeline(&main.pipeline);
+            match (&batch.kind, &main.shared_bind_group) {
+                (DrawKind::Textured { bind_group }, _) | (DrawKind::Colored, Some(bind_group)) => {
                     pass.set_bind_group(0, bind_group);
                 }
-                DrawKind::Textured { bind_group } => {
-                    let pipeline = if entry.lit {
-                        &self.textured_lit_pipeline
-                    } else {
-                        &self.textured_unlit_pipeline
-                    };
-                    pass.set_pipeline(pipeline);
-                    pass.set_bind_group(0, bind_group);
-                }
+                (DrawKind::Colored, None) => continue,
             }
-            pass.set_vertex_buffer(0, &entry.vertex_buffer);
-            pass.set_index_buffer_u16(&entry.index_buffer);
-            pass.draw_indexed(0..entry.index_count);
+            self.draw_batch(pass, batch, instances);
         }
     }
-}
 
-/// Builds one of the four main pipelines from WGSL source.
-fn main_pipeline(
-    device: &Device,
-    surface: &Surface,
-    label: &str,
-    wgsl_source: &str,
-    layout: &VertexLayout,
-) -> RenderPipeline {
-    let shader = device.create_shader(label, wgsl_source);
-    let stages = ShaderStages {
-        shader: &shader,
-        vertex_entry: "vs_main",
-        fragment_entry: "fs_main",
-    };
-    device.create_render_pipeline(&stages, layout, surface, true)
+    /// Binds `batch`'s mesh and the instance buffer, then draws its
+    /// instances in one call. The pipeline and bind group are the caller's.
+    pub(crate) fn draw_batch(
+        &self,
+        pass: &mut DriverRenderPass<'_>,
+        batch: &PreparedBatch,
+        instances: &Buffer,
+    ) {
+        let Some(mesh) = self.meshes.get(batch.mesh) else {
+            return;
+        };
+        pass.set_vertex_buffer(0, &mesh.vertex_buffer);
+        pass.set_vertex_buffer(1, instances);
+        pass.set_index_buffer_u32(&mesh.index_buffer);
+        pass.draw_indexed_instanced(0..mesh.index_count, batch.instances.clone());
+    }
 }

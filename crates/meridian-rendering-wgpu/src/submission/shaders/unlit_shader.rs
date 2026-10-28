@@ -1,9 +1,9 @@
 //! The unlit WGSL shader.
 
-/// A flat, unlit pipeline: `view_proj * vec4(position, 1)`, output color
-/// is the per-vertex color + emissive baked in at
-/// [`SceneRenderer::prepare`](crate::submission::SceneRenderer::prepare) time (see the module doc for why it's
-/// per-vertex, not a material uniform). Used for `Material::unlit`
+/// A flat, unlit pipeline: `view_proj * model * vec4(position, 1)`, output
+/// color is the per-instance color + emissive from the instance record
+/// `bake_batches`
+/// writes. Used for `Material::unlit`
 /// materials with no resolvable albedo texture.
 pub const UNLIT_SHADER_WGSL: &str = r#"
 struct Uniforms {
@@ -16,8 +16,14 @@ var<uniform> u: Uniforms;
 struct VertexInput {
     @location(0) position: vec3<f32>,
     @location(1) normal: vec3<f32>,
-    @location(2) color: vec4<f32>,
-    @location(3) emissive: vec3<f32>,
+    @location(2) uv: vec2<f32>,
+    @location(3) model_0: vec4<f32>,
+    @location(4) model_1: vec4<f32>,
+    @location(5) model_2: vec4<f32>,
+    @location(6) model_3: vec4<f32>,
+    @location(7) color: vec4<f32>,
+    @location(8) emissive: vec3<f32>,
+    @location(9) gloss: vec2<f32>,
 };
 
 struct VertexOutput {
@@ -29,7 +35,8 @@ struct VertexOutput {
 @vertex
 fn vs_main(in: VertexInput) -> VertexOutput {
     var out: VertexOutput;
-    out.clip_position = u.view_proj * vec4<f32>(in.position, 1.0);
+    let model = mat4x4<f32>(in.model_0, in.model_1, in.model_2, in.model_3);
+    out.clip_position = u.view_proj * (model * vec4<f32>(in.position, 1.0));
     out.color = in.color;
     out.emissive = in.emissive;
     return out;

@@ -80,6 +80,31 @@ layer = "domain"
 context = "assets"
 
 [[crate]]
+name = "meridian-asset-app"
+layer = "app"
+context = "assets"
+
+[[crate]]
+name = "meridian-asset-fs"
+layer = "infra"
+context = "assets"
+
+[[crate]]
+name = "meridian-asset-http"
+layer = "infra"
+context = "assets"
+
+[[crate]]
+name = "meridian-asset-gltf"
+layer = "infra"
+context = "assets"
+
+[[crate]]
+name = "meridian-asset-jpeg"
+layer = "infra"
+context = "assets"
+
+[[crate]]
 name = "meridian-asset-png"
 layer = "infra"
 context = "assets"
@@ -169,6 +194,11 @@ context = "runtime"
 name = "physic_figures"
 layer = "interface"
 context = "runtime"
+
+[[crate]]
+name = "meridian-text-domain"
+layer = "domain"
+context = "text"
 
 [[crate]]
 name = "meridian-ui-domain"
@@ -318,6 +348,13 @@ relation = "customer-supplier"
 [[context_edge]]
 from = "ui"
 to = "rendering"
+relation = "customer-supplier"
+
+# ui-scene2d lays out and draws text through text-domain's faces and glyph
+# atlas (ADR 023).
+[[context_edge]]
+from = "ui"
+to = "text"
 relation = "customer-supplier"
 
 [[context_edge]]

@@ -30,6 +30,9 @@ own tags via `#[dsl_tag(name = "...")]` rather than picking from a
 fixed schema (see that module's own doc for the full three-layer
 design and why this replaced an earlier, rejected fixed-schema
 approach).
+- [`asset_loader`] — the background loader (ADR 027): `asset_loader(root, threads)`
+  builds an `AssetLoader` over `FsSource` + `BackgroundPool`, `load_image` starts
+  a decode and returns a `Pending` at once.
 - [`assets`] — resource loading: turning a file path into a real,
 cached, GPU-registered handle (textures, OBJ meshes) or a decoded,
 loopable audio source ([`AudioTrack`]/[`load_audio_track`]).
@@ -41,7 +44,7 @@ builders, `GraphicsSession`, `FlyCamera`) every windowed application
 needs identically; not domain logic, just reusable application
 plumbing. `GraphicsSession` owns an [`assets::AssetCache`], but the
 loading logic itself lives in [`assets`], not here.
-- [`render`] — [`render_frame`], the shadow-pass/submit/present
+- [`render`] — [`render_frame`] and [`compose_frame`] (the same with `Overlay2d`s drawn over the 3D frame; `RenderStage::with_overlays` feeds them each tick), the shadow-pass/submit/present
 sequence every windowed app repeats each redraw, and [`RenderStage`],
 the `engine_core::Stage` impl that lets an application register
 frame presentation on the *same* `Runtime`/`JobGraph` as physics —

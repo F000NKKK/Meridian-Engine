@@ -1,4 +1,4 @@
-//! [`UiNode`]: an element of a `.mel` document that builds a
+//! [`UiNode`]: an element of a `.meui` document that builds a
 //! `meridian-ui-domain` element.
 
 use meridian_markup::{Element, Span};

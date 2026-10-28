@@ -25,12 +25,11 @@ impl RenderPass<'_> {
             .set_vertex_buffer(slot, buffer.wgpu_buffer().slice(..));
     }
 
-    /// `u16` indices — the common case for a mesh with under 65536
-    /// vertices; a `u32` variant is additive future work if a mesh ever
-    /// needs more.
-    pub fn set_index_buffer_u16(&mut self, buffer: &meridian_gpu_wgpu::Buffer) {
+    /// `u32` indices: every mesh index buffer uses them, so no mesh has a
+    /// vertex-count ceiling.
+    pub fn set_index_buffer_u32(&mut self, buffer: &meridian_gpu_wgpu::Buffer) {
         self.raw
-            .set_index_buffer(buffer.wgpu_buffer().slice(..), wgpu::IndexFormat::Uint16);
+            .set_index_buffer(buffer.wgpu_buffer().slice(..), wgpu::IndexFormat::Uint32);
     }
 
     /// Restricts rasterization to a rectangle of the target, in pixels
@@ -44,6 +43,16 @@ impl RenderPass<'_> {
     }
 
     pub fn draw_indexed(&mut self, indices: core::ops::Range<u32>) {
-        self.raw.draw_indexed(indices, 0, 0..1);
+        self.draw_indexed_instanced(indices, 0..1);
+    }
+
+    /// Draws `indices` once per instance in `instances`; per-instance vertex
+    /// buffers advance over that range.
+    pub fn draw_indexed_instanced(
+        &mut self,
+        indices: core::ops::Range<u32>,
+        instances: core::ops::Range<u32>,
+    ) {
+        self.raw.draw_indexed(indices, 0, instances);
     }
 }

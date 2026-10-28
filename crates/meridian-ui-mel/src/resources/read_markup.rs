@@ -1,5 +1,5 @@
 //! Reading the value of a `<String|Number|Bool|Color x:Key=".." Value=".."/>`
-//! resource element of a `.mel` document.
+//! resource element of a `.meui` document.
 
 use super::read_entry::{read_color, read_text};
 use super::resource_tag::ResourceTag;

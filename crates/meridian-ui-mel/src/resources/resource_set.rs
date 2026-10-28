@@ -6,14 +6,17 @@ use substrate_data::Value;
 use substrate_data::text::{self, Doc};
 
 use super::read_entry::read_entry;
-use super::{ResourceEntry, ResourceError, ResourceProblem};
+use super::{Culture, ResourceEntry, ResourceError, ResourceProblem};
 use crate::snake_case;
 
 /// The entries of one `<Set>.mres`, in file order.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ResourceSet {
-    /// The file stem: `Strings` for `Strings.mres`.
+    /// The set name: `Strings` for `Strings.mres` and `Strings.ru.mres`.
     pub name: String,
+    /// The culture of a variant (`Strings.ru.mres`); `None` for the
+    /// default set.
+    pub culture: Option<Culture>,
     pub entries: Vec<ResourceEntry>,
 }
 
@@ -32,6 +35,7 @@ impl ResourceSet {
         };
         let mut set = Self {
             name: name.to_string(),
+            culture: None,
             entries: Vec::new(),
         };
         for (index, (key, value)) in map.iter().enumerate() {
@@ -42,9 +46,30 @@ impl ResourceSet {
         Ok(set)
     }
 
+    /// Like [`Self::parse`], for the variant of `culture`.
+    pub fn parse_variant(
+        path: &Path,
+        name: &str,
+        culture: Culture,
+        text: &str,
+    ) -> Result<Self, ResourceError> {
+        let mut set = Self::parse(path, name, text)?;
+        set.culture = Some(culture);
+        Ok(set)
+    }
+
     /// The entry called `name`.
     pub fn entry(&self, name: &str) -> Option<&ResourceEntry> {
         self.entries.iter().find(|entry| entry.name == name)
+    }
+
+    /// Takes the value of every entry `variant` defines.
+    pub(super) fn overlay(&mut self, variant: &Self) {
+        for entry in &mut self.entries {
+            if let Some(translated) = variant.entry(&entry.name) {
+                entry.value = translated.value.clone();
+            }
+        }
     }
 
     fn push(&mut self, entry: ResourceEntry) -> Result<(), ResourceProblem> {

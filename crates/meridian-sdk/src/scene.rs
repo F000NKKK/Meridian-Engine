@@ -8,6 +8,7 @@ use meridian_rendering_domain::{MeshHandle, TextureHandle};
 use meridian_rendering_wgpu::{Device, GpuFrameRecorder, Surface};
 
 use crate::assets::AssetCache;
+use crate::model_loading::ModelPiece;
 
 /// What a windowed application builds once: a [`RenderSession`] over the wgpu
 /// [`GpuFrameRecorder`] (device, swapchain, renderer, bloom, textures, plus the
@@ -65,6 +66,16 @@ impl GraphicsSession {
     /// Forwards to [`AssetCache::load_texture`].
     pub fn load_texture(&mut self, path: &str) -> TextureHandle {
         self.assets.load_texture(&mut self.render.recorder, path)
+    }
+
+    /// Forwards to [`AssetCache::load_model_gltf`].
+    ///
+    /// # Errors
+    ///
+    /// The file's read, decode or registration error, as text.
+    pub fn load_model_gltf(&mut self, path: &str) -> Result<Vec<ModelPiece>, String> {
+        self.assets
+            .load_model_gltf(&mut self.render.meshes, &mut self.render.recorder, path)
     }
 
     /// Forwards to [`AssetCache::load_mesh_obj`].
