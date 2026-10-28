@@ -6,12 +6,15 @@ use gltf::{Document, Gltf};
 use meridian_asset_domain::{Decoder, ModelAsset};
 
 use crate::limits::MAX_TOTAL_VERTICES;
+use crate::read::part::Placement;
+use crate::read::skin::Skins;
 use crate::resources::Resources;
-use crate::{GltfError, buffers, image_reader, part_reader, scene_walk};
+use crate::{GltfError, buffers, read, scene_walk};
 
 /// Decodes a `.glb`, or a `.gltf` whose buffers and images are `data:`
 /// URIs or files supplied by the caller, to world-space triangle parts
-/// (ADR 030). Skins, animations, cameras, lights and extensions are ignored.
+/// (ADR 030). Skins and the animations of their joints are read (ADR 047);
+/// cameras, lights, morph targets and extensions are ignored.
 /// [`Decoder::decode`] supplies no files, so a model naming one is
 /// [`GltfError::ExternalResource`]; [`decode_with`](Self::decode_with) takes
 /// them.
@@ -47,10 +50,14 @@ impl GltfDecoder {
         let buffers = buffers::load(&document, blob, resources)?;
         let mut parts = Vec::new();
         let mut vertices = 0usize;
-        for (node, world) in scene_walk::flatten(&document)? {
+        let placed = scene_walk::flatten(&document)?;
+        let skins = Skins::read(&document, &buffers, &scene_walk::worlds(&document, &placed))?;
+        for (node, world) in &placed {
             let Some(mesh) = node.mesh() else { continue };
+            let skin = node.skin().and_then(|skin| skins.map(&skin));
+            let placement = Placement { world, skin };
             for primitive in mesh.primitives() {
-                let part = part_reader::read(&primitive, &world, &buffers)?;
+                let part = read::part::read(&primitive, &placement, &buffers)?;
                 vertices = vertices.saturating_add(part.positions.len());
                 if vertices > MAX_TOTAL_VERTICES {
                     return Err(GltfError::ModelTooLarge);
@@ -58,8 +65,14 @@ impl GltfDecoder {
                 parts.push(part);
             }
         }
-        let images = image_reader::read(&document, &buffers, resources)?;
-        Ok(ModelAsset { parts, images })
+        let images = read::image::read(&document, &buffers, resources)?;
+        let clips = read::animation::read_all(&document, &buffers, &skins)?;
+        Ok(ModelAsset {
+            parts,
+            images,
+            skeletons: skins.skeletons,
+            clips,
+        })
     }
 }
 

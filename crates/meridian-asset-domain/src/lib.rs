@@ -52,7 +52,10 @@ pub use image::{BmpDecoder, HdrDecoder, ImageFormat};
 pub use image_asset::ImageAsset;
 pub use mesh_asset::MeshAsset;
 pub use meta::{AssetMeta, ImporterName, ImporterNameError, META_FORMAT, MetaError};
-pub use model::{EncodedImage, ModelAsset, ModelMaterial, ModelPart};
+pub use model::{
+    EncodedImage, ModelAsset, ModelChannel, ModelClip, ModelInterpolation, ModelJoint,
+    ModelMaterial, ModelPart, ModelProperty, ModelSkeleton, PartSkin,
+};
 pub use obj_decoder::ObjDecoder;
 pub use pack::{
     MAX_INDEX_LEN, PACK_MAGIC, PACK_VERSION, PackBuildError, PackEntry, PackError, PackPath,

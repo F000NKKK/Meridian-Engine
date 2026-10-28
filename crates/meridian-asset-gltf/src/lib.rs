@@ -10,12 +10,12 @@ mod buffers;
 mod data_uri;
 mod gltf_decoder;
 mod gltf_error;
-mod image_reader;
 mod limits;
-mod material_reader;
-mod part_reader;
+mod read;
 mod resources;
 mod scene_walk;
+#[cfg(test)]
+mod skin_tests;
 #[cfg(test)]
 mod tests;
 
