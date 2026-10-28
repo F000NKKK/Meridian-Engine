@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use meridian_asset_domain::{AssetId, PackPath, PackWriter, ShaderSourceDecoder};
 
-use super::*;
+use crate::*;
 
 /// Runs a job right away on the calling thread.
 struct Inline;

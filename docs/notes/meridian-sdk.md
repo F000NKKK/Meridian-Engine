@@ -33,7 +33,7 @@ approach).
 - [`asset_loader`] — the background loader (ADR 027): `asset_loader(root, threads)`
   builds an `AssetLoader` over `FsSource` + `BackgroundPool`, `load_image` starts
   a decode and returns a `Pending` at once.
-- [`content`] — the composition root's asset wiring: `Importers::standard()` registers the shipped importers by the name a `.meta` uses, and re-exports the catalog, importer-registry and `ResourceIdTable` types (docs/data-formats.md).
+- [`content`] — the composition root's asset wiring: `Layers` (a directory, packs or a stack of them, typed) mounted into `Mounted`, one `ByteSource` for the `AssetLoader` and `WorldFiles`; `Importers::standard()` registers the shipped importers by the name a `.meta` uses; and re-exports the catalog, importer-registry and `ResourceIdTable` types (docs/data-formats.md).
 - [`persistence`] — scene, prefab and save files by path: `WorldFiles` (registry + directory + `AssetLoader`) over `meridian-data-substrate`, and `AssetPrefabSource`, its `PrefabSource` port implemented over the asset layer (docs/data-formats.md).
 - [`assets`] — resource loading: turning a file path into a real,
 cached, GPU-registered handle (textures, OBJ meshes) or a decoded,

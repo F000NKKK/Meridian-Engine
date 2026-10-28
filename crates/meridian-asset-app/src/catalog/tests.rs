@@ -3,7 +3,7 @@
 use meridian_asset_domain::{AssetId, AssetMeta, ImporterName};
 
 use super::{AssetCatalog, CatalogError};
-use crate::memory_source::MemorySource;
+use crate::source::MemorySource;
 use crate::{AssetPath, MetaReadError};
 
 fn id(bits: u64) -> AssetId {

@@ -5,7 +5,7 @@ use std::sync::Arc;
 use meridian_asset_domain::{AssetId, AssetMeta, Decoder, ImporterName};
 
 use super::{ImportError, ImportFailure, Importer, ImporterRegistry, RegisterError};
-use crate::memory_source::MemorySource;
+use crate::source::MemorySource;
 use crate::{AssetLoader, AssetPath, LoadError, Priority, SourceError, Spawn};
 
 struct Inline;

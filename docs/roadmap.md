@@ -773,7 +773,9 @@ the rest are not started.
    type), `AssetLoader::load_imported` and `AssetCatalog` (every `.meta` of a
    source, as ids and dependencies), `resource` has `ResourceIdTable`
    (`AssetId` to runtime identity, bound by the loading code), and the sdk's
-   `content::Importers` registers the shipped importers. **Wired into the sdk:** `meridian_sdk::persistence::WorldFiles` loads and
+   `content::Importers` registers the shipped importers, while
+   `content::Layers`/`Mounted` choose a directory, packs or a stack of them
+   (`asset-app`'s `OverlaySource`) at startup. **Wired into the sdk:** `meridian_sdk::persistence::WorldFiles` loads and
    saves `.mscene`/`.mprefab`/`.msave` by path, with `AssetPrefabSource`
    implementing `PrefabSource` over `asset-app`'s `AssetLoader` (reads on the
    background pool, ADR 027); a write port (`ByteSink`) is later.

@@ -527,8 +527,31 @@ one is `NotFound`, a bad path `Rejected`, a damaged asset `Unreadable` with
 the pack's words. So an `AssetLoader` — and `AssetPrefabSource`, `WorldFiles`
 — works on a pack as on a directory. A pack carries its `.meta`
 sidecars as entries like any other file, so `AssetCatalog::scan` and
-`load_imported` work on it unchanged. Choosing between a directory and a
-pack at startup is the composition root's job (`meridian_sdk::content`).
+`load_imported` work on it unchanged.
+
+**Choosing at startup.** The composition root decides where assets come
+from once, with a typed value (`meridian_sdk::content`), never by looking at
+a file name:
+
+```rust
+let layers = Layers::pack("base.mpak")                       // lowest priority
+    .over(Layer::Pack("patch-1.mpak".into()))                 // replaces assets it holds
+    .over(Layer::Directory("dev-assets".into()));             // loose files win
+let content = Mounted::mount(layers)?;                        // headers + indexes only
+let loader = content.default_loader();                        // AssetLoader, ADR 027
+let files = WorldFiles::new(save_dir, loader, registry);      // unchanged
+```
+
+`Layer` is `Directory` or `Pack`; `Layers` is one or more, lowest priority
+first, never empty (`Layers::directory(p)` and `Layers::pack(p)` are the
+single-layer cases). `Mounted::mount` opens them all or none (`OpenError`:
+`NotADirectory`, `File`, `Pack`, each naming the path). Reads go through
+`OverlaySource` in `asset-app`: the top layer that has the path answers, and
+only *not found* falls through, so a damaged asset in a patch is reported
+(`Unreadable`), not replaced by the older copy under it. The listing the
+catalog scans is the union of the layers. `WorldFiles` and `AssetLoader`
+take the same `ByteSource` either way; saves are not a layer: `WorldFiles`
+still writes to the directory it is given.
 
 ```rust
 let source = PackSource::open(FileReadAt::open("content.mpak")?)?;   // header + index only
@@ -676,6 +699,6 @@ Specified in [editor-domain.md](editor-domain.md).
 | `meridian-sdk` `WorldFiles` + `AssetPrefabSource` (scene, prefab and save by path over the asset layer) | done; not yet driven by `runtime-app`'s frame loop |
 | patching an existing `.mscene` file on save | not implemented |
 | `.meta` (`AssetMeta`: id, importer, settings, dependencies; text and binary; version rule) | done in `asset-domain`; read by `ImporterRegistry`/`load_imported`, `AssetCatalog` (`asset-app`) and `ResourceIdTable` (`resource`); the sdk registers the shipped importers |
-| `.mpak` (`PackWriter`, `PackReader`, `upgrade_pack`; `PackSource`, `FileReadAt`) | done; the `sdk` does not pick a pack over a directory yet, no streaming writer or build-tool command |
+| `.mpak` (`PackWriter`, `PackReader`, `upgrade_pack`; `PackSource`, `FileReadAt`) | done; the `sdk` picks a directory, packs or a stack of them at startup (`content::Layers`, `Mounted`); no streaming writer or build-tool command yet |
 | `meridian-editor-domain` (messages, framing, golden-pinned wire) | done |
 | `meridian-editor-app` (session, ports), `meridian-editor-tcp` (loopback TCP) | done; not yet wired into `runtime-app`'s frame loop |
