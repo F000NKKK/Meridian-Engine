@@ -47,6 +47,7 @@ impl MeshRegistry {
                 });
             }
         }
+        check_morph(&source, vertex_count)?;
         if let Some(&index) = source
             .indices
             .iter()
@@ -66,5 +67,26 @@ impl MeshRegistry {
 
     pub fn get(&self, handle: MeshHandle) -> Option<&MeshSource> {
         self.sources.get(handle.handle)
+    }
+}
+
+/// Every morph target gives every vertex one offset.
+fn check_morph(source: &MeshSource, vertex_count: usize) -> Result<(), MeshRegistryError> {
+    let wrong = source
+        .morph
+        .iter()
+        .flat_map(|morph| &morph.targets)
+        .flat_map(|target| {
+            let normals = (!target.normals.is_empty()).then_some(target.normals.len());
+            [Some(target.positions.len()), normals]
+        })
+        .flatten()
+        .find(|&offsets| offsets != vertex_count);
+    match wrong {
+        Some(offsets) => Err(MeshRegistryError::MorphCountMismatch {
+            positions: vertex_count,
+            offsets,
+        }),
+        None => Ok(()),
     }
 }

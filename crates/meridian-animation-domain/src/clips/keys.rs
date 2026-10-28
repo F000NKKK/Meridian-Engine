@@ -126,6 +126,13 @@ impl<const N: usize> Keys<N> {
     }
 }
 
+impl Keys<1> {
+    /// The value at `time`.
+    pub(super) fn sample(&self, time: f32) -> f32 {
+        self.sample_with(time, lerp, hermite)[0]
+    }
+}
+
 impl Keys<3> {
     /// The vector at `time`.
     pub(super) fn sample(&self, time: f32) -> [f32; 3] {

@@ -65,6 +65,7 @@ pub fn pyramid_mesh_source(base_half_extent: f32, height: f32) -> MeshSource {
         uvs,
         indices,
         skin: None,
+        morph: None,
     }
 }
 

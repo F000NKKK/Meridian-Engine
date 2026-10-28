@@ -131,3 +131,11 @@ model: `sdk`'s `ModelRig` holds the `Skeleton`s and `Clip`s of a loaded model
   rigid ones; a node's weights override its mesh's. A weights channel moves
   no node, so it does not make the node a joint. At most 64 targets per
   primitive. Playing them is left to the animation and rendering crates.
+- A mesh with morph targets (`MeshSource::morph`) is posed by the same
+  compute kernel as a skinned one, by a renderable's `morph_weights`: the
+  weighted offsets are added to the base position and normal, then the joint
+  palette (if any) is applied. Offsets sit in one storage buffer and the
+  kernel reads its target count, vertex count, skin flag and weights from a
+  small control block. A renderable whose weights are all zero draws the mesh
+  rigid. Meshes with morph targets, like posed ones, are never culled or
+  batched with other instances.

@@ -82,6 +82,7 @@ fn post_ring(base: &mut GraphicsSession) -> Vec<Renderable3d> {
                 billboard: false,
                 casts_shadow: true,
                 palette: None,
+                morph_weights: Vec::new(),
             }
         })
         .collect()
@@ -105,5 +106,6 @@ fn sphere(
         billboard: false,
         casts_shadow: false,
         palette: None,
+        morph_weights: Vec::new(),
     }
 }

@@ -66,6 +66,7 @@ impl GpuState {
                 billboard: false,
                 casts_shadow: true,
                 palette: None,
+                morph_weights: Vec::new(),
             })
             .collect();
         light_with_sky(&mut base);
@@ -100,7 +101,7 @@ impl GpuState {
     }
 
     /// Moves the playing animation on by the time since the last frame and
-    /// hands each skinned piece its joint matrices.
+    /// hands each skinned piece its joint matrices and each morphed one its weights.
     fn animate(&mut self) {
         let now = std::time::Instant::now();
         let delta = now.duration_since(self.last_frame).as_secs_f32();
@@ -111,10 +112,13 @@ impl GpuState {
             .map_or(0.0, ModelAnimation::duration);
         self.playback.advance(delta, duration);
         let palettes = self.rig.palettes(self.animation, self.playback.time);
-        for (renderable, piece) in self.scene.renderables.iter_mut().zip(&self.pieces) {
+        let morphs = self.rig.weights(self.animation, self.playback.time);
+        let pieces = self.pieces.iter().zip(morphs);
+        for (renderable, (piece, weights)) in self.scene.renderables.iter_mut().zip(pieces) {
             renderable.palette = piece
                 .skeleton
                 .and_then(|skeleton| palettes.get(skeleton).cloned());
+            renderable.morph_weights = weights;
         }
     }
 }

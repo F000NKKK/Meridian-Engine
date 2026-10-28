@@ -1,11 +1,13 @@
 //! The skeletons and animations of a loaded model (ADR 047).
 
 use meridian_animation_domain::{
-    Channel, Clip, Interpolation, JointId, JointTransform, Keys, Pose, Skeleton, Track,
+    Channel, Clip, Interpolation, JointId, JointTransform, Keys, Pose, Skeleton, Track, WeightKeys,
+    WeightsChannel,
 };
 pub use meridian_animation_domain::{Playback, Repeat as AnimationRepeat};
 use meridian_asset_domain::{
     ModelAsset, ModelChannel, ModelClip, ModelInterpolation, ModelProperty, ModelSkeleton,
+    ModelWeightsChannel,
 };
 use meridian_gac::{Rotor, Vec3};
 use meridian_rendering_domain::JointPalette;
@@ -24,16 +26,17 @@ pub struct SkeletonClip {
 pub struct ModelAnimation {
     /// One clip per skeleton the animation moves.
     pub clips: Vec<SkeletonClip>,
+    /// What it does to the morph weights of the model's parts.
+    pub weights: Vec<WeightsChannel>,
 }
 
 impl ModelAnimation {
-    /// How long the animation runs: its longest clip.
+    /// How long the animation runs: its longest clip or weight track.
     #[must_use]
     pub fn duration(&self) -> f32 {
-        self.clips
-            .iter()
-            .map(|entry| entry.clip.duration())
-            .fold(0.0, f32::max)
+        let clips = self.clips.iter().map(|entry| entry.clip.duration());
+        let weights = self.weights.iter().map(|channel| channel.keys.end_time());
+        clips.chain(weights).fold(0.0, f32::max)
     }
 }
 
@@ -42,8 +45,11 @@ impl ModelAnimation {
 pub struct ModelRig {
     /// One skeleton per skin of the file.
     pub skeletons: Vec<Skeleton>,
-    /// The file's animations of joints.
+    /// The file's animations of joints and morph weights.
     pub animations: Vec<ModelAnimation>,
+    /// Per part, the morph weights before any animation; empty for a part
+    /// without blend shapes.
+    pub rest_weights: Vec<Vec<f32>>,
 }
 
 impl ModelRig {
@@ -62,12 +68,37 @@ impl ModelRig {
         let animations = model
             .clips
             .iter()
-            .map(|clip| animation(clip, skeletons.len()))
+            .map(|clip| animation(clip, model))
             .collect::<Result<Vec<_>, _>>()?;
+        let rest_weights = model
+            .parts
+            .iter()
+            .map(|part| part.morph.as_ref().map(|morph| morph.weights.clone()))
+            .map(Option::unwrap_or_default)
+            .collect();
         Ok(Self {
             skeletons,
             animations,
+            rest_weights,
         })
+    }
+
+    /// The morph weights of every part with `animation` (as for
+    /// [`palettes`](Self::palettes)) sampled at `time`; a part without blend
+    /// shapes has none.
+    #[must_use]
+    pub fn weights(&self, animation: Option<usize>, time: f32) -> Vec<Vec<f32>> {
+        let channels = animation
+            .and_then(|index| self.animations.get(index))
+            .map(|animation| animation.weights.as_slice())
+            .unwrap_or_default();
+        let mut weights = self.rest_weights.clone();
+        for channel in channels {
+            if let Some(part) = weights.get_mut(channel.target) {
+                channel.keys.sample(time, part);
+            }
+        }
+        weights
     }
 
     /// The joint matrices of every skeleton with `animation` (an index into
@@ -123,9 +154,9 @@ fn joint_id(index: usize) -> Result<JointId, String> {
     JointId::from_index(index).ok_or_else(|| format!("joint {index} is out of range"))
 }
 
-fn animation(source: &ModelClip, skeletons: usize) -> Result<ModelAnimation, String> {
+fn animation(source: &ModelClip, model: &ModelAsset) -> Result<ModelAnimation, String> {
     let mut clips = Vec::new();
-    for skeleton in 0..skeletons {
+    for skeleton in 0..model.skeletons.len() {
         let channels = source
             .channels
             .iter()
@@ -139,15 +170,46 @@ fn animation(source: &ModelClip, skeletons: usize) -> Result<ModelAnimation, Str
             });
         }
     }
-    Ok(ModelAnimation { clips })
+    let weights = source
+        .weights
+        .iter()
+        .map(|channel| weights_channel(channel, model))
+        .collect::<Result<_, _>>()?;
+    Ok(ModelAnimation { clips, weights })
 }
 
-fn channel(source: &ModelChannel) -> Result<Channel, String> {
-    let interpolation = match source.interpolation {
+fn weights_channel(
+    source: &ModelWeightsChannel,
+    model: &ModelAsset,
+) -> Result<WeightsChannel, String> {
+    let targets = model
+        .parts
+        .get(source.part)
+        .and_then(|part| part.morph.as_ref())
+        .map_or(0, |morph| morph.targets.len());
+    let keys = WeightKeys::new(
+        &source.times,
+        &source.values,
+        targets,
+        interpolation(source.interpolation),
+    )
+    .map_err(|err| err.to_string())?;
+    Ok(WeightsChannel {
+        target: source.part,
+        keys,
+    })
+}
+
+fn interpolation(source: ModelInterpolation) -> Interpolation {
+    match source {
         ModelInterpolation::Linear => Interpolation::Linear,
         ModelInterpolation::Step => Interpolation::Step,
         ModelInterpolation::CubicSpline => Interpolation::CubicSpline,
-    };
+    }
+}
+
+fn channel(source: &ModelChannel) -> Result<Channel, String> {
+    let interpolation = interpolation(source.interpolation);
     let track = match source.property {
         ModelProperty::Translation => Track::Translation(keys(source, interpolation)?),
         ModelProperty::Rotation => Track::Rotation(keys(source, interpolation)?),
@@ -246,5 +308,37 @@ mod tests {
         let mut broken = model();
         broken.clips[0].channels[0].times = vec![2.0, 0.0];
         assert!(ModelRig::of(&broken).is_err());
+    }
+
+    #[test]
+    fn morph_weights_start_at_rest_and_follow_the_animation() {
+        use meridian_asset_domain::{ModelPart, ModelWeightsChannel, MorphTarget, PartMorph};
+        let morph = PartMorph {
+            targets: vec![MorphTarget::default(); 2],
+            weights: vec![0.25, 0.0],
+        };
+        let model = ModelAsset {
+            parts: vec![
+                ModelPart::default(),
+                ModelPart {
+                    morph: Some(morph),
+                    ..ModelPart::default()
+                },
+            ],
+            clips: vec![ModelClip {
+                weights: vec![ModelWeightsChannel {
+                    part: 1,
+                    interpolation: ModelInterpolation::Linear,
+                    times: vec![0.0, 2.0],
+                    values: vec![0.0, 1.0, 1.0, 0.0],
+                }],
+                ..ModelClip::default()
+            }],
+            ..ModelAsset::default()
+        };
+        let rig = ModelRig::of(&model).expect("a valid rig");
+        assert_eq!(rig.weights(None, 1.0), [vec![], vec![0.25, 0.0]]);
+        assert_eq!(rig.weights(Some(0), 1.0), [vec![], vec![0.5, 0.5]]);
+        assert!((rig.animations[0].duration() - 2.0).abs() < f32::EPSILON);
     }
 }

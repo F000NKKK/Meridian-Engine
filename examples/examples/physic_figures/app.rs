@@ -95,6 +95,7 @@ fn entity_renderables(entities: &[RenderEntity], bodies: &[RigidBody]) -> Vec<Re
             billboard: false,
             casts_shadow: true,
             palette: None,
+            morph_weights: Vec::new(),
         })
         .collect()
 }

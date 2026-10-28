@@ -21,6 +21,14 @@ pub enum MeshRegistryError {
     /// The skin does not give every vertex exactly one set of joints and
     /// weights.
     SkinCountMismatch { positions: usize, skinned: usize },
+    /// A morph target does not give every vertex exactly one position
+    /// offset (and, when it has normal offsets, one of those too).
+    MorphCountMismatch {
+        /// How many vertices the mesh has.
+        positions: usize,
+        /// How many offsets the target gives.
+        offsets: usize,
+    },
 }
 
 impl core::fmt::Display for MeshRegistryError {
@@ -45,6 +53,12 @@ impl core::fmt::Display for MeshRegistryError {
                 write!(
                     f,
                     "{positions} positions but {skinned} skinned vertices — must match"
+                )
+            }
+            MeshRegistryError::MorphCountMismatch { positions, offsets } => {
+                write!(
+                    f,
+                    "{positions} positions but {offsets} morph offsets — must match"
                 )
             }
             MeshRegistryError::NormalCountMismatch { positions, normals } => {

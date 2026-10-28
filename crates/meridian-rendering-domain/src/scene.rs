@@ -189,6 +189,10 @@ pub struct Renderable3d {
     /// The joint matrices of a skinned mesh for this frame (ADR 047); `None`
     /// draws the mesh rigid. Ignored when the mesh has no skin.
     pub palette: Option<JointPalette>,
+    /// The weight of each morph target of the mesh for this frame (ADR 047),
+    /// in the order of its targets; targets past the end weigh zero, and a
+    /// mesh without targets ignores them.
+    pub morph_weights: Vec<f32>,
 }
 
 /// Attaches a [`Renderable3d`] (minus its frame, which comes from the
@@ -349,6 +353,7 @@ pub fn extract_scene3d(world: &World, camera: crate::Camera) -> Scene3d {
                 billboard: renderer.billboard,
                 casts_shadow: true,
                 palette: None,
+                morph_weights: Vec::new(),
             })
         })
         .collect();
@@ -497,6 +502,7 @@ mod tests {
             billboard: false,
             casts_shadow: true,
             palette: None,
+            morph_weights: Vec::new(),
         };
         let behind = Renderable3d {
             mesh: MeshHandle::new(meridian_memory::Handle::default()),
@@ -505,6 +511,7 @@ mod tests {
             billboard: false,
             casts_shadow: true,
             palette: None,
+            morph_weights: Vec::new(),
         };
         let scene = Scene3d {
             renderables: vec![ahead.clone(), behind],
@@ -530,6 +537,7 @@ mod tests {
             billboard: false,
             casts_shadow: true,
             palette: None,
+            morph_weights: Vec::new(),
         };
         let scene = Scene3d {
             renderables: vec![renderable],

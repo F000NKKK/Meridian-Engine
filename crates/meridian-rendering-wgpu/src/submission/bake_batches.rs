@@ -10,7 +10,7 @@ use meridian_rendering_domain::{
 use super::batching::BindGroupCache;
 use super::instance_data::push_instance;
 use super::main_pipelines::PipelineKey;
-use super::skinning::SkinJob;
+use super::skinning::{MeshPose, SkinJob};
 use super::{DrawKind, PreparedBatch, SceneAssets, SceneRenderer};
 use crate::{Device, LitTextures, SampledTexture, SurfaceTextures, Texture};
 
@@ -25,6 +25,8 @@ struct Resolved<'a> {
     casts_shadow: bool,
     /// The joint matrices when the mesh is skinned and the renderable poses it.
     palette: Option<&'a JointPalette>,
+    /// The morph weights when the mesh has targets and any is not zero.
+    morph_weights: Option<&'a [f32]>,
 }
 
 impl<'a> Resolved<'a> {
@@ -53,7 +55,14 @@ impl<'a> Resolved<'a> {
                 .palette
                 .as_ref()
                 .filter(|palette| source.skin.is_some() && !palette.matrices().is_empty()),
+            morph_weights: Some(renderable.morph_weights.as_slice())
+                .filter(|weights| source.morph.is_some() && weights.iter().any(|w| *w != 0.0)),
         })
+    }
+
+    /// Whether a compute pass poses the mesh for this renderable.
+    fn is_posed(&self) -> bool {
+        self.palette.is_some() || self.morph_weights.is_some()
     }
 
     /// The item to plan for the renderable at `index`; a posed one gets a
@@ -67,7 +76,7 @@ impl<'a> Resolved<'a> {
                 lit: !self.material.unlit,
                 state: DrawState::of(self.material),
                 casts_shadow: self.casts_shadow,
-                own: self.palette.map(|_| index),
+                own: self.is_posed().then_some(index),
             },
             distance_squared: (origin - eye).length_squared(),
         }
@@ -151,11 +160,17 @@ pub(crate) fn bake_batches(
     }
 }
 
-/// The dispatch that poses `lead`'s mesh, when the renderable is skinned.
+/// The dispatch that poses `lead`'s mesh, when the renderable is skinned or morphed.
 fn pose(device: &Device, renderer: &mut SceneRenderer, lead: &Resolved<'_>) -> Option<SkinJob> {
-    let palette = lead.palette?;
+    if !lead.is_posed() {
+        return None;
+    }
     let mesh = renderer.meshes.get(lead.mesh)?;
-    renderer.skinning.job(device, lead.mesh, mesh, palette)
+    let pose = MeshPose {
+        palette: lead.palette,
+        weights: lead.morph_weights.unwrap_or_default(),
+    };
+    renderer.skinning.job(device, lead.mesh, mesh, pose)
 }
 
 fn draw_kind(
