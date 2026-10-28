@@ -131,7 +131,7 @@ gltf = { version = "1.4", default-features = false, features = ["utils"] }
 # so this one entry is all a crate needs. Taken from crates.io; `0.2` takes
 # every compatible patch release. Used optionally (`data` feature) by
 # `numeric`/`gac`, and directly by `meridian-data-substrate`.
-substrate-data = "0.2"
+substrate-data = "0.3"
 
 [profile.release]
 lto = true
