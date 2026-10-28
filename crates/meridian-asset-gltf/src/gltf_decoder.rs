@@ -51,11 +51,21 @@ impl GltfDecoder {
         let mut parts = Vec::new();
         let mut vertices = 0usize;
         let placed = scene_walk::flatten(&document)?;
-        let skins = Skins::read(&document, &buffers, &scene_walk::worlds(&document, &placed))?;
+        let mut skins = Skins::read(&document, &buffers, &scene_walk::worlds(&document, &placed))?;
+        let mesh_nodes: Vec<usize> = placed
+            .iter()
+            .filter(|(node, _)| node.mesh().is_some() && node.skin().is_none())
+            .map(|(node, _)| node.index())
+            .collect();
+        let motion = skins.add_motion(&document, &mesh_nodes);
         for (node, world) in &placed {
             let Some(mesh) = node.mesh() else { continue };
             let skin = node.skin().and_then(|skin| skins.map(&skin));
-            let placement = Placement { world, skin };
+            let placement = Placement {
+                world,
+                skin,
+                motion: motion.joint_of(node.index()),
+            };
             for primitive in mesh.primitives() {
                 let part = read::part::read(&primitive, &placement, &buffers)?;
                 vertices = vertices.saturating_add(part.positions.len());

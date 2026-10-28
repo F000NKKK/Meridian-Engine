@@ -15,6 +15,9 @@ type Matrix = [[f32; 4]; 4];
 pub(crate) struct Placement<'a> {
     pub(crate) world: &'a Matrix,
     pub(crate) skin: Option<&'a SkinMap>,
+    /// The `(skeleton, joint)` that moves a rigid part animation moves:
+    /// the part stays in its node's space, bound to that joint alone.
+    pub(crate) motion: Option<(usize, usize)>,
 }
 
 /// Reads `primitive` in its own space, then places or skins it.
@@ -24,9 +27,10 @@ pub(crate) fn read(
     buffers: &[Vec<u8>],
 ) -> Result<ModelPart, GltfError> {
     let mut part = load(primitive, buffers)?;
-    let skin = match placement.skin {
-        Some(map) => skin_of(primitive, buffers, map, part.positions.len())?,
-        None => None,
+    let skin = match (placement.skin, placement.motion) {
+        (Some(map), _) => skin_of(primitive, buffers, map, part.positions.len())?,
+        (None, Some((skeleton, joint))) => Some(on_joint(skeleton, joint, part.positions.len())?),
+        (None, None) => None,
     };
     if skin.is_some() {
         part.skin = skin;
@@ -34,6 +38,16 @@ pub(crate) fn read(
         place(&mut part, placement.world);
     }
     Ok(part)
+}
+
+/// A part bound entirely to one joint.
+fn on_joint(skeleton: usize, joint: usize, vertices: usize) -> Result<PartSkin, GltfError> {
+    let joint = u16::try_from(joint).map_err(|_| GltfError::OutOfBounds("joint index"))?;
+    Ok(PartSkin {
+        skeleton,
+        joints: vec![[joint, 0, 0, 0]; vertices],
+        weights: vec![[1.0, 0.0, 0.0, 0.0]; vertices],
+    })
 }
 
 /// The four joints and weights per vertex, remapped to the skeleton's joint

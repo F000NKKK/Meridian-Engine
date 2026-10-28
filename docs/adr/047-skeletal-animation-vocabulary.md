@@ -117,3 +117,10 @@ model: `sdk`'s `ModelRig` holds the `Skeleton`s and `Clip`s of a loaded model
   animation`).
 - Cubic-spline rotations are blended as raw quaternions and renormalised, as
   glTF specifies, not as arcs.
+- Animation of nodes without a skin goes through the same path: the decoder
+  gathers the mesh nodes an animation channel moves, directly or through an
+  ancestor, with their ancestors into one more skeleton (identity inverse
+  bind, rest pose from the node's transform), and binds each such part to its
+  node's joint with weight 1, vertices left in node space. Scale animation
+  works, and the renderer needs nothing new. A model needing more than 256
+  such nodes keeps them static.
