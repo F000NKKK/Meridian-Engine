@@ -1,16 +1,14 @@
-//! Directional shadow depth shader and the camera that fits the shadow volume.
+//! The camera that sees the fixed shadow volume.
 
 use meridian_gac::{Motor3, Projection, Vec3};
 
 use crate::{Camera, look_at_rotor};
 
-/// Fixed half-extent (world units) of the directional shadow map's
-/// orthographic volume, centered on the world origin — a disclosed
-/// simplification: a real engine fits this box to the camera frustum
-/// each frame (a "shadow cascade"); this workspace's scenes are small
-/// and roughly origin-centered, so one fixed, generous box covers both
-/// `physic_figures` (floor half-extent 14) and `magic_figures` (orbit
-/// radius 3.2, floor half-extent 14) without per-frame recomputation.
+/// Half-extent (world units) of the fixed orthographic volume a view gets
+/// when its camera has no perspective frustum to fit cascades to (see
+/// [`ShadowCascades::fixed`](super::ShadowCascades::fixed)): centred on the
+/// world origin, generous enough for the example scenes (floor half-extent
+/// 14) and not fitted to anything.
 pub const SHADOW_VOLUME_HALF_EXTENT: f32 = 20.0;
 
 /// Builds the [`Camera`] a directional light "sees" its shadow-casting

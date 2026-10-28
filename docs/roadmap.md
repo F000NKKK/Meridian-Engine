@@ -468,8 +468,8 @@ depth-only pass (`SceneRenderer::render_shadow_pass`, `rendering-wgpu`'s
 new `create_shadow_map_texture`/`create_shadow_pipeline`/
 `begin_shadow_pass`) renders occluder depth into a
 `Depth32Float` shadow map from the light's own orthographic view (see
-`directional_shadow_camera` — a fixed, scene-independent shadow volume,
-not a per-frame frustum-fit cascade, the disclosed simplification), and
+`directional_shadow_camera` — a fixed volume, since replaced by four
+frustum-fitted cascades in a 2 x 2 atlas, ADR 037), and
 both lit shader flavors (`lit_shader_wgsl`/`lit_textured_shader_wgsl`)
 sample it via `textureSampleCompare` (hardware PCF via a comparison
 sampler) with a small constant bias, combined with front-face culling
@@ -482,7 +482,7 @@ isolation (`cargo test -p meridian-rendering-domain`), the same
 "unverifiable-without-a-window, so windowed examples are the proof"
 convention this crate's own test module already documents for
 `SceneRenderer` itself. Radiance `.hdr` panoramas load as environments
-(ADR 036). **Not yet done:** shadow cascades/frustum-fitting, soft point-light
+(ADR 036). Shadows are cascaded (ADR 037). **Not yet done:** soft point-light
 shadows (HDR and tone mapping are done, ADR 034), not a blanket
 "every other crate is a scaffold." Audio is wired end-to-end:
 `audio-domain::AudioOutput` + `Mixer::render_interleaved` bridge mixed

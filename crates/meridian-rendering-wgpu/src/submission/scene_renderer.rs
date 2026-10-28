@@ -33,7 +33,8 @@ pub struct SceneRenderer {
     pub(crate) meshes: MeshCache,
     pub(crate) uniform_buffer: Buffer,
     pub(crate) sampler: Sampler,
-    /// A `Depth32Float` texture, both a render target (the shadow depth
+    /// The shadow atlas: a 2 x 2 grid of cascade tiles of
+    /// [`tile_size`](Self::tile_size) texels, in one `Depth32Float` texture, both a render target (the shadow depth
     /// pass writes into it) and sampleable (the lit shaders' shadow
     /// lookup reads it) — see
     /// `rendering-wgpu::Device::create_shadow_map_texture`'s own doc
@@ -41,6 +42,8 @@ pub struct SceneRenderer {
     /// render-target-only `DepthTexture`.
     pub(crate) shadow_map: Texture,
     pub(crate) shadow_sampler: Sampler,
+    /// Texels along one side of a cascade's tile in the shadow atlas.
+    tile_size: u32,
     /// What a draw binds for each map its material lacks.
     pub(crate) neutral: NeutralTextures,
     /// The environment lit surfaces are lit with (ADR 035), or a stand-in.
@@ -48,12 +51,15 @@ pub struct SceneRenderer {
     shadow_depth: ShadowDepthPass,
 }
 
-/// [`SceneRenderer::new`]'s default shadow map resolution — generous
-/// enough that both example scenes' shadows don't read as visibly
-/// blocky, without the per-frame cost a much larger map would add. A
-/// caller that wants sharper (or cheaper, blockier) shadows picks their
-/// own value via [`SceneRenderer::with_shadow_map_size`] instead.
-pub const DEFAULT_SHADOW_MAP_SIZE: u32 = 2048;
+/// [`SceneRenderer::new`]'s default shadow resolution: texels along one side
+/// of a cascade's map (ADR 037). The four cascades together are a 2048-texel
+/// atlas, the size the single map had before cascades. A caller that wants
+/// sharper (or cheaper, blockier) shadows picks their own value via
+/// [`SceneRenderer::with_shadow_map_size`] instead.
+pub const DEFAULT_SHADOW_MAP_SIZE: u32 = 1024;
+
+/// Cascade tiles along one side of the shadow atlas (2 x 2 for four cascades).
+const ATLAS_TILES_PER_SIDE: u32 = 2;
 
 impl SceneRenderer {
     /// Builds a renderer drawing into targets of `format`, with
@@ -70,17 +76,19 @@ impl SceneRenderer {
         Self::with_shadow_map_size(device, format, DEFAULT_SHADOW_MAP_SIZE)
     }
 
+    /// Like [`new`](Self::new) with `shadow_map_size` texels along one side of
+    /// each cascade's map; the atlas holding the four is twice that wide.
     #[must_use]
     pub fn with_shadow_map_size(
         device: &Device,
         format: ColorFormat,
         shadow_map_size: u32,
     ) -> Self {
-        let shadow_map = device.create_shadow_map_texture(shadow_map_size);
+        let shadow_map = device.create_shadow_map_texture(shadow_map_size * ATLAS_TILES_PER_SIDE);
         let shadow_sampler = device.create_comparison_sampler();
         let shadow_depth = ShadowDepthPass::new(device);
 
-        // 416 bytes: see `lit_uniform_bytes`'s doc comment for the
+        // See `lit_uniform_bytes`'s doc comment for the
         // layout. The unlit pipelines only read the first 64 (view_proj)
         // but share this same buffer — one write serves every pipeline.
         let uniform_buffer = device.create_buffer(LIT_UNIFORM_BYTES, BufferUsage::Uniform);
@@ -108,6 +116,7 @@ impl SceneRenderer {
             sampler,
             shadow_map,
             shadow_sampler,
+            tile_size: shadow_map_size,
             neutral: NeutralTextures::new(device),
             environment,
             shadow_depth,
@@ -210,11 +219,15 @@ impl SceneRenderer {
         scene: &Scene3d,
         assets: &SceneAssets<'_>,
     ) -> PreparedScene {
-        let shadow = ShadowLight::for_scene(scene);
-        device.write_buffer(
-            &self.shadow_depth.uniform_buffer,
-            &mat4_to_bytes(shadow.view_proj),
-        );
+        let shadow = ShadowLight::for_scene(scene, self.tile_size);
+        for (cascade, view_proj) in self
+            .shadow_depth
+            .cascades
+            .iter()
+            .zip(shadow.cascades.view_proj)
+        {
+            device.write_buffer(&cascade.buffer, &mat4_to_bytes(view_proj));
+        }
         let baked = bake_batches(device, self, scene, assets);
         self.record_shadow_casters(commands, &baked.batches, baked.instances.as_ref());
         PreparedScene {
@@ -236,9 +249,15 @@ impl SceneRenderer {
             return;
         };
         pass.set_pipeline(&self.shadow_depth.pipeline);
-        pass.set_bind_group(0, &self.shadow_depth.bind_group);
-        for batch in batches.iter().filter(|batch| batch.casts_shadow) {
-            self.draw_batch(&mut pass, batch, instances);
+        for (index, cascade) in (0u32..).zip(&self.shadow_depth.cascades) {
+            // Tile `index` of the atlas: column `index % 2`, row `index / 2`.
+            let (column, row) = (index % ATLAS_TILES_PER_SIDE, index / ATLAS_TILES_PER_SIDE);
+            let tile = self.tile_size;
+            pass.set_viewport(column * tile, row * tile, tile, tile);
+            pass.set_bind_group(0, &cascade.bind_group);
+            for batch in batches.iter().filter(|batch| batch.casts_shadow) {
+                self.draw_batch(&mut pass, batch, instances);
+            }
         }
     }
 

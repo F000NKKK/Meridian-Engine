@@ -2,10 +2,20 @@
 
 use meridian_gac::{Motor3, Vec3};
 use meridian_rendering_domain::scene::{Light, Material};
-use meridian_rendering_domain::{Camera, ShadowLight, ViewUniforms};
+use meridian_rendering_domain::{Camera, ShadowCascades, ShadowLight, ViewUniforms};
 
 use super::environment::EnvironmentUniform;
 use super::{lit_uniform_bytes, mat4_to_bytes, *};
+
+/// Where the lights array starts: `view_proj`, four cascades with their far
+/// edges and biases, then `camera_pos`, both ambients, `light_direction`,
+/// `light_count` and `shadow_caster`.
+const LIGHTS_START: usize = 64 + 4 * 64 + 16 + 16 + 6 * 16;
+
+/// The `u32` at `offset`.
+fn u32_at(bytes: &[u8], offset: usize) -> u32 {
+    u32::from_le_bytes(bytes[offset..offset + 4].try_into().unwrap())
+}
 
 #[test]
 fn mat4_to_bytes_is_column_major_little_endian() {
@@ -37,12 +47,11 @@ fn lit_uniform_bytes_has_the_documented_layout_and_size() {
             range: 10.0,
         },
     ];
-    let identity = Camera::default().view_projection_matrix();
     let bytes = lit_uniform_bytes(
         &ViewUniforms {
             camera: &camera,
             shadow: ShadowLight {
-                view_proj: identity,
+                cascades: ShadowCascades::fixed(Vec3::new(0.0, -1.0, 0.0), 1024),
                 direction: Vec3::new(0.0, -1.0, 0.0),
                 caster: 0,
             },
@@ -54,23 +63,18 @@ fn lit_uniform_bytes_has_the_documented_layout_and_size() {
     );
     assert_eq!(
         bytes.len(),
-        64 + 64 + 16 + 16 + 16 + 16 + 16 + 16 + MAX_LIGHTS * 48 + EnvironmentUniform::BYTES
+        LIGHTS_START + MAX_LIGHTS * 48 + EnvironmentUniform::BYTES
     );
 
-    // light_count.x at offset 192 (view_proj[64] + light_view_proj[64]
-    // + camera_pos[16] + ambient_ground[16] + ambient_sky[16] +
-    // light_direction[16]) must read back as 2.
-    let count = u32::from_le_bytes(bytes[192..196].try_into().unwrap());
+    let count = u32_at(&bytes, LIGHTS_START - 32);
     assert_eq!(count, 2);
 
-    // shadow_caster.x at offset 208 (light_count's own 16 bytes
-    // later) must read back as the `0` this test passed in.
-    let shadow_caster = u32::from_le_bytes(bytes[208..212].try_into().unwrap());
+    let shadow_caster = u32_at(&bytes, LIGHTS_START - 16);
     assert_eq!(shadow_caster, 0);
 
-    // First light's kind field (lights array starts at 224, kind is
+    // First light's kind field (kind is
     // each 48-byte LightData's 4th f32).
-    let lights_start = 64 + 64 + 16 + 16 + 16 + 16 + 16 + 16;
+    let lights_start = LIGHTS_START;
     let first_kind = f32::from_le_bytes(
         bytes[lights_start + 12..lights_start + 16]
             .try_into()
@@ -98,12 +102,11 @@ fn lit_uniform_bytes_caps_extra_lights_silently_at_the_byte_level() {
             intensity: 1.0,
         })
         .collect();
-    let identity = Camera::default().view_projection_matrix();
     let bytes = lit_uniform_bytes(
         &ViewUniforms {
             camera: &camera,
             shadow: ShadowLight {
-                view_proj: identity,
+                cascades: ShadowCascades::fixed(Vec3::new(0.0, -1.0, 0.0), 1024),
                 direction: Vec3::new(0.0, -1.0, 0.0),
                 caster: u32::MAX,
             },
@@ -115,11 +118,19 @@ fn lit_uniform_bytes_caps_extra_lights_silently_at_the_byte_level() {
     );
     assert_eq!(
         bytes.len(),
-        64 + 64 + 16 + 16 + 16 + 16 + 16 + 16 + MAX_LIGHTS * 48 + EnvironmentUniform::BYTES
+        LIGHTS_START + MAX_LIGHTS * 48 + EnvironmentUniform::BYTES
     );
-    let count = u32::from_le_bytes(bytes[192..196].try_into().unwrap());
+    let count = u32::from_le_bytes(
+        bytes[LIGHTS_START - 32..LIGHTS_START - 28]
+            .try_into()
+            .unwrap(),
+    );
     assert_eq!(count as usize, MAX_LIGHTS);
-    let shadow_caster = u32::from_le_bytes(bytes[208..212].try_into().unwrap());
+    let shadow_caster = u32::from_le_bytes(
+        bytes[LIGHTS_START - 16..LIGHTS_START - 12]
+            .try_into()
+            .unwrap(),
+    );
     assert_eq!(shadow_caster, u32::MAX);
 }
 
