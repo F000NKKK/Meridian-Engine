@@ -7,7 +7,8 @@ use super::{
     lit_textured_shader_wgsl, mesh_vertex_layout,
 };
 use crate::{
-    BindGroup, Buffer, ColorFormat, Device, RenderPipeline, Sampler, ShaderStages, Texture,
+    BindGroup, Buffer, ColorFormat, Device, RenderPipeline, SampledTexture, Sampler, ShaderStages,
+    Texture,
 };
 
 /// Which pipeline a draw needs.
@@ -37,6 +38,7 @@ pub(crate) struct MainBindings<'a> {
     pub uniform_buffer: &'a Buffer,
     pub shadow_map: &'a Texture,
     pub shadow_sampler: &'a Sampler,
+    pub environment: SampledTexture<'a>,
 }
 
 /// The sixteen main pipelines, built once.
@@ -83,6 +85,17 @@ impl MainPipelines {
         Self { slots }
     }
 
+    /// Rebuilds the shared bind groups of the flat lit pipelines against
+    /// `bindings`: they hold the environment texture, which changes at runtime.
+    pub(crate) fn rebind(&mut self, device: &Device, bindings: MainBindings<'_>) {
+        for (index, slot) in self.slots.iter_mut().enumerate() {
+            let (textured, lit) = (index % 4 >= 2, index % 2 == 1);
+            if lit && !textured {
+                slot.shared_bind_group = Some(shadow_bind_group(device, &slot.pipeline, bindings));
+            }
+        }
+    }
+
     /// The pipeline `key` names.
     pub(crate) fn get(&self, key: PipelineKey) -> &MainPipeline {
         let state = STATES
@@ -102,12 +115,7 @@ fn with_shared_bind_group(
 ) -> MainPipeline {
     let shared_bind_group = (!key.textured).then(|| {
         if key.lit {
-            device.create_shadow_bind_group(
-                &pipeline,
-                bindings.uniform_buffer,
-                bindings.shadow_map,
-                bindings.shadow_sampler,
-            )
+            shadow_bind_group(device, &pipeline, bindings)
         } else {
             device.create_uniform_bind_group(&pipeline, bindings.uniform_buffer)
         }
@@ -116,4 +124,22 @@ fn with_shared_bind_group(
         pipeline,
         shared_bind_group,
     }
+}
+
+/// The bind group of a flat lit `pipeline`: uniform, shadow map and sampler,
+/// environment and sampler.
+fn shadow_bind_group(
+    device: &Device,
+    pipeline: &RenderPipeline,
+    bindings: MainBindings<'_>,
+) -> BindGroup {
+    device.create_shadow_bind_group(
+        pipeline,
+        bindings.uniform_buffer,
+        SampledTexture {
+            texture: bindings.shadow_map,
+            sampler: bindings.shadow_sampler,
+        },
+        bindings.environment,
+    )
 }

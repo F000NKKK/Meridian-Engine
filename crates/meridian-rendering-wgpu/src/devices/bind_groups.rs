@@ -1,6 +1,8 @@
 //! Bind group creation on the device.
 
-use crate::{BindGroup, Buffer, Device, LitTextures, RenderPipeline, Sampler, Texture};
+use crate::{
+    BindGroup, Buffer, Device, LitTextures, RenderPipeline, SampledTexture, Sampler, Texture,
+};
 
 impl Device {
     /// Builds a bind group binding `buffer` (a uniform, as in
@@ -43,20 +45,21 @@ impl Device {
     }
 
     /// Like [`create_uniform_bind_group`](Self::create_uniform_bind_group)
-    /// plus a shadow map and its comparison sampler — the bind group an
-    /// untextured (vertex-colored), shadow-receiving lit pipeline needs.
+    /// plus a shadow map, its comparison sampler and the environment with its
+    /// sampler — the bind group an untextured (vertex-colored),
+    /// shadow-receiving lit pipeline needs.
     pub fn create_shadow_bind_group(
         &self,
         pipeline: &RenderPipeline,
         buffer: &Buffer,
-        shadow_map: &Texture,
-        shadow_sampler: &Sampler,
+        shadow: SampledTexture<'_>,
+        environment: SampledTexture<'_>,
     ) -> BindGroup {
         self.0.create_shadow_bind_group(
             &pipeline.raw.get_bind_group_layout(0),
             buffer,
-            shadow_map,
-            shadow_sampler,
+            shadow,
+            environment,
         )
     }
 
@@ -67,8 +70,8 @@ impl Device {
     pub fn create_uniform_bind_group(
         &self,
         pipeline: &RenderPipeline,
-        buffer: &meridian_gpu_wgpu::Buffer,
-    ) -> meridian_gpu_wgpu::BindGroup {
+        buffer: &Buffer,
+    ) -> BindGroup {
         self.0
             .create_single_buffer_bind_group(&pipeline.raw.get_bind_group_layout(0), buffer)
     }

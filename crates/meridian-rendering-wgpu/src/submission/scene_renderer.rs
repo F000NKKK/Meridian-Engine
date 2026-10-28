@@ -1,18 +1,19 @@
 //! Pipelines and state that render a 3-D scene.
 
 use meridian_rendering_domain::scene::Scene3d;
-use meridian_rendering_domain::{ShadowLight, ViewUniforms};
+use meridian_rendering_domain::{EnvironmentMap, ShadowLight, ViewUniforms};
 
+use super::environment::GpuEnvironment;
 use super::main_pipelines::{MainBindings, MainPipelines};
 use super::mesh_cache::MeshCache;
 use super::registries::NeutralTextures;
 use super::{
-    DrawKind, MAX_LIGHTS, PreparedBatch, PreparedScene, SceneAssets, ShadowDepthPass, bake_batches,
-    lit_uniform_bytes, mat4_to_bytes,
+    DrawKind, LIT_UNIFORM_BYTES, MAX_LIGHTS, PreparedBatch, PreparedScene, SceneAssets,
+    ShadowDepthPass, bake_batches, lit_uniform_bytes, mat4_to_bytes,
 };
 use crate::{
     Buffer, BufferUsage, ColorFormat, CommandBuffer, Device, RenderPass as DriverRenderPass,
-    Sampler, Texture,
+    SampledTexture, Sampler, Texture,
 };
 
 /// Owns all four main pipelines (colored/textured × lit/unlit) plus the
@@ -42,6 +43,8 @@ pub struct SceneRenderer {
     pub(crate) shadow_sampler: Sampler,
     /// What a draw binds for each map its material lacks.
     pub(crate) neutral: NeutralTextures,
+    /// The environment lit surfaces are lit with (ADR 035), or a stand-in.
+    pub(crate) environment: GpuEnvironment,
     shadow_depth: ShadowDepthPass,
 }
 
@@ -80,9 +83,10 @@ impl SceneRenderer {
         // 416 bytes: see `lit_uniform_bytes`'s doc comment for the
         // layout. The unlit pipelines only read the first 64 (view_proj)
         // but share this same buffer — one write serves every pipeline.
-        let uniform_buffer = device.create_buffer(416, BufferUsage::Uniform);
+        let uniform_buffer = device.create_buffer(LIT_UNIFORM_BYTES, BufferUsage::Uniform);
         let sampler = device.create_sampler();
 
+        let environment = GpuEnvironment::none(device);
         let pipelines = MainPipelines::new(
             device,
             format,
@@ -90,6 +94,10 @@ impl SceneRenderer {
                 uniform_buffer: &uniform_buffer,
                 shadow_map: &shadow_map,
                 shadow_sampler: &shadow_sampler,
+                environment: SampledTexture {
+                    texture: &environment.texture,
+                    sampler: &environment.sampler,
+                },
             },
         );
 
@@ -101,6 +109,7 @@ impl SceneRenderer {
             shadow_map,
             shadow_sampler,
             neutral: NeutralTextures::new(device),
+            environment,
             shadow_depth,
         };
 
@@ -146,7 +155,33 @@ impl SceneRenderer {
                 view.lights.len() - MAX_LIGHTS
             );
         }
-        device.write_buffer(&self.uniform_buffer, &lit_uniform_bytes(view));
+        device.write_buffer(
+            &self.uniform_buffer,
+            &lit_uniform_bytes(view, self.environment.uniform),
+        );
+    }
+
+    /// Lights lit surfaces with `environment` from the next
+    /// [`set_view`](Self::set_view) on (ADR 035); `None` returns to the
+    /// scene's ambient colours. Uploads the map and rebuilds the bind groups
+    /// that hold it.
+    pub fn set_environment(&mut self, device: &Device, environment: Option<&EnvironmentMap>) {
+        self.environment = match environment {
+            Some(map) => GpuEnvironment::of(device, map),
+            None => GpuEnvironment::none(device),
+        };
+        self.pipelines.rebind(
+            device,
+            MainBindings {
+                uniform_buffer: &self.uniform_buffer,
+                shadow_map: &self.shadow_map,
+                shadow_sampler: &self.shadow_sampler,
+                environment: SampledTexture {
+                    texture: &self.environment.texture,
+                    sampler: &self.environment.sampler,
+                },
+            },
+        );
     }
 
     /// The shadow-casting depth pass: finds `scene`'s first

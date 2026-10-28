@@ -2,7 +2,7 @@
 
 use meridian_asset_domain::ImageAsset;
 use meridian_rendering_app::{FrameOutcome, FrameRecorder, FrameRequest, TextureStore};
-use meridian_rendering_domain::{TextureHandle, TonemapConfig};
+use meridian_rendering_domain::{EnvironmentMap, TextureHandle, TonemapConfig};
 
 use crate::overlay_pass::OverlayPass;
 use crate::{
@@ -163,6 +163,10 @@ impl FrameRecorder for GpuFrameRecorder {
     /// Rebuilds every size-dependent piece (swapchain, depth buffer, bloom's
     /// offscreen targets); the scene renderer's pipelines name no resolution and
     /// are kept.
+    fn set_environment(&mut self, environment: Option<&EnvironmentMap>) {
+        self.renderer.set_environment(&self.device, environment);
+    }
+
     fn resize(&mut self, width: u32, height: u32) {
         self.surface.resize(&self.device, width, height);
         self.depth = self.device.create_depth_texture(width, height);

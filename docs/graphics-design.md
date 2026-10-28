@@ -23,7 +23,7 @@ adding one is out of scope until there's a concrete backend to build (see
 Render Graph        automatic pass ordering + resource dependency tracking  -- real
 Scene Extraction     pulling renderable state out of the ECS each frame     -- real
 Visibility / Culling -- real (frustum vs AABB)
-Lighting             -- real (metallic-roughness forward, directional + point; ADR 032)
+Lighting             -- real (metallic-roughness forward, directional + point, image-based; ADR 032, 035)
 Materials            -- real (albedo/base color, unlit, emissive, blend mode field)
 Camera                -- real (Motor3 -> view/projection matrix bridge)
 Animation
@@ -33,7 +33,7 @@ Post Processing      -- real (HDR scene target, bloom, tone mapping; ADR 034)
 `Camera`, frustum culling, render graph pass ordering, scene extraction,
 lighting and the submission bridge are all real and tested (`cargo test
 -p meridian-rendering-domain`) — see "Implementation order" below for the
-step-by-step history and exactly what's still open (IBL). `rendering-wgpu` is real too, both headless (`Device::new`) and
+step-by-step history and exactly what's still open (shadow cascades, skinning). `rendering-wgpu` is real too, both headless (`Device::new`) and
 windowed (`Device::new_windowed`, a real swapchain `Surface` —
 `Buffer`/`Texture`/`Shader`/compute `Pipeline`/`CommandBuffer` either
 way). `Animation` is the one row above with no work started yet — no
@@ -288,8 +288,11 @@ driver.
    and emissive maps ([ADR 033](adr/033-normal-occlusion-and-emissive-maps.md))
    join it: a lit textured draw binds all five maps (slots 1 and 5-8),
    neutral 1x1 textures standing in for missing ones. The instance record is
-   now 120 bytes. With no
-   environment map the hemisphere ambient stands in for reflections.
+   now 120 bytes. With an `EnvironmentMap` set
+   ([ADR 035](adr/035-image-based-lighting.md): GGX-prefiltered levels plus
+   spherical-harmonic irradiance, built from an equirectangular image or a
+   procedural `Sky`) lit surfaces take their ambient light and reflections
+   from it; with none, the hemisphere ambient stands in as before.
    **Material states are real:** `DrawState::of(material)` (domain) maps
    `blend` and `always_on_top` to `Opaque`, `Transparent` (alpha blended,
    depth tested but not written), `OnTopOpaque` and `OnTopTransparent`

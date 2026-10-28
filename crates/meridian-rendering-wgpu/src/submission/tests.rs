@@ -4,6 +4,7 @@ use meridian_gac::{Motor3, Vec3};
 use meridian_rendering_domain::scene::{Light, Material};
 use meridian_rendering_domain::{Camera, ShadowLight, ViewUniforms};
 
+use super::environment::EnvironmentUniform;
 use super::{lit_uniform_bytes, mat4_to_bytes, *};
 
 #[test]
@@ -37,20 +38,23 @@ fn lit_uniform_bytes_has_the_documented_layout_and_size() {
         },
     ];
     let identity = Camera::default().view_projection_matrix();
-    let bytes = lit_uniform_bytes(&ViewUniforms {
-        camera: &camera,
-        shadow: ShadowLight {
-            view_proj: identity,
-            direction: Vec3::new(0.0, -1.0, 0.0),
-            caster: 0,
+    let bytes = lit_uniform_bytes(
+        &ViewUniforms {
+            camera: &camera,
+            shadow: ShadowLight {
+                view_proj: identity,
+                direction: Vec3::new(0.0, -1.0, 0.0),
+                caster: 0,
+            },
+            ambient_ground: [0.1, 0.1, 0.1],
+            ambient_sky: [0.2, 0.2, 0.2],
+            lights: &lights,
         },
-        ambient_ground: [0.1, 0.1, 0.1],
-        ambient_sky: [0.2, 0.2, 0.2],
-        lights: &lights,
-    });
+        EnvironmentUniform::none(),
+    );
     assert_eq!(
         bytes.len(),
-        64 + 64 + 16 + 16 + 16 + 16 + 16 + 16 + MAX_LIGHTS * 48
+        64 + 64 + 16 + 16 + 16 + 16 + 16 + 16 + MAX_LIGHTS * 48 + EnvironmentUniform::BYTES
     );
 
     // light_count.x at offset 192 (view_proj[64] + light_view_proj[64]
@@ -95,20 +99,23 @@ fn lit_uniform_bytes_caps_extra_lights_silently_at_the_byte_level() {
         })
         .collect();
     let identity = Camera::default().view_projection_matrix();
-    let bytes = lit_uniform_bytes(&ViewUniforms {
-        camera: &camera,
-        shadow: ShadowLight {
-            view_proj: identity,
-            direction: Vec3::new(0.0, -1.0, 0.0),
-            caster: u32::MAX,
+    let bytes = lit_uniform_bytes(
+        &ViewUniforms {
+            camera: &camera,
+            shadow: ShadowLight {
+                view_proj: identity,
+                direction: Vec3::new(0.0, -1.0, 0.0),
+                caster: u32::MAX,
+            },
+            ambient_ground: [0.0, 0.0, 0.0],
+            ambient_sky: [0.0, 0.0, 0.0],
+            lights: &lights,
         },
-        ambient_ground: [0.0, 0.0, 0.0],
-        ambient_sky: [0.0, 0.0, 0.0],
-        lights: &lights,
-    });
+        EnvironmentUniform::none(),
+    );
     assert_eq!(
         bytes.len(),
-        64 + 64 + 16 + 16 + 16 + 16 + 16 + 16 + MAX_LIGHTS * 48
+        64 + 64 + 16 + 16 + 16 + 16 + 16 + 16 + MAX_LIGHTS * 48 + EnvironmentUniform::BYTES
     );
     let count = u32::from_le_bytes(bytes[192..196].try_into().unwrap());
     assert_eq!(count as usize, MAX_LIGHTS);
@@ -231,4 +238,20 @@ fn the_default_material_is_a_fairly_rough_dielectric() {
     let material = Material::default();
     assert_eq!(material.roughness, 0.5);
     assert_eq!(material.metallic, 0.0);
+}
+
+#[test]
+fn an_environment_uniform_writes_its_coefficients_then_its_flags() {
+    let map =
+        meridian_rendering_domain::EnvironmentMap::from_equirect(8, 4, &[[0.5; 3]; 32]).unwrap();
+    let bytes = EnvironmentUniform::of(&map).to_bytes();
+    let float = |offset: usize| f32::from_le_bytes(bytes[offset..offset + 4].try_into().unwrap());
+    // Coefficient 0 of a uniform sky is its colour over 0.282095 (the band-0 basis value).
+    assert!((float(0) * 0.282_095 - 0.5).abs() < 0.02);
+    assert_eq!(float(9 * 16), 1.0, "enabled");
+    assert_eq!(float(9 * 16 + 4), 5.0, "six levels, highest mip 5");
+    assert_eq!(
+        EnvironmentUniform::none().to_bytes()[9 * 16..9 * 16 + 4],
+        0.0f32.to_le_bytes()
+    );
 }

@@ -229,10 +229,9 @@ impl Camera2d {
 /// The world: a camera, its visible [`Renderable3d`]s, and the lights
 /// shading them. `ambient_ground`/`ambient_sky` are a two-color
 /// hemisphere fill (lerped by each fragment's world-space normal.y in
-/// [`crate::submission`]'s shared shading code) — a lightweight,
-/// disclosed step toward real image-based/environment lighting (a full
-/// convolved-cubemap IBL pipeline is still future work), applied even
-/// where no [`Light`] reaches; a scene with `lights` empty and both
+/// [`crate::submission`]'s shared shading code), used while no
+/// [`EnvironmentMap`](crate::EnvironmentMap) is set on the recorder (ADR 035),
+/// and applied even where no [`Light`] reaches; a scene with `lights` empty and both
 /// ambient colors zero renders pure black, same as a real unlit room.
 /// The first [`Light::Directional`] in `lights` (if any) casts real
 /// shadows — see `SceneRenderer::render_shadow_pass` (in `meridian-rendering-wgpu`)'s

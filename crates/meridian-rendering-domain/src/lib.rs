@@ -7,6 +7,7 @@
 
 mod bloom_config;
 mod camera;
+mod environment;
 mod fly;
 mod frustum;
 mod graph_resource_id;
@@ -27,6 +28,9 @@ mod tonemap_operator;
 
 pub use bloom_config::BloomConfig;
 pub use camera::{Camera, look_at_rotor};
+pub use environment::{
+    EnvironmentError, EnvironmentLevel, EnvironmentMap, Sky, direction_to_uv, uv_to_direction,
+};
 pub use fly::{FlyCamera, FlyControls};
 pub use frustum::Frustum;
 pub use graph_resource_id::GraphResourceId;

@@ -93,8 +93,10 @@ Not started; ordered by suggested priority. Items wait for an explicit task.
    tangent frame; emissive-mapped surfaces do not bloom yet).
 10. HDR scene target, HDR bloom and tone mapping:
    [ADR 034](../adr/034-hdr-scene-target-and-tone-mapping.md).
-11. **Larger, ADR-gated:** shadow cascades/frustum fitting, point-light
-   shadows, IBL, skinned glTF and
+11. Image-based lighting from a prefiltered environment (procedural sky for
+   now): [ADR 035](../adr/035-image-based-lighting.md).
+12. **Larger, ADR-gated:** shadow cascades/frustum fitting, point-light
+   shadows, an environment image loader (`.hdr`), a cube-map environment, skinned glTF and
    animation (no vocabulary yet), concrete backend crates.
 
 ## Standards gaps

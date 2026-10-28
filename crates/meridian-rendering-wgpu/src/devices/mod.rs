@@ -2,8 +2,10 @@
 
 mod bind_groups;
 mod device;
+mod environment_textures;
 mod fullscreen_pipelines;
 mod fullscreen_vertex;
+mod half_float;
 mod premultiplied_pipelines;
 mod render_pipelines;
 mod textures;
