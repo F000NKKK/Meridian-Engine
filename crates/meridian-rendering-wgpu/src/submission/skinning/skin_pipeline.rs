@@ -7,8 +7,7 @@ use meridian_rendering_domain::{JointPalette, MeshHandle};
 use super::SkinJob;
 use super::mesh_pose::MeshPose;
 use super::skin_shader::SKIN_SHADER_WGSL;
-use super::skin_slot::SkinSlot;
-use super::skin_slot::SlotSizes;
+use super::skin_slot::{SkinSlot, SlotSizes};
 use crate::submission::gpu_mesh::GpuMesh;
 use crate::{Buffer, BufferUsage, ComputePipeline, Device};
 

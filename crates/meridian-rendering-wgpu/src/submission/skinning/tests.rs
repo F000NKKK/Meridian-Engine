@@ -1,10 +1,10 @@
 //! Posing on a real device (needs the `hw-tests` feature).
 
-use meridian_rendering_domain::{MeshMorph, MeshSource, MorphTarget, VertexSkin};
-
 use std::sync::Arc;
 
-use meridian_rendering_domain::{JointPalette, MeshHandle};
+use meridian_rendering_domain::{
+    JointPalette, MeshHandle, MeshMorph, MeshSource, MorphTarget, VertexSkin,
+};
 
 use super::{MeshPose, SkinJob, SkinPipeline};
 use crate::Device;
