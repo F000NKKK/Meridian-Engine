@@ -99,10 +99,14 @@ impl WorldFiles {
             .instantiate_prefab(instance, world, resolver, &mut prefabs)?)
     }
 
-    /// Writes the entities of `view` as a scene document at `path`.
+    /// Writes the entities of `view` as a scene document at `path`. A prefab
+    /// instance is written as what changed from its prefab (`overrides`),
+    /// including edits to the entities the prefab made, so each instance's
+    /// prefab is read again from the directory.
     ///
     /// # Errors
     ///
+    /// [`WorldFilesError::Instance`] when an instance's prefab can't be read,
     /// [`WorldFilesError::PathRejected`] or [`WorldFilesError::Write`].
     pub fn save_scene(
         &self,
@@ -110,12 +114,15 @@ impl WorldFiles {
         view: SceneView<'_>,
         form: SceneForm,
     ) -> Result<(), WorldFilesError> {
+        let mut prefabs = self.prefabs();
         let bytes = match form {
             SceneForm::Text => self
                 .registry
-                .save_scene(view.world, view.scene)
+                .save_scene_with_prefabs(view, &mut prefabs)?
                 .into_bytes(),
-            SceneForm::Binary => self.registry.save_scene_binary(view.world, view.scene),
+            SceneForm::Binary => self
+                .registry
+                .save_scene_binary_with_prefabs(view, &mut prefabs)?,
         };
         write_file(&self.root, path, &bytes)
     }
@@ -141,11 +148,13 @@ impl WorldFiles {
     }
 
     /// Writes a save at `path`: `header`, the entities of `view` and the
-    /// game's `state`.
+    /// game's `state`. Prefab instances are written as in
+    /// [`save_scene`](Self::save_scene).
     ///
     /// # Errors
     ///
-    /// [`WorldFilesError::PathRejected`] or [`WorldFilesError::Write`].
+    /// [`WorldFilesError::Instance`], [`WorldFilesError::PathRejected`] or
+    /// [`WorldFilesError::Write`].
     pub fn save_game<T: Schema>(
         &self,
         path: &str,
@@ -153,9 +162,10 @@ impl WorldFiles {
         view: SceneView<'_>,
         state: &T,
     ) -> Result<(), WorldFilesError> {
+        let mut prefabs = self.prefabs();
         let bytes = self
             .registry
-            .save_game(header, view.world, view.scene, state);
+            .save_game_with_prefabs(header, view, state, &mut prefabs)?;
         write_file(&self.root, path, &bytes)
     }
 

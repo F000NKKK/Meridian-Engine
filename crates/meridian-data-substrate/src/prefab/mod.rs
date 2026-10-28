@@ -4,6 +4,8 @@
 mod expansion;
 mod instance;
 mod library;
+mod name_check;
+mod override_apply;
 mod source;
 mod unavailable;
 

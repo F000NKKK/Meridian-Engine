@@ -32,10 +32,9 @@ impl ReadContext<'_> {
                 expanded.push(entity);
                 continue;
             };
-            let at = entity.index;
             match self.instance(entity, &prefab) {
                 Ok(group) => expanded.extend(group),
-                Err(problem) => found.push(at_prefab(problem, at)),
+                Err(problems) => found.extend(problems),
             }
         }
         found.extend(repeated_keys(&expanded));
@@ -59,6 +58,7 @@ impl ReadContext<'_> {
             prefab: Some(instance.prefab.clone()),
             parent: None,
             components: ComponentsDraft::default(),
+            overrides: Vec::new(),
             generated_by: None,
         };
         match self.expand(vec![root]) {
@@ -70,11 +70,35 @@ impl ReadContext<'_> {
         }
     }
 
+    /// The entities `entity` becomes, saying `prefab`: itself, then what
+    /// the prefab makes, with the entity's `overrides` applied.
     fn instance(
         &mut self,
-        entity: PendingEntity,
+        mut entity: PendingEntity,
         prefab: &PrefabPath,
-    ) -> Result<Vec<PendingEntity>, SceneProblem> {
+    ) -> Result<Vec<PendingEntity>, Vec<Finding>> {
+        let at = entity.index;
+        let read = self.prefab_draft(&entity.key, prefab);
+        let Some(draft) = read.map_err(|problem| vec![at_prefab(problem, at)])? else {
+            return Ok(vec![entity]);
+        };
+        let overrides = std::mem::take(&mut entity.overrides);
+        let mut group = entity.instanced(draft.entities);
+        let found = self.apply_overrides(&mut group, overrides);
+        if found.is_empty() {
+            Ok(group)
+        } else {
+            Err(found)
+        }
+    }
+
+    /// The entities of `prefab`, read to be instanced as `instance`; none
+    /// when there is no source of prefabs.
+    fn prefab_draft(
+        &mut self,
+        instance: &EntityKey,
+        prefab: &PrefabPath,
+    ) -> Result<Option<DocumentDraft>, SceneProblem> {
         if self.chain.contains(prefab) {
             let mut chain = self.chain.clone();
             chain.push(prefab.clone());
@@ -86,7 +110,7 @@ impl ReadContext<'_> {
             });
         }
         let Some(source) = self.prefabs.as_deref_mut() else {
-            return Ok(vec![entity]);
+            return Ok(None);
         };
         let bytes = source
             .prefab(prefab)
@@ -96,11 +120,11 @@ impl ReadContext<'_> {
                 suggestion: u.suggestion,
             })?;
         self.chain.push(prefab.clone());
-        let role = DocumentRole::Instance(entity.key.clone());
+        let role = DocumentRole::Instance(instance.clone());
         let read = DocumentSource::detect(&bytes).and_then(|s| s.draft(&role, self));
         self.chain.pop();
         match read {
-            Ok(draft) => Ok(entity.instanced(draft.entities)),
+            Ok(draft) => Ok(Some(draft)),
             Err(error) => Err(SceneProblem::PrefabInvalid {
                 prefab: prefab.clone(),
                 error: Box::new(error),

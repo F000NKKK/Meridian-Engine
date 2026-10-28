@@ -54,7 +54,7 @@ impl ComponentRegistry {
         let insert = (entry.read)(&value.borrow(&arena), &mut cx);
         match insert {
             Some(insert) if cx.problems.is_empty() => {
-                insert(world, entity);
+                insert.insert(world, entity);
                 Ok(())
             }
             _ => Err(ComponentEditError::Invalid {

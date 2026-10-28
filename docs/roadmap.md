@@ -739,8 +739,10 @@ the rest are not started.
    every problem with path and line/column or byte offset, unknown
    component names with a "did you mean" or kept as written for editors),
    save, `.mprefab` (instancing under `<instance>/<prefab id>`,
-   whole-component overrides, nesting with cycle and depth checks, bytes
-   from a caller's `PrefabSource` port), the `.msave` envelope (full scene
+   whole-component and field-level overrides (also on generated entities,
+   by path), `parent` and references naming generated entities, nesting
+   with cycle and depth checks, bytes from a caller's `PrefabSource` port,
+   instances saved as the changes from their prefab), the `.msave` envelope (full scene
    document + a game-owned `state` of the game's own schema; the header
    and scene read without decoding the state) and `describe()` for an IDE. **Editor protocol:** the
    `meridian-editor-domain` crate ([editor-domain.md](editor-domain.md))
@@ -757,14 +759,13 @@ the rest are not started.
    and in-memory `World::snapshot`/`restore` (memory only: a world's disk
    form is its scene document, see
    [data-formats.md](data-formats.md#how-a-world-is-saved-and-restored)).
-   **Not yet done:** field-level
-   prefab overrides and a state-level `.msave` delta (a later `format`),
+   **Not yet done:** a state-level `.msave` delta (a later `format`),
+   saving a despawned or reparented generated entity,
    `.meta`, `.mpak`, wiring the editor host into `runtime-app`'s frame
    loop. **Wired into the sdk:** `meridian_sdk::persistence::WorldFiles` loads and
    saves `.mscene`/`.mprefab`/`.msave` by path, with `AssetPrefabSource`
    implementing `PrefabSource` over `asset-app`'s `AssetLoader` (reads on the
-   background pool, ADR 027); a write port (`ByteSink`) and field-level
-   overrides are later.
+   background pool, ADR 027); a write port (`ByteSink`) is later.
    `substrate-data` is a crates.io dependency (0.3.x).
 6. **No networking.** Multiplayer (both games have it) is a subsystem
    that doesn't exist in any form — no netcode, no client/server
