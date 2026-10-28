@@ -117,4 +117,41 @@ fn point_shadow_factor(slot: u32, world_pos: vec3<f32>, world_normal: vec3<f32>)
     let lit = textureSampleCompareLevel(shadow_map, shadow_sampler, atlas_uv, ndc.z - bias);
     return select(1.0, lit, inside);
 }
+
+/// Visibility of `world_pos` from the spot light in `slot`, 1 when lit and 0
+/// in shadow (ADR 045). The light's one map spans its cone; `axis` is the
+/// direction it points and `cos_outer` the cosine of its outer half-angle,
+/// which fixes the world size of a texel at a given depth. The map is a full
+/// tile at the origin of the slot's block. Biased like `point_shadow_factor`.
+fn spot_shadow_factor(slot: u32, world_pos: vec3<f32>, world_normal: vec3<f32>, axis: vec3<f32>, cos_outer: f32) -> f32 {
+    let position = u.point_position[slot];
+    let to_surface = world_pos - position.xyz;
+    let distance = length(to_surface);
+    let depth = dot(to_surface, normalize(axis));
+    if (distance >= position.w || depth <= 0.0) {
+        return 1.0;
+    }
+    let tile = f32(textureDimensions(shadow_map).x / 2u);
+    let tan_half = sqrt(max(1.0 - cos_outer * cos_outer, 0.0)) / max(cos_outer, 0.0001);
+    let texel = 2.0 * depth * tan_half / tile;
+    let n = normalize(world_normal);
+    let slope = 1.0 - clamp(dot(n, -to_surface / max(distance, 0.0001)), 0.0, 1.0);
+    let shifted = world_pos + n * texel * (1.5 + 2.0 * slope);
+    let clip = u.point_view_proj[slot * 6u] * vec4<f32>(shifted, 1.0);
+    let ndc = clip.xyz / clip.w;
+    let uv = vec2<f32>(ndc.x * 0.5 + 0.5, 1.0 - (ndc.y * 0.5 + 0.5));
+    let inside = uv.x >= 0.0 && uv.x <= 1.0 && uv.y >= 0.0 && uv.y <= 1.0 && ndc.z >= 0.0 && ndc.z <= 1.0;
+    let near = u.point_params.x;
+    let far = position.w;
+    let bias = near * far / (far - near) * (2.0 * texel) / (depth * depth);
+    let margin = 1.0 / tile;
+    let in_map = clamp(uv, vec2<f32>(margin), vec2<f32>(1.0 - margin));
+    let origin = vec2<f32>(
+        f32(slot & 1u) * tile,
+        2.0 * tile + f32(slot >> 1u) * 3.0 * floor(tile / 2.0),
+    );
+    let atlas_uv = (origin + in_map * tile) / (ATLAS_TILES * tile);
+    let lit = textureSampleCompareLevel(shadow_map, shadow_sampler, atlas_uv, ndc.z - bias);
+    return select(1.0, lit, inside);
+}
 ";

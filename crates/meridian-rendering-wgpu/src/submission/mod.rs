@@ -41,7 +41,8 @@ pub use scene_assets::SceneAssets;
 pub use scene_renderer::{DEFAULT_SHADOW_MAP_SIZE, SceneRenderer};
 pub use shaders::*;
 pub(crate) use shadows::{
-    ATLAS_COLUMNS, ATLAS_ROWS, CascadeCasters, SHADOW_TILES, ShadowDepthPass, face_tile, tile_rect,
+    ATLAS_COLUMNS, ATLAS_ROWS, CascadeCasters, SHADOW_TILES, ShadowDepthPass, face_tile, spot_tile,
+    tile_rect,
 };
 pub use submit_scene3d::submit_scene3d;
 pub(crate) use uniform_bytes::{LIT_UNIFORM_BYTES, lit_uniform_bytes, mat4_to_bytes};

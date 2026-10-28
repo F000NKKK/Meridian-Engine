@@ -3,7 +3,7 @@
 use meridian_gac::{Motor3, Vec3};
 use meridian_rendering_domain::scene::{Light, Material};
 use meridian_rendering_domain::{
-    Camera, MAX_POINT_SHADOWS, ShadowCascades, ShadowLight, ViewUniforms,
+    Camera, MAX_LOCAL_SHADOWS, ShadowCascades, ShadowLight, ViewUniforms,
 };
 
 use super::environment::EnvironmentUniform;
@@ -59,7 +59,7 @@ fn lit_uniform_bytes_has_the_documented_layout_and_size() {
                 cascades: ShadowCascades::fixed(Vec3::new(0.0, -1.0, 0.0), 1024),
                 direction: Vec3::new(0.0, -1.0, 0.0),
                 caster: 0,
-                points: [None; MAX_POINT_SHADOWS],
+                locals: [None; MAX_LOCAL_SHADOWS],
             },
             ambient_ground: [0.1, 0.1, 0.1],
             ambient_sky: [0.2, 0.2, 0.2],
@@ -69,7 +69,7 @@ fn lit_uniform_bytes_has_the_documented_layout_and_size() {
     );
     assert_eq!(
         bytes.len(),
-        LIGHTS_START + MAX_LIGHTS * 48 + EnvironmentUniform::BYTES + POINT_BYTES
+        LIGHTS_START + MAX_LIGHTS * 64 + EnvironmentUniform::BYTES + POINT_BYTES
     );
 
     let count = u32_at(&bytes, LIGHTS_START - 32);
@@ -79,7 +79,7 @@ fn lit_uniform_bytes_has_the_documented_layout_and_size() {
     assert_eq!(shadow_caster, 0);
 
     // First light's kind field (kind is
-    // each 48-byte LightData's 4th f32).
+    // each 64-byte LightData's 4th f32).
     let lights_start = LIGHTS_START;
     let first_kind = f32::from_le_bytes(
         bytes[lights_start + 12..lights_start + 16]
@@ -88,7 +88,7 @@ fn lit_uniform_bytes_has_the_documented_layout_and_size() {
     );
     assert_eq!(first_kind, 0.0); // directional
     let second_kind = f32::from_le_bytes(
-        bytes[lights_start + 48 + 12..lights_start + 48 + 16]
+        bytes[lights_start + 64 + 12..lights_start + 64 + 16]
             .try_into()
             .unwrap(),
     );
@@ -115,7 +115,7 @@ fn lit_uniform_bytes_caps_extra_lights_silently_at_the_byte_level() {
                 cascades: ShadowCascades::fixed(Vec3::new(0.0, -1.0, 0.0), 1024),
                 direction: Vec3::new(0.0, -1.0, 0.0),
                 caster: u32::MAX,
-                points: [None; MAX_POINT_SHADOWS],
+                locals: [None; MAX_LOCAL_SHADOWS],
             },
             ambient_ground: [0.0, 0.0, 0.0],
             ambient_sky: [0.0, 0.0, 0.0],
@@ -125,7 +125,7 @@ fn lit_uniform_bytes_caps_extra_lights_silently_at_the_byte_level() {
     );
     assert_eq!(
         bytes.len(),
-        LIGHTS_START + MAX_LIGHTS * 48 + EnvironmentUniform::BYTES + POINT_BYTES
+        LIGHTS_START + MAX_LIGHTS * 64 + EnvironmentUniform::BYTES + POINT_BYTES
     );
     let count = u32::from_le_bytes(
         bytes[LIGHTS_START - 32..LIGHTS_START - 28]
