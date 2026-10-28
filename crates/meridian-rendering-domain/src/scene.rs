@@ -61,7 +61,7 @@ pub struct Material {
     pub emissive: [f32; 3],
     /// How rough the surface is, in `[0, 1]`: `0.0` is a mirror-smooth
     /// surface with a small, sharp highlight, `1.0` a fully rough one whose
-    /// highlight is broad and faint (ADR 031). Ignored when `unlit`.
+    /// highlight is broad and faint (ADR 032). Ignored when `unlit`.
     pub roughness: f32,
     /// How metallic the surface is, in `[0, 1]`: `0.0` is a dielectric
     /// (diffuse base colour, a faint white highlight), `1.0` a metal (no
@@ -101,7 +101,7 @@ pub struct Mesh {
 }
 
 /// A light contributing to a [`Scene3d`], shaded forward with the
-/// metallic-roughness model of ADR 031 (see docs/graphics-design.md).
+/// metallic-roughness model of ADR 032 (see docs/graphics-design.md).
 #[derive(Debug, Clone, Copy)]
 pub enum Light {
     /// Uniform light from a fixed direction, no falloff (the sun).

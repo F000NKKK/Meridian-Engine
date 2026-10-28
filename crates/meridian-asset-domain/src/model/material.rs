@@ -1,7 +1,7 @@
 //! The surface of one model part.
 
 /// The parts of a PBR metallic-roughness material the renderer uses today
-/// (ADR 031).
+/// (ADR 032).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ModelMaterial {
     /// Linear RGBA multiplier of the base colour (white and opaque when the

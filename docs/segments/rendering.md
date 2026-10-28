@@ -70,7 +70,7 @@ Not started; ordered by suggested priority. Items wait for an explicit task.
    instances, then indirect draws and compute culling (GPU-driven
    direction in graphics-design.md).
 5. **Per-material surface — done.** `shininess`/`specular` (2026-10-27) became
-   `roughness`/`metallic` with a GGX shader (2026-10-28) ([ADR 031](../adr/031-metallic-roughness-materials.md)).
+   `roughness`/`metallic` with a GGX shader (2026-10-28) ([ADR 032](../adr/032-metallic-roughness-materials.md)).
 6. **Render-graph resource lifetime — planning done (2026-10-28).**
    `RenderGraph::resource_lifetimes` and `plan_allocations` (CPU, tested) say
    which transient targets can share one allocation. The real renderer

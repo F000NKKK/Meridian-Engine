@@ -94,7 +94,7 @@ fn fresnel_schlick(v_dot_h: f32, f0: vec3<f32>) -> vec3<f32> {
     return f0 + (vec3<f32>(1.0) - f0) * pow(1.0 - v_dot_h, 5.0);
 }
 
-/// Metallic-roughness shading (ADR 031): `surface` is (roughness, metallic).
+/// Metallic-roughness shading (ADR 032): `surface` is (roughness, metallic).
 /// Light intensity keeps its pre-PBR meaning (a white diffuse surface facing
 /// a light of intensity 1 is fully lit), so diffuse has no 1/pi and the
 /// specular lobe is scaled by pi to match.
