@@ -9,7 +9,6 @@ clippy::cast_precision_loss	41
 clippy::cast_sign_loss	8
 clippy::default_trait_access	2
 clippy::duration_suboptimal_units	1
-clippy::elidable_lifetime_names	1
 clippy::items_after_statements	4
 clippy::let_underscore_untyped	1
 clippy::manual_midpoint	1
@@ -34,6 +33,6 @@ clippy::unreachable	2
 clippy::unused_async	1
 clippy::unused_self	4
 elided_lifetimes_in_paths	1
-missing_docs	647
+missing_docs	652
 unreachable_pub	6
 unused_variables	1

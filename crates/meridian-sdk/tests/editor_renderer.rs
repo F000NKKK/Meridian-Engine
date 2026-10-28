@@ -18,7 +18,9 @@ fn renderer() -> Option<EditorRenderer> {
 
 fn varied(pixels: &[u8]) -> bool {
     pixels
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .any(|pixel| pixel[..3] != pixels[..3])
 }
 
