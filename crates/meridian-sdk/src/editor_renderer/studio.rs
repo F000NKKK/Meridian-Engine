@@ -22,7 +22,7 @@ const BOXES: [SoftBox; 4] = [
     // Key: large, warm, in front of the object, left and above.
     SoftBox {
         azimuth: 2.5,
-        elevation: 0.6,
+        elevation: 1.0,
         half_width: 0.45,
         half_height: 0.32,
         radiance: [10.0, 9.4, 8.5],
