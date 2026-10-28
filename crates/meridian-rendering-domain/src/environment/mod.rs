@@ -13,6 +13,7 @@
     reason = "image sizes and texel indices are far below 2^24, and sample coordinates are clamped before they become indices"
 )]
 
+mod background;
 mod cube;
 mod direction;
 mod error;
@@ -24,6 +25,7 @@ mod sky;
 #[cfg(test)]
 mod tests;
 
+pub use background::Background;
 pub use cube::CubeFaces;
 pub use direction::{direction_to_uv, uv_to_direction};
 pub use error::EnvironmentError;

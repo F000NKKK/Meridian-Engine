@@ -32,6 +32,7 @@ mod uniform_bytes;
 mod vertex_layout;
 
 pub(crate) use bake_batches::bake_batches;
+pub(crate) use environment::GpuEnvironment;
 pub(crate) use prepared_batch::DrawKind;
 pub use prepared_batch::PreparedBatch;
 pub use prepared_scene::PreparedScene;

@@ -46,5 +46,4 @@ paths in `MERIDIAN_ENV`.
   radiance above 1.0, so HDR faces are the useful input.
 - Cross-layout (one image with six faces) and DDS/KTX cube containers are not
   read; split them into faces.
-- Rendering the cube as a visible skybox is not part of this change; the
-  background is still the scene's clear colour.
+- The backdrop is a separate decision: [ADR 039](039-visible-environment-backdrop.md).

@@ -38,6 +38,7 @@ mod overlay_pass;
 mod render_pass;
 mod render_pipeline;
 mod shader_stages;
+mod sky;
 mod sprites;
 mod submission;
 mod surface;
@@ -68,6 +69,7 @@ pub use meridian_gpu_wgpu::{
 pub use render_pass::RenderPass;
 pub use render_pipeline::RenderPipeline;
 pub use shader_stages::ShaderStages;
+pub use sky::SkyPass;
 pub use sprites::{PreparedSprites, SPRITE_SHADER_WGSL, SPRITE_VERTEX_BYTES, SpriteRenderer};
 pub use submission::{
     DEFAULT_SHADOW_MAP_SIZE, EMISSIVE_EXTRACT_SHADER_WGSL, MAX_LIGHTS, PreparedBatch,

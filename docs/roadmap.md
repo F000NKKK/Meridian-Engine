@@ -481,8 +481,8 @@ math (depth ordering, scene-center centering) is unit-tested in
 isolation (`cargo test -p meridian-rendering-domain`), the same
 "unverifiable-without-a-window, so windowed examples are the proof"
 convention this crate's own test module already documents for
-`SceneRenderer` itself. Radiance `.hdr` panoramas and cube maps load as environments
-(ADR 036, ADR 038). Shadows are cascaded (ADR 037). **Not yet done:** soft point-light
+`SceneRenderer` itself. Radiance `.hdr` panoramas and cube maps load as environments and can
+be the visible backdrop (ADR 036, ADR 038, ADR 039). Shadows are cascaded (ADR 037). **Not yet done:** soft point-light
 shadows (HDR and tone mapping are done, ADR 034), not a blanket
 "every other crate is a scaffold." Audio is wired end-to-end:
 `audio-domain::AudioOutput` + `Mixer::render_interleaved` bridge mixed

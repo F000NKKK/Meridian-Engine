@@ -1,8 +1,8 @@
 //! The viewer's window, GPU state and frame loop.
 
 use meridian_sdk::{
-    AppHandler, Camera, Device, EnvironmentMap, FrameRecorder, GraphicsSession, InputState, Light,
-    Motor3, Renderable3d, Scene3d, Sky, Vec3, Window, look_at_rotor,
+    AppHandler, Background, Camera, Device, EnvironmentMap, FrameRecorder, GraphicsSession,
+    InputState, Light, Motor3, Renderable3d, Scene3d, Sky, Vec3, Window, look_at_rotor,
 };
 
 const SUN: Vec3 = Vec3 {
@@ -69,6 +69,9 @@ impl GpuState {
             }],
             ambient_ground: [0.12, 0.1, 0.09],
             ambient_sky: [0.22, 0.25, 0.3],
+            // The sky is the backdrop too; it falls back to the clear colour
+            // when `MERIDIAN_ENV=none` leaves no environment.
+            background: Background::Environment { blur: 0.0 },
             ..Scene3d::default()
         };
         Self {

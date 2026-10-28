@@ -2,6 +2,34 @@
 
 use crate::{ColorFormat, Device, RenderPipeline, Surface};
 
+const ADDITIVE_COMPONENT: wgpu::BlendComponent = wgpu::BlendComponent {
+    src_factor: wgpu::BlendFactor::One,
+    dst_factor: wgpu::BlendFactor::One,
+    operation: wgpu::BlendOperation::Add,
+};
+
+const ADDITIVE: wgpu::BlendState = wgpu::BlendState {
+    color: ADDITIVE_COMPONENT,
+    alpha: ADDITIVE_COMPONENT,
+};
+
+/// What a full-screen pipeline draws into.
+struct FullscreenTarget {
+    format: wgpu::TextureFormat,
+    additive: bool,
+    depth_stencil: Option<wgpu::DepthStencilState>,
+}
+
+impl FullscreenTarget {
+    fn new(format: wgpu::TextureFormat, additive: bool) -> Self {
+        Self {
+            format,
+            additive,
+            depth_stencil: None,
+        }
+    }
+}
+
 impl Device {
     /// Builds a full-screen-triangle pipeline: no vertex buffer (three
     /// vertices generated in `shader` from `@builtin(vertex_index)`, the
@@ -23,8 +51,7 @@ impl Device {
         self.create_fullscreen_pipeline_for_format(
             shader,
             fragment_entry,
-            surface.config.format,
-            additive,
+            FullscreenTarget::new(surface.config.format, additive),
         )
     }
 
@@ -44,8 +71,35 @@ impl Device {
         self.create_fullscreen_pipeline_for_format(
             shader,
             fragment_entry,
-            format.to_wgpu(),
-            additive,
+            FullscreenTarget::new(format.to_wgpu(), additive),
+        )
+    }
+
+    /// A full-screen-triangle pipeline for the backdrop of the main scene pass
+    /// (ADR 039): it declares the pass's depth attachment but never tests
+    /// against or writes it, so the geometry drawn after it lands over the sky
+    /// whatever its depth.
+    #[must_use]
+    pub fn create_sky_pipeline(
+        &self,
+        shader: &meridian_gpu_wgpu::Shader,
+        fragment_entry: &str,
+        format: ColorFormat,
+    ) -> RenderPipeline {
+        let depth = wgpu::DepthStencilState {
+            format: wgpu::TextureFormat::Depth32Float,
+            depth_write_enabled: Some(false),
+            depth_compare: Some(wgpu::CompareFunction::Always),
+            stencil: wgpu::StencilState::default(),
+            bias: wgpu::DepthBiasState::default(),
+        };
+        self.create_fullscreen_pipeline_for_format(
+            shader,
+            fragment_entry,
+            FullscreenTarget {
+                depth_stencil: Some(depth),
+                ..FullscreenTarget::new(format.to_wgpu(), false)
+            },
         )
     }
 
@@ -53,9 +107,18 @@ impl Device {
         &self,
         shader: &meridian_gpu_wgpu::Shader,
         fragment_entry: &str,
-        format: wgpu::TextureFormat,
-        additive: bool,
+        target: FullscreenTarget,
     ) -> RenderPipeline {
+        let FullscreenTarget {
+            format,
+            additive,
+            depth_stencil,
+        } = target;
+        let blend = if additive {
+            ADDITIVE
+        } else {
+            wgpu::BlendState::REPLACE
+        };
         let raw = self
             .0
             .wgpu_device()
@@ -74,22 +137,7 @@ impl Device {
                     compilation_options: wgpu::PipelineCompilationOptions::default(),
                     targets: &[Some(wgpu::ColorTargetState {
                         format,
-                        blend: Some(if additive {
-                            wgpu::BlendState {
-                                color: wgpu::BlendComponent {
-                                    src_factor: wgpu::BlendFactor::One,
-                                    dst_factor: wgpu::BlendFactor::One,
-                                    operation: wgpu::BlendOperation::Add,
-                                },
-                                alpha: wgpu::BlendComponent {
-                                    src_factor: wgpu::BlendFactor::One,
-                                    dst_factor: wgpu::BlendFactor::One,
-                                    operation: wgpu::BlendOperation::Add,
-                                },
-                            }
-                        } else {
-                            wgpu::BlendState::REPLACE
-                        }),
+                        blend: Some(blend),
                         write_mask: wgpu::ColorWrites::ALL,
                     })],
                 }),
@@ -100,7 +148,7 @@ impl Device {
                     cull_mode: None,
                     ..Default::default()
                 },
-                depth_stencil: None,
+                depth_stencil,
                 multisample: wgpu::MultisampleState::default(),
                 multiview_mask: None,
                 cache: None,
