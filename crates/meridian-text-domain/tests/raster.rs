@@ -35,7 +35,7 @@ fn area(coverage: &[u8]) -> f32 {
 fn an_empty_outline_gives_an_empty_bitmap() {
     let bitmap = rasterize(&Outline::default(), 1.0, Point::new(0.0, 0.0)).expect("raster");
     assert_eq!((bitmap.width, bitmap.height), (0, 0));
-    assert!(bitmap.coverage.is_empty());
+    assert_eq!(bitmap.coverage, Vec::new());
 }
 
 #[test]

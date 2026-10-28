@@ -1,10 +1,5 @@
 //! Packing and caching glyph bitmaps.
 
-#![expect(
-    clippy::float_cmp,
-    reason = "normalized rects are exact binary fractions"
-)]
-
 use meridian_text_domain::synthetic::{DEFAULT, font};
 use meridian_text_domain::{Bitmap, FontError, FontFace, GlyphAtlas, GlyphCache, GlyphId};
 

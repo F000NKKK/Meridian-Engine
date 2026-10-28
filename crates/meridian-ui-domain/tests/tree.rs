@@ -83,7 +83,7 @@ fn writes_are_journaled_once_and_equal_writes_are_skipped() {
     assert_eq!(changes[0].source, ChangeSource::Code);
     assert_eq!(changes[1].source, ChangeSource::User);
     assert_eq!(changes[1].property, WIDTH.meta().id);
-    assert!(tree.drain_changes().is_empty());
+    assert_eq!(tree.drain_changes(), Vec::new());
 }
 
 #[test]

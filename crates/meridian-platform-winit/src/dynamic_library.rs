@@ -39,17 +39,17 @@ impl meridian_diagnostics::EngineError for DynamicLibraryError {}
 mod dynamic_library_ffi {
     use std::os::raw::{c_char, c_int, c_void};
 
-    pub const RTLD_NOW: c_int = 2;
+    pub(super) const RTLD_NOW: c_int = 2;
 
     // `dl*` live in libc itself on modern glibc (≥ 2.34) and musl; the
     // explicit `dl` link keeps older glibc working, where they were
     // split into libdl.
     #[cfg_attr(target_os = "linux", link(name = "dl"))]
     unsafe extern "C" {
-        pub fn dlopen(filename: *const c_char, flags: c_int) -> *mut c_void;
-        pub fn dlsym(handle: *mut c_void, symbol: *const c_char) -> *mut c_void;
-        pub fn dlclose(handle: *mut c_void) -> c_int;
-        pub fn dlerror() -> *mut c_char;
+        pub(super) fn dlopen(filename: *const c_char, flags: c_int) -> *mut c_void;
+        pub(super) fn dlsym(handle: *mut c_void, symbol: *const c_char) -> *mut c_void;
+        pub(super) fn dlclose(handle: *mut c_void) -> c_int;
+        pub(super) fn dlerror() -> *mut c_char;
     }
 
     /// The pending `dlerror` message, if any (calling it also clears it).
@@ -58,7 +58,7 @@ mod dynamic_library_ffi {
     ///
     /// No other thread may call a `dl*` function between the call this
     /// reports on and this one; the returned text is copied before return.
-    pub unsafe fn take_error() -> Option<String> {
+    pub(super) unsafe fn take_error() -> Option<String> {
         // SAFETY: dlerror takes no arguments; the caller upholds the
         // thread-ordering contract above.
         let msg = unsafe { dlerror() };
@@ -167,8 +167,8 @@ impl DynamicLibrary {
     /// after this `DynamicLibrary` is dropped.
     pub unsafe fn symbol<T: Copy>(&self, name: &str) -> Result<T, DynamicLibraryError> {
         assert_eq!(
-            std::mem::size_of::<T>(),
-            std::mem::size_of::<*mut std::os::raw::c_void>(),
+            size_of::<T>(),
+            size_of::<*mut std::os::raw::c_void>(),
             "DynamicLibrary::symbol::<T> requires a pointer-sized T (a fn pointer)"
         );
         let raw: *mut std::os::raw::c_void;

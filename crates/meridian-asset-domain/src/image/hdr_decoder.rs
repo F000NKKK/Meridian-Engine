@@ -125,7 +125,7 @@ fn read_scanline<'a>(body: &'a [u8], out: &mut [[u8; 4]]) -> Result<&'a [u8], De
             needed: len,
             got: body.len(),
         })?;
-        for (texel, quad) in out.iter_mut().zip(flat.chunks_exact(4)) {
+        for (texel, quad) in out.iter_mut().zip(flat.as_chunks::<4>().0) {
             texel.copy_from_slice(quad);
         }
         return Ok(&body[len..]);

@@ -163,6 +163,10 @@ impl HybridKernel for SplitRecorder {
         }
     }
 
+    #[expect(
+        clippy::unused_async_trait_impl,
+        reason = "the fake records on the CPU; the trait method is async"
+    )]
     async fn run_gpu(&self, context: &ComputeContext, range: Range<usize>) {
         assert!(
             context.gpu::<FakeGpu>().is_some(),

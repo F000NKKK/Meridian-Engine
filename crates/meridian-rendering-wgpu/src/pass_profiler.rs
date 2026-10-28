@@ -125,8 +125,10 @@ impl PassProfiler {
             return Vec::new();
         };
         let ticks: Vec<u64> = view
-            .chunks_exact(8)
-            .map(|chunk| u64::from_le_bytes(chunk.try_into().unwrap_or([0; 8])))
+            .as_chunks::<8>()
+            .0
+            .iter()
+            .map(|chunk| u64::from_le_bytes(*chunk))
             .collect();
         drop(view);
         self.readback.unmap();
@@ -139,7 +141,7 @@ impl PassProfiler {
     )]
     fn sum_by_label(&self, labels: &[&'static str], ticks: &[u64]) -> Vec<PassTiming> {
         let mut timings: Vec<PassTiming> = Vec::new();
-        for (label, pair) in labels.iter().zip(ticks.chunks_exact(2)) {
+        for (label, pair) in labels.iter().zip(ticks.as_chunks::<2>().0) {
             let millis = pair[1].saturating_sub(pair[0]) as f64 * self.nanos_per_tick / 1.0e6;
             match timings.iter_mut().find(|timing| timing.label == *label) {
                 Some(timing) => timing.millis += millis,

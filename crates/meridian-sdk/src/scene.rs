@@ -193,7 +193,9 @@ fn read_radiance(path: &str) -> Result<RadianceImage, String> {
         .map_err(|e| format!("failed to decode {path}: {e}"))?;
     let texels = image
         .pixels
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .map(|rgba| [rgba[0], rgba[1], rgba[2]].map(srgb_to_linear))
         .collect();
     Ok(RadianceImage {

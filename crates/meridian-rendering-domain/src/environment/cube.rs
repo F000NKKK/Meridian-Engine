@@ -113,8 +113,8 @@ fn project(direction: [f32; 3]) -> (usize, f32, f32) {
     };
     (
         face,
-        (across / major + 1.0) * 0.5,
-        (down / major + 1.0) * 0.5,
+        f32::midpoint(across / major, 1.0),
+        f32::midpoint(down / major, 1.0),
     )
 }
 

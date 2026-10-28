@@ -98,7 +98,7 @@ mod declicker_tests {
         let mut d = Declicker::new(2);
         let mut samples = vec![0.5, 0.0, 0.5, 1.0, 0.5, 0.0, 0.5, 1.0];
         d.process(&mut samples);
-        for frame in samples.chunks_exact(2).skip(1) {
+        for frame in samples.as_chunks::<2>().0.iter().skip(1) {
             assert!((frame[0] - 0.5).abs() < 1e-6, "left channel disturbed");
         }
     }

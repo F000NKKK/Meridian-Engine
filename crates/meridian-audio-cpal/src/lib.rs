@@ -227,6 +227,10 @@ impl AudioDevice {
     /// Opens the default audio output device. Async because enumerating
     /// audio hosts/devices is an OS/driver handshake (genuine I/O per
     /// ADR 009).
+    #[expect(
+        clippy::unused_async_trait_impl,
+        reason = "the public constructor stays async (ADR 009); cpal exposes only a blocking device query"
+    )]
     pub async fn new() -> Result<Self, AudioDeviceError> {
         let host = cpal::default_host();
         let device = host

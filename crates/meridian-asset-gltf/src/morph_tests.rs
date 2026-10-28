@@ -70,7 +70,7 @@ fn a_part_keeps_its_targets_placed_like_its_vertices() {
     // The node's translation moves vertices but not the offsets.
     assert_eq!(model.parts[0].positions[0], [10.0, 0.0, 0.0]);
     assert_eq!(morph.targets[0].positions[1], [0.0, 0.0, 2.0]);
-    assert!(morph.targets[0].normals.is_empty());
+    assert_eq!(morph.targets[0].normals, Vec::<[f32; 3]>::new());
 }
 
 #[test]

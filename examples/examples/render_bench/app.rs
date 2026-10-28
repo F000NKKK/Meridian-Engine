@@ -84,7 +84,7 @@ fn point_camera(scene: &mut BenchScene, time: f32, size: (u32, u32)) {
 fn write_ppm(dir: &str, index: usize, size: (u32, u32), rgba: &[u8]) -> Result<(), String> {
     std::fs::create_dir_all(dir).map_err(|err| format!("cannot create {dir}: {err}"))?;
     let mut bytes = format!("P6\n{} {}\n255\n", size.0, size.1).into_bytes();
-    for pixel in rgba.chunks_exact(4) {
+    for pixel in rgba.as_chunks::<4>().0 {
         bytes.extend_from_slice(&pixel[..3]);
     }
     let path = format!("{dir}/{index:05}.ppm");

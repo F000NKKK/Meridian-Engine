@@ -65,8 +65,10 @@ async fn the_kernel_moves_vertices_by_their_weighted_joints_and_keeps_uvs() {
     commands.inner.submit();
     let bytes = device.read_buffer(&job.posed).await;
     let floats: Vec<f32> = bytes
-        .chunks_exact(4)
-        .map(|chunk| f32::from_le_bytes(chunk.try_into().expect("four bytes")))
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .map(|chunk| f32::from_le_bytes(*chunk))
         .collect();
     // Vertex 0 follows joint 0, vertex 1 joint 1, vertex 2 both halves.
     assert_eq!(&floats[0..3], &[10.0, 0.0, 0.0]);
@@ -157,8 +159,10 @@ async fn posed_floats(device: &Device, pipeline: &SkinPipeline, job: &SkinJob) -
     device
         .read_buffer(&job.posed)
         .await
-        .chunks_exact(4)
-        .map(|chunk| f32::from_le_bytes(chunk.try_into().expect("four bytes")))
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .map(|chunk| f32::from_le_bytes(*chunk))
         .collect()
 }
 

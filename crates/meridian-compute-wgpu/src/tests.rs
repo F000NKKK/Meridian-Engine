@@ -69,7 +69,7 @@ async fn gpu_capabilities_report_a_real_device_name() {
     let gpu = caps
         .gpu
         .expect("a constructed GpuComputeDevice always has a real adapter");
-    assert!(!gpu.device_name.is_empty());
+    assert_ne!(gpu.device_name, "");
 }
 
 /// The actual end-to-end proof: write data to a GPU buffer, run a
@@ -104,8 +104,10 @@ async fn gpu_dispatch_doubles_every_element() {
 
     let result_bytes = device.read_buffer(&buffer).await;
     let result: Vec<u32> = result_bytes
-        .chunks_exact(4)
-        .map(|c| u32::from_le_bytes(c.try_into().unwrap()))
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .map(|c| u32::from_le_bytes(*c))
         .collect();
     assert_eq!(result, vec![2, 4, 6, 8]);
 }
@@ -182,8 +184,10 @@ impl meridian_compute_app::HybridKernel for DoublingKernel {
         gpu.dispatch(&self.pipeline, &buffer, workgroups);
         let result_bytes = gpu.read_buffer(&buffer).await;
         let results = result_bytes
-            .chunks_exact(4)
-            .map(|c| u32::from_le_bytes(c.try_into().unwrap()));
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .map(|c| u32::from_le_bytes(*c));
         let mut output = self.output.lock().unwrap();
         for (offset, value) in results.enumerate() {
             output[range.start + offset] = value;

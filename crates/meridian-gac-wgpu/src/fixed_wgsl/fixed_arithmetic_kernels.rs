@@ -108,7 +108,9 @@ impl FixedArithmeticKernels {
 
         let result_bytes = gpu.read_buffer(&results).await;
         result_bytes
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .map(|c| Fixed::from_bits(i32::from_le_bytes(le_word(c, 0))))
             .collect()
     }
@@ -147,7 +149,9 @@ impl FixedArithmeticKernels {
 
         let result_bytes = gpu.read_buffer(&results).await;
         result_bytes
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .map(|c| Fixed::from_bits(i32::from_le_bytes(le_word(c, 0))))
             .collect()
     }
@@ -189,7 +193,9 @@ impl FixedArithmeticKernels {
 
         let result_bytes = gpu.read_buffer(&results).await;
         result_bytes
-            .chunks_exact(8)
+            .as_chunks::<8>()
+            .0
+            .iter()
             .map(|pair| {
                 let sin = Fixed::from_bits(i32::from_le_bytes(le_word(pair, 0)));
                 let cos = Fixed::from_bits(i32::from_le_bytes(le_word(pair, 4)));

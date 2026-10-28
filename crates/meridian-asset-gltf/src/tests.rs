@@ -96,7 +96,7 @@ fn a_glb_triangle_keeps_its_attributes_and_default_material() {
         (part.material.metallic, part.material.roughness),
         (1.0, 1.0)
     );
-    assert!(model.images.is_empty());
+    assert_eq!(model.images, Vec::new());
 }
 
 #[test]
@@ -300,13 +300,15 @@ fn data_uris_and_glb_chunks_are_not_required_files() {
     let encoded = base64_encode(&triangle_bin());
     let uri = format!(r#", "uri": "data:application/octet-stream;base64,{encoded}""#);
     let json = document(&uri, "", "", "");
-    assert!(
-        GltfDecoder::required_uris(json.as_bytes())
-            .unwrap()
-            .is_empty()
+    assert_eq!(
+        GltfDecoder::required_uris(json.as_bytes()).unwrap(),
+        Vec::<String>::new()
     );
     let glb = glb(&document("", "", "", ""), &triangle_bin());
-    assert!(GltfDecoder::required_uris(&glb).unwrap().is_empty());
+    assert_eq!(
+        GltfDecoder::required_uris(&glb).unwrap(),
+        Vec::<String>::new()
+    );
 }
 
 #[test]

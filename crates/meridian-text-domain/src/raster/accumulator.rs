@@ -79,7 +79,7 @@ impl Accumulator {
         let first = index(low.floor());
         let last = index(high.ceil());
         if last <= first + 1 {
-            let mid = 0.5 * (low + high) - low.floor();
+            let mid = f32::midpoint(low, high) - low.floor();
             self.cells[base + first] += area - area * mid;
             self.cells[base + first + 1] += area * mid;
         } else {

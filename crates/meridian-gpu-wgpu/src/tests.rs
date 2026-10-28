@@ -25,7 +25,7 @@ async fn device_reports_a_nonempty_adapter_name() {
     let Some(device) = device_or_skip().await else {
         return;
     };
-    assert!(!device.adapter_name().is_empty());
+    assert_ne!(device.adapter_name(), "");
 }
 
 #[cfg(feature = "hw-tests")]
@@ -108,8 +108,10 @@ async fn compute_dispatch_doubles_every_element() {
 
     let result_bytes = device.read_buffer(&buffer).await;
     let result: Vec<u32> = result_bytes
-        .chunks_exact(4)
-        .map(|c| u32::from_le_bytes(c.try_into().unwrap()))
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .map(|c| u32::from_le_bytes(*c))
         .collect();
     assert_eq!(result, vec![2, 4, 6, 8]);
 }

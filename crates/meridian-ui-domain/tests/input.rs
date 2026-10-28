@@ -130,7 +130,7 @@ fn focus_changes_raise_lost_then_gained() {
         ]
     );
     tree.focus(nodes[1]).unwrap();
-    assert!(tree.drain_events().is_empty());
+    assert_eq!(tree.drain_events(), Vec::new());
 }
 
 #[test]
@@ -177,7 +177,7 @@ fn pointer_outside_every_element_is_ignored() {
         release(&mut tree, root, 500.0, 500.0),
         InputOutcome::Ignored
     );
-    assert!(tree.drain_events().is_empty());
+    assert_eq!(tree.drain_events(), Vec::new());
 }
 
 #[test]

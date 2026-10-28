@@ -59,7 +59,7 @@ mod tests {
         sink.push_interleaved(&[0.3]);
         assert_eq!(sink.recorded(), vec![0.1, 0.2, 0.3]);
         sink.drain();
-        assert!(sink.recorded().is_empty());
+        assert_eq!(sink.recorded(), Vec::new());
     }
 
     #[test]
