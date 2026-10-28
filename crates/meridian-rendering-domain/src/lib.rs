@@ -11,6 +11,7 @@ mod environment;
 mod fly;
 mod frustum;
 mod graph_resource_id;
+mod light;
 mod mesh_handle;
 mod morph;
 mod render_graph;
@@ -37,6 +38,7 @@ pub use environment::{
 pub use fly::{FlyCamera, FlyControls};
 pub use frustum::Frustum;
 pub use graph_resource_id::GraphResourceId;
+pub use light::{LightKind, LightSource, extract_lights};
 pub use mesh_handle::{MeshHandle, MeshMarker};
 pub use morph::{MeshMorph, MorphTarget, MorphWeights};
 pub use render_graph::{AllocationPlan, RenderGraph, ResourceLifetime};

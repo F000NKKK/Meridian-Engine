@@ -11,6 +11,7 @@ mod asset_loader;
 pub mod assets;
 pub mod content;
 pub mod dsl;
+mod editor_renderer;
 mod fly_controls;
 mod headless;
 mod model_files;
@@ -67,32 +68,29 @@ pub use meridian_platform_winit::{
     AppHandler, Clock, CpuCapabilities, InputState, KeyCode, MouseButton, Time, Window,
     run_windowed_app,
 };
-// -- meridian-rendering-app: the GPU ports --
 pub use meridian_rendering_app::{
     FrameOutcome, FrameRecorder, FrameRequest, MeshStore, RenderSession, TextureStore,
 };
 // -- meridian-rendering-domain: scene/material/lighting/submission --
+pub use editor_renderer::*;
 pub use meridian_rendering_domain::{
     Background, BlendMode, Camera, Camera2d, ClipRect, ClipSpan, EnvironmentMap, FlyCamera,
-    FlyControls, Frustum, Light, Material, MaterialHandle, MaterialRegistry, MeshHandle,
-    MeshRegistry, MeshSource, Overlay2d, Renderable3d, Scene2d, Scene3d, Sky, Sprite,
-    TextureHandle, cube_mesh_source, ground_mesh_source, icosphere_mesh_source, look_at_rotor,
-    look_at_upright, pyramid_mesh_source, smooth_normals,
+    FlyControls, Frustum, Light, LightKind, LightSource, Material, MaterialHandle,
+    MaterialRegistry, MeshHandle, MeshRegistry, MeshRenderer, MeshSource, Overlay2d, Renderable3d,
+    Scene2d, Scene3d, Sky, Sprite, TextureHandle, cube_mesh_source, ground_mesh_source,
+    icosphere_mesh_source, look_at_rotor, look_at_upright, pyramid_mesh_source, smooth_normals,
 };
-// -- meridian-rendering-wgpu: the GPU device a windowed app opens once --
 pub use meridian_rendering_wgpu::{
     BloomPass, CommandBuffer, DEFAULT_SHADOW_MAP_SIZE, DepthTexture, Device, DeviceError,
     GpuFrameRecorder, GpuTextureStore, PassTiming, PreparedBatch, RenderPass, SceneRenderer,
     Surface, TextureRegistry, submit_scene3d,
 };
-// -- meridian-runtime-app / -threads: Runtime, the frame-work entry point, the job executor --
 pub use meridian_runtime_app::{
     AnimationStage, AudioStage, ComputeStage, EventSystem, FrameDelta, Job, JobExecutor,
     PhysicsStepStage, Runtime, Shared, Stage, StageId, TransformStage, add_world_stages,
 };
 pub use meridian_runtime_threads::{BackgroundPool, TaskExecutor};
-/// The retained UI runtime (ADR 018), named by generated `.meui` glue; and
-/// `ui_scene2d`, its extraction to a `Scene2d` (ADR 021).
+/// The retained UI runtime (ADR 018), named by generated `.meui` glue.
 pub use meridian_ui_domain as ui_core;
 pub use meridian_ui_scene2d as ui_scene2d;
 pub use render::{RenderStage, compose_frame, render_frame};
