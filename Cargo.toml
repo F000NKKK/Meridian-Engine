@@ -67,7 +67,7 @@ meridian-ui-mel = { path = "crates/meridian-ui-mel", version = "0.1" }
 # bounded-cost local work (allocation, validation, recording) that would
 # gain nothing from being `async` — see `meridian-rendering-wgpu`'s
 # module doc for the concrete first case (`Device::new`/`read_buffer`).
-wgpu = "30.0.0"
+wgpu = "30.0.1"
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros", "sync"] }
 
 # `winit` is `platform-winit::Window`'s windowing backend — see
