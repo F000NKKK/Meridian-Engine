@@ -2,7 +2,7 @@
 
 use super::frame::Frame;
 use super::value::Alignment;
-use super::{border, dock_panel, grid, stack_panel};
+use super::{border, dock_panel, grid, scroll_viewer, stack_panel};
 use crate::{ElementKind, NodeId, Point, Rect, Size, UiTree};
 
 /// Places `node` inside `slot` (in its parent's coordinates, margin
@@ -68,6 +68,7 @@ fn arrange_content(tree: &mut UiTree, node: NodeId, size: Size) {
         Ok(ElementKind::StackPanel) => stack_panel::arrange(tree, node, size),
         Ok(ElementKind::DockPanel) => dock_panel::arrange(tree, node, size),
         Ok(ElementKind::Grid) => grid::arrange(tree, node, size),
+        Ok(ElementKind::ScrollViewer) => scroll_viewer::arrange(tree, node, size),
         _ => {}
     }
 }

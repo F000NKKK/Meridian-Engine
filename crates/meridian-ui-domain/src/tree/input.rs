@@ -18,6 +18,7 @@ impl UiTree {
             InputEvent::PointerPressed { button, at } => self.pointer_pressed(root, button, at),
             InputEvent::PointerReleased { button, at } => self.pointer_released(root, button, at),
             InputEvent::KeyPressed { key, modifiers } => self.key_pressed(root, key, modifiers),
+            InputEvent::Scrolled { at, delta } => self.scrolled(root, at, delta),
             InputEvent::Text(text) => self.text_typed(text),
         }
     }
@@ -106,6 +107,22 @@ impl UiTree {
             }
         }
         consumed_if(target.is_some() || pressed.is_some())
+    }
+
+    /// Scrolls the nearest viewer under the pointer that can still move
+    /// that way; the UI consumes the wheel over any hit-testable element.
+    fn scrolled(&mut self, root: NodeId, at: Point, delta: Point) -> InputOutcome {
+        let Some(target) = hit_test(self, root, at) else {
+            return InputOutcome::Ignored;
+        };
+        let mut from = Some(target);
+        while let Some(viewer) = from.and_then(|node| self.enclosing_scroll_viewer(node)) {
+            if self.scroll_by(viewer, delta).unwrap_or(false) {
+                break;
+            }
+            from = self.parent(viewer).ok().flatten();
+        }
+        InputOutcome::Consumed
     }
 
     fn key_pressed(&mut self, root: NodeId, key: Key, modifiers: Modifiers) -> InputOutcome {

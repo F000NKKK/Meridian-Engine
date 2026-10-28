@@ -1,11 +1,11 @@
 # meridian-ui-domain
 
-WPF-style retained UI runtime: element tree, typed dependency properties, measure/arrange layout (StackPanel, DockPanel, Grid) and hit testing. Emits no pixels itself; see ADR 018.
+WPF-style retained UI runtime: element tree, typed dependency properties, measure/arrange layout (StackPanel, DockPanel, Grid, ScrollViewer) and hit testing. Emits no pixels itself; see ADR 018.
 
 **Layer and context:** domain · ui
 
 - **For:** A WPF-style retained UI runtime: `UiTree`, typed properties, measure/arrange layout and hit testing.
-- **Not for:** pixels: it renders nothing itself; extraction to `Scene2d` and text drawing are not done yet (see ADR 018).
+- **Not for:** pixels: it renders nothing itself; extraction to `Scene2d` lives in `meridian-ui-scene2d`.
 
 ## Usage
 

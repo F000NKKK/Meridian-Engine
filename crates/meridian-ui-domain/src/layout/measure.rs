@@ -2,7 +2,7 @@
 
 use super::frame::Frame;
 use super::text_measurer::TextMeasurer;
-use super::{border, dock_panel, grid, stack_panel, text_block};
+use super::{border, dock_panel, grid, scroll_viewer, stack_panel, text_block};
 use crate::{ElementKind, NodeId, Size, UiTree};
 
 /// Measures `node` given the room `available` (margin included) and stores
@@ -31,6 +31,7 @@ fn measure_content(tree: &mut UiTree, text: &dyn TextMeasurer, node: NodeId, roo
         Ok(ElementKind::StackPanel) => stack_panel::measure(tree, text, node, room),
         Ok(ElementKind::DockPanel) => dock_panel::measure(tree, text, node, room),
         Ok(ElementKind::Grid) => grid::measure(tree, text, node, room),
+        Ok(ElementKind::ScrollViewer) => scroll_viewer::measure(tree, text, node, room),
         Ok(ElementKind::TextBlock) => text_block::measure(tree, text, node),
         _ => Size::ZERO,
     }

@@ -7,6 +7,7 @@ mod hierarchy;
 mod input;
 mod layout_state;
 mod pointer_state;
+mod scrolling;
 mod ui_tree;
 mod values;
 
