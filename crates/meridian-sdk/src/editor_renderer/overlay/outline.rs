@@ -6,6 +6,7 @@ use meridian_rendering_domain::{MeshRegistry, MeshRenderer};
 
 use super::grid::LineStyle;
 use super::ribbon::Line;
+use crate::editor_renderer::ModelPieces;
 use crate::editor_renderer::picking::{frame_of, scale_of};
 
 const SELECTED: LineStyle = LineStyle {
@@ -22,10 +23,19 @@ pub(super) fn selection_lines(
 ) -> Option<(LineStyle, Vec<Line>)> {
     let lines: Vec<Line> = selection
         .iter()
-        .filter_map(|&entity| entity_box(world, meshes, entity))
+        .flat_map(|&entity| drawn_by(world, entity))
+        .filter_map(|entity| entity_box(world, meshes, entity))
         .flatten()
         .collect();
     (!lines.is_empty()).then_some((SELECTED, lines))
+}
+
+/// The entities that draw `entity`: its pieces when its reference named a
+/// model, else itself.
+fn drawn_by(world: &World, entity: Entity) -> Vec<Entity> {
+    world
+        .get::<ModelPieces>(entity)
+        .map_or_else(|| vec![entity], |pieces| pieces.0.clone())
 }
 
 fn entity_box(world: &World, meshes: &MeshRegistry, entity: Entity) -> Option<Vec<Line>> {

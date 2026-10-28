@@ -14,6 +14,6 @@ pub use loaded_model::LoadedModel;
 pub use model_piece::ModelPiece;
 pub(crate) use register::register;
 pub use spawn::ModelInstance;
-pub(crate) use spawn::spawn;
+pub(crate) use spawn::{attach, spawn};
 #[cfg(test)]
 mod spawn_tests;

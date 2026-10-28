@@ -10,7 +10,10 @@ mod renderer;
 mod studio;
 mod thumbnail;
 
-pub use binding::{AssetBinder, BuiltinAssets, TextureSlot, UnboundReference, bind_material};
+pub use binding::{
+    AssetBinder, BuiltinAssets, GltfFolder, ModelPieces, TextureSlot, UnboundReference,
+    bind_material,
+};
 pub use camera::EditorCamera;
 pub use error::EditorRendererError;
 pub use overlay::ViewOptions;

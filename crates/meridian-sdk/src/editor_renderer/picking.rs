@@ -1,10 +1,10 @@
 //! Which entity is under a point of the viewport.
 
-use meridian_ecs::{Entity, GlobalTransform, Transform, World};
+use meridian_ecs::{Entity, GlobalTransform, Parent, Transform, World};
 use meridian_gac::{Motor3, Scale3, Vec3};
 use meridian_rendering_domain::{MeshRenderer, MeshSource};
 
-use super::{EditorCamera, EditorRenderer};
+use super::{EditorCamera, EditorRenderer, ModelPieces};
 
 /// A ray: where it starts and the unit direction it points.
 #[derive(Debug, Clone, Copy)]
@@ -55,8 +55,18 @@ impl EditorRenderer {
                 Some((entity, distance))
             })
             .min_by(|a, b| a.1.total_cmp(&b.1))
-            .map(|(entity, _)| entity)
+            .map(|(entity, _)| owner_of(world, entity))
     }
+}
+
+/// The entity a click on `piece` means: the entity whose reference named a
+/// model when `piece` is one of its pieces, else `piece` itself.
+fn owner_of(world: &World, piece: Entity) -> Entity {
+    world
+        .get::<Parent>(piece)
+        .map(|parent| parent.0)
+        .filter(|owner| world.get::<ModelPieces>(*owner).is_some())
+        .unwrap_or(piece)
 }
 
 /// An entity's world frame, as the renderer draws it.

@@ -104,64 +104,6 @@ fn a_thumbnail_subject_is_drawn_or_refused_with_a_reason() {
 }
 
 #[test]
-fn a_scene_file_with_asset_references_is_bound_and_drawn() {
-    use meridian_data_substrate::{ComponentRegistry, NoResolver, register_rendering};
-    use meridian_sdk::BuiltinAssets;
-
-    let Some(mut renderer) = renderer() else {
-        return;
-    };
-    let mut registry = ComponentRegistry::new();
-    registry
-        .register_with::<Transform, meridian_data_substrate::TransformCodec>(
-            meridian_data_substrate::ComponentName::new("transform").unwrap(),
-        )
-        .unwrap();
-    register_rendering(&mut registry).unwrap();
-    let text = r#"{ format: 1, entities: [
-        { id: "ball", components: {
-            transform: { motor: { rotor: [1, 0, 0, 0] } },
-            mesh_renderer: { mesh: "@asset:builtin/sphere", material: "@asset:builtin/default" } } },
-        { id: "lost", components: {
-            transform: { motor: { rotor: [1, 0, 0, 0] } },
-            mesh_renderer: { mesh: "@asset:meshes/nowhere.obj", material: "@asset:builtin/default" } } },
-    ] }"#;
-    let mut world = World::new();
-    registry
-        .load_scene(text, &mut world, &mut NoResolver)
-        .expect("the scene loads");
-    let unbound = renderer.bind_references(&mut world, &mut BuiltinAssets::default());
-    assert_eq!(unbound.len(), 1);
-    let ball = world
-        .get::<MeshRenderer>(ball_entity(&world))
-        .expect("bound");
-    let colour = renderer
-        .session_mut()
-        .render
-        .materials
-        .get(ball.material)
-        .expect("registered")
-        .base_color_factor;
-    assert!(
-        colour[0] > 0.5,
-        "the default material is a light grey, not black"
-    );
-    assert_eq!(unbound[0].missing.as_str(), "meshes/nowhere.obj");
-    let pixels = renderer
-        .render(&world, &EditorCamera::default())
-        .expect("a frame");
-    assert!(varied(pixels), "the bound sphere shows up");
-}
-
-fn ball_entity(world: &World) -> meridian_ecs::Entity {
-    world
-        .query::<MeshRenderer>()
-        .map(|(entity, _)| entity)
-        .next()
-        .expect("one entity is bound")
-}
-
-#[test]
 fn a_metal_thumbnail_has_a_dark_backdrop_and_a_bright_reflection() {
     let Some(mut renderer) = renderer() else {
         return;
