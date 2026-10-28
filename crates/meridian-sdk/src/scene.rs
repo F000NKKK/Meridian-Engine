@@ -81,7 +81,7 @@ impl GraphicsSession {
             .load_model_gltf(&mut self.render.meshes, &mut self.render.recorder, path)
     }
 
-    /// Spawns `model` into `world` at `at`: see [`model_loading::spawn`].
+    /// Spawns `model` into `world` at `at`: a root with the animator and a child per piece.
     pub fn spawn_model(
         &mut self,
         world: &mut World,

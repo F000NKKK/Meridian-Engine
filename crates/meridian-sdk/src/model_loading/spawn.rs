@@ -6,7 +6,7 @@ use meridian_rendering_domain::{MaterialRegistry, MeshRenderer};
 
 use super::LoadedModel;
 
-/// The entities [`spawn`] made for one model.
+/// The entities `GraphicsSession::spawn_model` made for one model.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ModelInstance {
     /// The entity that places the whole model. Move its `Transform` to move
