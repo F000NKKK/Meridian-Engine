@@ -86,8 +86,8 @@ part that touches `rendering-wgpu`.
   differently-textured one. A UI that alternates textures pays one draw
   per run; an atlas is the fix, not reordering.
 - **Why a non-indexed triangle list.** Six vertices per quad avoids the
-  `u16` index ceiling (`set_index_buffer_u16`) that a 16k-quad UI layer
-  would hit, at 50% more vertex bytes than an indexed quad.
+  `u16` index ceiling that a 16k-quad UI layer
+  would have hit when meshes used `u16` indices, at 50% more vertex bytes than an indexed quad.
 - **Why a per-prepare camera uniform.** `SceneRenderer` shares one
   uniform across views (one renderer per view). The sprite renderer is
   view-independent: each `PreparedSprites` owns its camera buffer, so two

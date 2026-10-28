@@ -14,9 +14,11 @@ mod image_reader;
 mod limits;
 mod material_reader;
 mod part_reader;
+mod resources;
 mod scene_walk;
 #[cfg(test)]
 mod tests;
 
 pub use gltf_decoder::GltfDecoder;
 pub use gltf_error::GltfError;
+pub use resources::Resources;

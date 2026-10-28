@@ -3,9 +3,13 @@
 /// Why [`MeshRegistry::register`](crate::submission::MeshRegistry::register) refused a [`MeshSource`](crate::submission::MeshSource).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MeshRegistryError {
-    /// More vertices than a `u16` index can address (see [`MeshSource`](crate::submission::MeshSource)'s
-    /// doc comment).
-    TooManyVertices { count: usize },
+    /// An index names a vertex the mesh does not have.
+    IndexOutOfRange {
+        /// The offending index.
+        index: u32,
+        /// How many vertices the mesh has.
+        vertex_count: usize,
+    },
     /// `indices.len()` isn't a multiple of 3 — not a triangle list.
     NotATriangleList { index_count: usize },
     /// `uvs.len()` doesn't match `positions.len()` — every vertex needs
@@ -19,10 +23,13 @@ pub enum MeshRegistryError {
 impl core::fmt::Display for MeshRegistryError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            MeshRegistryError::TooManyVertices { count } => {
+            MeshRegistryError::IndexOutOfRange {
+                index,
+                vertex_count,
+            } => {
                 write!(
                     f,
-                    "mesh has {count} vertices, beyond u16 index range (65535)"
+                    "index {index} is out of range for {vertex_count} vertices"
                 )
             }
             MeshRegistryError::NotATriangleList { index_count } => {

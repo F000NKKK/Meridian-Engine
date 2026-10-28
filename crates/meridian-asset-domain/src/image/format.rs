@@ -7,6 +7,8 @@ pub enum ImageFormat {
     Bmp,
     /// The 8-byte PNG signature — see the `PngDecoder` of `meridian-asset-png`.
     Png,
+    /// The `FF D8 FF` start-of-image marker — see the `JpegDecoder` of `meridian-asset-jpeg`.
+    Jpeg,
 }
 
 impl ImageFormat {
@@ -20,6 +22,9 @@ impl ImageFormat {
         const PNG_SIGNATURE: [u8; 8] = [0x89, b'P', b'N', b'G', 0x0d, 0x0a, 0x1a, 0x0a];
         if bytes.len() >= PNG_SIGNATURE.len() && bytes[..PNG_SIGNATURE.len()] == PNG_SIGNATURE {
             return Some(ImageFormat::Png);
+        }
+        if bytes.starts_with(&[0xff, 0xd8, 0xff]) {
+            return Some(ImageFormat::Jpeg);
         }
         None
     }

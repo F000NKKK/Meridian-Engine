@@ -1,14 +1,13 @@
 //! Single application-facing entry point for Meridian-Engine.
 //!
-//! Layer: interface; bounded context: runtime (`craftbook.toml`,
-//! docs/context-map.md).
+//! Layer: interface; bounded context: runtime (`craftbook.toml`, docs/context-map.md).
 //!
 //! **Applications depend on this crate alone.** Everything an app needs
 //! — spatial math, physics bodies, graphics scene/material types, the
 //! windowed-app loop, audio types, asset decoding, and `runtime-app`'s
-//! own [`Runtime`] — is re-exported from here; nothing in `examples/`
-//! reaches into the composed crates directly, and this crate may depend
-//! on drivers that `runtime-app` itself may not. Notes: docs/notes/meridian-sdk.md.
+//! own [`Runtime`] — is re-exported from here; nothing in `examples/` reaches
+//! into the composed crates, and this crate may depend on drivers `runtime-app`
+//! may not. Notes: docs/notes/meridian-sdk.md.
 
 #![forbid(unsafe_code)]
 
@@ -17,6 +16,7 @@ mod asset_loader;
 pub mod assets;
 pub mod dsl;
 mod fly_controls;
+mod model_files;
 mod model_loading;
 mod overlay_builder;
 pub mod render;

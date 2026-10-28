@@ -21,7 +21,7 @@ pub struct ModelPiece {
 /// Registers every part of `model`: meshes with `meshes` (missing normals
 /// are derived from the triangles, missing UVs are zero), images with
 /// `textures` once each, however many parts use them. An image the engine
-/// cannot decode (JPEG, today) is logged and its parts keep their base
+/// cannot decode (an unknown format, or a corrupt file) is logged and its parts keep their base
 /// colour only.
 pub(crate) fn register(
     model: ModelAsset,

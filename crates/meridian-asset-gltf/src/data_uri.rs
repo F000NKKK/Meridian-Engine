@@ -2,11 +2,10 @@
 
 use crate::GltfError;
 
-/// The bytes of a `data:[<mime>];base64,<payload>` URI. A URI with any
-/// other scheme is an external resource.
+/// The bytes of a `data:[<mime>];base64,<payload>` URI.
 pub(crate) fn decode(uri: &str) -> Result<Vec<u8>, GltfError> {
     let Some(rest) = uri.strip_prefix("data:") else {
-        return Err(GltfError::ExternalResource(uri.to_owned()));
+        return Err(GltfError::BadDataUri);
     };
     let (header, payload) = rest.split_once(',').ok_or(GltfError::BadDataUri)?;
     if !header.ends_with(";base64") {

@@ -6,7 +6,7 @@
 //!   [`crate::audio::AudioFormat::detect`] follows for audio.
 //!
 //! PNG (DEFLATE is too big to hand-roll, ADR 013) is the adapter crate
-//! `meridian-asset-png`; the composition root picks the decoder for a
+//! `meridian-asset-png` and JPEG is `meridian-asset-jpeg`; the composition root picks the decoder for a
 //! detected format.
 
 pub mod bmp_decoder;

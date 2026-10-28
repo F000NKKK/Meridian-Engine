@@ -79,18 +79,29 @@ fn mesh_registry_rejects_non_triangle_index_counts() {
 }
 
 #[test]
-fn mesh_registry_rejects_meshes_beyond_u16_vertex_range() {
+fn mesh_registry_takes_meshes_beyond_the_u16_vertex_range() {
     let mut registry = MeshRegistry::new();
-    let count = u16::MAX as usize + 1;
+    let count = u16::MAX as usize + 2;
     let source = MeshSource {
         positions: vec![[0.0, 0.0, 0.0]; count],
         normals: vec![[0.0, 0.0, 1.0]; count],
         uvs: vec![[0.0, 0.0]; count],
-        indices: vec![0, 1, 2],
+        indices: vec![0, 1, u32::try_from(count - 1).unwrap()],
     };
+    assert!(registry.register(source).is_ok());
+}
+
+#[test]
+fn mesh_registry_rejects_an_index_past_the_vertices() {
+    let mut registry = MeshRegistry::new();
+    let mut source = triangle();
+    source.indices = vec![0, 1, 3];
     assert_eq!(
         registry.register(source),
-        Err(MeshRegistryError::TooManyVertices { count })
+        Err(MeshRegistryError::IndexOutOfRange {
+            index: 3,
+            vertex_count: 3
+        })
     );
 }
 

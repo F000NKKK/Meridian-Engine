@@ -14,8 +14,8 @@ pub(crate) struct GpuMesh {
 }
 
 impl GpuMesh {
-    /// Uploads `source`: position, normal and UV per vertex, `u16` indices
-    /// (the registry rejects meshes with more vertices than that).
+    /// Uploads `source`: position, normal and UV per vertex and `u32` indices
+    /// (the registry has checked that each names a vertex).
     pub(crate) fn upload(device: &Device, source: &MeshSource) -> Self {
         let vertices = source
             .positions
@@ -28,7 +28,7 @@ impl GpuMesh {
         let indices = source
             .indices
             .iter()
-            .flat_map(|&index| u16::try_from(index).unwrap_or(0).to_le_bytes())
+            .flat_map(|index| index.to_le_bytes())
             .collect::<Vec<u8>>();
         let vertex_buffer = device.create_buffer(vertices.len(), BufferUsage::Vertex);
         device.write_buffer(&vertex_buffer, &vertices);
