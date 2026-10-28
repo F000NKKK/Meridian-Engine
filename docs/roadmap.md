@@ -752,12 +752,13 @@ the rest are not started.
    events by subscription, a `SimulationControl` port) and
    `meridian-editor-tcp` (one editor over loopback TCP, `tokio`); see
    [editor-domain.md](editor-domain.md#host). Parent links load as
-   `meridian-data-substrate::Parent`, a stand-in until `ecs` gets a
-   hierarchy (it moves there then). `ecs` now has `World::component_types(entity)`
+   `meridian_ecs::Parent` (`meridian-data-substrate` re-exports it), and
+   `propagate_transforms` resolves `Transform`s along it into
+   `GlobalTransform`s. `ecs` also has `World::component_types(entity)`
    and in-memory `World::snapshot`/`restore` (memory only: a world's disk
    form is its scene document, see
    [data-formats.md](data-formats.md#how-a-world-is-saved-and-restored)).
-   **Not yet done:** transform propagation along parents; field-level
+   **Not yet done:** field-level
    prefab overrides and a state-level `.msave` delta (a later `format`),
    `.meta`, `.mpak`, wiring the editor host into `runtime-app`'s frame
    loop, and wiring scene, prefab and save loading into `runtime-app`/`sdk`

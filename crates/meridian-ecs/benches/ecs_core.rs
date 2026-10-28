@@ -3,7 +3,7 @@
 use std::hint::black_box;
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use meridian_ecs::{Component, World};
+use meridian_ecs::{Component, Parent, Transform, World, propagate_transforms};
 
 struct Position(f32);
 impl Component for Position {}
@@ -45,10 +45,42 @@ fn query_many_positions_velocities(c: &mut Criterion) {
     });
 }
 
+/// `count` entities in groups of ten under one root each.
+fn hierarchy_world(count: u16) -> World {
+    let mut world = World::new();
+    let mut root = world.spawn();
+    for i in 0..count {
+        let entity = world.spawn();
+        world.insert(entity, Transform::default());
+        if i % 10 == 0 {
+            root = entity;
+        } else {
+            world.insert(entity, Parent(root));
+        }
+    }
+    world
+}
+
+fn propagate(c: &mut Criterion) {
+    let mut world = hierarchy_world(10_000);
+    propagate_transforms(&mut world);
+    c.bench_function("propagate_transforms_10000_unchanged", |b| {
+        b.iter(|| propagate_transforms(black_box(&mut world)));
+    });
+    c.bench_function("propagate_transforms_10000_first_pass", |b| {
+        b.iter_batched(
+            || hierarchy_world(10_000),
+            |mut fresh| propagate_transforms(&mut fresh),
+            criterion::BatchSize::LargeInput,
+        );
+    });
+}
+
 criterion_group!(
     benches,
     spawn_with_components,
     query_positions,
-    query_many_positions_velocities
+    query_many_positions_velocities,
+    propagate
 );
 criterion_main!(benches);

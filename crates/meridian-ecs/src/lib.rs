@@ -27,6 +27,7 @@ mod commands;
 mod component;
 mod entity;
 mod entity_location;
+mod hierarchy;
 mod query;
 mod snapshot;
 #[cfg(test)]
@@ -41,6 +42,7 @@ pub use commands::Commands;
 pub use component::Component;
 pub use entity::Entity;
 use entity_location::EntityLocation;
+pub use hierarchy::{GlobalTransform, Parent, propagate_transforms};
 pub use query::{
     Changed, Fetch, OptionalRows, Query, QueryMany, QueryManyMut, QueryMut, ReadFetch,
     ReadSelection, Selection, With, Without,
