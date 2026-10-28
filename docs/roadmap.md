@@ -736,9 +736,14 @@ the rest are not started.
    (by name and `TypeId`; `register`/`register_with` a codec —
    `Transform` goes through the `TransformForm` newtype so `ecs`
    stays file-blind), `.mscene` load into a
-   `World` (all-or-nothing, every problem with line/column/path, unknown
+   `World` in text and binary (`SDAT`, detected by magic; all-or-nothing,
+   every problem with path and line/column or byte offset, unknown
    component names with a "did you mean" or kept as written for editors),
-   save, and `describe()` for an IDE. **Editor protocol:** the
+   save, `.mprefab` (instancing under `<instance>/<prefab id>`,
+   whole-component overrides, nesting with cycle and depth checks, bytes
+   from a caller's `PrefabSource` port), the `.msave` envelope (full scene
+   document + a game-owned `state` of the game's own schema; the header
+   and scene read without decoding the state) and `describe()` for an IDE. **Editor protocol:** the
    `meridian-editor-domain` crate ([editor-domain.md](editor-domain.md))
    defines the typed, append-only `Request`/`Response`/`Event` messages
    between a game and Meridian IDLE (golden-byte pinned, version
@@ -749,13 +754,15 @@ the rest are not started.
    [editor-domain.md](editor-domain.md#host). Parent links load as
    `meridian-data-substrate::Parent`, a stand-in until `ecs` gets a
    hierarchy (it moves there then). `ecs` now has `World::component_types(entity)`
-   and in-memory `World::snapshot`/`restore`. **Not yet done:** transform
-   propagation along parents; `.mprefab`
-   instancing, `.meta`, `.msave` (voxel/chunk data via
-   `substrate_data::Stream`), `.mpak`, wiring the editor host into
-   `runtime-app`'s frame loop, and wiring scene loading into
-   `runtime-app`/`sdk`. The substrate-data dependency
-   is a git revision pin (its `main`) until it is published to crates.io.
+   and in-memory `World::snapshot`/`restore` (memory only: a world's disk
+   form is its scene document, see
+   [data-formats.md](data-formats.md#how-a-world-is-saved-and-restored)).
+   **Not yet done:** transform propagation along parents; field-level
+   prefab overrides and a state-level `.msave` delta (a later `format`),
+   `.meta`, `.mpak`, wiring the editor host into `runtime-app`'s frame
+   loop, and wiring scene, prefab and save loading into `runtime-app`/`sdk`
+   (the application implements `PrefabSource` over its asset layer).
+   `substrate-data` is a crates.io dependency (0.3.x).
 6. **No networking.** Multiplayer (both games have it) is a subsystem
    that doesn't exist in any form — no netcode, no client/server
    split, no replication. The deterministic `Fixed` numeric mode (see

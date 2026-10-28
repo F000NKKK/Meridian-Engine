@@ -12,9 +12,9 @@ stay `asset-domain` decoders and are not covered here.
 |---|---|---|---|
 | `meridian.toml` | TOML | `runtime-app` | project manifest |
 | `*.mscene` | text (editor) or binary (cooked) | `meridian-data-substrate` | a scene: entities and their components |
-| `*.mprefab` | text or binary | `meridian-data-substrate` | a reusable entity tree |
+| `*.mprefab` | text or binary | `meridian-data-substrate` | a reusable entity tree, instanced by a scene |
 | `*.meta` | text | `resource` adapter | an asset's stable id and import settings |
-| `*.msave` | binary | the game | a save: scene delta + game state |
+| `*.msave` | binary | envelope: `meridian-data-substrate`; `state`: the game | a save: the world's scene document + game state |
 | `*.mpak` | binary | build tool | cooked content bundle |
 | editor protocol | frames over a socket | `meridian-editor-domain` (host: `meridian-editor-app` + `meridian-editor-tcp`) | engine ↔ IDE messages |
 
@@ -120,11 +120,87 @@ this, including the rotor order against the axis–angle formula.
 - `prefab` instantiates the prefab, then applies the listed components as
   whole-component overrides. Field-level overrides are a later format bump.
 
+### Binary form
+
+The same document in the `SDAT` binary form (version 2), for cooked
+content and saves. It is the document's value encoded canonically, so
+lists of numbers are packed (a `Vec3` or a rotor is a list of 32-bit
+floats), keys and ids are interned, and entities that share their keys
+share one shape. Text and binary are one value: loading text and saving
+binary, then loading that and saving text, gives the same document.
+
+| 10 000 generated entities (name, parent, `transform`, `rigid_body`) | Bytes |
+|---|---:|
+| text, pretty (what `save_scene` writes) | 5 201 948 |
+| text, compact | 2 263 108 |
+| binary | 678 862 (13.1 % of pretty, 30.0 % of compact) |
+
+(Measured by `tests/scene_size.rs`, `cargo test -p meridian-data-substrate
+--test scene_size -- --nocapture`.)
+
+`load_scene_bytes` detects the form: bytes that start with `SDAT` are
+binary, anything else is UTF-8 text, never decided by the extension;
+`load_scene` (text) and `load_scene_binary` take one form only. The
+rules and the `SceneMap` are the text ones: all or nothing, every problem
+typed and placed. A binary document has no lines, so a `SceneIssue` has
+its `path` (`entities[3].components.transform`) and no line or column;
+bytes that do not decode (truncated, an unknown tag, a map that sets a key
+twice, a version this does not read, trailing bytes) are a single issue
+with the byte `offset` (Substrate Data tracks offsets for decoding only,
+not per value). Unknown components pass through a binary document as they
+do through text when the registry keeps them.
+
 ## Prefab (`.mprefab`)
 
-The same document without `name`: a list of entities whose ids are local
-to the prefab; the first entity is the root. Instancing renames ids as
-`<instance id>/<prefab id>`.
+The same document without `name` (a prefab with `name` is an unknown
+key), in either form: a list of entities whose ids are local to the
+prefab. The first entity is the root and has no `parent`; every other
+entity has one, so a prefab is a tree under its root (`PrefabEmpty`,
+`PrefabRootHasParent`, `PrefabOrphan`).
+
+A scene entity with `prefab: "@prefab:actors/hero"` is **the instance
+root**: the prefab is read, and
+
+- the scene entity takes the prefab root's place: its `name` if it has
+  none of its own, and the root's components, under its own
+  `components` — a component the entity lists **replaces the prefab's
+  whole** (field-level overrides are a later format bump); `parent` is the
+  entity's;
+- every other prefab entity is spawned as `<instance id>/<prefab id>`
+  (`hero/gun`), with `generated_by` set to the instance root in its
+  `SceneEntity`; the `@entity:` references inside the prefab (`parent`, or
+  in a component) are renamed with them, the prefab root's id meaning the
+  instance (`@entity:body` in the prefab is `hero`);
+- prefabs may instance prefabs, ids composing (`squad/leader/gun`), to
+  `MAX_PREFAB_DEPTH` (16); a prefab that includes itself, directly or
+  through others, is `PrefabCycle` with the chain.
+
+Where the bytes come from is the caller's: the crate has no filesystem and
+no asset pipeline. `PrefabSource` is the port (`fn prefab(&mut self,
+&PrefabPath) -> Result<Vec<u8>, PrefabUnavailable>`; the bytes are an
+`.mprefab` in either form), implemented by the application over its asset
+layer; `PrefabLibrary` is an in-memory one. The caller's `Resolve` still
+sees the `@prefab:` reference like any other. A prefab that is missing
+is `PrefabUnavailable` at the entity's `prefab` field (with the closest
+known path as the suggestion when the source has one — `PrefabLibrary`
+does), one that does not load is `PrefabInvalid` with its own issues, and
+a key an instance makes that the scene already has is `DuplicateEntity`.
+As always, nothing is spawned if anything is wrong.
+
+```rust
+let scene = registry.load_scene_with_prefabs(&bytes, &mut world, &mut resolver, &mut source)?;
+let hero = registry.instantiate_prefab(&PrefabInstance::new(key, path), &mut world, &mut resolver, &mut source)?; // from code
+let tree = registry.load_prefab(&bytes, &mut world, &mut resolver, &mut source)?;  // as itself, local ids (an editor)
+let text = registry.save_prefab(&world, &tree);                                    // or save_prefab_binary
+```
+
+`load_scene` and `load_scene_binary` (no source) leave a `prefab` field
+as written. **Saving** a scene writes an instance as its root with the
+prefab path and its *current* components as the overrides, and leaves the
+generated `<id>/…` entities out: the prefab makes them again on load, so
+edits to a generated entity are not saved (they need the field-level
+override bump), and a `parent` that names a generated entity is not
+expressible in a scene yet.
 
 ## Component registry
 
@@ -138,7 +214,9 @@ registry.register_with::<Transform, TransformCodec>(ComponentName::new("transfor
 registry.register::<MeshRenderer>(ComponentName::new("mesh_renderer")?)?;               // T: Component + Schema + Clone
 registry.set_unknown_components(UnknownComponents::Keep);                               // editors; games keep `Reject`
 let scene = registry.load_scene(&text, &mut world, &mut resolver)?; // SceneMap: EntityKey → Entity, or LoadError
+let scene = registry.load_scene_bytes(&bytes, &mut world, &mut resolver)?; // either form, by magic
 let text = registry.save_scene(&world, &scene);                     // text form
+let bytes = registry.save_scene_binary(&world, &scene);             // SDAT form
 let shapes = registry.describe();                                   // Vec<ComponentShape>, for the IDE
 ```
 
@@ -148,7 +226,8 @@ order, each a typed `SceneProblem` (`Data { problem, .. }` for what
 Substrate Data finds — syntax, types, missing fields, an `@entity:` key
 the document hasn't — then `UnsupportedFormat`, `DuplicateEntity`,
 `OwnParent`, `UnknownComponent { name, suggestion }`, `BadComponentName`)
-with its path, line and column.
+with its path, line and column (binary: path, and the byte offset for bytes
+that do not decode).
 
 `Transform` is `ecs`'s, and `ecs` stays file-blind (ADR 016,
 decision 3; no `data` feature on `ecs`), so it has no `Schema` impl:
@@ -170,8 +249,7 @@ hierarchy yet, so `parent` becomes `meridian-data-substrate::Parent(Entity)` —
 component that lives in `meridian-data-substrate` for now and moves to `ecs`
 once it has a hierarchy — and is also kept in the returned `SceneMap`
 (`parent_of`). Saving writes a `Parent` component back as the parent's
-document key. Nothing propagates transforms along it yet; instancing
-`prefab` is also a later step.
+document key. Nothing propagates transforms along it yet.
 
 `describe()` returns a `ComponentShape { name, shape: ShapeDoc }` per
 registered component, in registration order — a `Schema` itself, so
@@ -189,10 +267,88 @@ cooked content refers to assets by `@asset-id:`.
 
 ## Saves (`.msave`)
 
-Binary only: `{ format, game, created, scene: <scene delta>, state: <game-owned value> }`.
-Large state (voxel areas, recorded inputs) uses `substrate_data::Stream`
-so it can be read lazily. The game owns the `state` schema; the engine
-only owns the envelope.
+Binary only, always a map in this key order:
+
+```text
+{ format: 1, game: "<id>", created: <unix seconds>, scene: <scene document>, state: <game-owned value> }
+```
+
+- `format` is the envelope's own version (`SAVE_FORMAT`); a reader
+  refuses any other with `SaveError::UnsupportedFormat` before it looks at
+  anything else.
+- `game` is the game's own identifier and `created` seconds since the Unix
+  epoch, **passed in by the caller** (`SaveHeader::new(game, created)`):
+  the data layer has no clock.
+- `scene` is the registry's scene document of the world at save time —
+  exactly what `save_scene` would write, as a value: a **full** scene, not
+  a delta against the level file. A state-level delta is a later format
+  bump (that is what `format` is for). Prefab instances are saved as their
+  root (see above) and made again on load, so loading a save needs the
+  same `PrefabSource`.
+- `state` is the game's: `save_game::<T: Schema>` writes any type through
+  its own schema, straight, so a `substrate_data::Stream` in it (voxel
+  chunks, a recorded input log) stays a stream in the file and is read one
+  item at a time.
+
+```rust
+let header = SaveHeader::new("my-game", created_unix_seconds);
+let bytes = registry.save_game(&header, &world, &scene, &progress);
+let loaded: LoadedSave<Progress> = registry.load_game(&bytes, &mut world, &mut resolver, &mut source)?;
+let header = SaveHeader::read(&bytes)?;                         // header only
+let (header, scene) = registry.load_game_scene(&bytes, &mut world, &mut resolver, &mut source)?; // no state
+```
+
+**What is read lazily.** The fields are written header first, then the
+scene, then `state`. `SaveHeader::read` and `load_game_scene` walk the
+file step by step and stop after the fields they were asked for: a save
+browser reads a hundred headers, and an editor with no schema for a game's
+state still opens its scene, without decoding the state (a test damages
+the end of a save and both still succeed; `load_game` then reports the
+damage as `SaveError::State`/`Malformed`). `load_game` reads the whole file
+and decodes only `state` with the game's schema, before it spawns the
+scene, so it is all or nothing like every load. The price: those two
+calls do not validate the bytes after the last field they read.
+
+**Evolution.** The `state` is the *named binary form*, not a frame
+(Substrate Data's [evolution rules](https://github.com/F000NKKK/Substrate-Data/blob/main/docs/evolution.md)).
+Frames are positional: a reader that is older or newer in any way but an
+appended field reads another version's bytes as its own and may get
+garbage without an error, and they cannot be inspected without the
+schema. The named form is keyed and strict, so:
+
+- a **newer game's** save read by an older game fails loudly —
+  `SaveError::State` with `UnknownField` at `state.<field>` — instead of
+  silently dropping what the older game cannot keep;
+- an **older game's** save read by a newer game works when the newer
+  game only appended fields with `#[data(default)]` or `Option` (and
+  appended enum variants, never removed or reordered ones);
+- anything else (a retyped, moved or removed field) is a bump of the
+  game's own: put a `version` as the first field of `state` and migrate on
+  read, as `evolution.md` says ("Telling versions apart"). The engine
+  versions only the envelope.
+
+Malformed bytes are a typed `SaveError` (`Malformed { offset }`,
+`NotAnEnvelope`, `MissingField`, `BadField`, `UnsupportedFormat`, `Scene`
+with the scene's own issues, `State` with the game's problems and their
+paths), never a panic.
+
+## How a World is saved and restored
+
+There are two copies of a world and they are never mixed.
+
+| | On disk | In memory |
+|---|---|---|
+| What | the **scene document**: `registry.save_scene*` (a `.mscene`), `save_game` (a `.msave` embeds it) | `World::snapshot(&Cloners)` / `restore` |
+| For | levels, saves, editors, cooked content | play/stop in the editor, rollback, tests |
+| Entities | named by stable document keys (`EntityKey`); `Entity { index, generation }` is **never written** | the very same `Entity` values, generations kept; one spawned after the snapshot is dead after the restore |
+| Components | the registered ones only, through their schemas (unknown ones kept as written if the registry says so) | every `Clone` type registered in `Cloners`; no format involved |
+| Loading | spawns fresh entities and remaps keys (`SceneMap`) | puts the old world back |
+
+A snapshot is a memory copy and has no version, so it must not be written
+to a file, and a scene document must not be used to roll a running world
+back (every entity would be a new one, and handles held elsewhere would
+dangle). To persist a running game: save the registry's scene document of
+the world (`.msave`); to resume, load it into a fresh world.
 
 ## Editor protocol
 
@@ -209,10 +365,12 @@ Specified in [editor-domain.md](editor-domain.md).
 
 | Piece | State |
 |---|---|
-| `substrate-data` crates | done (separate repository) |
+| `substrate-data` crates | done (separate repository; 0.3.x on crates.io) |
 | `data` feature on `numeric`/`gac` | done |
-| `meridian-data-substrate` (registry, `.mscene` load/save, `describe()`) | done (text form; hierarchy as `meridian-data-substrate::Parent` until `ecs` has one) |
-| `.mscene` binary form, patching an existing file on save | not implemented |
-| `.mprefab`, `.meta`, `.msave`, `.mpak` | designed, not implemented |
+| `meridian-data-substrate` (registry, `.mscene` text and binary load/save, `describe()`) | done (hierarchy as `meridian-data-substrate::Parent` until `ecs` has one) |
+| `.mprefab` (load, instancing with whole-component overrides, nesting, cycle and depth checks, `PrefabSource` port, text and binary save) | done; field-level overrides, patching an instance's edits back, and a scene `parent` naming a generated entity are later |
+| `.msave` envelope (`format`/`game`/`created`/`scene`/`state`, lazy header and scene) | done; scene is full, a delta is a later `format` |
+| patching an existing `.mscene` file on save | not implemented |
+| `.meta`, `.mpak` | designed, not implemented |
 | `meridian-editor-domain` (messages, framing, golden-pinned wire) | done |
 | `meridian-editor-app` (session, ports), `meridian-editor-tcp` (loopback TCP) | done; not yet wired into `runtime-app`'s frame loop |

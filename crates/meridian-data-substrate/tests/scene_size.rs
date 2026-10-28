@@ -50,11 +50,14 @@ fn a_big_scene_is_much_smaller_in_binary_and_reads_back_equal() {
     let (world, scene) = generated(10_000);
     let text = reg.save_scene(&world, &scene);
     let bytes = reg.save_scene_binary(&world, &scene);
+    let compact = substrate_data::text::to_string(&reg.scene_document(&world, &scene));
     println!(
-        "10k entities: text {} bytes, binary {} bytes ({:.1}%)",
+        "10k entities: pretty text {} bytes, compact text {} bytes, binary {} bytes ({:.1}% of pretty, {:.1}% of compact)",
         text.len(),
+        compact.len(),
         bytes.len(),
-        100.0 * bytes.len() as f64 / text.len() as f64
+        100.0 * bytes.len() as f64 / text.len() as f64,
+        100.0 * bytes.len() as f64 / compact.len() as f64
     );
     assert!(bytes.len() * 3 < text.len());
     let mut again = World::new();

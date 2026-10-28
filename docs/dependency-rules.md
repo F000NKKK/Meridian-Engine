@@ -86,7 +86,10 @@ the host, and the generated code itself names only `meridian_sdk`.
 `meridian-data-substrate` is scene serialization on Substrate Data (see
 [ADR 016](adr/016-data-formats-on-substrate-data.md) and
 [data-formats.md](data-formats.md)): an application-built
-`ComponentRegistry` and `.mscene` load/save into an `ecs::World`. It
+`ComponentRegistry` and `.mscene` (text and binary), `.mprefab` and `.msave`
+load/save into an `ecs::World`; prefab bytes come through the
+`PrefabSource` port the application implements (this crate has no
+filesystem). It
 depends on `ecs` (the `World` it fills) and on `gac` with its
 optional `data` feature (`Motor3`'s schema, for `Transform`), plus the
 external `substrate-data`. It sits *above* `ecs` on purpose, so
