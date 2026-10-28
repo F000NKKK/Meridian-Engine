@@ -2,6 +2,7 @@
 
 use meridian_platform_winit::{BackendCapabilities, CpuCapabilities, GpuCapabilities};
 
+use crate::surface::SurfaceTarget;
 use crate::{BufferUsage, CommandBuffer, DeviceError, Surface};
 
 /// A windowed-capable GPU device. Wraps [`meridian_gpu_wgpu::Device`]
@@ -58,7 +59,7 @@ impl Device {
         Ok((
             Self(device),
             Surface {
-                raw: surface,
+                target: SurfaceTarget::Window(surface),
                 config,
             },
         ))
@@ -111,9 +112,7 @@ impl Device {
     /// Opens a new [`CommandBuffer`](crate::CommandBuffer) for recording. Nothing reaches the
     /// GPU until [`CommandBuffer::submit`](crate::CommandBuffer::submit) is called.
     pub fn create_command_buffer(&self) -> CommandBuffer<'_> {
-        CommandBuffer {
-            inner: self.0.create_command_buffer(),
-        }
+        CommandBuffer::new(self.0.create_command_buffer())
     }
 }
 

@@ -40,6 +40,7 @@ mod patch;
 mod prefab;
 mod read;
 mod registry;
+mod rendering;
 mod save;
 mod scene_view;
 mod scene_writer;
@@ -60,6 +61,7 @@ pub use prefab::{
 pub use registry::{
     ComponentEditError, ComponentRegistry, ComponentShape, RegisterError, UnknownComponents,
 };
+pub use rendering::{LightCodec, LightForm, LightKindForm, register_rendering};
 pub use save::{LoadedSave, SaveError, SaveHeader};
 pub use scene_view::SceneView;
 pub use transform_form::{TransformCodec, TransformForm};

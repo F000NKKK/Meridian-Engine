@@ -26,7 +26,6 @@
 
 #![forbid(unsafe_code)]
 
-mod acquire_frame_error;
 mod bloom;
 mod color_format;
 mod command_buffer;
@@ -35,6 +34,7 @@ mod devices;
 mod gpu_frame_recorder;
 mod gpu_texture_store;
 mod overlay_pass;
+mod pass_profiler;
 mod render_pass;
 mod render_pipeline;
 mod shader_stages;
@@ -42,13 +42,11 @@ mod sky;
 mod sprites;
 mod submission;
 mod surface;
-mod surface_frame;
 #[cfg(test)]
 mod tests;
 mod tonemap;
 mod vertex;
 
-pub use acquire_frame_error::AcquireFrameError;
 pub use bloom::{BloomInput, BloomPass};
 pub use color_format::ColorFormat;
 pub use command_buffer::CommandBuffer;
@@ -66,6 +64,7 @@ pub use meridian_gpu_wgpu::{
     BindGroup, Buffer, BufferUsage, ComputePipeline, DeviceError, LitTextures, SampledTexture,
     Sampler, SurfaceTextures, Texture,
 };
+pub use pass_profiler::{PassProfiler, PassTiming};
 pub use render_pass::RenderPass;
 pub use render_pipeline::RenderPipeline;
 pub use shader_stages::ShaderStages;
@@ -76,7 +75,6 @@ pub use submission::{
     PreparedScene, SHADOW_DEPTH_SHADER_WGSL, SceneAssets, SceneRenderer, TEXTURED_SHADER_WGSL,
     TextureRegistry, UNLIT_SHADER_WGSL, submit_scene3d,
 };
-pub use surface::Surface;
-pub use surface_frame::SurfaceFrame;
+pub use surface::{AcquireFrameError, Surface, SurfaceFrame};
 pub use tonemap::TonemapPass;
 pub use vertex::*;

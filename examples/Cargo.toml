@@ -29,6 +29,10 @@ name = "ui_scroll"
 path = "examples/ui_scroll/ui_scroll.rs"
 
 [[example]]
+name = "render_bench"
+path = "examples/render_bench/render_bench.rs"
+
+[[example]]
 name = "physic_figures"
 path = "examples/physic_figures/physic_figures.rs"
 

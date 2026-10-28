@@ -7,8 +7,8 @@ use meridian_rendering_domain::{EnvironmentMap, TextureHandle, TonemapConfig};
 use crate::overlay_pass::OverlayPass;
 use crate::{
     BloomInput, BloomPass, ColorFormat, CommandBuffer, DEFAULT_SHADOW_MAP_SIZE, DepthTexture,
-    Device, GpuTextureStore, PreparedScene, SceneAssets, SceneRenderer, SkyPass, Surface,
-    SurfaceFrame, Texture, TonemapPass, submit_scene3d,
+    Device, GpuTextureStore, PassProfiler, PassTiming, PreparedScene, SceneAssets, SceneRenderer,
+    SkyPass, Surface, SurfaceFrame, Texture, TonemapPass, submit_scene3d,
 };
 
 /// The format of the scene target the 3D passes draw into (ADR 034).
@@ -35,6 +35,8 @@ pub struct GpuFrameRecorder {
     overlays: OverlayPass,
     textures: GpuTextureStore,
     size: [u32; 2],
+    profiler: Option<PassProfiler>,
+    pass_timings: Vec<PassTiming>,
 }
 
 impl GpuFrameRecorder {
@@ -75,6 +77,8 @@ impl GpuFrameRecorder {
             overlays,
             textures,
             size: [width, height],
+            profiler: None,
+            pass_timings: Vec::new(),
         }
     }
 }
@@ -90,6 +94,7 @@ impl GpuFrameRecorder {
         frame: &SurfaceFrame,
     ) {
         {
+            commands.label_next_pass("scene (sky + meshes)");
             let mut pass = commands.begin_render_pass(
                 self.scene.view(),
                 request.clear_color,
@@ -123,6 +128,40 @@ impl GpuFrameRecorder {
             .apply(&self.device, commands, &self.scene, frame);
     }
 
+    /// The last frame as RGBA8, when this recorder draws into an offscreen
+    /// [`Surface`] (see [`Surface::offscreen`]); `None` for a window.
+    #[must_use]
+    pub fn read_pixels(&self) -> Option<Vec<u8>> {
+        self.surface.read_pixels(&self.device)
+    }
+
+    /// The width and height of the frames it draws.
+    #[must_use]
+    pub fn frame_size(&self) -> (u32, u32) {
+        (self.size[0], self.size[1])
+    }
+
+    /// The name the GPU adapter reports (e.g. `llvmpipe` for a software one).
+    #[must_use]
+    pub fn adapter_name(&self) -> &str {
+        self.device.adapter_name()
+    }
+
+    /// Starts timing every render pass on the GPU, when the device offers
+    /// timestamp queries; returns whether it does. Each frame then waits for
+    /// the GPU to read its times back, so leave it off outside measuring.
+    pub fn enable_profiling(&mut self) -> bool {
+        self.profiler = PassProfiler::new(&self.device);
+        self.profiler.is_some()
+    }
+
+    /// GPU time per named pass of the last frame (empty unless
+    /// [`enable_profiling`](Self::enable_profiling) succeeded).
+    #[must_use]
+    pub fn pass_timings(&self) -> &[PassTiming] {
+        &self.pass_timings
+    }
+
     /// Replaces the exposure and tone curve applied to the next frames.
     pub fn set_tonemap(&mut self, config: TonemapConfig) {
         self.tonemap.config = config;
@@ -136,7 +175,10 @@ impl FrameRecorder for GpuFrameRecorder {
     /// it, and reports [`FrameOutcome::TargetUnavailable`] instead of leaving a
     /// gray window.
     fn record_frame(&mut self, request: &FrameRequest<'_>) -> FrameOutcome {
-        let mut commands = self.device.create_command_buffer();
+        let mut commands = self
+            .device
+            .create_command_buffer()
+            .with_profiler(self.profiler.as_ref());
         let prepared = self.renderer.render_shadow_pass(
             &self.device,
             &mut commands,
@@ -166,6 +208,9 @@ impl FrameRecorder for GpuFrameRecorder {
         self.draw_scene(&mut commands, request, &prepared, &frame);
         self.overlays.draw(&mut commands, &frame, &overlays);
         commands.submit();
+        if let Some(profiler) = &self.profiler {
+            self.pass_timings = profiler.collect(&self.device);
+        }
         frame.present(&self.device);
         FrameOutcome::Presented
     }

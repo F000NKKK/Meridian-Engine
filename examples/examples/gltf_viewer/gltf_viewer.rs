@@ -22,10 +22,11 @@ fn main() {
         .nth(2)
         .and_then(|text| text.parse().ok())
         .unwrap_or(2.6);
+    let (width, height) = meridian_examples::app_main::window_size();
     run_windowed_app(
         "Meridian Engine — glTF Viewer",
-        1024,
-        768,
+        width,
+        height,
         App::new(path, distance),
     )
     .expect("windowed app exited with an error");

@@ -6,3 +6,4 @@
 # Runtime diagnostics output (unified logging / crash reporting)
 logs/
 crashes/
+examples/assets/models/
