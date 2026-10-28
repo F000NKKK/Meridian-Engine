@@ -1,6 +1,7 @@
 //! The lit WGSL shaders and the light limit they are compiled for.
 
 use super::environment_shader::ENVIRONMENT_WGSL;
+use super::shadow_lookup_shader::SHADOW_LOOKUP_WGSL;
 
 /// The uniform array's fixed capacity — see the module doc.
 pub const MAX_LIGHTS: usize = 4;
@@ -8,8 +9,8 @@ pub const MAX_LIGHTS: usize = 4;
 /// Shared by every lit shader: the `Uniforms` struct layout (view-proj,
 /// the shadow cascades' light-space view-projections, camera position, hemisphere
 /// ambient, light count/array, which light index casts the shadow) plus
-/// the metallic-roughness `shade` helper and the light-space projection helper
-/// every shadow lookup shares. WGSL has no `#include`, so this text is
+/// the metallic-roughness `shade` helper. The shadow lookup is its own text,
+/// `shadow_lookup_shader`. WGSL has no `#include`, so this text is
 /// spliced verbatim into each lit shader constant below — keeping one
 /// source of truth here rather than hand-duplicating it at each call
 /// site. The shadow *map*/*sampler* bindings themselves are declared per
@@ -17,9 +18,9 @@ pub const MAX_LIGHTS: usize = 4;
 /// use different binding numbers for their own resources (the textured
 /// shader's albedo texture/sampler occupy bindings 1/2), so the shadow
 /// map/sampler can't share one fixed binding number across both; each
-/// flavor's own `compute_shadow_factor` wraps its own declarations and
-/// hands `shade` a plain `f32`, keeping this shared text binding-number-
-/// agnostic.
+/// flavor's `compute_shadow_factor` (in `shadow_lookup_shader`) reads those
+/// declarations and hands `shade` a plain `f32`, keeping this shared text
+/// binding-number-agnostic.
 const LIT_UNIFORMS_AND_SHADING_WGSL: &str = r#"
 struct LightData {
     // xyz: direction (kind 0) or world position (kind 1); w: kind (0 = directional, 1 = point).
@@ -67,37 +68,6 @@ var<uniform> u: Uniforms;
 fn hemisphere_ambient(world_normal: vec3<f32>) -> vec3<f32> {
     let t = world_normal.y * 0.5 + 0.5;
     return mix(u.ambient_ground.rgb, u.ambient_sky.rgb, t);
-}
-
-/// Where `world_pos` lands in the shadow atlas (ADR 037): `xy` is the atlas
-/// UV inside the cascade chosen by its view distance, `z` the biased
-/// light-space depth to compare, `w` 1 when the point is inside that
-/// cascade's map and 0 when it needs no shadow lookup. The atlas is a 2 x 2
-/// grid of tiles, `tile` texels per side; the lookup stays one texel inside
-/// its tile so the filter never reads a neighbour. Shared by every shader
-/// flavor's own `compute_shadow_factor` (declared per-flavor below, since
-/// each names its own `shadow_map`/`shadow_sampler` bindings).
-fn shadow_atlas_lookup(world_pos: vec3<f32>, n_dot_l: f32, tile: f32) -> vec4<f32> {
-    let view_depth = (u.view_proj * vec4<f32>(world_pos, 1.0)).w;
-    var cascade = 0u;
-    if (view_depth > u.cascade_far.x) { cascade = 1u; }
-    if (view_depth > u.cascade_far.y) { cascade = 2u; }
-    if (view_depth > u.cascade_far.z) { cascade = 3u; }
-    let clip = u.light_view_proj[cascade] * vec4<f32>(world_pos, 1.0);
-    let ndc = clip.xyz / clip.w;
-    let uv = vec2<f32>(ndc.x * 0.5 + 0.5, 1.0 - (ndc.y * 0.5 + 0.5));
-    // Slope-scaled bias, counted in shadow texels: a surface nearly edge-on
-    // to the light (small `n_dot_l`) needs a much bigger depth push than one
-    // facing it, or it reads as "acne" (false self-shadow stripes from the
-    // map's own texel quantization). The base term alone still matters for
-    // a face exactly perpendicular to the light, where the slope term is 0.
-    let bias = max(3.3, 24.6 * (1.0 - n_dot_l)) * u.cascade_texel_depth[cascade];
-    let inside = uv.x >= 0.0 && uv.x <= 1.0 && uv.y >= 0.0 && uv.y <= 1.0
-        && ndc.z >= 0.0 && ndc.z <= 1.0 && view_depth <= u.cascade_far.w;
-    let margin = 1.0 / tile;
-    let in_tile = clamp(uv, vec2<f32>(margin), vec2<f32>(1.0 - margin));
-    let origin = vec2<f32>(f32(cascade & 1u), f32(cascade >> 1u));
-    return vec4<f32>((origin + in_tile) * 0.5, ndc.z - bias, select(0.0, 1.0, inside));
 }
 
 const PI: f32 = 3.14159265;
@@ -198,15 +168,6 @@ var env_map: texture_2d<f32>;
 @group(0) @binding(4)
 var env_sampler: sampler;
 
-// The bias is slope-scaled, see `shadow_atlas_lookup`.
-fn compute_shadow_factor(world_pos: vec3<f32>, world_normal: vec3<f32>) -> f32 {
-    let n_dot_l = max(dot(normalize(world_normal), normalize(-u.light_direction.xyz)), 0.0);
-    let tile = f32(textureDimensions(shadow_map).x / 2u);
-    let lookup = shadow_atlas_lookup(world_pos, n_dot_l, tile);
-    let lit = textureSampleCompare(shadow_map, shadow_sampler, lookup.xy, lookup.z);
-    return mix(1.0, lit, lookup.w);
-}
-
 struct VertexInput {
     @location(0) position: vec3<f32>,
     @location(1) normal: vec3<f32>,
@@ -255,7 +216,9 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
 /// [`UNLIT_SHADER_WGSL`](crate::submission::UNLIT_SHADER_WGSL)'s lit counterpart: metallic-roughness-shaded flat
 /// color. Used for lit materials with no resolvable albedo texture.
 pub(crate) fn lit_shader_wgsl() -> String {
-    format!("{LIT_UNIFORMS_AND_SHADING_WGSL}{ENVIRONMENT_WGSL}{LIT_COLORED_BODY_WGSL}")
+    format!(
+        "{LIT_UNIFORMS_AND_SHADING_WGSL}{ENVIRONMENT_WGSL}{SHADOW_LOOKUP_WGSL}{LIT_COLORED_BODY_WGSL}"
+    )
 }
 
 /// The lit textured fragment/vertex stage text spliced after the shared
@@ -306,14 +269,6 @@ fn perturb_normal(n: vec3<f32>, world_pos: vec3<f32>, uv: vec2<f32>, map_normal:
     t = normalize(t);
     let b = cross(n, t);
     return normalize(t * map_normal.x + b * map_normal.y + n * map_normal.z);
-}
-
-fn compute_shadow_factor(world_pos: vec3<f32>, world_normal: vec3<f32>) -> f32 {
-    let n_dot_l = max(dot(normalize(world_normal), normalize(-u.light_direction.xyz)), 0.0);
-    let tile = f32(textureDimensions(shadow_map).x / 2u);
-    let lookup = shadow_atlas_lookup(world_pos, n_dot_l, tile);
-    let lit = textureSampleCompare(shadow_map, shadow_sampler, lookup.xy, lookup.z);
-    return mix(1.0, lit, lookup.w);
 }
 
 struct VertexInput {
@@ -380,5 +335,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
 
 /// [`TEXTURED_SHADER_WGSL`](crate::submission::TEXTURED_SHADER_WGSL)'s lit counterpart.
 pub(crate) fn lit_textured_shader_wgsl() -> String {
-    format!("{LIT_UNIFORMS_AND_SHADING_WGSL}{ENVIRONMENT_WGSL}{LIT_TEXTURED_BODY_WGSL}")
+    format!(
+        "{LIT_UNIFORMS_AND_SHADING_WGSL}{ENVIRONMENT_WGSL}{SHADOW_LOOKUP_WGSL}{LIT_TEXTURED_BODY_WGSL}"
+    )
 }

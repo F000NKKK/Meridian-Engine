@@ -6,7 +6,7 @@ use super::cascade_fit::{CascadeFit, fit_cascade, texels};
 use super::cascade_frustum::ViewVolume;
 use super::directional_shadow_camera;
 use super::shadow::SHADOW_VOLUME_HALF_EXTENT;
-use crate::Camera;
+use crate::{Camera, Frustum};
 
 /// How many cascades split the view distance; the adapter lays their maps
 /// out as a 2 x 2 atlas.
@@ -62,6 +62,12 @@ impl ShadowCascades {
             depth_range: 2.0 * extent,
         };
         Self::from_fits(&[fit; SHADOW_CASCADES], [f32::MAX; SHADOW_CASCADES])
+    }
+
+    /// The volume each cascade renders, for culling casters against.
+    #[must_use]
+    pub fn frusta(&self) -> [Frustum; SHADOW_CASCADES] {
+        self.view_proj.map(Frustum::from_view_projection)
     }
 
     fn from_fits(fits: &[CascadeFit; SHADOW_CASCADES], far_edges: [f32; SHADOW_CASCADES]) -> Self {

@@ -144,3 +144,28 @@ fn the_fixed_volume_keeps_the_single_map_bias() {
     let base = 3.3 * cascades.bias_per_texel[0];
     assert!((base - 0.0008).abs() < 1e-5, "{base}");
 }
+
+fn small_box_at(center: Vec3) -> meridian_gac::Aabb {
+    let half = Vec3::new(0.25, 0.25, 0.25);
+    meridian_gac::Aabb {
+        min: center - half,
+        max: center + half,
+    }
+}
+
+#[test]
+fn frusta_keep_what_a_cascade_renders_and_drop_what_it_misses() {
+    let cascades = ShadowCascades::fit(&camera_at(Vec3::ZERO, 0.0), sun(), TILE);
+    let frusta = cascades.frusta();
+    let ahead = small_box_at(Vec3::new(2.0, 0.0, 0.0));
+    let far_aside = small_box_at(Vec3::new(0.0, 0.0, 400.0));
+    assert!(frusta[0].intersects(&ahead));
+    assert!(frusta.iter().all(|frustum| !frustum.intersects(&far_aside)));
+}
+
+#[test]
+fn a_caster_between_the_slice_and_the_light_is_kept() {
+    let cascades = ShadowCascades::fit(&camera_at(Vec3::ZERO, 0.0), sun(), TILE);
+    let overhead = small_box_at(Vec3::new(2.0, 30.0, 0.0));
+    assert!(cascades.frusta()[0].intersects(&overhead));
+}

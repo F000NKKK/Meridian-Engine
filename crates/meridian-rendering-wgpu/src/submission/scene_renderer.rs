@@ -1,5 +1,7 @@
 //! Pipelines and state that render a 3-D scene.
 
+use core::ops::Range;
+
 use meridian_rendering_domain::scene::Scene3d;
 use meridian_rendering_domain::{EnvironmentMap, ShadowLight, ViewUniforms};
 
@@ -8,8 +10,8 @@ use super::main_pipelines::{MainBindings, MainPipelines};
 use super::mesh_cache::MeshCache;
 use super::registries::NeutralTextures;
 use super::{
-    DrawKind, LIT_UNIFORM_BYTES, MAX_LIGHTS, PreparedBatch, PreparedScene, SceneAssets,
-    ShadowDepthPass, bake_batches, lit_uniform_bytes, mat4_to_bytes,
+    CascadeCasters, DrawKind, LIT_UNIFORM_BYTES, MAX_LIGHTS, PreparedBatch, PreparedScene,
+    SceneAssets, ShadowDepthPass, bake_batches, lit_uniform_bytes, mat4_to_bytes,
 };
 use crate::{
     Buffer, BufferUsage, ColorFormat, CommandBuffer, Device, RenderPass as DriverRenderPass,
@@ -229,7 +231,13 @@ impl SceneRenderer {
             device.write_buffer(&cascade.buffer, &mat4_to_bytes(view_proj));
         }
         let baked = bake_batches(device, self, scene, assets);
-        self.record_shadow_casters(commands, &baked.batches, baked.instances.as_ref());
+        let casters = CascadeCasters::cull(
+            &baked.batches,
+            &baked.records,
+            &baked.bounds,
+            &shadow.cascades.frusta(),
+        );
+        self.record_shadow_casters(commands, &baked.batches, &casters, casters.upload(device));
         PreparedScene {
             batches: baked.batches,
             instances: baked.instances,
@@ -237,26 +245,35 @@ impl SceneRenderer {
         }
     }
 
-    /// Records the depth-only pass of every shadow-casting batch.
+    /// Records the depth-only pass: each cascade draws only the casters that
+    /// reach its volume (ADR 040), from its own copy of their records.
     fn record_shadow_casters(
         &self,
         commands: &mut CommandBuffer<'_>,
         batches: &[PreparedBatch],
-        instances: Option<&Buffer>,
+        casters: &CascadeCasters,
+        records: Option<Buffer>,
     ) {
         let mut pass = commands.begin_shadow_pass(&self.shadow_map);
-        let Some(instances) = instances else {
+        let Some(records) = records else {
             return;
         };
         pass.set_pipeline(&self.shadow_depth.pipeline);
-        for (index, cascade) in (0u32..).zip(&self.shadow_depth.cascades) {
+        for (index, (cascade, runs)) in
+            (0u32..).zip(self.shadow_depth.cascades.iter().zip(&casters.runs))
+        {
             // Tile `index` of the atlas: column `index % 2`, row `index / 2`.
             let (column, row) = (index % ATLAS_TILES_PER_SIDE, index / ATLAS_TILES_PER_SIDE);
             let tile = self.tile_size;
             pass.set_viewport(column * tile, row * tile, tile, tile);
             pass.set_bind_group(0, &cascade.bind_group);
-            for batch in batches.iter().filter(|batch| batch.casts_shadow) {
-                self.draw_batch(&mut pass, batch, instances);
+            for run in runs {
+                self.draw_instances(
+                    &mut pass,
+                    &batches[run.batch],
+                    &records,
+                    run.instances.clone(),
+                );
             }
         }
     }
@@ -292,12 +309,24 @@ impl SceneRenderer {
         batch: &PreparedBatch,
         instances: &Buffer,
     ) {
+        self.draw_instances(pass, batch, instances, batch.instances.clone());
+    }
+
+    /// [`draw_batch`](Self::draw_batch) for just the records `range` of
+    /// `instances`.
+    fn draw_instances(
+        &self,
+        pass: &mut DriverRenderPass<'_>,
+        batch: &PreparedBatch,
+        instances: &Buffer,
+        range: Range<u32>,
+    ) {
         let Some(mesh) = self.meshes.get(batch.mesh) else {
             return;
         };
         pass.set_vertex_buffer(0, &mesh.vertex_buffer);
         pass.set_vertex_buffer(1, instances);
         pass.set_index_buffer_u32(&mesh.index_buffer);
-        pass.draw_indexed_instanced(0..mesh.index_count, batch.instances.clone());
+        pass.draw_indexed_instanced(0..mesh.index_count, range);
     }
 }

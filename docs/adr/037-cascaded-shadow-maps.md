@@ -58,10 +58,9 @@ which reproduces the old bias exactly for the fixed volume.
 
 - Shadows reach 100 units from the camera and are sharp near it; a scene
   centred anywhere gets them, not only one around the origin.
-- The shadow pass draws every caster four times. There is no per-cascade
-  culling yet; it is the first thing to add if shadow casting gets costly.
-- Cascade boundaries are a hard switch: no blend band, so a visible seam is
-  possible where texel density changes sharply.
+- Casters were first drawn into all four cascades, and cascade boundaries
+  were a hard switch; [ADR 040](040-per-cascade-casters-and-blending.md)
+  culls casters per cascade and blends the seam.
 - The scene camera, not the view that is drawn, fits the cascades; a second
   view drawn with another camera needs its own `render_shadow_pass`.
 - Point-light shadows and soft (PCSS) shadows are still not supported.

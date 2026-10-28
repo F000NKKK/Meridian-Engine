@@ -4,6 +4,7 @@ mod emissive_extract_shader;
 mod environment_shader;
 mod lit_shader;
 mod shadow_depth_shader;
+mod shadow_lookup_shader;
 mod textured_shader;
 mod unlit_shader;
 
