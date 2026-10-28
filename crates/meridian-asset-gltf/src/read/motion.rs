@@ -2,6 +2,7 @@
 
 use std::collections::{BTreeSet, HashMap, HashSet};
 
+use gltf::animation::Property;
 use gltf::{Document, Node};
 use meridian_asset_domain::{ModelJoint, ModelSkeleton};
 
@@ -128,11 +129,12 @@ impl Skins {
     }
 }
 
-/// Every node some animation channel targets.
+/// Every node some animation channel moves (morph weights move no node).
 fn animated_nodes(document: &Document) -> HashSet<usize> {
     document
         .animations()
         .flat_map(|animation| animation.channels())
+        .filter(|channel| channel.target().property() != Property::MorphTargetWeights)
         .map(|channel| channel.target().node().index())
         .collect()
 }

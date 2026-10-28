@@ -1,6 +1,6 @@
 //! One drawable piece of a model.
 
-use super::{ModelMaterial, PartSkin};
+use super::{ModelMaterial, PartMorph, PartSkin};
 
 /// One triangle-list primitive. A rigid part has its node transforms already
 /// applied, so it is in the model's own space and carries no matrix of its
@@ -20,4 +20,6 @@ pub struct ModelPart {
     pub material: ModelMaterial,
     /// The skeleton the vertices follow, for a skinned part.
     pub skin: Option<PartSkin>,
+    /// The blend shapes, when the part has any.
+    pub morph: Option<PartMorph>,
 }

@@ -5,8 +5,8 @@ use gltf::mesh::{Mode, Semantic};
 use meridian_asset_domain::{ModelPart, PartSkin};
 
 use crate::GltfError;
-use crate::read::material;
 use crate::read::skin::SkinMap;
+use crate::read::{material, morph};
 
 type Matrix = [[f32; 4]; 4];
 
@@ -130,6 +130,7 @@ fn load(primitive: &Primitive<'_>, buffers: &[Vec<u8>]) -> Result<ModelPart, Glt
         (0..u32::try_from(positions.len()).map_err(|_| GltfError::BadIndices)?).collect()
     };
     check(&positions, &normals, &uvs, &indices)?;
+    let positions_len = positions.len();
 
     Ok(ModelPart {
         positions,
@@ -138,6 +139,7 @@ fn load(primitive: &Primitive<'_>, buffers: &[Vec<u8>]) -> Result<ModelPart, Glt
         indices,
         material: material::read(&primitive.material()),
         skin: None,
+        morph: morph::read(primitive, buffers, positions_len)?,
     })
 }
 
@@ -150,6 +152,14 @@ fn place(part: &mut ModelPart, world: &Matrix) {
     }
     for normal in &mut part.normals {
         *normal = transform_normal(world, *normal);
+    }
+    for target in part.morph.iter_mut().flat_map(|morph| &mut morph.targets) {
+        for offset in &mut target.positions {
+            *offset = transform_vector(world, *offset);
+        }
+        for offset in &mut target.normals {
+            *offset = cofactor_transform(world, *offset);
+        }
     }
     if determinant(world) < 0.0 {
         for triangle in part.indices.chunks_exact_mut(3) {
@@ -180,15 +190,26 @@ fn transform_point(m: &Matrix, p: [f32; 3]) -> [f32; 3] {
     std::array::from_fn(|row| m[0][row] * p[0] + m[1][row] * p[1] + m[2][row] * p[2] + m[3][row])
 }
 
-/// The inverse-transpose of the upper 3x3 (its cofactor matrix), so normals
-/// stay perpendicular under non-uniform scale; renormalised afterwards.
-fn transform_normal(m: &Matrix, n: [f32; 3]) -> [f32; 3] {
+/// `v` through the upper 3x3 alone: a direction or offset, which a
+/// translation does not move.
+fn transform_vector(m: &Matrix, v: [f32; 3]) -> [f32; 3] {
+    std::array::from_fn(|row| m[0][row] * v[0] + m[1][row] * v[1] + m[2][row] * v[2])
+}
+
+/// `n` through the cofactor matrix of the upper 3x3 (the inverse-transpose
+/// up to scale), which keeps normals perpendicular under non-uniform scale.
+fn cofactor_transform(m: &Matrix, n: [f32; 3]) -> [f32; 3] {
     let at = |row: usize, col: usize| m[col][row];
     let cofactor = |i: usize, j: usize| {
         let (i1, i2, j1, j2) = ((i + 1) % 3, (i + 2) % 3, (j + 1) % 3, (j + 2) % 3);
         at(i1, j1) * at(i2, j2) - at(i1, j2) * at(i2, j1)
     };
-    let out: [f32; 3] = std::array::from_fn(|i| (0..3).map(|j| cofactor(i, j) * n[j]).sum());
+    std::array::from_fn(|i| (0..3).map(|j| cofactor(i, j) * n[j]).sum())
+}
+
+/// A normal under `m`, renormalised.
+fn transform_normal(m: &Matrix, n: [f32; 3]) -> [f32; 3] {
+    let out = cofactor_transform(m, n);
     let length = (out[0] * out[0] + out[1] * out[1] + out[2] * out[2]).sqrt();
     if length > f32::EPSILON {
         out.map(|v| v / length)

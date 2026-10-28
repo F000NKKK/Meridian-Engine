@@ -3,6 +3,7 @@
 pub(crate) mod animation;
 pub(crate) mod image;
 pub(crate) mod material;
+pub(crate) mod morph;
 pub(crate) mod motion;
 pub(crate) mod part;
 pub(crate) mod skin;

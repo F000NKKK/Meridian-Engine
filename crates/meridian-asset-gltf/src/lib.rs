@@ -12,6 +12,8 @@ mod gltf_decoder;
 mod gltf_error;
 mod limits;
 #[cfg(test)]
+mod morph_tests;
+#[cfg(test)]
 mod motion_tests;
 mod read;
 mod resources;
