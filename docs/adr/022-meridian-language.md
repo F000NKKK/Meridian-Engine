@@ -59,7 +59,7 @@ A compiled, statically typed language with one front end and several
 backends. Option 1 is the first backend and option 2 the second; both
 must agree on the semantics, as Yog's backend and interpreter do.
 
-- **Front end (`lang-core`, domain-blind).** Lexer, parser, name and type
+- **Front end (`mel-domain`, domain-blind).** Lexer, parser, name and type
   checking, ownership by value / `in` / `out` (no borrow checker over a
   GC), diagnostics with spans and stable codes. It names no engine
   concept. The same diagnostics feed the build, hot reload and the `.meui`
@@ -117,7 +117,7 @@ must agree on the semantics, as Yog's backend and interpreter do.
   files there and is hard to read and maintain.
 - **Source layout of the compiler: one concept per file.** Every
   keyword, every expression form and every statement form is its own
-  file in `lang-core`, with its lexing rule, parser, checker rule, IR
+  file in `mel-domain`, with its lexing rule, parser, checker rule, IR
   lowering and tests next to it (a directory per concept, as
   `rotor/{float,fixed}.rs` is in `gac-core`). Orchestration (pipeline
   order, pass scheduling, diagnostics collection) is separate, small and
@@ -169,7 +169,7 @@ return as editor/runtime/server if the engine needs them.
 
 ## Consequences
 
-- A new crate family (`lang-core`, a Rust backend, later a WASM backend, a
+- A new crate family (`mel-domain`, `mel-app`, `mel-rust`, later `mel-wasm` and `mel-host`, a
   host adapter, a conformance suite shared by the backends) and a
   `docs/dependency-rules.md` entry; no domain crate gains an outward edge.
 - The first implementation PR starts with a grammar document and golden
@@ -177,7 +177,9 @@ return as editor/runtime/server if the engine needs them.
   syntax.
 - Hot reload of language code is a module swap (WASM) or a program
   rebuild (Rust backend), not statement-level patching.
-- The first step is architecture, before any code: the concept trait, the
+- The architecture is in [mel-architecture.md](../mel-architecture.md) and
+  the draft grammar in [mel-grammar.md](../mel-grammar.md). The first step
+  is architecture, before any code: the concept trait, the
   pass pipeline, the port of Yog's analysis split into per-concept files,
   and the grammar document.
 - Nothing is open for the owner in this ADR now; it stays Proposed until
