@@ -41,8 +41,9 @@ pub use meridian_audio_app::{AudioScene, AudioSink, AudioSubsystem, VoiceId};
 pub use meridian_audio_cpal::{AudioStream, open_output};
 // -- meridian-audio-domain: spatial audio --
 pub use meridian_audio_domain::{
-    AcousticMedium, AttenuationModel, BinauralRenderer, Channel, Declicker, DspNode, Emitter,
-    Listener, MemorySource, Mixer, Repeat, ResampledSource, SampleSource, SpeakerLayout, Voice,
+    AcousticMedium, AttenuationCurve, AttenuationModel, BinauralRenderer, Channel, Declicker,
+    DspNode, Emitter, Listener, MemorySource, Mixer, Repeat, ResampledSource, SampleSource,
+    SpeakerLayout, Voice,
 };
 // -- meridian-compute-app: dispatch ports --
 pub use meridian_compute_app::{ComputeContext, ComputeDevice, GpuBackend};

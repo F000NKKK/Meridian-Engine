@@ -52,6 +52,7 @@ mod tests {
                 reference_distance: 1000.0,
                 rolloff: 1.0,
                 max_distance: 1000.0,
+                ..AttenuationModel::default()
             }),
         );
         audio.listener = Listener {
