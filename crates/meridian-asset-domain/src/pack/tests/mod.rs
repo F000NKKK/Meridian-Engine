@@ -3,4 +3,5 @@
 mod behavior;
 mod damage;
 mod rejects;
+mod streaming;
 mod support;

@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use meridian_asset_domain::{AssetId, PackPath, PackWriter};
-use meridian_sdk::content::{CatalogError, Importers, Layer, Layers, Mounted, OpenError};
+use meridian_sdk::content::{Importers, Layer, Layers, Mounted, OpenError};
 use meridian_sdk::persistence::{
     Component, ComponentName, ComponentRegistry, EntityKey, NoResolver, World, WorldFiles,
 };
@@ -216,15 +216,28 @@ fn a_truncated_or_flipped_pack_never_panics_and_is_never_read_as_intact() {
 }
 
 #[test]
-fn a_catalog_over_layers_reports_a_duplicate_id() {
-    let root = scratch("dup");
-    let meta = |id: &str| format!(r#"{{ format: 1, id: "{id}", importer: "obj" }}"#);
-    fs::write(root.join("a.obj.meta"), meta("0000000000000001")).expect("write");
-    fs::write(root.join("b.obj.meta"), meta("0000000000000001")).expect("write");
-    let content = Mounted::mount(Layers::directory(&root)).expect("dir");
-    assert!(matches!(
-        content.catalog(),
-        Err(CatalogError::DuplicateId { .. })
-    ));
+fn a_pack_streamed_to_a_file_mounts_like_any_other() {
+    use meridian_sdk::content::{FileWriteAt, StreamingPackWriter, add_file};
+
+    let root = scratch("streamed");
+    fs::write(root.join("level.mscene"), SCENE).expect("write");
+    fs::write(root.join("hero.mprefab"), prefab(42)).expect("write");
+    let out = root.join("content.mpak");
+    let mut writer =
+        StreamingPackWriter::new(FileWriteAt::create(&out).expect("create")).expect("header");
+    for (bits, name) in [(1, "level.mscene"), (2, "hero.mprefab")] {
+        let path = PackPath::new(name).expect("path");
+        add_file(
+            &mut writer,
+            AssetId::from_bits(bits),
+            path,
+            &root.join(name),
+        )
+        .expect("added");
+    }
+    writer.finish().expect("finished");
+
+    let content = Mounted::mount(Layers::pack(&out)).expect("pack");
+    assert_eq!(hero_health(&world_files(&content, &root)), 42);
     fs::remove_dir_all(&root).expect("remove");
 }

@@ -104,8 +104,9 @@ the optional external `substrate-data` dependency.
 `meridian-asset-domain` also holds Meridian's own asset formats, `.meta` and
 `.mpak` ([data-formats.md](data-formats.md)). They take the external
 `substrate-data` and `thiserror` and add no internal edge; the `ReadAt` port
-the pack is read through is owned here, implemented by `asset-fs`
-(`FileReadAt`, hence its edge to this crate) and served to the loader by
+the pack is read through (and the `WriteAt` port it is streamed out through)
+is owned here, implemented by `asset-fs` (`FileReadAt`, `FileWriteAt`, hence
+its edge to this crate) and served to the loader by
 `asset-app`'s `PackSource`. `asset-app` owns the importer registry and the
 asset catalog (application wiring over the domain's `Decoder` and `AssetMeta`;
 `thiserror` is its only external dependency), and `meridian-resource` owns

@@ -17,7 +17,10 @@ pub use meridian_asset_app::{
     ImportFailure, Importer, ImporterRegistry, MetaReadError, OverlaySource, PackSource,
     RegisterError, read_meta,
 };
-pub use meridian_asset_domain::{AssetId, AssetMeta, ImporterName};
+pub use meridian_asset_domain::{
+    AssetId, AssetMeta, ImporterName, PackPath, PackWriter, StreamingPackWriter,
+};
+pub use meridian_asset_fs::{AddFileError, FileWriteAt, add_file};
 pub use meridian_memory::{Handle, ResourcePool};
 pub use meridian_resource::{BindError, Binding, ResourceId, ResourceIdTable};
 pub use mounted::Mounted;

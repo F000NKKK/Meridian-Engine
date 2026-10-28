@@ -15,7 +15,7 @@ stay `asset-domain` decoders and are not covered here.
 | `*.mprefab` | text or binary | `meridian-data-substrate` | a reusable entity tree, instanced by a scene |
 | `*.meta` | text or binary | `meridian-asset-domain` | an asset's stable id, importer, import settings and dependencies |
 | `*.msave` | binary | envelope: `meridian-data-substrate`; `state`: the game | a save: the world's scene document + game state |
-| `*.mpak` | binary (`MPAK` envelope; index is `SDAT`) | `meridian-asset-domain` (read: `PackSource` in `asset-app`, `FileReadAt` in `asset-fs`) | cooked content pack: payload blobs + index, random access by id or path |
+| `*.mpak` | binary (`MPAK` envelope; index is `SDAT`) | `meridian-asset-domain` (read: `PackSource` in `asset-app`, `FileReadAt` in `asset-fs`; streamed write: `FileWriteAt`, `add_file` in `asset-fs`) | cooked content pack: payload blobs + index, random access by id or path |
 | editor protocol | frames over a socket | `meridian-editor-domain` (host: `meridian-editor-app` + `meridian-editor-tcp`) | engine ↔ IDE messages |
 
 Text and binary of one file kind share an extension: readers detect
@@ -494,8 +494,33 @@ file exactly, is capped at `MAX_INDEX_LEN` (256 MiB), and an entry's size
 was checked against the payload area before its buffer is made.
 
 **Writing.** `PackWriter::add(id, path, bytes)` then `finish()`: header,
-payloads in the order added, index. It builds in memory; a streaming writer
-for packs larger than memory is the build tool's adapter, not this crate.
+payloads in the order added, index. It builds in memory.
+`StreamingPackWriter` writes the same bytes for packs larger than memory,
+through the `WriteAt` port (`write_at(offset, bytes)`, the write twin of
+`ReadAt`; `Vec<u8>` implements it, `meridian_asset_fs::FileWriteAt` does for a
+file). The header comes first in the file but holds the index's place and
+CRC-32, known only at the end, so the writer reserves 32 zero bytes (not a
+valid header), streams the payloads after them with each asset's CRC-32
+computed as its chunks pass, writes the index after the last payload and
+then the header over the reserved bytes. That is why the sink is positioned
+rather than forward-only, and why a file abandoned or failed halfway never
+opens as a pack (`BadMagic`). An asset is written whole (`add`) or in
+chunks (`begin`, `write`, `end`); memory held is the entry list and one
+chunk. For the same assets in the same order the bytes are identical to
+`PackWriter`'s (tested for any chunking). Errors are `PackWriteError`:
+`Build` (duplicate id or path, refused at `begin` before anything is
+written), `Sink(WriteAtError)`, `AssetOpen`, `NoAssetOpen`, `TooLarge`; after
+any error the writer is dropped and the output discarded.
+`meridian_asset_fs::add_file(writer, id, path, file)` copies a file in 64 KiB
+chunks.
+
+**Build tool.** There is no command-line crate in the workspace yet, so no
+`mpak` command ships: a build tool is a loop over `AssetCatalog::scan` of the
+source directory (ids and paths from the `.meta` files) that calls `add_file`
+for each asset and its `.meta`, then `finish()` and `FileWriteAt::sync`. The
+pieces are re-exported by `meridian_sdk::content`; a CLI crate (layer
+interface, depending on `asset-fs`) is a later addition, not part of this
+change.
 
 **Versioning, and the lossless upgrade rule.** Readers accept every
 envelope version up to `PACK_VERSION` (1) and every Substrate Data binary
@@ -699,6 +724,6 @@ Specified in [editor-domain.md](editor-domain.md).
 | `meridian-sdk` `WorldFiles` + `AssetPrefabSource` (scene, prefab and save by path over the asset layer) | done; not yet driven by `runtime-app`'s frame loop |
 | patching an existing `.mscene` file on save | not implemented |
 | `.meta` (`AssetMeta`: id, importer, settings, dependencies; text and binary; version rule) | done in `asset-domain`; read by `ImporterRegistry`/`load_imported`, `AssetCatalog` (`asset-app`) and `ResourceIdTable` (`resource`); the sdk registers the shipped importers |
-| `.mpak` (`PackWriter`, `PackReader`, `upgrade_pack`; `PackSource`, `FileReadAt`) | done; the `sdk` picks a directory, packs or a stack of them at startup (`content::Layers`, `Mounted`); no streaming writer or build-tool command yet |
+| `.mpak` (`PackWriter`, `PackReader`, `upgrade_pack`; `PackSource`, `FileReadAt`) | done; the `sdk` picks a directory, packs or a stack of them at startup (`content::Layers`, `Mounted`); `StreamingPackWriter` (+ `WriteAt`, `FileWriteAt`, `add_file`) writes a pack without holding it; no build-tool CLI crate exists yet (recipe above) |
 | `meridian-editor-domain` (messages, framing, golden-pinned wire) | done |
 | `meridian-editor-app` (session, ports), `meridian-editor-tcp` (loopback TCP) | done; not yet wired into `runtime-app`'s frame loop |

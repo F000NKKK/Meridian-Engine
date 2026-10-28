@@ -761,8 +761,10 @@ the rest are not started.
    [data-formats.md](data-formats.md#how-a-world-is-saved-and-restored)).
    **Not yet done:** a state-level `.msave` delta (a later `format`),
    saving a despawned or reparented generated entity,
-   wiring the editor host into `runtime-app`'s frame loop, and a `.mpak`
-   build-tool command (streaming writer). **Asset formats:** `.meta` (stable
+   wiring the editor host and the mounted content (`content::Mounted`) into
+   `runtime-app`'s frame loop (the team that owns it), and a `.mpak`
+   build-tool command (no CLI crate exists; the streaming writer it needs
+   is done). **Asset formats:** `.meta` (stable
    `AssetId`, importer, settings, dependencies) and `.mpak` (checksummed
    payloads + an SDAT index, random access by id or path, versioned
    envelope with a lossless upgrade) are done in `meridian-asset-domain`;
@@ -775,7 +777,10 @@ the rest are not started.
    (`AssetId` to runtime identity, bound by the loading code), and the sdk's
    `content::Importers` registers the shipped importers, while
    `content::Layers`/`Mounted` choose a directory, packs or a stack of them
-   (`asset-app`'s `OverlaySource`) at startup. **Wired into the sdk:** `meridian_sdk::persistence::WorldFiles` loads and
+   (`asset-app`'s `OverlaySource`) at startup. `asset-domain`'s
+   `StreamingPackWriter` (over the `WriteAt` port, `asset-fs`'s `FileWriteAt`
+   and `add_file`) writes a pack without holding it in memory, byte-identical
+   to `PackWriter`. **Wired into the sdk:** `meridian_sdk::persistence::WorldFiles` loads and
    saves `.mscene`/`.mprefab`/`.msave` by path, with `AssetPrefabSource`
    implementing `PrefabSource` over `asset-app`'s `AssetLoader` (reads on the
    background pool, ADR 027); a write port (`ByteSink`) is later.

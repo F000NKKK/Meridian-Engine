@@ -4,7 +4,7 @@ File-system adapter for `meridian-asset-app`: reads asset bytes from a directory
 
 **Layer and context:** infrastructure · assets
 
-- **For:** `FsSource`, a `ByteSource` rooted at a directory, and `FileReadAt`, a file as the `ReadAt` a `.mpak` is read through (by range, not whole). A path that would leave the root (`..`, an absolute path) is rejected, not read.
+- **For:** `FsSource`, a `ByteSource` rooted at a directory, `FileReadAt`, a file as the `ReadAt` a `.mpak` is read through (by range, not whole), and `FileWriteAt` with `add_file`, a file as the `WriteAt` a `.mpak` is streamed out through (chunked, never held whole). A path that would leave the root (`..`, an absolute path) is rejected, not read.
 - **Not for:** decoding, threads, or network sources; the port and the loader are `meridian-asset-app`.
 
 ## Usage

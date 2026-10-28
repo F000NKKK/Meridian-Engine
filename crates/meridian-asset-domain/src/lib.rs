@@ -15,7 +15,8 @@
 //! Meridian's own asset formats are here too, on Substrate Data and with
 //! typed errors: [`AssetMeta`] (the `.meta` sidecar: stable [`AssetId`],
 //! importer, settings, dependencies) and the `.mpak` pack ([`PackWriter`],
-//! [`PackReader`] over the [`ReadAt`] port, [`upgrade_pack`]); see
+//! [`StreamingPackWriter`] over the [`WriteAt`] port, [`PackReader`] over the
+//! [`ReadAt`] port, [`upgrade_pack`]); see
 //! docs/data-formats.md.
 //! Formats are identified by leading magic bytes ([`AudioFormat::detect`],
 //! [`ImageFormat::detect`]), never by file extension.
@@ -54,7 +55,8 @@ pub use model::{EncodedImage, ModelAsset, ModelMaterial, ModelPart};
 pub use obj_decoder::ObjDecoder;
 pub use pack::{
     MAX_INDEX_LEN, PACK_MAGIC, PACK_VERSION, PackBuildError, PackEntry, PackError, PackPath,
-    PackPathError, PackReader, PackWriter, ReadAt, ReadAtError, upgrade_pack,
+    PackPathError, PackReader, PackWriteError, PackWriter, ReadAt, ReadAtError,
+    StreamingPackWriter, WriteAt, WriteAtError, upgrade_pack,
 };
 pub use shader_source::ShaderSource;
 pub use shader_source_decoder::ShaderSourceDecoder;

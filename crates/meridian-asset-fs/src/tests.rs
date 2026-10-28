@@ -1,31 +1,11 @@
 //! `FsSource` against a scratch directory.
 
 use std::fs;
-use std::path::PathBuf;
 
 use meridian_asset_app::{AssetListing, AssetPath, ByteSource, SourceError};
 
 use super::{FileReadAt, FsSource};
-
-/// A fresh empty directory under the system temp dir, removed on drop.
-struct Scratch(PathBuf);
-
-impl Scratch {
-    /// `test` keeps the directories of parallel tests apart.
-    fn new(test: &str) -> Self {
-        let dir =
-            std::env::temp_dir().join(format!("meridian-asset-fs-{}-{test}", std::process::id()));
-        fs::create_dir_all(&dir).expect("create scratch dir");
-        Self(dir)
-    }
-}
-
-impl Drop for Scratch {
-    fn drop(&mut self) {
-        let removed = fs::remove_dir_all(&self.0);
-        debug_assert!(removed.is_ok(), "scratch dir removal");
-    }
-}
+use crate::scratch::Scratch;
 
 #[test]
 fn reads_a_file_under_the_root_including_subdirectories() {
