@@ -607,7 +607,10 @@ Binary only, always a map in this key order:
 - `state` is the game's: `save_game::<T: Schema>` writes any type through
   its own schema, straight, so a `substrate_data::Stream` in it (voxel
   chunks, a recorded input log) stays a stream in the file and is read one
-  item at a time.
+  item at a time. Since Substrate Data 0.4 loading does not walk the
+  stream: `Stream::iter()` yields a `Result` per item, so a damaged item
+  surfaces (with its index and offset) when the game iterates, or earlier
+  through `Stream::validate()`.
 
 ```rust
 let header = SaveHeader::new("my-game", created_unix_seconds);
