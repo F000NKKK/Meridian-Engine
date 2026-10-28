@@ -3,7 +3,7 @@
 
 use meridian_data_substrate::{AssetKey, MeshReference};
 use meridian_ecs::{Entity, World};
-use meridian_rendering_domain::{MaterialHandle, MeshHandle, MeshRenderer};
+use meridian_rendering_domain::{MaterialHandle, MeshHandle, MeshRenderer, TextureHandle};
 
 use super::EditorRenderer;
 use crate::GraphicsSession;
@@ -19,6 +19,33 @@ pub trait AssetBinder {
     /// The material `key` names, registered with `session`, or `None`.
     fn material(&mut self, session: &mut GraphicsSession, key: &AssetKey)
     -> Option<MaterialHandle>;
+
+    /// The texture `key` names, uploaded as `slot` needs (colour data as
+    /// sRGB, the rest linear), or `None`. A binder with no textures keeps
+    /// this default.
+    fn texture(
+        &mut self,
+        _session: &mut GraphicsSession,
+        _key: &AssetKey,
+        _slot: TextureSlot,
+    ) -> Option<TextureHandle> {
+        None
+    }
+}
+
+/// Which input of a material a texture feeds, and so how it is uploaded.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TextureSlot {
+    /// Base colour (sRGB data).
+    Albedo,
+    /// Roughness in green, metalness in blue (linear data).
+    MetallicRoughness,
+    /// Tangent-space normals (linear data).
+    Normal,
+    /// Occlusion in red (linear data).
+    Occlusion,
+    /// Emitted colour (sRGB data).
+    Emissive,
 }
 
 /// A reference no binder could resolve, with the entity that holds it.

@@ -71,6 +71,13 @@ Every field but `format` is optional; a file that says nothing is a grey
 dielectric. Added fields are optional with defaults; `format` changes only for
 a breaking change.
 
+Loading: the `material` importer (`Importers::standard().materials`) reads a
+`.mmat` named by a `.mmat.meta` (`importer: "material"`); the sdk's
+`bind_material` turns the `MaterialAsset` into a runtime `Material`, asking an
+`AssetBinder` for each texture (uploaded sRGB for `albedo`/`emissive_map`,
+linear for the others), and `EditorRenderer::thumbnail_material_file` previews
+the file on a sphere.
+
 ## Math values
 
 With the `data` feature, `numeric` and `gac` implement

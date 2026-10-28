@@ -179,3 +179,22 @@ fn a_metal_thumbnail_has_a_dark_backdrop_and_a_bright_reflection() {
     let world = World::new();
     assert!(renderer.render(&world, &EditorCamera::default()).is_some());
 }
+
+#[test]
+fn a_material_file_is_previewed_and_a_damaged_one_is_refused() {
+    use meridian_sdk::{BuiltinAssets, ThumbnailError};
+
+    let Some(mut renderer) = renderer() else {
+        return;
+    };
+    let mut binder = BuiltinAssets::default();
+    let file = b"{ format: 1, base_color: [1, 0.77, 0.34, 1], metallic: 1, roughness: 0.3 }";
+    let pixels = renderer
+        .thumbnail_material_file(file, &mut binder, 64)
+        .expect("a preview");
+    assert!(varied(&pixels));
+    let err = renderer
+        .thumbnail_material_file(b"{ format: 1, sheen: 2 }", &mut binder, 64)
+        .unwrap_err();
+    assert!(matches!(err, ThumbnailError::Material(_)), "{err}");
+}

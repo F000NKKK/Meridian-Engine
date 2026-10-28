@@ -2,8 +2,9 @@
 
 use meridian_asset_app::{ImporterRegistry, RegisterError};
 use meridian_asset_domain::{
-    AudioClip, BmpDecoder, ImageAsset, ImporterName, ImporterNameError, MeshAsset, ModelAsset,
-    ObjDecoder, ShaderSource, ShaderSourceDecoder, WavDecoder,
+    AudioClip, BmpDecoder, ImageAsset, ImporterName, ImporterNameError, MaterialAsset,
+    MaterialDecoder, MeshAsset, ModelAsset, ObjDecoder, ShaderSource, ShaderSourceDecoder,
+    WavDecoder,
 };
 use meridian_asset_gltf::GltfDecoder;
 use meridian_asset_jpeg::JpegDecoder;
@@ -24,6 +25,7 @@ use crate::any_image_decoder::AnyImageDecoder;
 /// | `images` | [`ImageAsset`] | `image` (by magic), `bmp`, `png`, `jpeg` |
 /// | `meshes` | [`MeshAsset`] | `obj` |
 /// | `models` | [`ModelAsset`] | `gltf` |
+/// | `materials` | [`MaterialAsset`] | `material` |
 /// | `shaders` | [`ShaderSource`] | `wgsl` |
 /// | `audio` | [`AudioClip`] | `audio` (by magic), `wav` |
 #[derive(Debug)]
@@ -34,6 +36,8 @@ pub struct Importers {
     pub meshes: ImporterRegistry<MeshAsset>,
     /// Models with materials and textures.
     pub models: ImporterRegistry<ModelAsset>,
+    /// Material files (`.mmat`).
+    pub materials: ImporterRegistry<MaterialAsset>,
     /// Shader sources.
     pub shaders: ImporterRegistry<ShaderSource>,
     /// Decoded audio.
@@ -57,6 +61,8 @@ impl Importers {
         meshes.register_decoder(name("obj")?, ObjDecoder)?;
         let mut models = ImporterRegistry::new();
         models.register_decoder(name("gltf")?, GltfDecoder)?;
+        let mut materials = ImporterRegistry::new();
+        materials.register_decoder(name("material")?, MaterialDecoder)?;
         let mut shaders = ImporterRegistry::new();
         shaders.register_decoder(name("wgsl")?, ShaderSourceDecoder)?;
         let mut audio = ImporterRegistry::new();
@@ -66,6 +72,7 @@ impl Importers {
             images,
             meshes,
             models,
+            materials,
             shaders,
             audio,
         })
