@@ -10,7 +10,7 @@ use super::{EditorCamera, EditorRenderer, ThumbnailError, ThumbnailSubject};
 
 /// Bumped whenever a thumbnail would look different for the same asset, so a
 /// cache keyed with it drops its old images.
-pub const THUMBNAIL_RENDERER_VERSION: u32 = 1;
+pub const THUMBNAIL_RENDERER_VERSION: u32 = 2;
 
 impl EditorRenderer {
     /// A `size` x `size` RGBA8 preview of `subject` under the neutral sky, from
@@ -97,7 +97,7 @@ impl EditorRenderer {
         let before = self.size;
         self.resize(size, size);
         scene.camera = EditorCamera::framing(center, radius).camera(1.0);
-        let pixels = self.render_scene(scene).map(<[u8]>::to_vec);
+        let pixels = self.render_studio(scene);
         self.resize(before.0, before.1);
         pixels
     }

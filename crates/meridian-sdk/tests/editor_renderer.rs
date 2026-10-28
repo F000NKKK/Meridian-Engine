@@ -156,3 +156,26 @@ fn ball_entity(world: &World) -> meridian_ecs::Entity {
         .next()
         .expect("one entity is bound")
 }
+
+#[test]
+fn a_metal_thumbnail_has_a_dark_backdrop_and_a_bright_reflection() {
+    let Some(mut renderer) = renderer() else {
+        return;
+    };
+    let gold = Material {
+        base_color_factor: [1.0, 0.77, 0.34, 1.0],
+        metallic: 1.0,
+        roughness: 0.25,
+        ..Material::default()
+    };
+    let pixels = renderer
+        .thumbnail(meridian_sdk::ThumbnailSubject::Material(gold), 96)
+        .expect("a thumbnail");
+    let luma = |at: usize| u32::from(pixels[at * 4]) + u32::from(pixels[at * 4 + 1]);
+    assert!(luma(0) < 150, "the backdrop is dark");
+    let brightest = (0..96 * 96).map(luma).max().unwrap_or(0);
+    assert!(brightest > 350, "the key light shows in the metal");
+    // The viewport sky comes back after a thumbnail.
+    let world = World::new();
+    assert!(renderer.render(&world, &EditorCamera::default()).is_some());
+}

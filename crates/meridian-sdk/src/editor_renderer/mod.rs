@@ -6,6 +6,7 @@ mod camera;
 mod error;
 mod framing;
 mod renderer;
+mod studio;
 mod subject;
 mod thumbnail;
 mod thumbnail_error;
