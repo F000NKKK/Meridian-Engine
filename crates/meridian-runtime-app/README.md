@@ -4,7 +4,7 @@ Runtime use cases: stages run in dependency order through a job-executor port, t
 
 **Layer and context:** application · runtime
 
-- **For:** `Runtime` and `Stage`s run in dependency order through the `JobExecutor` port, `Shared` state handles, `EventSystem`, `PhysicsStepStage` and `ComputeStage`.
+- **For:** `Runtime` and `Stage`s run in dependency order through the `JobExecutor` port, `Shared` state handles, `EventSystem`, `PhysicsStepStage`, `TransformStage` and `ComputeStage`.
 - **Not for:** owning application state or naming adapters (ADR 025): threads come from `meridian-runtime-threads`, physics steppers from `meridian-physics-app` and `meridian-physics-wgpu`, subsystem algorithms from the `*-core` crates.
 
 ## Usage

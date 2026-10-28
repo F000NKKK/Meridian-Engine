@@ -12,6 +12,7 @@ readme = "README.md"
 meridian-audio-app = { workspace = true }
 meridian-audio-domain = { workspace = true }
 meridian-diagnostics = { workspace = true }
+meridian-ecs = { workspace = true }
 meridian-physics-app = { workspace = true }
 meridian-compute-app = { workspace = true }
 

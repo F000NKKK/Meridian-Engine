@@ -1535,6 +1535,7 @@ dependencies = [
  "meridian-audio-domain",
  "meridian-compute-app",
  "meridian-diagnostics",
+ "meridian-ecs",
  "meridian-gac",
  "meridian-physics-app",
  "meridian-physics-domain",
