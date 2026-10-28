@@ -42,6 +42,16 @@ the sdk binds after loading: `EditorRenderer::bind_references` asks an
 `ground` and the material `builtin/default`) for each handle and reports
 every reference it could not resolve. Saving writes `MeshReference` back.
 
+A `mesh` that names a glTF model (`@asset:models/hero.glb`) is answered by
+`AssetBinder::model` (`GltfFolder` reads `.gltf`/`.glb` under a root folder and
+refuses keys that leave it). The model's own pieces and materials are drawn,
+so the reference's `material` is not looked up: each piece becomes a child of
+the entity that holds the reference, which is marked with `ModelPieces`.
+Picking a piece returns that entity and the selection box covers all its
+pieces. Pieces sit at the owner's frame through the hierarchy, so run
+`propagate_transforms` after the owner moves or is scaled: the pieces inherit
+the owner's scale through the hierarchy.
+
 ## Materials
 
 A `.mmat` file is one material: PBR factors and the textures they multiply.

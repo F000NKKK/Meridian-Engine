@@ -33,6 +33,19 @@ pub(crate) fn spawn(
 ) -> ModelInstance {
     let root = world.spawn();
     world.insert(root, at);
+    let pieces = attach(world, root, model, materials);
+    ModelInstance { root, pieces }
+}
+
+/// Spawns the pieces of `model` as children of the existing entity `root`,
+/// giving `root` its [`Animator`] when the model has a rig; returns the
+/// pieces in the order of [`LoadedModel::pieces`].
+pub(crate) fn attach(
+    world: &mut World,
+    root: Entity,
+    model: &LoadedModel,
+    materials: &mut MaterialRegistry,
+) -> Vec<Entity> {
     let animated = !model.rig.skeletons.is_empty() || !model.rig.animations.is_empty();
     if animated {
         world.insert(
@@ -43,7 +56,7 @@ pub(crate) fn spawn(
             },
         );
     }
-    let pieces = model
+    model
         .pieces
         .iter()
         .enumerate()
@@ -71,6 +84,5 @@ pub(crate) fn spawn(
             }
             entity
         })
-        .collect();
-    ModelInstance { root, pieces }
+        .collect()
 }
