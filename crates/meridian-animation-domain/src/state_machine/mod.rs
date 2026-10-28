@@ -1,19 +1,25 @@
 //! Choosing what a model plays from game state (ADR 048).
 
+mod blend1d;
+mod blend2d;
 mod condition;
 mod controller;
 mod error;
 mod graph;
+mod motion;
 mod param_id;
 mod param_kind;
 mod state;
 mod state_id;
 mod transition;
 
+pub use blend1d::Blend1d;
+pub use blend2d::Blend2d;
 pub use condition::Condition;
 pub use controller::AnimationController;
 pub use error::GraphError;
 pub use graph::AnimationGraph;
+pub use motion::Motion;
 pub use param_id::ParamId;
 pub use param_kind::ParamKind;
 pub use state::AnimationState;

@@ -808,7 +808,8 @@ the rest are not started.
    `AnimationStage` ([ADR 048](adr/048-animation-in-the-runtime.md)), and
    `GraphicsSession::spawn_model` puts a loaded model into a world. An
    `AnimationGraph` state machine (`AnimationController`) and `RootMotion`
-   steer and move it. Still open: yaw root motion, blend trees.
+   steer and move it, with yaw, and states can play 1D/2D blend trees.
+   Still open: layered state machines, IK.
 
 **Rough sequencing, if picking one order**: (4) (batched physics
 dispatch) is done. (1) and (2) next — they're the two things that make

@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 
 use meridian_animation_domain::{
-    AnimationController, AnimationTarget, Animator, JointMatrix, RootMotion,
+    AnimationController, AnimationTarget, Animator, JointMatrix, RootDelta, RootMotion,
 };
 use meridian_ecs::{Entity, Transform, World};
 use meridian_gac::{Motor3, Vec3};
@@ -66,10 +66,14 @@ fn steer(world: &mut World) {
     }
 }
 
-/// Moves `entity` by `travel`, a displacement in its own frame.
-fn walk(world: &mut World, entity: Entity, travel: Vec3) {
+/// Moves `entity` by `travel` in its own frame: the displacement was
+/// measured in the heading the entity had before the step, so it is applied
+/// in that frame, and the entity's turn comes with it.
+fn walk(world: &mut World, entity: Entity, travel: RootDelta) {
     if let Some(transform) = world.get_mut::<Transform>(entity) {
-        transform.motor = Motor3::translation(travel).compose(transform.motor);
+        let turn = Motor3::rotation(Vec3::new(0.0, 1.0, 0.0), travel.yaw);
+        let step = Motor3::translation(travel.translation);
+        transform.motor = turn.compose(step).compose(transform.motor);
     }
 }
 
@@ -90,7 +94,7 @@ fn animate(world: &mut World, seconds: f32) {
             animator.player.advance_travel(&animator.rig, seconds, pin)
         } else {
             animator.player.advance(&animator.rig, seconds);
-            Vec3::ZERO
+            RootDelta::default()
         };
         let layers = animator.player.layers();
         let matrices = animator.rig.matrices_pinned(&layers, pin);

@@ -1,5 +1,6 @@
 //! The skeletons of a model and the animations that move them.
 
+use super::yaw::with_yaw_of;
 use super::{Animation, AnimationLayer, RootMotion};
 use crate::{JointMatrix, JointTransform, Pose, Skeleton};
 
@@ -40,7 +41,8 @@ impl Rig {
     }
 
     /// As [`matrices_mixed`](Self::matrices_mixed), with the horizontal
-    /// travel of the joint `pin` names held at its rest position, the part of
+    /// travel (and, if `pin` follows yaw, the turn about y) of the joint it
+    /// names held at its rest value, the part of
     /// the pose that [`RootMotion`] hands to the entity.
     #[must_use]
     pub fn matrices_pinned(
@@ -108,6 +110,9 @@ impl Rig {
         if let (Some(rest), Some(joint)) = (rest, pose.joint_mut(pin.joint)) {
             joint.translation.x = rest.translation.x;
             joint.translation.z = rest.translation.z;
+            if pin.follow_yaw {
+                joint.rotation = with_yaw_of(joint.rotation, rest.rotation);
+            }
         }
     }
 

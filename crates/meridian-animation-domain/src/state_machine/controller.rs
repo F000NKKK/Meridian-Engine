@@ -4,8 +4,8 @@ use std::sync::Arc;
 
 use meridian_ecs::Component;
 
-use super::{AnimationGraph, Condition, ParamId, ParamKind, StateId};
-use crate::{AnimationPlayer, Repeat, Rig};
+use super::{AnimationGraph, AnimationState, Condition, ParamId, ParamKind, StateId};
+use crate::{AnimationPlayer, Mix, Repeat, Rig};
 
 /// A parameter's value.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -89,24 +89,37 @@ impl AnimationController {
     pub fn update(&mut self, player: &mut AnimationPlayer, rig: &Rig) {
         if !self.started {
             self.started = true;
-            let start = self.graph.states[self.state.0];
-            player.play(start.animation, start.repeat);
+            let start = &self.graph.states[self.state.0];
+            player.play_mix(self.mix_of(start), start.repeat);
         }
         if let Some(index) = self.firing(player, rig) {
             let transition = &self.graph.transitions[index];
             self.state = transition.to;
-            let state = self.graph.states[transition.to.0];
+            let state = &self.graph.states[transition.to.0];
+            let mix = self.mix_of(state);
             if transition.fade > 0.0 {
-                player.crossfade_to(state.animation, transition.fade, state.repeat);
+                player.crossfade_to_mix(mix, transition.fade, state.repeat);
             } else {
-                player.play(state.animation, state.repeat);
+                player.play_mix(mix, state.repeat);
             }
+        }
+        let state = &self.graph.states[self.state.0];
+        if state.motion.is_blend() {
+            player.reweigh(rig, self.mix_of(state));
         }
         for value in &mut self.values {
             if let Value::Trigger(raised) = value {
                 *raised = false;
             }
         }
+    }
+
+    /// The animations `state` plays with the parameters as they are now.
+    fn mix_of(&self, state: &AnimationState) -> Mix {
+        state.motion.mix(|id| match self.values.get(id.0) {
+            Some(Value::Float(value)) => *value,
+            _ => 0.0,
+        })
     }
 
     fn firing(&self, player: &AnimationPlayer, rig: &Rig) -> Option<usize> {
@@ -127,7 +140,7 @@ impl AnimationController {
             Condition::Is(id, wanted) => value(id) == Some(Value::Bool(wanted)),
             Condition::Triggered(id) => value(id) == Some(Value::Trigger(true)),
             Condition::Finished => {
-                let state = self.graph.states[self.state.0];
+                let state = &self.graph.states[self.state.0];
                 state.repeat == Repeat::Once && !player.is_fading() && player.finished(rig)
             }
         }
