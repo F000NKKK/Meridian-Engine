@@ -1,12 +1,12 @@
 //! The upload, dispatch and read-back sequence both flavors' soft-body
 //! kernels share.
 
-use crate::gpu_backend_missing::{GpuBackendMissing, require_gpu};
 use meridian_compute_app::ComputeContext;
 use meridian_gpu_wgpu::{BufferUsage, ComputePipeline};
 
 use super::scratch::SoftBodyScratch;
 use super::step_inputs::StepInputs;
+use crate::gpu_backend_missing::{GpuBackendMissing, require_gpu};
 
 /// Threads per workgroup of the soft-body step shaders.
 const WORKGROUP_SIZE: u32 = 64;
