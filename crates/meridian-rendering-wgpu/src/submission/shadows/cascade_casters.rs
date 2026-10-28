@@ -106,6 +106,7 @@ mod tests {
             lit: true,
             state: DrawState::Opaque,
             casts_shadow,
+            emissive_map: None,
             instances,
         }
     }

@@ -238,6 +238,7 @@ fn every_attribute_lies_within_its_layouts_stride() {
         position_only_mesh_layout(),
         shadow_instance_layout(),
         emissive_instance_layout(),
+        emissive_mapped_instance_layout(),
     ] {
         for attribute in &layout.attributes {
             assert!(

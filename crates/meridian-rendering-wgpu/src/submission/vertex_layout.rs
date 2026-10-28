@@ -98,6 +98,19 @@ pub(crate) fn shadow_instance_layout() -> VertexLayout {
     instance_layout(model_attributes())
 }
 
+/// The mapped emissive pass reads the model matrix, the emissive colour and
+/// the factor of the emissive map.
+pub(crate) fn emissive_mapped_instance_layout() -> VertexLayout {
+    let mut attributes = model_attributes();
+    attributes.push(attribute(EMISSIVE_LOCATION, VertexFormat::Float32x3, 80));
+    attributes.push(attribute(
+        MAPPED_EMISSIVE_LOCATION,
+        VertexFormat::Float32x3,
+        108,
+    ));
+    instance_layout(attributes)
+}
+
 /// The emissive pass reads the model matrix and the emissive colour.
 pub(crate) fn emissive_instance_layout() -> VertexLayout {
     let mut attributes = model_attributes();

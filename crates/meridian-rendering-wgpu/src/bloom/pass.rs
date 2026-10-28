@@ -4,12 +4,12 @@ use meridian_rendering_domain::BloomConfig;
 
 use super::{BloomInput, BlurDirection, blur_shader_wgsl, composite_shader_wgsl};
 use crate::submission::{
-    EMISSIVE_EXTRACT_SHADER_WGSL, PreparedScene, emissive_instance_layout,
-    position_only_mesh_layout,
+    EMISSIVE_EXTRACT_SHADER_WGSL, EMISSIVE_MAPPED_EXTRACT_SHADER_WGSL, emissive_instance_layout,
+    emissive_mapped_instance_layout, mesh_vertex_layout, position_only_mesh_layout,
 };
 use crate::{
     BindGroup, BufferUsage, ColorFormat, DepthTexture, Device, RenderPipeline, Sampler,
-    SceneRenderer, ShaderStages, Texture,
+    ShaderStages, Texture,
 };
 
 /// Every offscreen texture [`BloomPass`] creates uses this format — one
@@ -29,6 +29,37 @@ pub(crate) fn blur_uniform_bytes(width: u32, height: u32, direction: BlurDirecti
     bytes[8..12].copy_from_slice(&dx.to_le_bytes());
     bytes[12..16].copy_from_slice(&dy.to_le_bytes());
     bytes
+}
+
+/// The plain and the emissive-mapped extraction pipelines (ADR 042).
+fn emissive_pipelines(device: &Device) -> (RenderPipeline, RenderPipeline) {
+    let emissive_shader =
+        device.create_shader("meridian-emissive-extract", EMISSIVE_EXTRACT_SHADER_WGSL);
+    let emissive_stages = ShaderStages {
+        shader: &emissive_shader,
+        vertex_entry: "vs_main",
+        fragment_entry: "fs_main",
+    };
+    let emissive_pipeline = device.create_offscreen_scene_pipeline(
+        &emissive_stages,
+        &[position_only_mesh_layout(), emissive_instance_layout()],
+        OFFSCREEN_FORMAT,
+    );
+
+    let mapped_shader = device.create_shader(
+        "meridian-emissive-mapped-extract",
+        EMISSIVE_MAPPED_EXTRACT_SHADER_WGSL,
+    );
+    let mapped_pipeline = device.create_offscreen_scene_pipeline(
+        &ShaderStages {
+            shader: &mapped_shader,
+            vertex_entry: "vs_main",
+            fragment_entry: "fs_main",
+        },
+        &[mesh_vertex_layout(), emissive_mapped_instance_layout()],
+        OFFSCREEN_FORMAT,
+    );
+    (emissive_pipeline, mapped_pipeline)
 }
 
 /// One blur pass: read `source`, write `target`, smearing along `direction`.
@@ -73,6 +104,8 @@ pub struct BloomPass {
     ping: Texture,
     pong: Texture,
     emissive_pipeline: RenderPipeline,
+    /// The same for batches with an emissive map (ADR 042).
+    mapped_pipeline: RenderPipeline,
     blur_pipeline: RenderPipeline,
     composite_pipeline: RenderPipeline,
     sampler: Sampler,
@@ -92,18 +125,7 @@ impl BloomPass {
         let ping = device.create_offscreen_color_texture(width, height, OFFSCREEN_FORMAT);
         let pong = device.create_offscreen_color_texture(width, height, OFFSCREEN_FORMAT);
 
-        let emissive_shader =
-            device.create_shader("meridian-emissive-extract", EMISSIVE_EXTRACT_SHADER_WGSL);
-        let emissive_stages = ShaderStages {
-            shader: &emissive_shader,
-            vertex_entry: "vs_main",
-            fragment_entry: "fs_main",
-        };
-        let emissive_pipeline = device.create_offscreen_scene_pipeline(
-            &emissive_stages,
-            &[position_only_mesh_layout(), emissive_instance_layout()],
-            OFFSCREEN_FORMAT,
-        );
+        let (emissive_pipeline, mapped_pipeline) = emissive_pipelines(device);
 
         let blur_shader = device.create_shader("meridian-bloom-blur", &blur_shader_wgsl());
         // The bright/ping/pong textures all share OFFSCREEN_FORMAT; the
@@ -138,6 +160,7 @@ impl BloomPass {
             ping,
             pong,
             emissive_pipeline,
+            mapped_pipeline,
             blur_pipeline,
             composite_pipeline,
             sampler,
@@ -156,27 +179,49 @@ impl BloomPass {
     fn draw_emissive(
         &self,
         device: &Device,
-        renderer: &SceneRenderer,
+        input: &BloomInput<'_>,
         pass: &mut crate::RenderPass<'_>,
-        prepared: &PreparedScene,
     ) {
-        let Some(instances) = &prepared.instances else {
+        let Some(instances) = &input.prepared.instances else {
             return;
         };
+        let renderer = input.renderer;
         // Rebuilt every frame, the same "correct now, cache later"
         // trade-off as the per-texture bind groups of the main pass.
         let bind_group =
             device.create_uniform_bind_group(&self.emissive_pipeline, renderer.uniform_buffer());
         pass.set_pipeline(&self.emissive_pipeline);
         pass.set_bind_group(0, &bind_group);
-        for batch in &prepared.batches {
+        for batch in input
+            .prepared
+            .batches
+            .iter()
+            .filter(|b| b.emissive_map.is_none())
+        {
+            renderer.draw_batch(pass, batch, instances);
+        }
+        pass.set_pipeline(&self.mapped_pipeline);
+        for batch in &input.prepared.batches {
+            let Some(texture) = batch
+                .emissive_map
+                .and_then(|handle| input.textures.get(handle))
+            else {
+                continue;
+            };
+            let mapped_group = device.create_textured_bind_group(
+                &self.mapped_pipeline,
+                renderer.uniform_buffer(),
+                texture,
+                &renderer.sampler,
+            );
+            pass.set_bind_group(0, &mapped_group);
             renderer.draw_batch(pass, batch, instances);
         }
     }
 
     /// Runs the full bloom pipeline for one view and composites the
     /// result onto `input.target` — the *same* texture `input.renderer`'s
-    /// main [`SceneRenderer::draw`] already rendered into earlier in this
+    /// main [`SceneRenderer::draw`](crate::SceneRenderer::draw) already rendered into earlier in this
     /// `command_buffer`, per the module doc's step 4.
     ///
     /// `config.intensity <= 0.0` skips every pass (nothing to add), so a
@@ -199,7 +244,7 @@ impl BloomPass {
                 [0.0, 0.0, 0.0, 1.0],
                 Some(&self.bright_depth),
             );
-            self.draw_emissive(device, input.renderer, &mut pass, input.prepared);
+            self.draw_emissive(device, input, &mut pass);
         }
 
         // Step 3: horizontal blur (bright -> ping), then vertical (ping -> pong).

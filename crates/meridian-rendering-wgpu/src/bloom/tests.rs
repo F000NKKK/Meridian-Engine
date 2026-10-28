@@ -34,3 +34,17 @@ fn blur_uniform_bytes_encode_texel_size_and_direction() {
         1.0
     );
 }
+
+#[test]
+fn the_mapped_extraction_shader_reads_the_uv_the_factor_and_the_map() {
+    let source = crate::submission::EMISSIVE_MAPPED_EXTRACT_SHADER_WGSL;
+    for needle in [
+        "@location(2) uv",
+        "@location(11) mapped_emissive",
+        "@binding(1)",
+        "@binding(2)",
+        "textureSample(emissive_tex",
+    ] {
+        assert!(source.contains(needle), "missing {needle}");
+    }
+}

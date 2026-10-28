@@ -2,7 +2,7 @@
 
 use core::ops::Range;
 
-use meridian_rendering_domain::{DrawState, MeshHandle};
+use meridian_rendering_domain::{DrawState, MeshHandle, TextureHandle};
 
 use super::main_pipelines::PipelineKey;
 use crate::BindGroup;
@@ -27,6 +27,8 @@ pub struct PreparedBatch {
     pub(crate) lit: bool,
     pub(crate) state: DrawState,
     pub(crate) casts_shadow: bool,
+    /// The batch's emissive map, which bloom samples (ADR 042).
+    pub(crate) emissive_map: Option<TextureHandle>,
     /// This batch's records in the scene's instance buffer.
     pub(crate) instances: Range<u32>,
 }

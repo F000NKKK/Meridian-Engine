@@ -44,9 +44,9 @@ The 100-byte record grows to 120: `normal_scale` and `occlusion_strength`
 (two floats) and an emissive factor used only with a map. A material with an
 emissive map puts its factor there and leaves the plain emissive slot zero.
 That plain slot is the one bloom's emissive pass reads, and bloom does not
-sample textures, so **a material with an emissive map does not bloom**; one
-without a map blooms as before. Sampling the map in the bloom pass is a
-follow-up.
+sample textures at first, so **a material with an emissive map did not
+bloom**; [ADR 042](042-bloom-for-emissive-maps.md) added a pass that samples
+the map.
 
 **D5 — one bind group layout, neutral textures.** A lit textured draw binds
 all five maps at `@binding(1)` (albedo) and `@binding(5..=8)` (metallic-
@@ -67,5 +67,4 @@ it (colour or linear), since one image can serve both.
   room for image-based lighting.
 - `Material` gains five fields; code that builds one with `..Default::default()`
   is unaffected.
-- Emissive-mapped surfaces do not glow through bloom until the bloom pass
-  samples the map.
+- Emissive-mapped surfaces glow through bloom since [ADR 042](042-bloom-for-emissive-maps.md).

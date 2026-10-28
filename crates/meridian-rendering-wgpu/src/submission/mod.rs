@@ -44,6 +44,6 @@ pub(crate) use shadows::{CascadeCasters, ShadowDepthPass};
 pub use submit_scene3d::submit_scene3d;
 pub(crate) use uniform_bytes::{LIT_UNIFORM_BYTES, lit_uniform_bytes, mat4_to_bytes};
 pub(crate) use vertex_layout::{
-    emissive_instance_layout, instance_vertex_layout, mesh_vertex_layout,
-    position_only_mesh_layout, shadow_instance_layout,
+    emissive_instance_layout, emissive_mapped_instance_layout, instance_vertex_layout,
+    mesh_vertex_layout, position_only_mesh_layout, shadow_instance_layout,
 };
