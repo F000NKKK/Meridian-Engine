@@ -10,6 +10,7 @@ mod file_read_at;
 mod fs_source;
 #[cfg(test)]
 mod tests;
+mod walk;
 
 pub use file_read_at::FileReadAt;
 pub use fs_source::FsSource;

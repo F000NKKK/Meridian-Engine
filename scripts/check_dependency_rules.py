@@ -143,6 +143,8 @@ ALLOWED = {
         "meridian-ui-domain",
     },
     "meridian-sdk": {
+        "meridian-memory",
+        "meridian-resource",
         "meridian-data-substrate",
         "meridian-ecs",
         "meridian-asset-app",

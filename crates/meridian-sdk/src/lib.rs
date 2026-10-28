@@ -6,10 +6,10 @@
 //! nothing in `examples/` reaches into the composed crates, and this crate
 //! may depend on drivers `runtime-app` may not. Notes: docs/notes/meridian-sdk.md.
 #![forbid(unsafe_code)]
-
 mod any_image_decoder;
 mod asset_loader;
 pub mod assets;
+pub mod content;
 pub mod dsl;
 mod fly_controls;
 mod model_files;

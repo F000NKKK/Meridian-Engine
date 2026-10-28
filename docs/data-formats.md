@@ -365,11 +365,12 @@ person writes it, `SDAT` binary when cooked; readers detect the magic.
   asset's identity across renames and moves, and what cooked content
   (`.mpak`, `dependencies`) names it by (`@asset_id:`). It is a name on
   disk, not a runtime handle: no generation, no lifetime. Mapping an id to
-  a `resource` handle belongs to the code that loads the asset, not to the
-  loader or this file (ADR 006). The data layer has no random source, so
+  a `resource` handle is the `ResourceIdTable` (below), filled by the code
+  that loads the asset, not by the loader or this file (ADR 006). The data layer has no random source, so
   whoever creates a `.meta` chooses the value.
 - `importer` is an `ImporterName` (lower case letters, digits, `_`, `-`,
-  starting with a letter). Which names exist is the application's registry.
+  starting with a letter). Which names exist is the application's
+  `ImporterRegistry` (below).
 - `settings` is a map this crate does not interpret: the importer reads it
   with its own schema. Keys keep file order. Absent means empty.
 - `dependencies` are `@asset_id:` references, each at most once and never the
@@ -394,6 +395,56 @@ above. A `.meta` is read whole or not at all.
 ```rust
 let meta = AssetMeta::read(&bytes)?;            // text or binary
 let text = meta.to_text();                      // or meta.to_bytes()
+```
+
+### From a `.meta` to content: importers, catalog, identity
+
+Four pieces, each in the layer that owns it, none global:
+
+- **`ImporterRegistry<T>`** (`meridian-asset-app`): the table from an
+  `importer` name to an `Importer<T>`, one registry per content type
+  (`ImageAsset`, `MeshAsset`, ...), so a name cannot return the wrong type.
+  `Importer::import(bytes, &AssetMeta)` is pure: it reads the asset's
+  `settings` from the meta and nothing from disk. A plain `Decoder` is an
+  importer through `FromDecoder` (`register_decoder`); an importer with
+  settings implements `Importer` itself. `register` twice under one name is
+  `RegisterError::NameTaken` (the first stays); a name the registry does not
+  have is `ImportError::UnknownImporter`; the importer's own rejection is
+  `ImportError::Failed { importer, source }`. The domain's `Decoder` stays the
+  decoding port; the registry is application wiring, built by the
+  composition root (`meridian_sdk::content::Importers::standard()` registers
+  `image`/`bmp`/`png`/`jpeg`, `obj`, `gltf`, `wgsl`, `audio`/`wav`).
+- **`AssetLoader::load_imported(path, registry)`**: one background job reads
+  `<path>.meta`, picks the importer it names, reads the asset and imports it.
+  A missing sidecar is `LoadError::Source(NotFound(<path>.meta))`, a damaged
+  one `LoadError::Decode(ImportError::InvalidMeta)`. `read_meta(source, path)`
+  is the blocking read of one sidecar.
+- **`AssetCatalog`** (`meridian-asset-app`): `AssetCatalog::scan(&dyn
+  AssetListing)` walks a source, reads every `*.meta` and keeps
+  `AssetId` to `CatalogEntry { id, path, importer, dependencies }` and path to
+  id. `AssetListing` (a `ByteSource` that can name its paths) is a separate
+  port because not every source can list: `FsSource` walks the directory
+  (no symbolic links followed), `PackSource` lists its entries. The scan
+  is all or nothing: a bad sidecar (`CatalogError::Meta`, naming the file),
+  two assets with one id (`DuplicateId`), a dependency no `.meta` declares
+  (`MissingDependency`) or a loop (`DependencyCycle`) is an error, so a
+  build can walk the graph before loading anything. A `.meta` whose source
+  file is absent is not checked. It is blocking: run it off the frame thread.
+- **`ResourceIdTable<K, T>`** (`meridian-resource`): the map from a stable key
+  (here the `AssetId`) to the `ResourceId<T>` of the resource loaded for it,
+  and back (`key_of`). Two facts only: which keys exist (`declare`, filled
+  from the catalog) and which are loaded as what (`bind` / `unbind`). It
+  loads nothing, holds no content and decides no lifetime: the loading code
+  binds after it inserted the content in its pool, the code that releases
+  unbinds, and a reloaded resource has a new generation so the old id is not
+  found. `bind` refuses an unknown key, a key already bound and a resource
+  that is another key's (`BindError`).
+
+```rust
+let catalog = AssetCatalog::scan(&source)?;                  // .meta -> ids
+let mut table = ResourceIdTable::<AssetId, ImageAsset>::declaring(catalog.iter().map(|e| e.id));
+let image = loader.load_imported(entry.path.clone(), images.clone()).wait()?;
+table.bind(entry.id, ResourceId::new(pool.insert(image)))?;  // identity, after loading
 ```
 
 ## Asset pack (`.mpak`)
@@ -474,10 +525,10 @@ error.
 `ByteSource` over a pack: the asset path is the path in the pack, a missing
 one is `NotFound`, a bad path `Rejected`, a damaged asset `Unreadable` with
 the pack's words. So an `AssetLoader` — and `AssetPrefabSource`, `WorldFiles`
-— works on a pack as on a directory. Reading the `.meta` sidecars from a
-pack, resolving `@asset_id:` to a `resource` handle, and choosing between a
-directory and a pack at startup are the composition root's follow-up (not in
-`meridian-sdk` yet).
+— works on a pack as on a directory. A pack carries its `.meta`
+sidecars as entries like any other file, so `AssetCatalog::scan` and
+`load_imported` work on it unchanged. Choosing between a directory and a
+pack at startup is the composition root's job (`meridian_sdk::content`).
 
 ```rust
 let source = PackSource::open(FileReadAt::open("content.mpak")?)?;   // header + index only
@@ -624,7 +675,7 @@ Specified in [editor-domain.md](editor-domain.md).
 | `.msave` envelope (`format`/`game`/`created`/`scene`/`state`, lazy header and scene) | done; scene is full, a delta is a later `format` |
 | `meridian-sdk` `WorldFiles` + `AssetPrefabSource` (scene, prefab and save by path over the asset layer) | done; not yet driven by `runtime-app`'s frame loop |
 | patching an existing `.mscene` file on save | not implemented |
-| `.meta` (`AssetMeta`: id, importer, settings, dependencies; text and binary; version rule) | done in `asset-domain`; no importer registry or `resource` id table reads it yet |
+| `.meta` (`AssetMeta`: id, importer, settings, dependencies; text and binary; version rule) | done in `asset-domain`; read by `ImporterRegistry`/`load_imported`, `AssetCatalog` (`asset-app`) and `ResourceIdTable` (`resource`); the sdk registers the shipped importers |
 | `.mpak` (`PackWriter`, `PackReader`, `upgrade_pack`; `PackSource`, `FileReadAt`) | done; the `sdk` does not pick a pack over a directory yet, no streaming writer or build-tool command |
 | `meridian-editor-domain` (messages, framing, golden-pinned wire) | done |
 | `meridian-editor-app` (session, ports), `meridian-editor-tcp` (loopback TCP) | done; not yet wired into `runtime-app`'s frame loop |

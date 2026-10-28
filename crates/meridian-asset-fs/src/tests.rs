@@ -3,7 +3,7 @@
 use std::fs;
 use std::path::PathBuf;
 
-use meridian_asset_app::{AssetPath, ByteSource, SourceError};
+use meridian_asset_app::{AssetListing, AssetPath, ByteSource, SourceError};
 
 use super::{FileReadAt, FsSource};
 
@@ -130,4 +130,44 @@ fn reads_past_the_end_are_out_of_range() {
         file.read_exact_at(2, &mut buf),
         Err(ReadAtError::OutOfRange { .. })
     ));
+}
+
+#[test]
+fn lists_every_file_below_the_root_sorted_with_slashes() {
+    let scratch = Scratch::new("listing");
+    fs::create_dir_all(scratch.0.join("meshes/props")).expect("mkdir");
+    fs::write(scratch.0.join("b.bin"), [1]).expect("write");
+    fs::write(scratch.0.join("meshes/crate.obj"), [2]).expect("write");
+    fs::write(scratch.0.join("meshes/props/lamp.obj"), [3]).expect("write");
+    fs::create_dir_all(scratch.0.join("empty")).expect("mkdir");
+
+    let paths = FsSource::new(&scratch.0).paths().expect("walked");
+
+    let texts: Vec<_> = paths.iter().map(AssetPath::as_str).collect();
+    assert_eq!(
+        texts,
+        ["b.bin", "meshes/crate.obj", "meshes/props/lamp.obj"]
+    );
+}
+
+#[test]
+fn listing_a_missing_root_is_unreadable_not_a_panic() {
+    let scratch = Scratch::new("listing-missing");
+    let source = FsSource::new(scratch.0.join("nope"));
+    assert!(matches!(
+        source.paths(),
+        Err(SourceError::Unreadable { .. })
+    ));
+}
+
+#[cfg(unix)]
+#[test]
+fn listing_does_not_follow_symbolic_links() {
+    let scratch = Scratch::new("listing-links");
+    fs::write(scratch.0.join("a.bin"), [1]).expect("write");
+    std::os::unix::fs::symlink(&scratch.0, scratch.0.join("loop")).expect("symlink");
+
+    let paths = FsSource::new(&scratch.0).paths().expect("walked");
+
+    assert_eq!(paths, [AssetPath::new("a.bin")]);
 }
