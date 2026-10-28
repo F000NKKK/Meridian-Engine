@@ -4,7 +4,7 @@ mod clips;
 mod skeletons;
 
 pub use clips::{
-    Channel, Clip, ClipError, Interpolation, Keys, Playback, Repeat, Track, WeightKeys,
+    Channel, Clip, ClipError, Crossfade, Interpolation, Keys, Playback, Repeat, Track, WeightKeys,
     WeightsChannel,
 };
 pub use skeletons::{

@@ -33,7 +33,7 @@ use crate::any_image_decoder::AnyImageDecoder;
 pub use crate::model_loading::rig::{
     AnimationRepeat, ModelAnimation, ModelRig, Playback, SkeletonClip,
 };
-pub use crate::model_loading::{LoadedModel, ModelPiece};
+pub use crate::model_loading::{AnimationLayer, AnimationPlayer, LoadedModel, ModelPiece};
 use crate::{model_files, model_loading};
 
 /// Reads and decodes a real image asset file, identified by its magic

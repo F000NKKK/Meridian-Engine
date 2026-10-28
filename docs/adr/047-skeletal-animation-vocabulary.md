@@ -139,3 +139,11 @@ model: `sdk`'s `ModelRig` holds the `Skeleton`s and `Clip`s of a loaded model
   small control block. A renderable whose weights are all zero draws the mesh
   rigid. Meshes with morph targets, like posed ones, are never culled or
   batched with other instances.
+- Animations are mixed in layers, not by special cases: `ModelRig::palettes_mixed`
+  and `weights_mixed` take an ordered list of `AnimationLayer`s (animation,
+  time, weight), the first being the base and each later one blended over the
+  result so far (`Pose::blend`: lerp for translation and scale, slerp for
+  rotation; lerp for morph weights). A crossfade is two layers, the animation
+  leaving at full weight and the arriving one at the eased weight of a
+  `Crossfade`. `AnimationPlayer` holds that state (current animation, the one
+  leaving, the fade) without owning the rig.

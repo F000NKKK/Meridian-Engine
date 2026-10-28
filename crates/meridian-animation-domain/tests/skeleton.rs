@@ -144,3 +144,58 @@ fn a_short_pose_keeps_the_rest_transform_of_the_joints_it_lacks() {
     let matrices = skeleton.joint_matrices(&Pose::rest(&Skeleton::default()));
     assert_close(apply(matrices[1], [0.0, 1.0, 0.0]), [0.0, 1.0, 0.0]);
 }
+
+#[test]
+fn blending_poses_moves_translation_scale_and_rotation_together() {
+    let joint = Joint {
+        parent: None,
+        rest: JointTransform::default(),
+        inverse_bind: IDENTITY,
+    };
+    let skeleton = Skeleton::new(vec![joint], IDENTITY).expect("a valid skeleton");
+    let mut from = Pose::rest(&skeleton);
+    let mut to = Pose::rest(&skeleton);
+    to.joint_mut(JointId::from_index(0).unwrap())
+        .unwrap()
+        .translation = Vec3::new(4.0, 0.0, 0.0);
+    to.joint_mut(JointId::from_index(0).unwrap()).unwrap().scale = Vec3::new(3.0, 1.0, 1.0);
+    from.blend(&to, 0.25);
+    let blended = from.transforms()[0];
+    assert_close(
+        [
+            blended.translation.x,
+            blended.translation.y,
+            blended.translation.z,
+        ],
+        [1.0, 0.0, 0.0],
+    );
+    assert_close(
+        [blended.scale.x, blended.scale.y, blended.scale.z],
+        [1.5, 1.0, 1.0],
+    );
+}
+
+#[test]
+fn a_blended_rotation_takes_the_shorter_arc_halfway() {
+    let quarter = Rotor::from_quaternion([
+        0.0,
+        0.0,
+        std::f32::consts::FRAC_1_SQRT_2,
+        std::f32::consts::FRAC_1_SQRT_2,
+    ]);
+    let a = JointTransform::default();
+    let b = JointTransform {
+        rotation: quarter,
+        ..JointTransform::default()
+    };
+    let half = a.blend(b, 0.5).to_matrix();
+    // Half of 90 degrees about z turns the x axis to (cos 45, sin 45, 0).
+    assert_close(
+        apply(half, [1.0, 0.0, 0.0]),
+        [
+            std::f32::consts::FRAC_1_SQRT_2,
+            std::f32::consts::FRAC_1_SQRT_2,
+            0.0,
+        ],
+    );
+}

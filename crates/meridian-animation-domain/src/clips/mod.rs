@@ -2,6 +2,7 @@
 
 mod channel;
 mod clip;
+mod crossfade;
 mod error;
 mod interpolate;
 mod interpolation;
@@ -14,6 +15,7 @@ mod weights_channel;
 
 pub use channel::Channel;
 pub use clip::Clip;
+pub use crossfade::Crossfade;
 pub use error::ClipError;
 pub use interpolation::Interpolation;
 pub use keys::Keys;
