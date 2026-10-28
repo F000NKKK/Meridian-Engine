@@ -30,9 +30,9 @@ fn motor_transform_kernel_matches_gac_core_compose_directly() {
         .collect();
 
     let kernel = MotorTransformKernel::new(parent, locals.clone());
-    // Force the parallel path (default threshold is 1024; 2000 items
-    // clears it, but be explicit so this test doesn't silently start
-    // exercising only the sequential path if the default changes).
+    // Force the parallel path (the default threshold is 4096 and
+    // 2000 items does not reach it) so this test keeps covering the parallel
+    // path whatever the default is.
     let scheduler = ComputeScheduler::with_parallel_threshold(Arc::new(CpuComputeDevice::new()), 1);
     scheduler.run(&kernel, DispatchSize::linear(locals.len() as u32));
 

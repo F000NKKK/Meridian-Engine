@@ -105,7 +105,10 @@ where
 
 #[cfg(test)]
 mod tests {
-    use meridian_compute_wgpu::cpu_context;
+    use std::sync::Arc;
+
+    use meridian_compute_app::ComputeScheduler;
+    use meridian_compute_wgpu::{CpuComputeDevice, cpu_context};
     use meridian_gac::{FloatFlavor, Motor3, Vec3};
     use meridian_physics_domain::collision::ColliderShape;
 
@@ -134,9 +137,10 @@ mod tests {
         let mut expected = bodies.clone();
         integrator.step(&mut expected, dt);
 
-        let context = cpu_context();
+        let scheduler =
+            ComputeScheduler::with_parallel_threshold(Arc::new(CpuComputeDevice::new()), 1);
         let kernel = RigidBodyIntegratorKernel::new(integrator, bodies, dt);
-        kernel.dispatch(&context, DispatchSize::linear(kernel.bodies.len() as u32));
+        scheduler.run(&kernel, DispatchSize::linear(kernel.bodies.len() as u32));
 
         let got = kernel.results();
         assert_eq!(got.len(), expected.len());
@@ -167,7 +171,7 @@ mod tests {
     }
 
     /// Exercises the CPU `parallel_for` backend's actual parallel path
-    /// (above `ComputeContext`'s default 1024-item threshold), not just
+    /// (a scheduler with a cutoff of one item), not just
     /// the small-batch sequential fallback every other test here hits.
     #[test]
     fn large_batch_matches_direct_integrator_step() {
