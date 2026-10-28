@@ -1,10 +1,10 @@
 //! Turning a scene's renderables into instanced batches.
 
-use meridian_gac::{Motor3, Vec3};
+use meridian_gac::{Aabb, Motor3, Vec3};
 use meridian_rendering_domain::scene::{Material, Renderable3d, Scene3d};
 use meridian_rendering_domain::{
     BatchKey, DrawItem, DrawState, MaterialMaps, MeshHandle, MeshSource, TextureHandle,
-    plan_batches,
+    plan_batches, world_space_bounds,
 };
 
 use super::instance_data::push_instance;
@@ -67,6 +67,10 @@ impl<'a> Resolved<'a> {
 pub(crate) struct BakedBatches {
     pub batches: Vec<PreparedBatch>,
     pub instances: Option<Buffer>,
+    /// The instance records as uploaded, `INSTANCE_STRIDE` bytes each.
+    pub records: Vec<u8>,
+    /// Each instance's world-space box, `None` where its mesh has no vertices.
+    pub bounds: Vec<Option<Aabb>>,
 }
 
 /// Resolves `scene`'s renderables, uploads any mesh not yet on the GPU,
@@ -88,14 +92,17 @@ pub(crate) fn bake_batches(
     let items: Vec<DrawItem> = resolved.iter().map(|r| r.item(eye)).collect();
 
     let mut bytes = Vec::new();
+    let mut bounds = Vec::new();
     let mut batches = Vec::new();
     let mut first = 0u32;
     for planned in plan_batches(&items) {
         let lead = &resolved[planned.members[0]];
         renderer.meshes.ensure(device, lead.mesh, lead.source);
+        let local_bounds = lead.source.bounds();
         for &member in &planned.members {
             let instance = &resolved[member];
             push_instance(&mut bytes, instance.frame, instance.material);
+            bounds.push(local_bounds.map(|local| world_space_bounds(&local, instance.frame)));
         }
         let count = u32::try_from(planned.members.len()).unwrap_or(u32::MAX);
         batches.push(PreparedBatch {
@@ -111,6 +118,8 @@ pub(crate) fn bake_batches(
     BakedBatches {
         batches,
         instances: upload_instances(device, &bytes),
+        records: bytes,
+        bounds,
     }
 }
 

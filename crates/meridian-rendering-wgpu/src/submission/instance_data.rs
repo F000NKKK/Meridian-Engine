@@ -3,6 +3,9 @@
 use meridian_gac::Motor3;
 use meridian_rendering_domain::scene::Material;
 
+/// Bytes of one instance record: thirty `f32`s (see [`push_instance`]).
+pub(crate) const INSTANCE_STRIDE: usize = 120;
+
 /// Appends the instance record [`instance_vertex_layout`](super::vertex_layout)
 /// describes: the model matrix (column-major), the material's colour,
 /// emissive, roughness, metallic, normal scale, occlusion strength and the

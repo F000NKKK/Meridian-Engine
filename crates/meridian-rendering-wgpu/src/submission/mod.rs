@@ -40,7 +40,7 @@ pub use registries::TextureRegistry;
 pub use scene_assets::SceneAssets;
 pub use scene_renderer::{DEFAULT_SHADOW_MAP_SIZE, SceneRenderer};
 pub use shaders::*;
-pub(crate) use shadows::ShadowDepthPass;
+pub(crate) use shadows::{CascadeCasters, ShadowDepthPass};
 pub use submit_scene3d::submit_scene3d;
 pub(crate) use uniform_bytes::{LIT_UNIFORM_BYTES, lit_uniform_bytes, mat4_to_bytes};
 pub(crate) use vertex_layout::{
