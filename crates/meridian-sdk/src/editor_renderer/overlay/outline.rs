@@ -6,7 +6,7 @@ use meridian_rendering_domain::{MeshRegistry, MeshRenderer};
 
 use super::grid::LineStyle;
 use super::ribbon::Line;
-use crate::editor_renderer::picking::frame_of;
+use crate::editor_renderer::picking::{frame_of, scale_of};
 
 const SELECTED: LineStyle = LineStyle {
     color: [1.0, 0.25, 0.0],
@@ -32,13 +32,14 @@ fn entity_box(world: &World, meshes: &MeshRegistry, entity: Entity) -> Option<Ve
     let renderer = world.get::<MeshRenderer>(entity)?;
     let bounds = meshes.get(renderer.mesh)?.bounds()?;
     let frame = frame_of(world, entity)?;
+    let scale = scale_of(world, entity);
     let corner = |bits: u8| {
         let pick = |bit: u8, low: f32, high: f32| if bits & bit == 0 { low } else { high };
-        frame.transform_point(Vec3::new(
+        frame.transform_point(scale.apply(Vec3::new(
             pick(1, bounds.min.x, bounds.max.x),
             pick(2, bounds.min.y, bounds.max.y),
             pick(4, bounds.min.z, bounds.max.z),
-        ))
+        )))
     };
     let mut edges = Vec::with_capacity(12);
     for from in 0..8_u8 {

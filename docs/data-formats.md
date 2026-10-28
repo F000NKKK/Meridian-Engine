@@ -78,6 +78,22 @@ Loading: the `material` importer (`Importers::standard().materials`) reads a
 linear for the others), and `EditorRenderer::thumbnail_material_file` previews
 the file on a sphere.
 
+## Scale
+
+`scale: [x, y, z]` is a component beside `transform` (registered by
+`register_rendering`, type `meridian_gac::Scale3`). An entity without it has the
+unit scale. The model is `motor * diag(scale)`: the scale runs along the entity's
+own local axes, before its motor, with no shear. Every axis must be finite and
+above zero; zero, negative (a reflection flips face winding and is not a motor),
+NaN and infinity are refused while reading, as are lists of the wrong length.
+The format of `.mscene` does not change (an additive component).
+
+Limits of version 1, on purpose: the scale is local, so a child does not inherit
+its parent's scale (`propagate_transforms` combines motors only), and physics and
+colliders ignore it. The renderer, culling bounds, picking and the selection box
+honour it; lit normals use the inverse transpose, so non-uniform scale shades
+correctly.
+
 ## Math values
 
 With the `data` feature, `numeric` and `gac` implement

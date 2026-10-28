@@ -1,7 +1,7 @@
 //! Previews of single assets: a material on a sphere, a mesh, a model, a scene.
 
 use meridian_asset_domain::MaterialAsset;
-use meridian_gac::Motor3;
+use meridian_gac::{Motor3, Scale3};
 use meridian_rendering_domain::{
     Material, MaterialHandle, MeshHandle, Renderable3d, Scene3d, icosphere_mesh_source,
 };
@@ -125,6 +125,7 @@ impl EditorRenderer {
 
 fn still(mesh: MeshHandle, material: MaterialHandle) -> Renderable3d {
     Renderable3d {
+        scale: Scale3::UNIT,
         mesh,
         material,
         frame: Motor3::identity(),

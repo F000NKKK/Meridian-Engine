@@ -3,7 +3,7 @@
 use meridian_examples::paths::asset_path;
 use meridian_sdk::{
     AppHandler, Device, FlyCamera, GraphicsSession, InputState, KeyCode, Light, Listener, Material,
-    Motor3, Renderable3d, Rotor, Scene3d, Vec3, Window, fly_controls, ground_mesh_source,
+    Motor3, Renderable3d, Rotor, Scale3, Scene3d, Vec3, Window, fly_controls, ground_mesh_source,
     look_at_rotor,
 };
 
@@ -104,6 +104,7 @@ fn floor_renderable(base: &mut GraphicsSession) -> Renderable3d {
         .register(ground_mesh_source(14.0, 10.0))
         .expect("floor mesh must be valid");
     Renderable3d {
+        scale: Scale3::UNIT,
         mesh,
         material,
         frame: Motor3::identity(),
@@ -138,6 +139,7 @@ fn shape_renderable(base: &mut GraphicsSession, shape: &ShapeSpec) -> Renderable
         ..Default::default()
     });
     Renderable3d {
+        scale: Scale3::UNIT,
         mesh,
         material,
         frame: Motor3::translation(orbit_position(shape, 0.0)),

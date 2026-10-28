@@ -1,7 +1,7 @@
 //! Which entity is under a point of the viewport.
 
 use meridian_ecs::{Entity, GlobalTransform, Transform, World};
-use meridian_gac::{Motor3, Vec3};
+use meridian_gac::{Motor3, Scale3, Vec3};
 use meridian_rendering_domain::{MeshRenderer, MeshSource};
 
 use super::{EditorCamera, EditorRenderer};
@@ -47,7 +47,11 @@ impl EditorRenderer {
             .query::<MeshRenderer>()
             .filter_map(|(entity, renderer)| {
                 let source = meshes.get(renderer.mesh)?;
-                let distance = hit_distance(source, frame_of(world, entity)?, ray)?;
+                let placed = Placed {
+                    frame: frame_of(world, entity)?,
+                    scale: scale_of(world, entity),
+                };
+                let distance = hit_distance(source, placed, ray)?;
                 Some((entity, distance))
             })
             .min_by(|a, b| a.1.total_cmp(&b.1))
@@ -65,12 +69,28 @@ pub(super) fn frame_of(world: &World, entity: Entity) -> Option<Motor3> {
     )
 }
 
-/// How far along `ray` it meets the nearest triangle of `source` placed at
-/// `frame`, if it does.
-fn hit_distance(source: &MeshSource, frame: Motor3, ray: Ray) -> Option<f32> {
+/// An entity's own scale, the unit one when it has none.
+pub(super) fn scale_of(world: &World, entity: Entity) -> Scale3 {
+    world.get::<Scale3>(entity).copied().unwrap_or_default()
+}
+
+/// Where a mesh stands in the world: scaled along its axes, then moved.
+#[derive(Clone, Copy)]
+struct Placed {
+    frame: Motor3,
+    scale: Scale3,
+}
+
+/// How far along `ray` it meets the nearest triangle of `source` placed as
+/// `placed`, if it does. The distance is in units of the ray's direction,
+/// which the mapping into mesh space keeps comparable between entities.
+fn hit_distance(source: &MeshSource, placed: Placed, ray: Ray) -> Option<f32> {
+    let inverse = placed.frame.inverse();
     let local = Ray {
-        origin: frame.inverse().transform_point(ray.origin),
-        direction: frame.inverse().transform_vector(ray.direction),
+        origin: placed.scale.unapply(inverse.transform_point(ray.origin)),
+        direction: placed
+            .scale
+            .unapply(inverse.transform_vector(ray.direction)),
     };
     let point = |index: u32| {
         let [x, y, z] = *source.positions.get(index as usize)?;

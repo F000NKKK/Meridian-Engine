@@ -1,7 +1,7 @@
 //! Drawing the editor's own marks (grid, selection) over the world.
 
 use meridian_ecs::{Entity, World};
-use meridian_gac::Motor3;
+use meridian_gac::{Motor3, Scale3};
 use meridian_rendering_domain::{
     Material, MaterialHandle, MeshHandle, Renderable3d, Scene3d, extract_scene3d,
 };
@@ -63,6 +63,7 @@ impl EditorRenderer {
             };
             let material = render.materials.register(line_material(*style));
             scene.renderables.push(Renderable3d {
+                scale: Scale3::UNIT,
                 mesh,
                 material,
                 frame: Motor3::identity(),

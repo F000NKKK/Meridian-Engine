@@ -94,3 +94,44 @@ fn a_mesh_reference_to_nothing_is_a_problem_while_reading() {
             .is_err()
     );
 }
+
+fn scene_with_scale(scale: &str) -> String {
+    format!(r#"{{ format: 1, entities: [ {{ id: "box", components: {{ scale: {scale} }} }} ] }}"#)
+}
+
+#[test]
+fn a_scale_is_read_written_and_defaults_to_nothing() {
+    use meridian_gac::Scale3;
+
+    let mut registry = ComponentRegistry::new();
+    register_rendering(&mut registry).unwrap();
+    let mut world = World::new();
+    let scene = registry
+        .load_scene(
+            &scene_with_scale("[2, 3, 0.5]"),
+            &mut world,
+            &mut NoResolver,
+        )
+        .expect("the scene loads");
+    let entity = scene.entity(&EntityKey::new("box").unwrap()).unwrap();
+    assert_eq!(
+        world.get::<Scale3>(entity).unwrap().components(),
+        [2.0, 3.0, 0.5]
+    );
+    let saved = registry.save_scene(&world, &scene);
+    let mut again = World::new();
+    registry
+        .load_scene(&saved, &mut again, &mut NoResolver)
+        .expect("the saved scene loads again");
+}
+
+#[test]
+fn a_zero_negative_or_missing_scale_axis_is_refused() {
+    for bad in ["[0, 1, 1]", "[1, -1, 1]", "[1, 1]", "[1, 1, 1, 1]"] {
+        let mut registry = ComponentRegistry::new();
+        register_rendering(&mut registry).unwrap();
+        let mut world = World::new();
+        let result = registry.load_scene(&scene_with_scale(bad), &mut world, &mut NoResolver);
+        assert!(result.is_err(), "{bad} must be refused");
+    }
+}

@@ -4,7 +4,7 @@
 use std::io::Write as _;
 
 use meridian_ecs::{Transform, World};
-use meridian_gac::{Motor3, Vec3};
+use meridian_gac::{Motor3, Scale3, Vec3};
 use meridian_sdk::{
     EditorCamera, EditorRenderer, Material, MaterialHandle, MeshHandle, MeshRenderer, ViewOptions,
     cube_mesh_source,
@@ -309,4 +309,32 @@ fn the_grid_and_a_selection_box_are_drawn_on_request() {
     for _ in 0..20 {
         frame(true, &selected);
     }
+}
+
+#[test]
+fn a_scale_widens_what_is_picked_drawn_and_outlined() {
+    let Some(mut renderer) = renderer() else {
+        return;
+    };
+    let assets = cube_assets(&mut renderer);
+    let mut world = World::new();
+    let wide = spawn_cube(&mut world, assets, [0.0; 3]);
+    let camera = looking([0.0; 3]);
+    // A unit cube reaches 0.5 either side; at x = 2 only the scaled one is hit.
+    let reach = 2.0 / (12.0 * (camera.fov_y * 0.5).tan() * (96.0 / 64.0));
+    assert_eq!(renderer.pick(&world, &camera, reach, 0.0), None);
+    let before = renderer.render(&world, &camera).expect("a frame").to_vec();
+    world.insert(wide, Scale3::new(6.0, 1.0, 1.0).unwrap());
+    assert_eq!(renderer.pick(&world, &camera, reach, 0.0), Some(wide));
+    let after = renderer.render(&world, &camera).expect("a frame").to_vec();
+    assert_ne!(before, after, "the scaled cube fills more of the frame");
+    let options = ViewOptions {
+        grid: false,
+        selection: &[wide],
+    };
+    let outlined = renderer
+        .render_with(&world, &camera, &options)
+        .expect("a frame")
+        .to_vec();
+    assert!(orange_pixels(&outlined) > 20, "the box follows the scale");
 }

@@ -5,7 +5,7 @@ use meridian_sdk::assets::{
 };
 use meridian_sdk::{
     AppHandler, Background, Camera, Device, EnvironmentMap, FrameRecorder, GraphicsSession,
-    InputState, Light, Motor3, Renderable3d, Scene3d, Sky, Vec3, Window, look_at_rotor,
+    InputState, Light, Motor3, Renderable3d, Scale3, Scene3d, Sky, Vec3, Window, look_at_rotor,
     look_at_upright,
 };
 
@@ -63,6 +63,7 @@ impl GpuState {
         let renderables = pieces
             .iter()
             .map(|piece| Renderable3d {
+                scale: Scale3::UNIT,
                 mesh: piece.mesh,
                 material: base.render.materials.register(piece.material),
                 frame: Motor3::identity(),
