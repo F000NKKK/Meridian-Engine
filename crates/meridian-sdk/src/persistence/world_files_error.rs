@@ -1,7 +1,7 @@
 //! [`WorldFilesError`]: why a scene, prefab or save file did not load or save.
 
 use meridian_asset_app::SourceError;
-use meridian_data_substrate::{LoadError, SaveError};
+use meridian_data_substrate::{LoadError, SaveError, SceneSaveError};
 use thiserror::Error;
 
 /// A failed [`WorldFiles`](super::WorldFiles) call. A failed load spawns
@@ -25,6 +25,10 @@ pub enum WorldFilesError {
     /// The save does not read.
     #[error("{0}")]
     Save(#[from] SaveError),
+    /// A prefab instance could not be saved as the changes from its prefab:
+    /// its prefab can't be read again.
+    #[error("{0}")]
+    Instance(#[from] SceneSaveError),
     /// The path may not be written: it is empty, absolute or leaves the root.
     #[error("`{path}` is not a path under the root")]
     PathRejected {

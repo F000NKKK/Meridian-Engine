@@ -12,6 +12,10 @@
 //!   instance root, the prefab's others are `<instance>/<prefab id>`
 //!   ([`load_scene_with_prefabs`](ComponentRegistry::load_scene_with_prefabs)).
 //!   Bytes come from the application's [`PrefabSource`]; no files are read.
+//!   An instance's `overrides` change single fields of the entities its
+//!   prefab makes (keyed `<instance>/<prefab id>`), and
+//!   [`save_scene_with_prefabs`](ComponentRegistry::save_scene_with_prefabs)
+//!   writes an instance as only what changed from its prefab.
 //! - **`.msave`**: `{ format, game, created, scene, state }`: the full
 //!   scene document and the game's own `state`
 //!   ([`save_game`](ComponentRegistry::save_game),
@@ -31,10 +35,13 @@ mod identity;
 mod load;
 mod mapping;
 mod no_resolver;
+mod overrides;
+mod patch;
 mod prefab;
 mod read;
 mod registry;
 mod save;
+mod scene_view;
 mod scene_writer;
 mod transform_form;
 
@@ -46,6 +53,7 @@ pub use identity::{
 pub use load::{LoadError, SceneIssue, SceneProblem};
 pub use mapping::{DuplicateKey, KeptComponent, Parent, SceneEntity, SceneMap};
 pub use no_resolver::NoResolver;
+pub use overrides::SceneSaveError;
 pub use prefab::{
     MAX_PREFAB_DEPTH, PrefabInstance, PrefabLibrary, PrefabSource, PrefabUnavailable,
 };
@@ -53,4 +61,5 @@ pub use registry::{
     ComponentEditError, ComponentRegistry, ComponentShape, RegisterError, UnknownComponents,
 };
 pub use save::{LoadedSave, SaveError, SaveHeader};
+pub use scene_view::SceneView;
 pub use transform_form::{TransformCodec, TransformForm};

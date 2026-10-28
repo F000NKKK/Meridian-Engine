@@ -1,7 +1,8 @@
 //! [`SceneView`]: a world and the scene document that names its entities.
 
-use meridian_data_substrate::SceneMap;
 use meridian_ecs::World;
+
+use crate::SceneMap;
 
 /// What a save writes: the entities of `scene` as they are in `world`.
 /// Entities of the world that `scene` does not list are not written.

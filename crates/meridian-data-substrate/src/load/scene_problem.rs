@@ -5,7 +5,7 @@ use std::fmt;
 use substrate_data::Problem;
 
 use super::LoadError;
-use crate::{ComponentName, ComponentNameError, EntityKey, PrefabPath};
+use crate::{ComponentName, ComponentNameError, EntityKey, EntityKeyError, PrefabPath};
 
 /// What can be wrong with a scene document.
 #[derive(Debug, Clone, PartialEq)]
@@ -85,6 +85,51 @@ pub enum SceneProblem {
         /// Its problems.
         error: Box<LoadError>,
     },
+    /// An `overrides` key that isn't an entity key at all.
+    BadOverrideTarget(EntityKeyError),
+    /// An override aimed at an entity that is neither the instance nor
+    /// below it (`<instance>/…`).
+    OverrideOutsideInstance {
+        /// The target as the document wrote it.
+        target: EntityKey,
+        /// The instance the overrides are in.
+        instance: EntityKey,
+    },
+    /// An entity below an instance that its prefab doesn't make, named by
+    /// an override, a `parent` or a reference.
+    NoSuchGeneratedEntity {
+        /// The entity named, as keyed.
+        key: EntityKey,
+        /// The instance it was looked for under.
+        instance: EntityKey,
+        /// A key the instance does make that this is probably a typo of.
+        suggestion: Option<EntityKey>,
+    },
+    /// `overrides` on an entity that doesn't say `prefab`.
+    OverridesWithoutPrefab {
+        /// The entity.
+        key: EntityKey,
+    },
+    /// `overrides` in a document read without a prefab source, which can't
+    /// know what they override.
+    OverridesNeedPrefabs {
+        /// The instance.
+        key: EntityKey,
+    },
+    /// A `remove` naming a component its target doesn't have.
+    OverrideRemovesMissing {
+        /// The target, as keyed.
+        target: EntityKey,
+        /// The component.
+        name: ComponentName,
+    },
+    /// An instance whose `parent` is an entity its own prefab makes.
+    ParentInsideInstance {
+        /// The instance.
+        key: EntityKey,
+        /// Its parent, below it.
+        parent: EntityKey,
+    },
 }
 
 impl fmt::Display for SceneProblem {
@@ -145,6 +190,36 @@ impl fmt::Display for SceneProblem {
                 let inner = error.to_string().replace('\n', "\n  ");
                 write!(f, "prefab `{prefab}` doesn't load:\n  {inner}")
             }
+            SceneProblem::BadOverrideTarget(e) => e.fmt(f),
+            SceneProblem::OverrideOutsideInstance { target, instance } => write!(
+                f,
+                "override target `{target}` is not `{instance}` or an entity below it"
+            ),
+            SceneProblem::NoSuchGeneratedEntity {
+                key,
+                instance,
+                suggestion,
+            } => {
+                write!(f, "the prefab of `{instance}` makes no entity `{key}`")?;
+                match suggestion {
+                    Some(s) => write!(f, " — did you mean `{s}`?"),
+                    None => Ok(()),
+                }
+            }
+            SceneProblem::OverridesWithoutPrefab { key } => {
+                write!(f, "entity `{key}` has `overrides` but no `prefab`")
+            }
+            SceneProblem::OverridesNeedPrefabs { key } => write!(
+                f,
+                "`{key}` has `overrides`, which need its prefab: load with a prefab source"
+            ),
+            SceneProblem::OverrideRemovesMissing { target, name } => {
+                write!(f, "`{target}` has no component `{name}` to remove")
+            }
+            SceneProblem::ParentInsideInstance { key, parent } => write!(
+                f,
+                "instance `{key}` can't have its own `{parent}` as its parent"
+            ),
         }
     }
 }

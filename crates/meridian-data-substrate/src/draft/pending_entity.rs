@@ -2,7 +2,7 @@
 
 use meridian_ecs::World;
 
-use super::ComponentsDraft;
+use super::{ComponentOverride, ComponentsDraft};
 use crate::{DisplayName, EntityKey, PrefabPath, SceneEntity};
 
 /// An entity read from a document, not spawned yet.
@@ -14,6 +14,8 @@ pub(crate) struct PendingEntity {
     pub(crate) prefab: Option<PrefabPath>,
     pub(crate) parent: Option<EntityKey>,
     pub(crate) components: ComponentsDraft,
+    /// What an instance changes in its prefab's entities, until applied.
+    pub(crate) overrides: Vec<ComponentOverride>,
     /// The instance root a prefab made this entity under.
     pub(crate) generated_by: Option<EntityKey>,
 }
@@ -23,7 +25,7 @@ impl PendingEntity {
     pub(crate) fn spawn(self, world: &mut World) -> SceneEntity {
         let entity = world.spawn();
         for (_, insert) in self.components.inserts {
-            insert(world, entity);
+            insert.insert(world, entity);
         }
         let mut e = SceneEntity::new(self.key, entity);
         e.name = self.name;
@@ -50,6 +52,7 @@ impl PendingEntity {
         let merged = PendingEntity {
             name: self.name.or(root.name),
             components: root.components.overridden_by(self.components),
+            overrides: Vec::new(),
             ..self
         };
         group.insert(0, merged);

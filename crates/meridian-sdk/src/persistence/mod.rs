@@ -9,7 +9,6 @@
 mod asset_prefab_source;
 mod raw_bytes;
 mod scene_form;
-mod scene_view;
 mod world_files;
 mod world_files_error;
 mod write_file;
@@ -20,11 +19,10 @@ pub use asset_prefab_source::AssetPrefabSource;
 pub use meridian_data_substrate::{
     ComponentName, ComponentRegistry, EntityKey, LoadedSave, NoResolver, PrefabInstance,
     PrefabLibrary, PrefabPath, PrefabSource, PrefabUnavailable, SaveHeader, SceneMap,
-    TransformCodec, UnknownComponents,
+    SceneSaveError, SceneView, TransformCodec, UnknownComponents,
 };
 pub use meridian_ecs::{Component, Entity, Transform, World};
 pub use scene_form::SceneForm;
-pub use scene_view::SceneView;
 pub use substrate_data::{Resolve, Schema};
 pub use world_files::WorldFiles;
 pub use world_files_error::WorldFilesError;
