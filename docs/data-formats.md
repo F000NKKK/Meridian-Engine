@@ -49,8 +49,8 @@ so the reference's `material` is not looked up: each piece becomes a child of
 the entity that holds the reference, which is marked with `ModelPieces`.
 Picking a piece returns that entity and the selection box covers all its
 pieces. Pieces sit at the owner's frame through the hierarchy, so run
-`propagate_transforms` after the owner moves. The owner's `scale` does not
-reach its pieces (scale is local, version 1).
+`propagate_transforms` after the owner moves or is scaled: the pieces inherit
+the owner's scale through the hierarchy.
 
 ## Materials
 

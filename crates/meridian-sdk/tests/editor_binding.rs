@@ -188,6 +188,12 @@ fn a_reference_to_a_model_draws_its_pieces_and_a_click_means_the_owner() {
     assert_eq!(world.query::<MeshRenderer>().count(), 2, "bound once");
     let camera = looking([0.0; 3]);
     assert_eq!(renderer.pick(&world, &camera, 0.0, 0.0), Some(owner));
+    // The pieces inherit the owner's scale: a click 2 to the side hits only then.
+    let reach = 2.0 / (12.0 * (camera.fov_y * 0.5).tan() * (96.0 / 64.0));
+    assert_eq!(renderer.pick(&world, &camera, reach, 0.0), None);
+    world.insert(owner, meridian_sdk::Scale3::new(6.0, 1.0, 1.0).unwrap());
+    meridian_ecs::propagate_transforms(&mut world);
+    assert_eq!(renderer.pick(&world, &camera, reach, 0.0), Some(owner));
     let options = ViewOptions {
         grid: false,
         selection: &[owner],
