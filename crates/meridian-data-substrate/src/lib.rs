@@ -48,8 +48,8 @@ mod transform_form;
 
 pub use document_keys::{FORMAT, SAVE_FORMAT};
 pub use identity::{
-    ComponentName, ComponentNameError, DisplayName, EntityKey, EntityKeyError, EntityKind,
-    PrefabKind, PrefabPath, PrefabPathError,
+    AssetKey, AssetKeyError, AssetPathKind, ComponentName, ComponentNameError, DisplayName,
+    EntityKey, EntityKeyError, EntityKind, PrefabKind, PrefabPath, PrefabPathError,
 };
 pub use load::{LoadError, SceneIssue, SceneProblem};
 pub use mapping::{DuplicateKey, KeptComponent, Parent, SceneEntity, SceneMap};
@@ -61,7 +61,7 @@ pub use prefab::{
 pub use registry::{
     ComponentEditError, ComponentRegistry, ComponentShape, RegisterError, UnknownComponents,
 };
-pub use rendering::{LightCodec, LightForm, LightKindForm, register_rendering};
+pub use rendering::{LightCodec, LightForm, LightKindForm, MeshReference, register_rendering};
 pub use save::{LoadedSave, SaveError, SaveHeader};
 pub use scene_view::SceneView;
 pub use transform_form::{TransformCodec, TransformForm};

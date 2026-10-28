@@ -34,6 +34,14 @@ A reference is checked while the document is read (`substrate_data::Resolve`)
 and every one is reported with its path, so a build can list what a scene
 needs before loading anything.
 
+`mesh_renderer` is the component that carries `@asset:` references:
+`register_rendering` registers it as `MeshReference` (two `Id<AssetPathKind>`
+fields and `billboard`). The runtime `MeshRenderer` holds only handles, so
+the sdk binds after loading: `EditorRenderer::bind_references` asks an
+`AssetBinder` (`BuiltinAssets` answers `@asset:builtin/cube`, `sphere`,
+`ground` and the material `builtin/default`) for each handle and reports
+every reference it could not resolve. Saving writes `MeshReference` back.
+
 ## Math values
 
 With the `data` feature, `numeric` and `gac` implement
