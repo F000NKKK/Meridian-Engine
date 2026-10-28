@@ -196,6 +196,11 @@ layer = "interface"
 context = "runtime"
 
 [[crate]]
+name = "meridian-animation-domain"
+layer = "domain"
+context = "animation"
+
+[[crate]]
 name = "meridian-text-domain"
 layer = "domain"
 context = "text"

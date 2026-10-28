@@ -26,6 +26,7 @@ two layers today is listed under the one it is moving to; Craftbook's
 | rendering | domain + adapter | `rendering-domain` (domain), `rendering-app` (app: ports `FrameRecorder`/`MeshStore`/`TextureStore`), `rendering-wgpu` (infra: wgpu recording, implements the ports) | scenes, cameras, lights, materials, render graph, frame submission |
 | physics | domain + adapters | `physics-domain` (domain, perf), `physics-app` (app: `PhysicsSubsystem`, the `PhysicsStepper` port), `physics-wgpu` (infra: batched stepper) | rigid bodies, colliders, contacts, solver, integrator, soft bodies |
 | audio | domain + adapter | `audio-domain` (domain), `audio-app` (app: `AudioSubsystem`, the `AudioSink` port), `audio-cpal` (infra: cpal, implements it) | listener, emitters, speakers, mixer, DSP graph |
+| animation | domain | `animation-domain` (domain: skeletons, joints, keyframed clips, playback, joint matrices) | skeleton, joint, pose, clip, channel, playback |
 | text | domain | `text-domain` (domain: TrueType parsing, outlines, rasterizer, glyph atlas, shaper) | faces, outlines, coverage bitmaps, glyph atlas |
 | ui | domain + adapter | `ui-domain` (domain), `ui-mel` (infra: build-time `.meui` generator), `ui-scene2d` (infra: adapter from the UI tree to `rendering-domain::Scene2d`) | element tree, typed properties, layout, hit testing, generated bindings |
 | data | infrastructure | `scene` (infra: Substrate Data scene documents) | scene document schema and migration |
