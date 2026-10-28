@@ -1,8 +1,8 @@
 //! The viewer's window, GPU state and frame loop.
 
 use meridian_sdk::{
-    AppHandler, Camera, Device, GraphicsSession, InputState, Light, Motor3, Renderable3d, Scene3d,
-    Vec3, Window, look_at_rotor,
+    AppHandler, Camera, Device, EnvironmentMap, FrameRecorder, GraphicsSession, InputState, Light,
+    Motor3, Renderable3d, Scene3d, Sky, Vec3, Window, look_at_rotor,
 };
 
 const SUN: Vec3 = Vec3 {
@@ -56,6 +56,7 @@ impl GpuState {
                 casts_shadow: true,
             })
             .collect();
+        light_with_sky(&mut base);
         let scene = Scene3d {
             renderables,
             lights: vec![Light::Directional {
@@ -155,5 +156,23 @@ impl AppHandler for App {
         if let Some(gpu) = &mut self.gpu {
             gpu.base.resize(width, height);
         }
+    }
+}
+
+/// Lights the model with a procedural sky (ADR 035) whose sun sits where the
+/// directional light does; `MERIDIAN_ENV=none` keeps the ambient colours alone.
+fn light_with_sky(base: &mut GraphicsSession) {
+    if std::env::var("MERIDIAN_ENV").as_deref() == Ok("none") {
+        return;
+    }
+    let sky = Sky {
+        sun_direction: [-SUN.x, -SUN.y, -SUN.z],
+        sun_radiance: [30.0, 27.0, 22.0],
+        sun_radius: 0.06,
+        ..Sky::default()
+    };
+    match EnvironmentMap::from_sky(&sky) {
+        Ok(map) => base.render.recorder.set_environment(Some(&map)),
+        Err(err) => meridian_sdk::log_error!("sky environment: {err}"),
     }
 }

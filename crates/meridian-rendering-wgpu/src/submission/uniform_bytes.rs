@@ -5,6 +5,10 @@ use meridian_rendering_domain::scene::Light;
 use meridian_rendering_domain::{ShadowLight, ViewUniforms};
 
 use super::MAX_LIGHTS;
+use super::environment::EnvironmentUniform;
+
+/// Bytes of the lit uniform: the view, the lights, then the environment.
+pub(crate) const LIT_UNIFORM_BYTES: usize = 416 + EnvironmentUniform::BYTES;
 
 pub(crate) fn mat4_to_bytes(m: [[f32; 4]; 4]) -> [u8; 64] {
     let mut bytes = [0u8; 64];
@@ -31,7 +35,8 @@ fn vec3_to_padded_bytes(v: [f32; 3]) -> [u8; 16] {
 /// `view_proj` (64 bytes), `light_view_proj` (64), `camera_pos` (16),
 /// `ambient_ground` (16), `ambient_sky` (16), `light_direction` (16),
 /// `light_count` (16), `shadow_caster` (16), then [`MAX_LIGHTS`](super::MAX_LIGHTS)
-/// `LightData` entries (48 bytes each) — 416 bytes total. Lights beyond
+/// `LightData` entries (48 bytes each), then the environment's `env_sh` (9 x 16)
+/// and `env_params` (16) — 576 bytes total. Lights beyond
 /// the cap are dropped (logged once by the caller, not here — see
 /// `bake_batches`). `shadow_caster` is the index into
 /// `lights` of the shadow-casting light (see
@@ -42,7 +47,10 @@ fn vec3_to_padded_bytes(v: [f32; 3]) -> [u8; 16] {
 /// `light_direction` is that same light's travel direction (unit
 /// vector), independent of `shadow_caster` — the shadow lookup uses it
 /// directly for its slope-scaled bias rather than re-indexing `lights`.
-pub(crate) fn lit_uniform_bytes(view: &ViewUniforms<'_>) -> Vec<u8> {
+pub(crate) fn lit_uniform_bytes(
+    view: &ViewUniforms<'_>,
+    environment: EnvironmentUniform,
+) -> Vec<u8> {
     let ShadowLight {
         view_proj,
         direction,
@@ -50,7 +58,7 @@ pub(crate) fn lit_uniform_bytes(view: &ViewUniforms<'_>) -> Vec<u8> {
     } = view.shadow;
     let camera_pos = view.camera.frame.transform_point(Vec3::ZERO);
     let count = view.lights.len().min(MAX_LIGHTS) as u32;
-    let mut bytes = Vec::with_capacity(416);
+    let mut bytes = Vec::with_capacity(LIT_UNIFORM_BYTES);
     bytes.extend_from_slice(&mat4_to_bytes(view.camera.view_projection_matrix()));
     bytes.extend_from_slice(&mat4_to_bytes(view_proj));
     bytes.extend_from_slice(&vec3_to_padded_bytes([
@@ -70,6 +78,7 @@ pub(crate) fn lit_uniform_bytes(view: &ViewUniforms<'_>) -> Vec<u8> {
     for index in 0..MAX_LIGHTS {
         bytes.extend_from_slice(&light_to_bytes(view.lights.get(index)));
     }
+    bytes.extend_from_slice(&environment.to_bytes());
     bytes
 }
 

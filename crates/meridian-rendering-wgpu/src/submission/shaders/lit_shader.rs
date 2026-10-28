@@ -1,5 +1,7 @@
 //! The lit WGSL shaders and the light limit they are compiled for.
 
+use super::environment_shader::ENVIRONMENT_WGSL;
+
 /// The uniform array's fixed capacity — see the module doc.
 pub const MAX_LIGHTS: usize = 4;
 
@@ -44,6 +46,10 @@ struct Uniforms {
     // `0xffffffff` means "no shadow-casting light in this scene".
     shadow_caster: vec4<u32>,
     lights: array<LightData, 4>,
+    // The environment (ADR 035): nine irradiance/pi coefficients, then
+    // x: 1 when an environment is set, y: its highest mip level.
+    env_sh: array<vec4<f32>, 9>,
+    env_params: vec4<f32>,
 };
 
 @group(0) @binding(0)
@@ -109,12 +115,20 @@ fn shade(world_pos: vec3<f32>, world_normal: vec3<f32>, base_color: vec3<f32>, s
     let f0 = mix(vec3<f32>(0.04), base_color, metallic);
     let diffuse_color = base_color * (1.0 - metallic);
 
-    // Without an environment map the sky/ground gradient stands in for one:
-    // the normal's lookup lights the diffuse part, the reflection's the
-    // specular part, with Fresnel damped by roughness.
-    let ambient_fresnel = f0 + (max(vec3<f32>(1.0 - roughness), f0) - f0) * pow(1.0 - n_dot_v, 5.0);
-    var result = (hemisphere_ambient(n) * diffuse_color
-        + hemisphere_ambient(reflect(-view_dir, n)) * ambient_fresnel) * occlusion;
+    // With an environment (ADR 035) its irradiance lights the diffuse part
+    // and its prefiltered reflection the specular part; without one the
+    // sky/ground gradient stands in for it, looked up the same two ways,
+    // with Fresnel damped by roughness.
+    let reflected = reflect(-view_dir, n);
+    var ambient: vec3<f32>;
+    if (u.env_params.x > 0.5) {
+        ambient = environment_irradiance(n) * diffuse_color
+            + environment_reflection(reflected, roughness) * environment_brdf(f0, roughness, n_dot_v);
+    } else {
+        let ambient_fresnel = f0 + (max(vec3<f32>(1.0 - roughness), f0) - f0) * pow(1.0 - n_dot_v, 5.0);
+        ambient = hemisphere_ambient(n) * diffuse_color + hemisphere_ambient(reflected) * ambient_fresnel;
+    }
+    var result = ambient * occlusion;
 
     let count = min(u.light_count.x, 4u);
     for (var i: u32 = 0u; i < count; i = i + 1u) {
@@ -157,6 +171,10 @@ const LIT_COLORED_BODY_WGSL: &str = r#"
 var shadow_map: texture_depth_2d;
 @group(0) @binding(2)
 var shadow_sampler: sampler_comparison;
+@group(0) @binding(3)
+var env_map: texture_2d<f32>;
+@group(0) @binding(4)
+var env_sampler: sampler;
 
 // Slope-scaled bias: a surface nearly edge-on to the light (small
 // `n_dot_l`) needs a much bigger depth push than one facing the light
@@ -226,7 +244,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
 /// [`UNLIT_SHADER_WGSL`](crate::submission::UNLIT_SHADER_WGSL)'s lit counterpart: metallic-roughness-shaded flat
 /// color. Used for lit materials with no resolvable albedo texture.
 pub(crate) fn lit_shader_wgsl() -> String {
-    format!("{LIT_UNIFORMS_AND_SHADING_WGSL}{LIT_COLORED_BODY_WGSL}")
+    format!("{LIT_UNIFORMS_AND_SHADING_WGSL}{ENVIRONMENT_WGSL}{LIT_COLORED_BODY_WGSL}")
 }
 
 /// The lit textured fragment/vertex stage text spliced after the shared
@@ -250,6 +268,11 @@ var normal_tex: texture_2d<f32>;
 var occlusion_tex: texture_2d<f32>;
 @group(0) @binding(8)
 var emissive_tex: texture_2d<f32>;
+// The prefiltered environment and its sampler (ADR 035).
+@group(0) @binding(9)
+var env_map: texture_2d<f32>;
+@group(0) @binding(10)
+var env_sampler: sampler;
 
 /// `world_normal` bent by the tangent-space `map_normal`. The tangent frame
 /// comes from the screen-space derivatives of position and UV, so meshes
@@ -350,5 +373,5 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
 
 /// [`TEXTURED_SHADER_WGSL`](crate::submission::TEXTURED_SHADER_WGSL)'s lit counterpart.
 pub(crate) fn lit_textured_shader_wgsl() -> String {
-    format!("{LIT_UNIFORMS_AND_SHADING_WGSL}{LIT_TEXTURED_BODY_WGSL}")
+    format!("{LIT_UNIFORMS_AND_SHADING_WGSL}{ENVIRONMENT_WGSL}{LIT_TEXTURED_BODY_WGSL}")
 }

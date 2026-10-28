@@ -1,5 +1,7 @@
 //! The port that draws a scene to a target.
 
+use meridian_rendering_domain::EnvironmentMap;
+
 use crate::{FrameOutcome, FrameRequest};
 
 /// Draws frames to a render target: the rendering context's output port.
@@ -16,4 +18,8 @@ pub trait FrameRecorder {
 
     /// Resizes the target and everything sized to it.
     fn resize(&mut self, width: u32, height: u32);
+
+    /// Lights lit surfaces with `environment` from the next frame on
+    /// (ADR 035); `None` returns to the scene's ambient colours.
+    fn set_environment(&mut self, environment: Option<&EnvironmentMap>);
 }

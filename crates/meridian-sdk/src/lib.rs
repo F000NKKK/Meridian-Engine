@@ -1,5 +1,4 @@
 //! Single application-facing entry point for Meridian-Engine.
-//!
 //! Layer: interface; bounded context: runtime (`craftbook.toml`, docs/context-map.md).
 //! **Applications depend on this crate alone.** Everything an app needs
 //! (spatial math, physics, graphics, the windowed-app loop, audio, asset
@@ -73,10 +72,11 @@ pub use meridian_rendering_app::{
 };
 // -- meridian-rendering-domain: scene/material/lighting/submission --
 pub use meridian_rendering_domain::{
-    BlendMode, Camera, Camera2d, ClipRect, ClipSpan, FlyCamera, FlyControls, Frustum, Light,
-    Material, MaterialHandle, MaterialRegistry, MeshHandle, MeshRegistry, MeshSource, Overlay2d,
-    Renderable3d, Scene2d, Scene3d, Sprite, TextureHandle, cube_mesh_source, ground_mesh_source,
-    icosphere_mesh_source, look_at_rotor, pyramid_mesh_source, smooth_normals,
+    BlendMode, Camera, Camera2d, ClipRect, ClipSpan, EnvironmentMap, FlyCamera, FlyControls,
+    Frustum, Light, Material, MaterialHandle, MaterialRegistry, MeshHandle, MeshRegistry,
+    MeshSource, Overlay2d, Renderable3d, Scene2d, Scene3d, Sky, Sprite, TextureHandle,
+    cube_mesh_source, ground_mesh_source, icosphere_mesh_source, look_at_rotor,
+    pyramid_mesh_source, smooth_normals,
 };
 // -- meridian-rendering-wgpu: the GPU device a windowed app opens once --
 pub use meridian_rendering_wgpu::{

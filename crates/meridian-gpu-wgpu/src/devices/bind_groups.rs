@@ -1,6 +1,22 @@
 //! Bind group creation on the device.
 
-use crate::{BindGroup, Buffer, Device, LitTextures, Sampler, Texture};
+use crate::{BindGroup, Buffer, Device, LitTextures, SampledTexture, Sampler, Texture};
+
+/// A bind group entry binding `texture`'s view at `binding`.
+fn view_entry(binding: u32, texture: &Texture) -> wgpu::BindGroupEntry<'_> {
+    wgpu::BindGroupEntry {
+        binding,
+        resource: wgpu::BindingResource::TextureView(&texture.view),
+    }
+}
+
+/// A bind group entry binding `sampler` at `binding`.
+fn sampler_entry(binding: u32, sampler: &Sampler) -> wgpu::BindGroupEntry<'_> {
+    wgpu::BindGroupEntry {
+        binding,
+        resource: wgpu::BindingResource::Sampler(&sampler.raw),
+    }
+}
 
 impl Device {
     /// Builds a bind group binding `buffer` at `@group(0) @binding(0)` of
@@ -79,10 +95,12 @@ impl Device {
 
     /// [`create_texture_bind_group`](Self::create_texture_bind_group)
     /// plus a shadow map at `@binding(3)`, its comparison sampler at
-    /// `@binding(4)` and the metallic-roughness, normal, occlusion and
-    /// emissive maps at `@binding(5..=8)` — the shape a textured, shadow-
+    /// `@binding(4)`, the metallic-roughness, normal, occlusion and
+    /// emissive maps at `@binding(5..=8)` and the environment with its
+    /// sampler at `@binding(9..=10)` — the shape a textured, shadow-
     /// receiving lit shader needs (uniform, albedo texture, albedo sampler,
-    /// shadow map, shadow sampler, then the four surface maps).
+    /// shadow map, shadow sampler, the four surface maps, then the
+    /// environment).
     pub fn create_textured_shadow_bind_group(
         &self,
         pipeline_layout: &wgpu::BindGroupLayout,
@@ -93,6 +111,7 @@ impl Device {
             albedo,
             surface,
             shadow,
+            environment,
         } = textures;
         let raw = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: None,
@@ -102,38 +121,16 @@ impl Device {
                     binding: 0,
                     resource: buffer.raw.as_entire_binding(),
                 },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: wgpu::BindingResource::TextureView(&albedo.texture.view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: wgpu::BindingResource::Sampler(&albedo.sampler.raw),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: wgpu::BindingResource::TextureView(&shadow.texture.view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 4,
-                    resource: wgpu::BindingResource::Sampler(&shadow.sampler.raw),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 5,
-                    resource: wgpu::BindingResource::TextureView(&surface.metallic_roughness.view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 6,
-                    resource: wgpu::BindingResource::TextureView(&surface.normal.view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 7,
-                    resource: wgpu::BindingResource::TextureView(&surface.occlusion.view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 8,
-                    resource: wgpu::BindingResource::TextureView(&surface.emissive.view),
-                },
+                view_entry(1, albedo.texture),
+                sampler_entry(2, albedo.sampler),
+                view_entry(3, shadow.texture),
+                sampler_entry(4, shadow.sampler),
+                view_entry(5, surface.metallic_roughness),
+                view_entry(6, surface.normal),
+                view_entry(7, surface.occlusion),
+                view_entry(8, surface.emissive),
+                view_entry(9, environment.texture),
+                sampler_entry(10, environment.sampler),
             ],
         });
         BindGroup { raw }
@@ -143,13 +140,14 @@ impl Device {
     /// but without an albedo texture/sampler — the shape an *untextured*
     /// (vertex-colored) shadow-receiving lit shader needs: uniform at
     /// `@binding(0)`, shadow map at `@binding(1)`, shadow sampler at
-    /// `@binding(2)`.
+    /// `@binding(2)`, environment at `@binding(3)` and its sampler at
+    /// `@binding(4)`.
     pub fn create_shadow_bind_group(
         &self,
         pipeline_layout: &wgpu::BindGroupLayout,
         buffer: &Buffer,
-        shadow_map: &Texture,
-        shadow_sampler: &Sampler,
+        shadow: SampledTexture<'_>,
+        environment: SampledTexture<'_>,
     ) -> BindGroup {
         let raw = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: None,
@@ -159,14 +157,10 @@ impl Device {
                     binding: 0,
                     resource: buffer.raw.as_entire_binding(),
                 },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: wgpu::BindingResource::TextureView(&shadow_map.view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: wgpu::BindingResource::Sampler(&shadow_sampler.raw),
-                },
+                view_entry(1, shadow.texture),
+                sampler_entry(2, shadow.sampler),
+                view_entry(3, environment.texture),
+                sampler_entry(4, environment.sampler),
             ],
         });
         BindGroup { raw }

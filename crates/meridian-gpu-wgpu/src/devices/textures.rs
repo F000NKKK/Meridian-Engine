@@ -16,6 +16,22 @@ impl Device {
         format: wgpu::TextureFormat,
         usage: wgpu::TextureUsages,
     ) -> Texture {
+        self.create_mipped_texture([width, height], format, usage, 1)
+    }
+
+    /// [`create_texture`](Self::create_texture) with `mip_levels` levels
+    /// (at least one): level `i` is `width >> i` by `height >> i`, each at
+    /// least one texel, filled with
+    /// [`write_texture_level`](Self::write_texture_level). The texture's view
+    /// covers every level.
+    #[must_use]
+    pub fn create_mipped_texture(
+        &self,
+        [width, height]: [u32; 2],
+        format: wgpu::TextureFormat,
+        usage: wgpu::TextureUsages,
+        mip_levels: u32,
+    ) -> Texture {
         let raw = self.device.create_texture(&wgpu::TextureDescriptor {
             label: None,
             size: wgpu::Extent3d {
@@ -23,7 +39,7 @@ impl Device {
                 height: height.max(1),
                 depth_or_array_layers: 1,
             },
-            mip_level_count: 1,
+            mip_level_count: mip_levels.max(1),
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
             format,
@@ -62,6 +78,39 @@ impl Device {
             wgpu::Extent3d {
                 width: texture.width,
                 height: texture.height,
+                depth_or_array_layers: 1,
+            },
+        );
+    }
+
+    /// Uploads `data` (tightly packed, `bytes_per_texel` bytes per texel) to
+    /// mip level `level` of `texture`: the level's whole extent, which is
+    /// `width >> level` by `height >> level`, each at least one texel.
+    pub fn write_texture_level(
+        &self,
+        texture: &Texture,
+        level: u32,
+        data: &[u8],
+        bytes_per_texel: u32,
+    ) {
+        let width = (texture.width >> level).max(1);
+        let height = (texture.height >> level).max(1);
+        self.queue.write_texture(
+            wgpu::TexelCopyTextureInfo {
+                texture: &texture.raw,
+                mip_level: level,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            data,
+            wgpu::TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(width * bytes_per_texel),
+                rows_per_image: Some(height),
+            },
+            wgpu::Extent3d {
+                width,
+                height,
                 depth_or_array_layers: 1,
             },
         );
@@ -114,6 +163,24 @@ impl Device {
             mag_filter: wgpu::FilterMode::Linear,
             min_filter: wgpu::FilterMode::Linear,
             mipmap_filter: wgpu::MipmapFilterMode::Nearest,
+            ..Default::default()
+        });
+        Sampler { raw }
+    }
+
+    /// A sampler for an equirectangular environment with a mip chain:
+    /// linear within and between levels, wrapping around the horizon (`u`) and
+    /// clamping at the poles (`v`).
+    #[must_use]
+    pub fn create_environment_sampler(&self) -> Sampler {
+        let raw = self.device.create_sampler(&wgpu::SamplerDescriptor {
+            label: None,
+            address_mode_u: wgpu::AddressMode::Repeat,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            address_mode_w: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            mipmap_filter: wgpu::MipmapFilterMode::Linear,
             ..Default::default()
         });
         Sampler { raw }

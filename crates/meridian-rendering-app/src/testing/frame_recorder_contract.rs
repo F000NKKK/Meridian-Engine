@@ -1,12 +1,13 @@
 //! The behaviour every [`FrameRecorder`](crate::FrameRecorder) must have.
 
 use meridian_rendering_domain::scene::Scene3d;
-use meridian_rendering_domain::{MaterialRegistry, MeshRegistry, Overlay2d};
+use meridian_rendering_domain::{EnvironmentMap, MaterialRegistry, MeshRegistry, Overlay2d, Sky};
 
 use crate::{FrameOutcome, FrameRecorder, FrameRequest};
 
 /// Asserts the frame recorder contract against fresh recorders from `make`: an
-/// empty scene with an empty overlay is presented; a frame after a resize is presented; and a
+/// empty scene with an empty overlay is presented; a frame after a resize is presented; a frame
+/// is presented with an environment set and again with it cleared; and a
 /// recorder whose target `lose_target` took away reports
 /// [`FrameOutcome::TargetUnavailable`] until it is resized.
 ///
@@ -32,6 +33,12 @@ pub fn run_frame_recorder_contract<R: FrameRecorder>(
     let mut recorder = make();
     assert_eq!(recorder.record_frame(&request), FrameOutcome::Presented);
     recorder.resize(128, 96);
+    assert_eq!(recorder.record_frame(&request), FrameOutcome::Presented);
+
+    let environment = EnvironmentMap::from_sky(&Sky::default()).expect("the default sky builds");
+    recorder.set_environment(Some(&environment));
+    assert_eq!(recorder.record_frame(&request), FrameOutcome::Presented);
+    recorder.set_environment(None);
     assert_eq!(recorder.record_frame(&request), FrameOutcome::Presented);
 
     lose_target(&mut recorder);

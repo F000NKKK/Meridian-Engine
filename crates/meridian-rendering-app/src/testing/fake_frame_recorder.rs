@@ -1,5 +1,7 @@
 //! A [`FrameRecorder`](crate::FrameRecorder) that draws nothing.
 
+use meridian_rendering_domain::EnvironmentMap;
+
 use crate::{FrameOutcome, FrameRecorder, FrameRequest};
 
 /// Counts the frames it is asked for and reports what it was told to.
@@ -9,6 +11,7 @@ pub struct FakeFrameRecorder {
     frames: usize,
     overlays: usize,
     available: bool,
+    environment: bool,
 }
 
 impl FakeFrameRecorder {
@@ -20,6 +23,7 @@ impl FakeFrameRecorder {
             frames: 0,
             overlays: 0,
             available: true,
+            environment: false,
         }
     }
 
@@ -39,6 +43,12 @@ impl FakeFrameRecorder {
     #[must_use]
     pub fn overlays_drawn(&self) -> usize {
         self.overlays
+    }
+
+    /// Whether an environment is set.
+    #[must_use]
+    pub fn has_environment(&self) -> bool {
+        self.environment
     }
 
     /// The current `[width, height]`.
@@ -62,12 +72,26 @@ impl FrameRecorder for FakeFrameRecorder {
         self.size = [width, height];
         self.available = true;
     }
+
+    fn set_environment(&mut self, environment: Option<&EnvironmentMap>) {
+        self.environment = environment.is_some();
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::testing::run_frame_recorder_contract;
+
+    #[test]
+    fn remembers_whether_an_environment_is_set() {
+        let mut recorder = FakeFrameRecorder::new(8, 8);
+        let map = EnvironmentMap::from_sky(&meridian_rendering_domain::Sky::default()).unwrap();
+        recorder.set_environment(Some(&map));
+        assert!(recorder.has_environment());
+        recorder.set_environment(None);
+        assert!(!recorder.has_environment());
+    }
 
     #[test]
     fn passes_the_frame_recorder_contract() {

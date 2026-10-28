@@ -1,6 +1,7 @@
 //! WGSL sources for the unlit, lit, textured and emissive-extract pipelines.
 
 mod emissive_extract_shader;
+mod environment_shader;
 mod lit_shader;
 mod shadow_depth_shader;
 mod textured_shader;

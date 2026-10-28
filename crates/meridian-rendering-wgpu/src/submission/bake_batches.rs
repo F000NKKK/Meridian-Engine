@@ -164,7 +164,7 @@ fn upload_instances(device: &Device, bytes: &[u8]) -> Option<Buffer> {
 /// occlusion, emissive]` textures, made against the pipeline `key` selects (a
 /// bind group only fits its own pipeline). Lit textured draws need the
 /// shadow map and sampler too and the four surface maps (see
-/// `lit_textured_shader_wgsl`'s bindings 3 to 8); unlit draws ignore
+/// `lit_textured_shader_wgsl`'s bindings 3 to 10); unlit draws ignore
 /// lighting, so theirs stays the plain three bindings.
 fn textured_bind_group(
     device: &Device,
@@ -191,6 +191,10 @@ fn textured_bind_group(
                 shadow: SampledTexture {
                     texture: &renderer.shadow_map,
                     sampler: &renderer.shadow_sampler,
+                },
+                environment: SampledTexture {
+                    texture: &renderer.environment.texture,
+                    sampler: &renderer.environment.sampler,
                 },
             },
         )
