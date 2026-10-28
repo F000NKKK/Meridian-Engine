@@ -1,6 +1,6 @@
 //! Runtime use cases: [`Runtime`] runs registered [`Stage`]s in dependency
 //! order through the [`JobExecutor`] port, with the built-in
-//! [`AudioStage`], [`PhysicsStepStage`] and [`ComputeStage`] and a typed [`EventSystem`].
+//! [`AudioStage`], [`ContactSoundStage`], [`PhysicsStepStage`] and [`ComputeStage`] and a typed [`EventSystem`].
 //!
 //! Layer: application; bounded context: runtime (`craftbook.toml`,
 //! docs/context-map.md).
@@ -19,6 +19,7 @@
 
 mod audio_stage;
 mod compute_stage;
+mod contact_sound_stage;
 mod event_system;
 mod job;
 mod job_executor;
@@ -33,6 +34,7 @@ mod tests;
 
 pub use audio_stage::AudioStage;
 pub use compute_stage::ComputeStage;
+pub use contact_sound_stage::ContactSoundStage;
 pub use event_system::EventSystem;
 pub use job::Job;
 pub use job_executor::JobExecutor;

@@ -38,7 +38,7 @@ assert_eq!(*frames.lock(), 1);
 
 ## Depends on / used by
 
-- Depends on: [`meridian-audio-app`](../meridian-audio-app), [`meridian-compute-app`](../meridian-compute-app), [`meridian-diagnostics`](../meridian-diagnostics), [`meridian-physics-app`](../meridian-physics-app)
+- Depends on: [`meridian-audio-app`](../meridian-audio-app), [`meridian-audio-domain`](../meridian-audio-domain), [`meridian-compute-app`](../meridian-compute-app), [`meridian-diagnostics`](../meridian-diagnostics), [`meridian-physics-app`](../meridian-physics-app)
 - Used by: [`meridian-sdk`](../meridian-sdk), [`meridian-runtime-threads`](../meridian-runtime-threads)
 
 ## License

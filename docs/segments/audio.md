@@ -77,8 +77,9 @@ Not started; ordered by suggested priority. Items wait for an explicit task.
 6. ~~Voice features~~ — done: fades (`Voice::with_fade`), voice limit with
    stealing (`AudioScene::with_max_voices`), `ResampledSource`;
    `magic_figures` resamples tracks to the stream rate.
-7. **Not built:** one-shots triggered by physics contacts (needs an event
-   path from `runtime-app`), priority-based stealing (today: oldest first),
+7. ~~Contact sounds~~ — done ([ADR 031](../adr/031-contact-events-through-the-event-system.md)):
+   `ContactWatcher` in `physics-app`, `ContactSoundStage` in `runtime-app`.
+8. **Not built:** priority-based stealing (today: oldest first),
    `AudioTrack` reads without the per-block `Vec`, a resampler with a
    low-pass for large downward conversions.
 

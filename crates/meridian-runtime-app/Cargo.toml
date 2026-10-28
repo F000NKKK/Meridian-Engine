@@ -10,13 +10,13 @@ readme = "README.md"
 
 [dependencies]
 meridian-audio-app = { workspace = true }
+meridian-audio-domain = { workspace = true }
 meridian-diagnostics = { workspace = true }
 meridian-physics-app = { workspace = true }
 meridian-compute-app = { workspace = true }
 
 [dev-dependencies]
 meridian-audio-app = { workspace = true, features = ["testing"] }
-meridian-audio-domain = { workspace = true }
 meridian-compute-app = { workspace = true, features = ["testing"] }
 meridian-gac = { workspace = true }
 meridian-physics-domain = { workspace = true }

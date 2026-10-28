@@ -1,8 +1,8 @@
 //! The stage that steps physics.
 
-use meridian_physics_app::{PhysicsStepper, PhysicsSubsystem};
+use meridian_physics_app::{ContactWatcher, PhysicsStepper, PhysicsSubsystem};
 
-use crate::{Shared, Stage};
+use crate::{EventSystem, Shared, Stage};
 
 /// Built-in stage that advances a shared [`PhysicsSubsystem`] by a fixed
 /// `dt` every run, through whichever [`PhysicsStepper`] the composition
@@ -13,6 +13,7 @@ pub struct PhysicsStepStage {
     pub dt: f32,
     stepper: Box<dyn PhysicsStepper>,
     physics: Shared<PhysicsSubsystem>,
+    contacts: Option<(ContactWatcher, Shared<EventSystem>)>,
 }
 
 impl PhysicsStepStage {
@@ -27,7 +28,20 @@ impl PhysicsStepStage {
             dt,
             stepper: Box::new(stepper),
             physics,
+            contacts: None,
         }
+    }
+
+    /// Also publishes a `ContactEvent` into `events` for every pair that begins
+    /// touching during a step, as `watcher` judges (ADR 031).
+    #[must_use]
+    pub fn with_contact_events(
+        mut self,
+        watcher: ContactWatcher,
+        events: Shared<EventSystem>,
+    ) -> Self {
+        self.contacts = Some((watcher, events));
+        self
     }
 }
 
@@ -41,6 +55,16 @@ impl std::fmt::Debug for PhysicsStepStage {
 
 impl Stage for PhysicsStepStage {
     fn run(&mut self) {
-        self.stepper.step(&mut self.physics.lock(), self.dt);
+        let mut physics = self.physics.lock();
+        if let Some((watcher, _)) = &mut self.contacts {
+            watcher.before_step(&physics);
+        }
+        self.stepper.step(&mut physics, self.dt);
+        if let Some((watcher, events)) = &mut self.contacts {
+            let mut bus = events.lock();
+            for event in watcher.after_step(&mut physics) {
+                bus.publish(event);
+            }
+        }
     }
 }

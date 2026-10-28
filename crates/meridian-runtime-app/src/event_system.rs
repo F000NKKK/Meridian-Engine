@@ -11,10 +11,11 @@ use std::collections::HashMap;
 /// `physics-domain` contact could be published here and consumed by
 /// `audio-domain` for an impact sound, without either crate knowing the
 /// other exists (see docs/dependency-rules.md rule 7: only `runtime-app`
-/// is allowed to know about both).
+/// is allowed to know about both). Events are `Send` so the bus can be
+/// shared between stages as `Shared<EventSystem>` (ADR 031).
 #[derive(Default)]
 pub struct EventSystem {
-    queues: HashMap<TypeId, Vec<Box<dyn Any>>>,
+    queues: HashMap<TypeId, Vec<Box<dyn Any + Send>>>,
 }
 
 impl std::fmt::Debug for EventSystem {
@@ -32,7 +33,7 @@ impl EventSystem {
 
     /// Queues `event`, keyed by its concrete type `E`. Multiple event
     /// types don't collide — each gets its own queue.
-    pub fn publish<E: 'static>(&mut self, event: E) {
+    pub fn publish<E: Send + 'static>(&mut self, event: E) {
         self.queues
             .entry(TypeId::of::<E>())
             .or_default()
