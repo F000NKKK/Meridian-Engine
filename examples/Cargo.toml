@@ -5,7 +5,7 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Example programs (magic_figures, physic_figures, gltf_viewer) and the shared plumbing they use; not published."
+description = "Example programs (magic_figures, physic_figures, gltf_viewer, ui_scroll) and the shared plumbing they use; not published."
 readme = "README.md"
 publish = false
 
@@ -23,6 +23,10 @@ path = "examples/magic_figures/magic_figures.rs"
 [[example]]
 name = "gltf_viewer"
 path = "examples/gltf_viewer/gltf_viewer.rs"
+
+[[example]]
+name = "ui_scroll"
+path = "examples/ui_scroll/ui_scroll.rs"
 
 [[example]]
 name = "physic_figures"

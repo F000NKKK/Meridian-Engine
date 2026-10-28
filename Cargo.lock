@@ -1580,6 +1580,7 @@ dependencies = [
  "meridian-runtime-app",
  "meridian-runtime-threads",
  "meridian-ui-domain",
+ "meridian-ui-scene2d",
  "png",
 ]
 

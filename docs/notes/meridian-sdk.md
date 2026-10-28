@@ -44,7 +44,7 @@ builders, `GraphicsSession`, `FlyCamera`) every windowed application
 needs identically; not domain logic, just reusable application
 plumbing. `GraphicsSession` owns an [`assets::AssetCache`], but the
 loading logic itself lives in [`assets`], not here.
-- [`render`] — [`render_frame`] and [`compose_frame`] (the same with `Overlay2d`s drawn over the 3D frame; `RenderStage::with_overlays` feeds them each tick), the shadow-pass/submit/present
+- [`render`] — [`render_frame`] and [`compose_frame`] (the same with `Overlay2d`s drawn over the 3D frame; `RenderStage::with_overlays` feeds them each tick; `ui_scene2d` re-exports the UI-tree extraction whose `ExtractedScene` fills an `Overlay2d`, see `examples/ui_scroll`), the shadow-pass/submit/present
 sequence every windowed app repeats each redraw, and [`RenderStage`],
 the `engine_core::Stage` impl that lets an application register
 frame presentation on the *same* `Runtime`/`JobGraph` as physics —

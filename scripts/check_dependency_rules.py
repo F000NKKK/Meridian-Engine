@@ -169,6 +169,7 @@ ALLOWED = {
         "meridian-markup",
         "meridian-markup-macros",
         "meridian-ui-domain",
+        "meridian-ui-scene2d",
     },
 }
 
