@@ -1,9 +1,9 @@
-//! Tests for [`MelDocument::parse`]: what it collects and what it rejects.
+//! Tests for [`MeuiDocument::parse`]: what it collects and what it rejects.
 
 use super::*;
 
-fn document(source: &str) -> Result<MelDocument, BuildError> {
-    MelDocument::parse(Path::new("scene.meui"), source)
+fn document(source: &str) -> Result<MeuiDocument, BuildError> {
+    MeuiDocument::parse(Path::new("scene.meui"), source)
 }
 
 fn rejection(source: &str) -> InvalidMarkup {

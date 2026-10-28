@@ -18,7 +18,7 @@ belong to a separate `ui-core`. The roadmap lists "no UI framework" as a
 gap (7). [ADR 017](017-meui-markup-and-code-behind.md) fixed the markup
 side: `.meui` is declarative, behavior lives in a code-behind, the two meet
 through `x:Name`, attached properties (`Grid.Row`) and compiled
-`{x:Bind}`; `meridian-mel-build` generates `foo.g.rs`. That generator needs
+`{x:Bind}`; `meridian-ui-mel` generates `foo.g.rs`. That generator needs
 a runtime to write into. This ADR is that runtime.
 
 `yog-ui` (Yog-Mod-Loader) is the working precedent: a retained tree,
@@ -60,7 +60,7 @@ camera convention. Results are stored per node, relative to the parent.
 visible element; later siblings are on top and a parent clips its
 children for hit purposes.
 
-**5. The binding contract for generated code.** What `mel-build` can
+**5. The binding contract for generated code.** What `ui-mel` can
 rely on:
 
 - `x:Name` becomes a `NodeId` the generated `Names` struct holds.

@@ -64,8 +64,8 @@ the prior art to copy from is Yog-Mod-Loader's `.yui` -> `.g.rs` pipeline
    Substrate-Data string rules (`@kind:id`, `@@`, error on other `@`),
    reusing `substrate-data`'s classifier (`typed::classify`, in progress
    on `team/data`'s side) rather than re-implementing the grammar.
-5. ~~Generator crate + `mel_include!`~~ — done: `meridian-ui-mel`
-   (`compile_dir` from `build.rs`) writes `OUT_DIR/mel/<name>.g.rs` with
+5. ~~Generator crate + `meui_include!`~~ — done: `meridian-ui-mel`
+   (`compile_dir` from `build.rs`) writes `OUT_DIR/meui/<name>.g.rs` with
    `SOURCE`, a `Name` enum per `x:Name`, `Class`/`ViewModel` aliases,
    `build` and `find`, and rejects bad directives and names at build
    time; `magic_figures` uses it. Still open: **event dispatch**
@@ -86,7 +86,7 @@ the prior art to copy from is Yog-Mod-Loader's `.yui` -> `.g.rs` pipeline
    `Names` struct (a `NodeId` per `x:Name`), `apply_one_time_bindings`,
    `apply_bindings` (view model -> `tree.set`) and `write_back_bindings`
    (user edits from `tree.drain_changes()` -> view model or `BindBack`),
-   each statement under a `// @mel file:line:column` marker, so `rustc`
+   each statement under a `// @meui file:line:column` marker, so `rustc`
    checks every binding against the view model. The view-model dirty
    flag that decides *when* `apply_bindings` runs is the caller's for now.
    A document whose root is a `ui-domain` element (`Border`, `StackPanel`,

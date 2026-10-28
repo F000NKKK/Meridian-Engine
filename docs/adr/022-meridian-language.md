@@ -68,7 +68,7 @@ must agree on the semantics, as Yog's backend and interpreter do.
   IR; a construct a backend lacks is a compile error, never a silent
   fallback.
 - **Rust backend first.** It generates `.g.rs` modules like the markup
-  glue (`mel_include!`-style), so a `.meui` `{x:Bind}` or event handler can
+  glue (`meui_include!`-style), so a `.meui` `{x:Bind}` or event handler can
   name a function of the language the way it names a Rust method today.
   `Fixed`, `Handled` and the UI types map to the engine's own types.
 - **One language, two targets (owner, 2026-10-27).** The WASM backend
@@ -98,10 +98,9 @@ must agree on the semantics, as Yog's backend and interpreter do.
 - **Naming (owner, 2026-10-27).** **MEL is Meridian Engine Language**
   (owner-confirmed). It is a compiled language, not a "script language".
   Its files use **`.mel`**; UI markup moves to
-  **`.meui`**; resources stay `.mres`. The markup and its generator keep
-  their current crate and identifier names (`ui-mel`, `MelDocument`,
-  `mel_include!`) until the engine freeze lifts; renaming them to `meui`
-  is a separate change.
+  **`.meui`**; resources stay `.mres`. The markup side's identifiers use
+  `meui` (`MeuiDocument`, `meui_include!`, `OUT_DIR/meui/`, `// @meui`
+  markers); its crate keeps the ADR 026 name `meridian-ui-mel`.
 - **Pairing.** A UI is a `.meui` markup file plus a `.mel` code-behind
   file (ADR 017's code-behind, written in MEL instead of Rust). Both are
   compiled to Rust (`.g.rs`), the engine's native and fast target, so the

@@ -1,7 +1,7 @@
 //! The build-time half of `.meui` code-behind (ADR 017): every `.meui`
 //! document becomes a generated `<name>.g.rs` in the build output, the
 //! counterpart of WPF's `MainWindow.g.cs`. A code-behind module pulls it
-//! in with `meridian_sdk::mel_include!("<name>")` and gets:
+//! in with `meridian_sdk::meui_include!("<name>")` and gets:
 //!
 //! - `SOURCE`, the markup (embedded with `include_str!`, so the binary
 //!   carries it and Cargo rebuilds when it changes);
@@ -32,7 +32,7 @@ mod compile;
 mod generated_module;
 mod hot_reload;
 mod invalid_markup;
-mod mel_document;
+mod meui_document;
 mod named_element;
 mod resources;
 mod source_dir;
@@ -53,7 +53,7 @@ pub use compile::{compile_dir, compile_file, compile_file_with};
 pub use generated_module::GeneratedModule;
 pub use hot_reload::{HotDocument, LiveUi, Rebuilt, Refreshed, Reload, ReloadError, SourceWatcher};
 pub use invalid_markup::InvalidMarkup;
-pub use mel_document::MelDocument;
+pub use meui_document::MeuiDocument;
 pub use named_element::NamedElement;
 pub use resources::{
     Culture, GeneratedResources, LocalResources, ResourceEntry, ResourceError, ResourceProblem,

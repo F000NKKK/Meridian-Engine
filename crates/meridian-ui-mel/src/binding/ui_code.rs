@@ -5,7 +5,7 @@ use super::mode::Mode;
 use super::property_binding::PropertyBinding;
 
 /// An owned copy of a value read from the view model; the target type is
-/// the property's, so a mismatch is a compile error at the `// @mel` line.
+/// the property's, so a mismatch is a compile error at the `// @meui` line.
 fn owned(expr: &str) -> String {
     format!("::core::convert::Into::into(::core::clone::Clone::clone(&({expr})))")
 }

@@ -43,8 +43,8 @@ No code is embedded in the markup, and Razor-style `@{ }` is dropped.
 generates `.g.cs` and Yog generates `.g.rs`. It holds `ids`, typed
 accessors for `x:Name` elements, the scene/view builder, binding update
 code and event dispatch. The code-behind pulls it in with a
-`mel_include!("foo")` macro. Type errors in bindings point at the `.meui`
-line through `// @mel file:line` markers.
+`meui_include!("foo")` macro. Type errors in bindings point at the `.meui`
+line through `// @meui file:line` markers.
 
 **3. Compiled bindings.** Markup extensions use braces, as in XAML:
 `{x:Bind expr[, Mode=OneWay|TwoWay|OneTime][, BindBack=method][, Fallback=value]}`

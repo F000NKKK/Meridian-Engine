@@ -107,7 +107,7 @@ mod files {
     const DEBOUNCE: Duration = Duration::from_millis(50);
 
     fn scratch(name: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("mel-hot-{name}-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("meui-hot-{name}-{}", std::process::id()));
         if dir.exists() {
             std::fs::remove_dir_all(&dir).unwrap();
         }
@@ -146,7 +146,7 @@ mod files {
         );
         // The tree is built from the same files, as `build_ui` would.
         let mut tree = UiTree::new();
-        let ui = crate::MelDocument::parse_with(
+        let ui = crate::MeuiDocument::parse_with(
             &meui,
             &std::fs::read_to_string(&meui).unwrap(),
             &crate::source_dir::read_sets(&[dir.join("Strings.mres")]).unwrap(),

@@ -1,4 +1,4 @@
-//! [`MelDocument`]: a parsed `.meui` document checked against the
+//! [`MeuiDocument`]: a parsed `.meui` document checked against the
 //! code-behind rules of ADR 017.
 
 use std::path::{Path, PathBuf};
@@ -15,7 +15,7 @@ const ROOT_ONLY: [&str; 2] = ["Class", "ViewModel"];
 const ANYWHERE: [&str; 2] = ["Name", "Key"];
 
 #[derive(Debug)]
-pub struct MelDocument {
+pub struct MeuiDocument {
     pub path: PathBuf,
     pub root: Element,
     /// Every `x:Name`, in document order.
@@ -32,7 +32,7 @@ pub struct MelDocument {
     pub ui: Option<UiNode>,
 }
 
-impl MelDocument {
+impl MeuiDocument {
     /// Parses and checks `source` with no resources; `path` is only used
     /// in errors and in the generated `include_str!`.
     pub fn parse(path: &Path, source: &str) -> Result<Self, BuildError> {

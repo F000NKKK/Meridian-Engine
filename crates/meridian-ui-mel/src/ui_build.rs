@@ -56,7 +56,7 @@ impl NodeWriter<'_> {
         }
         for literal in &node.literals {
             self.code.line(format!(
-                "    // @mel {}:{} {}",
+                "    // @meui {}:{} {}",
                 self.path.display(),
                 literal.span,
                 literal.property

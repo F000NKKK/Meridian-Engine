@@ -51,8 +51,8 @@ that give the same constant are an error.
 
 ## Generated code
 
-`compile_dir` writes `OUT_DIR/mel/<relative path>.g.rs` for each file; the
-code-behind pulls it in with `meridian_sdk::mel_include!("Strings")`
+`compile_dir` writes `OUT_DIR/meui/<relative path>.g.rs` for each file; the
+code-behind pulls it in with `meridian_sdk::meui_include!("Strings")`
 (`"ui/Strings"` for a file in `ui/`):
 
 ```rust
@@ -119,7 +119,7 @@ change needed; `set_culture(None)` goes back to the default.
 
 ## Reloading
 
-`HotDocument::open(mel, Some(resources_dir), root, debounce)` watches the
+`HotDocument::open(meui, Some(resources_dir), root, debounce)` watches the
 `.meui` and every `.mres` under the directory; the host calls
 `refresh(tree, Instant::now())` each frame. A changed file is parsed
 again with the new `ResourceSets` (resource values are resolved while
