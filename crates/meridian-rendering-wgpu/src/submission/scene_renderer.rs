@@ -3,7 +3,7 @@
 use core::ops::Range;
 
 use meridian_rendering_domain::scene::Scene3d;
-use meridian_rendering_domain::{EnvironmentMap, ShadowLight, ViewUniforms};
+use meridian_rendering_domain::{EnvironmentMap, Frustum, ShadowLight, ViewUniforms};
 
 use super::environment::GpuEnvironment;
 use super::main_pipelines::{MainBindings, MainPipelines};
@@ -60,8 +60,12 @@ pub struct SceneRenderer {
 /// [`SceneRenderer::with_shadow_map_size`] instead.
 pub const DEFAULT_SHADOW_MAP_SIZE: u32 = 1024;
 
-/// Cascade tiles along one side of the shadow atlas (2 x 2 for four cascades).
-const ATLAS_TILES_PER_SIDE: u32 = 2;
+/// Tiles across the shadow atlas. Tile `t` sits at column `t % 2`, row
+/// `t / 2`: the four cascades are tiles 0 to 3, the six faces of a point
+/// light's cube 4 to 9 (ADR 041).
+const ATLAS_COLUMNS: u32 = 2;
+/// Tile rows of the shadow atlas: five rows of two for the ten tiles.
+const ATLAS_ROWS: u32 = 5;
 
 impl SceneRenderer {
     /// Builds a renderer drawing into targets of `format`, with
@@ -86,7 +90,10 @@ impl SceneRenderer {
         format: ColorFormat,
         shadow_map_size: u32,
     ) -> Self {
-        let shadow_map = device.create_shadow_map_texture(shadow_map_size * ATLAS_TILES_PER_SIDE);
+        let shadow_map = device.create_shadow_map_texture(
+            shadow_map_size * ATLAS_COLUMNS,
+            shadow_map_size * ATLAS_ROWS,
+        );
         let shadow_sampler = device.create_comparison_sampler();
         let shadow_depth = ShadowDepthPass::new(device);
 
@@ -222,21 +229,12 @@ impl SceneRenderer {
         assets: &SceneAssets<'_>,
     ) -> PreparedScene {
         let shadow = ShadowLight::for_scene(scene, self.tile_size);
-        for (cascade, view_proj) in self
-            .shadow_depth
-            .cascades
-            .iter()
-            .zip(shadow.cascades.view_proj)
-        {
-            device.write_buffer(&cascade.buffer, &mat4_to_bytes(view_proj));
+        let (matrices, frusta) = shadow_tiles(&shadow);
+        for (tile, view_proj) in self.shadow_depth.tiles.iter().zip(matrices) {
+            device.write_buffer(&tile.buffer, &mat4_to_bytes(view_proj));
         }
         let baked = bake_batches(device, self, scene, assets);
-        let casters = CascadeCasters::cull(
-            &baked.batches,
-            &baked.records,
-            &baked.bounds,
-            &shadow.cascades.frusta(),
-        );
+        let casters = CascadeCasters::cull(&baked.batches, &baked.records, &baked.bounds, &frusta);
         self.record_shadow_casters(commands, &baked.batches, &casters, casters.upload(device));
         PreparedScene {
             batches: baked.batches,
@@ -259,14 +257,12 @@ impl SceneRenderer {
             return;
         };
         pass.set_pipeline(&self.shadow_depth.pipeline);
-        for (index, (cascade, runs)) in
-            (0u32..).zip(self.shadow_depth.cascades.iter().zip(&casters.runs))
+        for (index, (tile, runs)) in (0u32..).zip(self.shadow_depth.tiles.iter().zip(&casters.runs))
         {
-            // Tile `index` of the atlas: column `index % 2`, row `index / 2`.
-            let (column, row) = (index % ATLAS_TILES_PER_SIDE, index / ATLAS_TILES_PER_SIDE);
-            let tile = self.tile_size;
-            pass.set_viewport(column * tile, row * tile, tile, tile);
-            pass.set_bind_group(0, &cascade.bind_group);
+            let (column, row) = (index % ATLAS_COLUMNS, index / ATLAS_COLUMNS);
+            let size = self.tile_size;
+            pass.set_viewport(column * size, row * size, size, size);
+            pass.set_bind_group(0, &tile.bind_group);
             for run in runs {
                 self.draw_instances(
                     &mut pass,
@@ -329,4 +325,17 @@ impl SceneRenderer {
         pass.set_index_buffer_u32(&mesh.index_buffer);
         pass.draw_indexed_instanced(0..mesh.index_count, range);
     }
+}
+
+/// The view-projection and culling volume of every shadow tile to draw: the
+/// four cascades, then the six faces of the point light's cube when there is
+/// one (ADR 041).
+fn shadow_tiles(shadow: &ShadowLight) -> (Vec<[[f32; 4]; 4]>, Vec<Frustum>) {
+    let mut matrices = shadow.cascades.view_proj.to_vec();
+    let mut frusta = shadow.cascades.frusta().to_vec();
+    if let Some(point) = &shadow.point {
+        matrices.extend(point.view_proj);
+        frusta.extend(point.frusta());
+    }
+    (matrices, frusta)
 }

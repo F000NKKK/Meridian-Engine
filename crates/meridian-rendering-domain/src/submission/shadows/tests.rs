@@ -169,3 +169,51 @@ fn a_caster_between_the_slice_and_the_light_is_kept() {
     let overhead = small_box_at(Vec3::new(2.0, 30.0, 0.0));
     assert!(cascades.frusta()[0].intersects(&overhead));
 }
+
+fn scene_with_point_light(position: Vec3, range: f32) -> crate::Scene3d {
+    crate::Scene3d {
+        lights: vec![
+            crate::Light::Directional {
+                direction: Motor3::identity(),
+                color: [1.0; 3],
+                intensity: 1.0,
+            },
+            crate::Light::Point {
+                position: Motor3::translation(position),
+                color: [1.0; 3],
+                intensity: 1.0,
+                range,
+            },
+        ],
+        ..crate::Scene3d::default()
+    }
+}
+
+#[test]
+fn a_point_light_has_six_faces_that_each_see_their_own_axis() {
+    let center = Vec3::new(1.0, 2.0, 3.0);
+    let point =
+        PointShadow::for_scene(&scene_with_point_light(center, 20.0)).expect("a point light");
+    assert_eq!(point.caster, 1);
+    assert_eq!(point.position, center);
+    let axes = [Vec3::X, -Vec3::X, Vec3::Y, -Vec3::Y, Vec3::Z, -Vec3::Z];
+    for (face, axis) in axes.into_iter().enumerate() {
+        let [x, y, z] = project(point.view_proj[face], center + axis * 5.0);
+        assert!(x.abs() < 1e-4 && y.abs() < 1e-4, "face {face}: ({x}, {y})");
+        assert!((0.0..1.0).contains(&z), "face {face}: depth {z}");
+    }
+}
+
+#[test]
+fn a_corner_direction_stays_inside_the_face_it_belongs_to() {
+    let point =
+        PointShadow::for_scene(&scene_with_point_light(Vec3::ZERO, 20.0)).expect("a point light");
+    let [x, y, _] = project(point.view_proj[0], Vec3::new(5.0, 4.9, -4.9));
+    assert!(x.abs() <= 1.0 && y.abs() <= 1.0, "({x}, {y})");
+}
+
+#[test]
+fn a_scene_without_a_point_light_or_with_no_range_has_no_point_shadow() {
+    assert!(PointShadow::for_scene(&crate::Scene3d::default()).is_none());
+    assert!(PointShadow::for_scene(&scene_with_point_light(Vec3::ZERO, 0.01)).is_none());
+}

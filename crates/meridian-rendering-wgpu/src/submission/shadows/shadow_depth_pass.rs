@@ -1,6 +1,6 @@
 //! The depth-only pipeline and bind group of the shadow pass.
 
-use meridian_rendering_domain::SHADOW_CASCADES;
+use meridian_rendering_domain::{POINT_SHADOW_FACES, SHADOW_CASCADES};
 
 use crate::submission::{
     SHADOW_DEPTH_SHADER_WGSL, position_only_mesh_layout, shadow_instance_layout,
@@ -9,17 +9,20 @@ use crate::{BindGroup, Buffer, BufferUsage, Device, RenderPipeline};
 
 /// What [`SceneRenderer`](crate::submission::SceneRenderer) needs to record
 /// the shadow-casters' depth pass: one pipeline over the mesh and instance
-/// buffers every batch shares, and per cascade a `light_view_proj` uniform
+/// buffers every batch shares, and per tile a `light_view_proj` uniform
 /// with the bind group over it.
 #[derive(Debug)]
 pub(crate) struct ShadowDepthPass {
-    pub(crate) cascades: [CascadeUniform; SHADOW_CASCADES],
+    pub(crate) tiles: [TileUniform; SHADOW_TILES],
     pub(crate) pipeline: RenderPipeline,
 }
 
-/// One cascade's `light_view_proj` uniform and its bind group.
+/// Tiles of the shadow atlas: the cascades, then a point light's cube faces.
+pub(crate) const SHADOW_TILES: usize = SHADOW_CASCADES + POINT_SHADOW_FACES;
+
+/// One tile's `light_view_proj` uniform and its bind group.
 #[derive(Debug)]
-pub(crate) struct CascadeUniform {
+pub(crate) struct TileUniform {
     pub(crate) buffer: Buffer,
     pub(crate) bind_group: BindGroup,
 }
@@ -33,14 +36,14 @@ impl ShadowDepthPass {
             "vs_main",
             &[position_only_mesh_layout(), shadow_instance_layout()],
         );
-        // Just the one `light_view_proj` uniform per cascade (see
+        // Just the one `light_view_proj` uniform per tile (see
         // `SHADOW_DEPTH_SHADER_WGSL`'s single `@binding(0)`): the depth
         // pass writes the shadow map, it never samples it.
-        let cascades = std::array::from_fn(|_| {
+        let tiles = std::array::from_fn(|_| {
             let buffer = device.create_buffer(64, BufferUsage::Uniform);
             let bind_group = device.create_uniform_bind_group(&pipeline, &buffer);
-            CascadeUniform { buffer, bind_group }
+            TileUniform { buffer, bind_group }
         });
-        Self { cascades, pipeline }
+        Self { tiles, pipeline }
     }
 }
