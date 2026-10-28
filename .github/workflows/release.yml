@@ -1,0 +1,38 @@
+# Publishes what Meridian Installer installs from an engine release, on the
+# pushed tag (v0.1.0, …): meridian-examples.zip (`meridian.examples`) and
+# meridian-assets.zip (`meridian.assets`). The SDK (`meridian.sdk`) is the
+# tag's own source archive, which GitHub provides. See the Installer's
+# docs/release-contract.md. Crates go to crates.io through release.sh, which
+# tags `<crate>-vX.Y.Z` and so never starts this workflow. GitHub computes the
+# SHA-256 digest of every uploaded asset.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  # Run "workflow_dispatch" on a tag, not on a branch.
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Package the examples and the sample assets
+        run: scripts/package_release_assets.sh dist
+
+      - name: Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" \
+            --title "Meridian Engine $TAG" \
+            --notes "Meridian Engine $TAG. The source archive is the SDK; meridian-examples.zip holds the example programs and meridian-assets.zip the sample assets. Install them with Meridian Installer."
+          gh release upload "$TAG" dist/meridian-examples.zip dist/meridian-assets.zip --clobber

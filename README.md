@@ -229,6 +229,12 @@ cargo test --workspace --doc
 behind the `hw-tests` feature (`cargo test --workspace --all-features`).
 Crates are released with `./release.sh` (see its `--help`).
 
+An engine release for Meridian Installer is cut by pushing a tag `v<version>` (for example
+`v0.1.0`; the per-crate `<crate>-vX.Y.Z` tags of `release.sh` do not match). The
+[release workflow](.github/workflows/release.yml) then publishes `meridian-examples.zip` and
+`meridian-assets.zip` (built by `scripts/package_release_assets.sh`) on the GitHub Release; the
+tag's source archive is the SDK.
+
 ## 📊 Status
 
 | Area | State |

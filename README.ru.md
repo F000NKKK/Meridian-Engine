@@ -182,6 +182,12 @@ cargo test --workspace --doc
 спрятаны за функцией `hw-tests` (`cargo test --workspace --all-features`).
 Крейты выпускаются через `./release.sh` (см. его `--help`).
 
+Релиз движка для Meridian Installer выпускается отправкой тега `v<версия>` (например, `v0.1.0`;
+теги `<крейт>-vX.Y.Z` от `release.sh` ему не соответствуют). [Workflow
+релиза](.github/workflows/release.yml) приложит к релизу GitHub `meridian-examples.zip` и
+`meridian-assets.zip` (их собирает `scripts/package_release_assets.sh`); исходный архив тега — это
+SDK.
+
 ## 📊 Состояние
 
 | Область | Состояние |
