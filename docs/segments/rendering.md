@@ -95,8 +95,9 @@ Not started; ordered by suggested priority. Items wait for an explicit task.
    [ADR 034](../adr/034-hdr-scene-target-and-tone-mapping.md).
 11. Image-based lighting from a prefiltered environment (procedural sky for
    now): [ADR 035](../adr/035-image-based-lighting.md).
-12. **Larger, ADR-gated:** shadow cascades/frustum fitting, point-light
-   shadows, an environment image loader (`.hdr`), a cube-map environment, skinned glTF and
+12. Radiance `.hdr` environment loader: [ADR 036](../adr/036-radiance-hdr-environment-loader.md).
+13. **Larger, ADR-gated:** shadow cascades/frustum fitting, point-light
+   shadows, a cube-map environment, skinned glTF and
    animation (no vocabulary yet), concrete backend crates.
 
 ## Standards gaps

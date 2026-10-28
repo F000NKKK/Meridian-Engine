@@ -159,11 +159,24 @@ impl AppHandler for App {
     }
 }
 
+/// Whether `path` names a Radiance panorama.
+fn is_hdr_path(path: &str) -> bool {
+    std::path::Path::new(path)
+        .extension()
+        .is_some_and(|ext| ext.eq_ignore_ascii_case("hdr"))
+}
+
 /// Lights the model with a procedural sky (ADR 035) whose sun sits where the
-/// directional light does; `MERIDIAN_ENV=none` keeps the ambient colours alone.
+/// directional light does; `MERIDIAN_ENV=none` keeps the ambient colours alone
+/// and `MERIDIAN_ENV=<file>.hdr` lights it with that Radiance panorama instead.
 fn light_with_sky(base: &mut GraphicsSession) {
-    if std::env::var("MERIDIAN_ENV").as_deref() == Ok("none") {
-        return;
+    match std::env::var("MERIDIAN_ENV") {
+        Ok(value) if value == "none" => return,
+        Ok(path) if is_hdr_path(&path) => match base.load_environment(&path) {
+            Ok(()) => return,
+            Err(err) => meridian_sdk::log_error!("environment: {err}"),
+        },
+        _ => {}
     }
     let sky = Sky {
         sun_direction: [-SUN.x, -SUN.y, -SUN.z],

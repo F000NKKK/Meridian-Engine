@@ -3,10 +3,13 @@
 //! builders it used to hold are `meridian_rendering_domain`'s `shapes`; the
 //! per-frame logic is `meridian_rendering_app::RenderSession`.
 
-use meridian_rendering_app::RenderSession;
+use meridian_rendering_app::{FrameRecorder, RenderSession};
 use meridian_rendering_domain::{MeshHandle, TextureHandle};
 use meridian_rendering_wgpu::{Device, GpuFrameRecorder, Surface};
 
+mod environment_loading;
+
+use self::environment_loading::load_environment_map;
 use crate::assets::AssetCache;
 use crate::model_loading::ModelPiece;
 
@@ -85,5 +88,17 @@ impl GraphicsSession {
     /// The file's read, decode or mesh-validation error, as text.
     pub fn load_mesh_obj(&mut self, path: &str) -> Result<MeshHandle, String> {
         self.assets.load_mesh_obj(&mut self.render.meshes, path)
+    }
+
+    /// Lights the scene with the equirectangular Radiance `.hdr` panorama at
+    /// `path` (ADR 036): decoded, prefiltered and handed to the recorder.
+    ///
+    /// # Errors
+    ///
+    /// The file's read, decode or validation error, as text.
+    pub fn load_environment(&mut self, path: &str) -> Result<(), String> {
+        let map = load_environment_map(path)?;
+        self.render.recorder.set_environment(Some(&map));
+        Ok(())
     }
 }

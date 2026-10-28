@@ -4,7 +4,7 @@ Loading and decoding of images, meshes, audio, shaders and binary formats. Does 
 
 **Layer and context:** domain · assets
 
-- **For:** The `Decoder` port, the CPU asset types, format detection by magic bytes, and the pure parsers for BMP, WAV, OBJ meshes and shader sources, and `ModelAsset`, the multi-part model type glTF decodes to.
+- **For:** The `Decoder` port, the CPU asset types, format detection by magic bytes, and the pure parsers for BMP, Radiance HDR, WAV, OBJ meshes and shader sources, and `ModelAsset`, the multi-part model type glTF decodes to.
 - **Not for:** codec libraries or ownership of loaded data: PNG is `meridian-asset-png`, glTF is `meridian-asset-gltf`, JPEG is `meridian-asset-jpeg`, compressed and streaming audio is `meridian-asset-symphonia`, identity is `meridian-resource`, storage `meridian-memory`.
 
 ## Usage
