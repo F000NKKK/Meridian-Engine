@@ -103,8 +103,8 @@ when its value changes, so a pass that moves nothing leaves `Changed<GlobalTrans
 empty (`Changed` is per archetype column, as above). The pass resolves the whole
 world: ~0.2 us per entity when nothing moved, ~0.5 us on a first pass
 (`cargo bench -p meridian-ecs`); skipping untouched subtrees waits for a profile
-that needs it. Nothing calls it yet: `runtime-app` runs it as a stage once a
-caller needs world-space motors.
+that needs it. `runtime-app`'s `TransformStage` runs it every frame over a
+`Shared<World>`.
 
 ## What this crate is not
 

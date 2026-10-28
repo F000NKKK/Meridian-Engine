@@ -140,8 +140,9 @@ change that closed them.
    (moved out of `meridian-data-substrate`, which re-exports it) and
    `GlobalTransform`; `propagate_transforms(&mut World)` resolves `Transform`s
    along the links, with orphans, parentless-transform parents and cycles
-   treated as roots ([ecs-design.md](../ecs-design.md#hierarchy)). Open: a
-   `runtime-app` stage that runs it, and skipping subtrees that did not change.
+   treated as roots ([ecs-design.md](../ecs-design.md#hierarchy)). `runtime-app`'s `TransformStage` runs it every
+   frame (`runtime-app` now depends on `ecs`). Open: skipping subtrees that did
+   not change, and exposing `World` through `sdk`.
 
 The Craftbook migration (ADR 019/020) owns the `runtime-app`/`sdk` rework,
 the driver direction and the `unwrap` cleanup; see `docs/adr/020-craftbook-adoption.md`.
