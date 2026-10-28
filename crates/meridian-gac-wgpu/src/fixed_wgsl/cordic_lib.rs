@@ -17,7 +17,7 @@
 /// [`FixedArithmeticKernels`](super::FixedArithmeticKernels)'s own tests below cross-check the whole
 /// pipeline against the CPU `Fixed::sin_cos`/`atan2`, so any transcription
 /// error here would fail bit-exactness, not silently drift.
-pub const CORDIC_LIB_WGSL: &str = r#"
+pub const CORDIC_LIB_WGSL: &str = r"
 const CORDIC_ITERATIONS: u32 = 24u;
 
 // Matches `CORDIC_GAIN` (0.607_252_935_008_881_2) rounded to Q16.16.
@@ -145,4 +145,4 @@ fn fixed_atan2(y: i32, x: i32) -> i32 {
     }
     return cordic_vector_angle(y, x);
 }
-"#;
+";

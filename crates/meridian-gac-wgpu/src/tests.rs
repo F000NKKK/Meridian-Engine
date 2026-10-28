@@ -20,11 +20,11 @@ fn motor_transform_kernel_matches_gac_core_compose_directly() {
         Rotor::from_axis_angle(Vec3::Z, PI / 4.0),
         Vec3::new(10.0, 0.0, 0.0),
     );
-    let locals: Vec<Motor3> = (0..2_000)
+    let locals: Vec<Motor3> = (0..2_000_i16)
         .map(|i| {
             Motor3::from_rotation_translation(
-                Rotor::from_axis_angle(Vec3::Y, i as f32 * 0.001),
-                Vec3::new(0.0, i as f32 * 0.01, 0.0),
+                Rotor::from_axis_angle(Vec3::Y, f32::from(i) * 0.001),
+                Vec3::new(0.0, f32::from(i) * 0.01, 0.0),
             )
         })
         .collect();
@@ -34,7 +34,7 @@ fn motor_transform_kernel_matches_gac_core_compose_directly() {
     // 2000 items does not reach it) so this test keeps covering the parallel
     // path whatever the default is.
     let scheduler = ComputeScheduler::with_parallel_threshold(Arc::new(CpuComputeDevice::new()), 1);
-    scheduler.run(&kernel, DispatchSize::linear(locals.len() as u32));
+    scheduler.run(&kernel, DispatchSize::linear(u32::try_from(locals.len()).expect("batch fits a dispatch")));
 
     let results = kernel.results();
     assert_eq!(results.len(), locals.len());
@@ -56,12 +56,12 @@ fn motor_transform_kernel_matches_gac_core_compose_directly() {
 
 #[test]
 fn motor_compose_kernel_handles_independent_parents_per_pair() {
-    let pairs: Vec<(Motor3, Motor3)> = (0..500)
+    let pairs: Vec<(Motor3, Motor3)> = (0..500_i16)
         .map(|i| {
-            let child = Motor3::translation(Vec3::new(i as f32, 0.0, 0.0));
+            let child = Motor3::translation(Vec3::new(f32::from(i), 0.0, 0.0));
             let parent = Motor3::from_rotation_translation(
-                Rotor::from_axis_angle(Vec3::Z, i as f32 * 0.01),
-                Vec3::new(0.0, i as f32, 0.0),
+                Rotor::from_axis_angle(Vec3::Z, f32::from(i) * 0.01),
+                Vec3::new(0.0, f32::from(i), 0.0),
             );
             (child, parent)
         })
@@ -69,7 +69,7 @@ fn motor_compose_kernel_handles_independent_parents_per_pair() {
 
     let kernel = MotorComposeKernel::new(pairs.clone());
     let scheduler = ComputeScheduler::with_parallel_threshold(Arc::new(CpuComputeDevice::new()), 1);
-    scheduler.run(&kernel, DispatchSize::linear(pairs.len() as u32));
+    scheduler.run(&kernel, DispatchSize::linear(u32::try_from(pairs.len()).expect("batch fits a dispatch")));
 
     let results = kernel.results();
     let p = Vec3::ZERO;
@@ -118,16 +118,16 @@ fn fixed_motor_transform_kernel_matches_gac_core_compose_directly() {
             FixedMotor3::from_rotation_translation(
                 FixedRotor::from_axis_angle(
                     FixedVec3::new(Fixed::ZERO, Fixed::ONE, Fixed::ZERO),
-                    Fixed::from_num(i as f64 * 0.001),
+                    Fixed::from_num(f64::from(i) * 0.001),
                 ),
-                FixedVec3::new(Fixed::ZERO, Fixed::from_num(i as f64 * 0.01), Fixed::ZERO),
+                FixedVec3::new(Fixed::ZERO, Fixed::from_num(f64::from(i) * 0.01), Fixed::ZERO),
             )
         })
         .collect();
 
     let kernel = FixedMotorTransformKernel::new(parent, locals.clone());
     let scheduler = ComputeScheduler::with_parallel_threshold(Arc::new(CpuComputeDevice::new()), 1);
-    scheduler.run(&kernel, DispatchSize::linear(locals.len() as u32));
+    scheduler.run(&kernel, DispatchSize::linear(u32::try_from(locals.len()).expect("batch fits a dispatch")));
 
     let results = kernel.results();
     assert_eq!(results.len(), locals.len());
@@ -144,16 +144,16 @@ fn fixed_motor_compose_kernel_handles_independent_parents_per_pair() {
     let pairs: Vec<(FixedMotor3, FixedMotor3)> = (0..200)
         .map(|i| {
             let child = FixedMotor3::translation(FixedVec3::new(
-                Fixed::from_num(i as f64),
+                Fixed::from_num(f64::from(i)),
                 Fixed::ZERO,
                 Fixed::ZERO,
             ));
             let parent = FixedMotor3::from_rotation_translation(
                 FixedRotor::from_axis_angle(
                     FixedVec3::new(Fixed::ZERO, Fixed::ZERO, Fixed::ONE),
-                    Fixed::from_num(i as f64 * 0.01),
+                    Fixed::from_num(f64::from(i) * 0.01),
                 ),
-                FixedVec3::new(Fixed::ZERO, Fixed::from_num(i as f64), Fixed::ZERO),
+                FixedVec3::new(Fixed::ZERO, Fixed::from_num(f64::from(i)), Fixed::ZERO),
             );
             (child, parent)
         })
@@ -161,7 +161,7 @@ fn fixed_motor_compose_kernel_handles_independent_parents_per_pair() {
 
     let kernel = FixedMotorComposeKernel::new(pairs.clone());
     let scheduler = ComputeScheduler::with_parallel_threshold(Arc::new(CpuComputeDevice::new()), 1);
-    scheduler.run(&kernel, DispatchSize::linear(pairs.len() as u32));
+    scheduler.run(&kernel, DispatchSize::linear(u32::try_from(pairs.len()).expect("batch fits a dispatch")));
 
     let results = kernel.results();
     let p = FixedVec3::ZERO;
