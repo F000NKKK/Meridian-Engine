@@ -84,3 +84,25 @@ fn an_unregistered_importer_name_is_a_typed_error() {
     ));
     fs::remove_dir_all(&dir).expect("remove scratch dir");
 }
+
+#[test]
+fn a_material_file_loads_through_its_meta_importer() {
+    let dir = scratch("material");
+    fs::write(
+        dir.join("gold.mmat"),
+        "{ format: 1, base_color: [1, 0.77, 0.34, 1], metallic: 1 }",
+    )
+    .expect("write material");
+    write_meta(&dir, "gold.mmat", "00000000000000aa", "material");
+    let importers = Importers::standard().expect("the shipped table is valid");
+    let loader = AssetLoader::new(
+        Arc::new(FsSource::new(&dir)),
+        Arc::new(BackgroundPool::new(1)),
+    );
+    let material = loader
+        .load_imported(AssetPath::new("gold.mmat"), Arc::new(importers.materials))
+        .wait()
+        .expect("the material loads");
+    assert_eq!(material.metallic, 1.0);
+    fs::remove_dir_all(&dir).ok();
+}

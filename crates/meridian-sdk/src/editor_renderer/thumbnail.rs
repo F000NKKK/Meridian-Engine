@@ -1,12 +1,15 @@
 //! Previews of single assets: a material on a sphere, a mesh, a model, a scene.
 
+use meridian_asset_domain::MaterialAsset;
 use meridian_gac::Motor3;
 use meridian_rendering_domain::{
     Material, MaterialHandle, MeshHandle, Renderable3d, Scene3d, icosphere_mesh_source,
 };
 
 use super::framing::bounding_sphere;
-use super::{EditorCamera, EditorRenderer, ThumbnailError, ThumbnailSubject};
+use super::{
+    AssetBinder, EditorCamera, EditorRenderer, ThumbnailError, ThumbnailSubject, bind_material,
+};
 
 /// Bumped whenever a thumbnail would look different for the same asset, so a
 /// cache keyed with it drops its old images.
@@ -40,6 +43,24 @@ impl EditorRenderer {
             ThumbnailSubject::Scene(scene) => self.thumbnail_scene(*scene, size),
         };
         pixels.ok_or(ThumbnailError::Empty)
+    }
+
+    /// The `.mmat` file `bytes` on a sphere, its textures bound through
+    /// `binder`; a texture the binder cannot give is left off.
+    ///
+    /// # Errors
+    ///
+    /// [`ThumbnailError::Material`] when `bytes` are not a material file.
+    pub fn thumbnail_material_file(
+        &mut self,
+        bytes: &[u8],
+        binder: &mut dyn AssetBinder,
+        size: u32,
+    ) -> Result<Vec<u8>, ThumbnailError> {
+        let asset = MaterialAsset::read(bytes)?;
+        let (material, _missing) = bind_material(&mut self.session, &asset, binder);
+        self.thumbnail_material(material, size)
+            .ok_or(ThumbnailError::Render)
     }
 
     /// `material` on a sphere under the neutral sky, `size` x `size` RGBA8.

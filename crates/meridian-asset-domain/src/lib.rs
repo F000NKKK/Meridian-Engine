@@ -54,7 +54,7 @@ pub use decoder::Decoder;
 pub use hdr_image_asset::HdrImageAsset;
 pub use image::{BmpDecoder, HdrDecoder, ImageFormat};
 pub use image_asset::ImageAsset;
-pub use material::{MATERIAL_FORMAT, MaterialAsset, MaterialBlend, MaterialError};
+pub use material::{MATERIAL_FORMAT, MaterialAsset, MaterialBlend, MaterialDecoder, MaterialError};
 pub use mesh_asset::MeshAsset;
 pub use meta::{AssetMeta, ImporterName, ImporterNameError, META_FORMAT, MetaError};
 pub use model::{
