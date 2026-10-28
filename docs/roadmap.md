@@ -747,10 +747,10 @@ the rest are not started.
    events by subscription, a `SimulationControl` port) and
    `meridian-editor-tcp` (one editor over loopback TCP, `tokio`); see
    [editor-domain.md](editor-domain.md#host). Parent links load as
-   `meridian-data-substrate::Parent`, a stand-in until `ecs` gets a
-   hierarchy (it moves there then). `ecs` now has `World::component_types(entity)`
-   and in-memory `World::snapshot`/`restore`. **Not yet done:** transform
-   propagation along parents; `.mprefab`
+   `meridian_ecs::Parent` (`meridian-data-substrate` re-exports it), and
+   `propagate_transforms` resolves `Transform`s along it into
+   `GlobalTransform`s. `ecs` also has `World::component_types(entity)`
+   and in-memory `World::snapshot`/`restore`. **Not yet done:** `.mprefab`
    instancing, `.meta`, `.msave` (voxel/chunk data via
    `substrate_data::Stream`), `.mpak`, wiring the editor host into
    `runtime-app`'s frame loop, and wiring scene loading into

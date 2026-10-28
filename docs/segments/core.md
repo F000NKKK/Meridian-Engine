@@ -136,6 +136,13 @@ change that closed them.
    4 096 (`ComputeContext`), and the three `physics-wgpu` tests that relied on
    the old default pin their own cutoff of one item.
 
+10. **Done: entity hierarchy and transform propagation.** `meridian_ecs::Parent`
+   (moved out of `meridian-data-substrate`, which re-exports it) and
+   `GlobalTransform`; `propagate_transforms(&mut World)` resolves `Transform`s
+   along the links, with orphans, parentless-transform parents and cycles
+   treated as roots ([ecs-design.md](../ecs-design.md#hierarchy)). Open: a
+   `runtime-app` stage that runs it, and skipping subtrees that did not change.
+
 The Craftbook migration (ADR 019/020) owns the `runtime-app`/`sdk` rework,
 the driver direction and the `unwrap` cleanup; see `docs/adr/020-craftbook-adoption.md`.
 

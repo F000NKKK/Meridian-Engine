@@ -91,6 +91,21 @@ spawned after the snapshot is dead after the restore. The clock never runs
 backwards: a restore advances it once and stamps every column changed, so
 `Changed<T>` readers see the rollback.
 
+### Hierarchy
+
+`Parent(Entity)` is a plain component: the entity another one hangs under.
+`propagate_transforms(&mut World)` writes a `GlobalTransform` for every entity
+with a `Transform`, `local.compose(parent_global)` down each chain (the order
+of `gac-wgpu`'s batch kernels). An entity whose parent is despawned, has no
+`Transform` or is on a cycle is a root, so a dangling or looping link never
+panics and never depends on visit order. A `GlobalTransform` is rewritten only
+when its value changes, so a pass that moves nothing leaves `Changed<GlobalTransform>`
+empty (`Changed` is per archetype column, as above). The pass resolves the whole
+world: ~0.2 us per entity when nothing moved, ~0.5 us on a first pass
+(`cargo bench -p meridian-ecs`); skipping untouched subtrees waits for a profile
+that needs it. Nothing calls it yet: `runtime-app` runs it as a stage once a
+caller needs world-space motors.
+
 ## What this crate is not
 
 It does not know about frames, rendering, physics, or the application main
