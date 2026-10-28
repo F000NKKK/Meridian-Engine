@@ -16,6 +16,9 @@ pub struct Voice {
     pub emitter: Emitter,
     /// Linear gain applied to every sample.
     pub gain: f32,
+    /// How much the voice matters when a scene is full: a scene at its voice
+    /// limit steals the lowest priority first (oldest among equals).
+    pub priority: u8,
     state: PlaybackState,
     source: Box<dyn SampleSource>,
     block: Vec<f32>,
@@ -63,6 +66,7 @@ impl Voice {
         Self {
             emitter,
             gain: 1.0,
+            priority: 0,
             state: PlaybackState::Playing,
             source: Box::new(source),
             block: Vec::new(),
@@ -168,6 +172,7 @@ impl std::fmt::Debug for Voice {
         f.debug_struct("Voice")
             .field("emitter", &self.emitter)
             .field("gain", &self.gain)
+            .field("priority", &self.priority)
             .field("state", &self.state)
             .finish_non_exhaustive()
     }

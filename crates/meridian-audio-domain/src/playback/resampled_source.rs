@@ -1,15 +1,16 @@
 //! A source converted to another sample rate.
 
-use super::SampleSource;
+use super::{SampleSource, anti_alias::AntiAlias};
 
 /// Samples pulled from the wrapped source per refill.
 const CHUNK: usize = 256;
 
 /// Plays `source` (recorded at `from_hz`) at `to_hz` by linear interpolation
 /// between neighbouring input samples. Cheap and adequate for music and
-/// effects; it does not low-pass before decimating, so a large downward
-/// conversion will alias. Interpolation needs the following sample, so a
-/// finite source ends one input sample early.
+/// effects. [`new`](Self::new) does not low-pass before decimating, so a
+/// large downward conversion aliases; [`anti_aliased`](Self::anti_aliased)
+/// filters first. Interpolation needs the following sample, so a finite
+/// source ends one input sample early.
 #[derive(Debug)]
 pub struct ResampledSource<S> {
     source: S,
@@ -21,6 +22,7 @@ pub struct ResampledSource<S> {
     next: f32,
     chunk: Vec<f32>,
     chunk_pos: usize,
+    filter: Option<AntiAlias>,
     primed: bool,
     ended: bool,
 }
@@ -43,9 +45,23 @@ impl<S: SampleSource> ResampledSource<S> {
             next: 0.0,
             chunk: Vec::new(),
             chunk_pos: 0,
+            filter: None,
             primed: false,
             ended: false,
         }
+    }
+
+    /// Like [`new`](Self::new), but a downward conversion first runs the
+    /// input through a low-pass just below the output Nyquist frequency, so
+    /// content the new rate cannot represent is removed instead of folded
+    /// back as alias tones. Upward and equal-rate conversions are unfiltered.
+    #[must_use]
+    pub fn anti_aliased(source: S, from_hz: u32, to_hz: u32) -> Self {
+        let mut resampled = Self::new(source, from_hz, to_hz);
+        if resampled.ratio > 1.0 {
+            resampled.filter = Some(AntiAlias::for_ratio(resampled.ratio));
+        }
+        resampled
     }
 
     /// The next input sample, or `None` once the source has ended.
@@ -58,7 +74,10 @@ impl<S: SampleSource> ResampledSource<S> {
         }
         let sample = self.chunk.get(self.chunk_pos).copied()?;
         self.chunk_pos += 1;
-        Some(sample)
+        Some(match &mut self.filter {
+            Some(filter) => filter.process(sample),
+            None => sample,
+        })
     }
 
     /// Reads the first two input samples; `false` if the source has fewer.

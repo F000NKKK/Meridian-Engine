@@ -184,3 +184,57 @@ fn a_zero_rate_leaves_the_source_unconverted() {
 
     assert_eq!(read_all(&mut source), vec![1.0, 2.0]);
 }
+
+fn tone(hz: f32, rate: f32, frames: usize) -> Vec<f32> {
+    let step = std::f32::consts::TAU * hz / rate;
+    std::iter::successors(Some(0.0f32), |phase| Some(phase + step))
+        .take(frames)
+        .map(f32::sin)
+        .collect()
+}
+
+fn rms_after_settling(source: &mut impl SampleSource) -> f32 {
+    let mut out = vec![0.0; 1024];
+    let read = source.read(&mut out);
+    let settled = &out[read / 2..read];
+    let mean_square = settled.iter().map(|s| s * s).sum::<f32>()
+        / f32::from(u16::try_from(settled.len()).unwrap());
+    mean_square.sqrt()
+}
+
+#[test]
+fn anti_aliasing_removes_content_above_the_new_nyquist() {
+    // 7 kHz is above the 4 kHz Nyquist of an 8 kHz stream and would fold to 1 kHz.
+    let input = tone(7_000.0, 48_000.0, 8_192);
+    let mut plain = resampled(&input, 48_000, 8_000);
+    let mut filtered =
+        ResampledSource::anti_aliased(MemorySource::new(input, Repeat::Once), 48_000, 8_000);
+
+    assert!(rms_after_settling(&mut plain) > 0.5, "unfiltered aliases");
+    assert!(rms_after_settling(&mut filtered) < 0.05);
+}
+
+#[test]
+fn anti_aliasing_keeps_content_below_the_new_nyquist() {
+    let input = tone(500.0, 48_000.0, 8_192);
+    let mut filtered =
+        ResampledSource::anti_aliased(MemorySource::new(input, Repeat::Once), 48_000, 8_000);
+
+    let rms = rms_after_settling(&mut filtered);
+
+    assert!(
+        (rms - std::f32::consts::FRAC_1_SQRT_2).abs() < 0.05,
+        "rms {rms}"
+    );
+}
+
+#[test]
+fn anti_aliasing_leaves_upward_conversion_unfiltered() {
+    let mut source = ResampledSource::anti_aliased(
+        MemorySource::new(vec![0.0, 1.0, 2.0], Repeat::Once),
+        24_000,
+        48_000,
+    );
+
+    assert_eq!(read_all(&mut source), vec![0.0, 0.5, 1.0, 1.5]);
+}
