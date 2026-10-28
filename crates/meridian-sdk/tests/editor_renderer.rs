@@ -282,3 +282,24 @@ fn a_scale_widens_what_is_picked_drawn_and_outlined() {
         .to_vec();
     assert!(orange_pixels(&outlined) > 20, "the box follows the scale");
 }
+
+#[test]
+fn a_child_is_picked_where_its_scaled_parent_puts_it() {
+    let Some(mut renderer) = renderer() else {
+        return;
+    };
+    let assets = cube_assets(&mut renderer);
+    let mut world = World::new();
+    let parent = world.spawn();
+    world.insert(parent, Transform::default());
+    world.insert(parent, Scale3::new(6.0, 1.0, 1.0).unwrap());
+    // Locally the child's cube spans x = -0.2 to 0.8; the parent stretches it
+    // to a cube 6 wide centred at 1.8, which reaches x = 2.
+    let child = spawn_cube(&mut world, assets, [0.3, 0.0, 0.0]);
+    world.insert(child, meridian_ecs::Parent(parent));
+    let camera = looking([0.0; 3]);
+    let reach = 2.0 / (12.0 * (camera.fov_y * 0.5).tan() * (96.0 / 64.0));
+    assert_eq!(renderer.pick(&world, &camera, reach, 0.0), None);
+    meridian_ecs::propagate_transforms(&mut world);
+    assert_eq!(renderer.pick(&world, &camera, reach, 0.0), Some(child));
+}

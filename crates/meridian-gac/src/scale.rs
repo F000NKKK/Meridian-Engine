@@ -84,6 +84,19 @@ impl Scale3 {
         self == Self::UNIT
     }
 
+    /// This scale followed by `rhs`: the axis factors multiplied. A product
+    /// that overflows or underflows is clamped to the largest or smallest
+    /// positive number, so the result is still a valid scale.
+    #[must_use]
+    pub fn compose(self, rhs: Self) -> Self {
+        let clamp = |product: Scalar| product.clamp(Scalar::MIN_POSITIVE, Scalar::MAX);
+        Self {
+            x: clamp(self.x * rhs.x),
+            y: clamp(self.y * rhs.y),
+            z: clamp(self.z * rhs.z),
+        }
+    }
+
     /// `vector` with each component multiplied by its axis factor.
     #[must_use]
     pub fn apply(self, vector: Vec3) -> Vec3 {
@@ -122,6 +135,18 @@ mod tests {
         assert!(Scale3::default().is_unit());
         assert!(!scale.is_unit());
         assert_eq!(Scale3::uniform(2.0).unwrap().components(), [2.0; 3]);
+    }
+
+    #[test]
+    fn composing_multiplies_the_axes_and_stays_valid() {
+        let two = Scale3::new(2.0, 3.0, 0.5).unwrap();
+        let composed = two.compose(Scale3::new(4.0, 1.0, 2.0).unwrap());
+        assert_eq!(composed.components(), [8.0, 3.0, 1.0]);
+        assert_eq!(two.compose(Scale3::UNIT), two);
+        let huge = Scale3::uniform(Scalar::MAX).unwrap();
+        assert_eq!(huge.compose(huge).components(), [Scalar::MAX; 3]);
+        let tiny = Scale3::uniform(Scalar::MIN_POSITIVE).unwrap();
+        assert_eq!(tiny.compose(tiny).components(), [Scalar::MIN_POSITIVE; 3]);
     }
 
     #[test]

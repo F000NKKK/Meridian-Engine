@@ -79,9 +79,13 @@ pub(super) fn frame_of(world: &World, entity: Entity) -> Option<Motor3> {
     )
 }
 
-/// An entity's own scale, the unit one when it has none.
+/// An entity's scale in the world as the renderer draws it: the hierarchy's
+/// when the transform stage has resolved one, else its own, else the unit scale.
 pub(super) fn scale_of(world: &World, entity: Entity) -> Scale3 {
-    world.get::<Scale3>(entity).copied().unwrap_or_default()
+    world.get::<GlobalTransform>(entity).map_or_else(
+        || world.get::<Scale3>(entity).copied().unwrap_or_default(),
+        |global| global.scale,
+    )
 }
 
 /// Where a mesh stands in the world: scaled along its axes, then moved.

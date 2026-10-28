@@ -142,6 +142,12 @@ change that closed them.
    treated as roots ([ecs-design.md](../ecs-design.md#hierarchy)). `runtime-app`'s `TransformStage` runs it every
    frame (`runtime-app` now depends on `ecs`). Open: skipping subtrees that did
    not change, and exposing `World` through `sdk`.
+11. **Done: scale in the hierarchy.** `propagate_transforms` multiplies each entity's
+    `Scale3` (added by the rendering segment) down the chain into
+    `GlobalTransform::scale` and stretches a child's translation with its parent's
+    scale (`Scale3::compose`, `Motor3::stretched`; `T * R * S` as in Unity); the
+    renderer, culling and the editor's picking and outline read the world scale.
+    Physics colliders still ignore scale.
 
 The Craftbook migration (ADR 019/020) owns the `runtime-app`/`sdk` rework,
 the driver direction and the `unwrap` cleanup; see `docs/adr/020-craftbook-adoption.md`.

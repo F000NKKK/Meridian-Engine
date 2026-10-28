@@ -362,7 +362,8 @@ impl FrameScene {
 /// rule 6 (ECS stays generic and data-oriented).
 ///
 /// An entity's frame is its `GlobalTransform` when the transform stage has
-/// resolved one (so children follow their parents), else its `Transform`.
+/// resolved one (so children follow and are scaled with their parents), else
+/// its `Transform` and its own `Scale3`.
 ///
 /// An entity that also has a [`JointPalette`] or [`MorphWeights`] component
 /// is drawn posed by them (ADR 047).
@@ -373,13 +374,15 @@ pub fn extract_scene3d(world: &World, camera: crate::Camera) -> Scene3d {
         .query::<MeshRenderer>()
         .filter_map(|(entity, renderer)| {
             let transform = world.get::<Transform>(entity)?;
-            let frame = world
-                .get::<GlobalTransform>(entity)
-                .map_or(transform.motor, |global| global.motor);
-            let scale = world
+            let local_scale = world
                 .get::<meridian_gac::Scale3>(entity)
                 .copied()
                 .unwrap_or_default();
+            let (frame, scale) = world
+                .get::<GlobalTransform>(entity)
+                .map_or((transform.motor, local_scale), |global| {
+                    (global.motor, global.scale)
+                });
             Some(Renderable3d {
                 scale,
                 mesh: renderer.mesh,
