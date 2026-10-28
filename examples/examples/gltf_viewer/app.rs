@@ -166,17 +166,30 @@ fn is_hdr_path(path: &str) -> bool {
         .is_some_and(|ext| ext.eq_ignore_ascii_case("hdr"))
 }
 
+/// Loads the environment a `MERIDIAN_ENV` value names: six comma-separated
+/// cube faces (`+x,-x,+y,-y,+z,-z`, ADR 038) or one `<file>.hdr` panorama
+/// (ADR 036). `None` when the value names neither.
+fn load_named_environment(base: &mut GraphicsSession, value: &str) -> Option<Result<(), String>> {
+    if let Ok(faces) = <[&str; 6]>::try_from(value.split(',').collect::<Vec<_>>()) {
+        return Some(base.load_environment_cube(faces));
+    }
+    is_hdr_path(value).then(|| base.load_environment(value))
+}
+
 /// Lights the model with a procedural sky (ADR 035) whose sun sits where the
-/// directional light does; `MERIDIAN_ENV=none` keeps the ambient colours alone
-/// and `MERIDIAN_ENV=<file>.hdr` lights it with that Radiance panorama instead.
+/// directional light does; `MERIDIAN_ENV=none` keeps the ambient colours alone,
+/// and any other `MERIDIAN_ENV` that [`load_named_environment`] understands
+/// lights it with that image instead.
 fn light_with_sky(base: &mut GraphicsSession) {
-    match std::env::var("MERIDIAN_ENV") {
-        Ok(value) if value == "none" => return,
-        Ok(path) if is_hdr_path(&path) => match base.load_environment(&path) {
-            Ok(()) => return,
-            Err(err) => meridian_sdk::log_error!("environment: {err}"),
-        },
-        _ => {}
+    if let Ok(value) = std::env::var("MERIDIAN_ENV") {
+        if value == "none" {
+            return;
+        }
+        match load_named_environment(base, &value) {
+            Some(Ok(())) => return,
+            Some(Err(err)) => meridian_sdk::log_error!("environment: {err}"),
+            None => {}
+        }
     }
     let sky = Sky {
         sun_direction: [-SUN.x, -SUN.y, -SUN.z],
