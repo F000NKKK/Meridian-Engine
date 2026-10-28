@@ -43,6 +43,11 @@ pub struct Material {
     /// Sampled and multiplied with `base_color_factor` when present;
     /// `base_color_factor` alone otherwise.
     pub albedo: Option<TextureHandle>,
+    /// A linear-data map in glTF's layout, uploaded with
+    /// `TextureStore::upload_linear`: roughness in the green channel,
+    /// metalness in the blue one, each multiplied with `roughness` and
+    /// `metallic` (ADR 031). `None` uses the factors alone.
+    pub metallic_roughness: Option<TextureHandle>,
     /// RGBA multiplier — the material's color when unlit or textureless.
     pub base_color_factor: [f32; 4],
     /// Skips lighting entirely — the world-space UI / unshaded case (see
@@ -75,6 +80,7 @@ impl Default for Material {
     fn default() -> Self {
         Self {
             albedo: None,
+            metallic_roughness: None,
             base_color_factor: [0.0; 4],
             unlit: false,
             always_on_top: false,

@@ -9,7 +9,7 @@ use meridian_rendering_domain::{
 use super::instance_data::push_instance;
 use super::main_pipelines::PipelineKey;
 use super::{DrawKind, PreparedBatch, SceneAssets, SceneRenderer};
-use crate::{Buffer, BufferUsage, Device, SampledTexture, Texture};
+use crate::{Buffer, BufferUsage, Device, LitTextures, SampledTexture, Texture};
 
 /// A renderable whose mesh and material resolved.
 struct Resolved<'a> {
@@ -19,6 +19,8 @@ struct Resolved<'a> {
     frame: &'a Motor3,
     /// The albedo texture, when the material names one that resolved.
     albedo: Option<(TextureHandle, &'a Texture)>,
+    /// The metallic-roughness map, when the material names one that resolved.
+    surface_map: Option<(TextureHandle, &'a Texture)>,
     casts_shadow: bool,
 }
 
@@ -31,12 +33,16 @@ impl<'a> Resolved<'a> {
         let albedo = material
             .albedo
             .and_then(|handle| assets.textures.get(handle).map(|texture| (handle, texture)));
+        let surface_map = material
+            .metallic_roughness
+            .and_then(|handle| assets.textures.get(handle).map(|texture| (handle, texture)));
         Some(Self {
             mesh: renderable.mesh,
             source,
             material,
             frame: &renderable.frame,
             albedo,
+            surface_map,
             casts_shadow: renderable.casts_shadow,
         })
     }
@@ -47,6 +53,7 @@ impl<'a> Resolved<'a> {
             key: BatchKey {
                 mesh: self.mesh,
                 albedo: self.albedo.map(|(handle, _)| handle),
+                metallic_roughness: self.surface_map.map(|(handle, _)| handle),
                 lit: !self.material.unlit,
                 state: DrawState::of(self.material),
                 casts_shadow: self.casts_shadow,
@@ -108,20 +115,22 @@ pub(crate) fn bake_batches(
 }
 
 fn draw_kind(device: &Device, renderer: &SceneRenderer, lead: &Resolved<'_>) -> DrawKind {
-    match lead.albedo {
-        Some((_, texture)) => DrawKind::Textured {
-            bind_group: textured_bind_group(
-                device,
-                renderer,
-                texture,
-                PipelineKey {
-                    textured: true,
-                    lit: !lead.material.unlit,
-                    state: DrawState::of(lead.material),
-                },
-            ),
-        },
-        None => DrawKind::Colored,
+    if lead.albedo.is_none() && lead.surface_map.is_none() {
+        return DrawKind::Colored;
+    }
+    let key = PipelineKey {
+        textured: true,
+        lit: !lead.material.unlit,
+        state: DrawState::of(lead.material),
+    };
+    let albedo = lead
+        .albedo
+        .map_or(&renderer.white_albedo, |(_, texture)| texture);
+    let surface_map = lead
+        .surface_map
+        .map_or(&renderer.white_surface, |(_, texture)| texture);
+    DrawKind::Textured {
+        bind_group: textured_bind_group(device, renderer, [albedo, surface_map], key),
     }
 }
 
@@ -134,15 +143,16 @@ fn upload_instances(device: &Device, bytes: &[u8]) -> Option<Buffer> {
     Some(buffer)
 }
 
-/// A fresh bind group naming `texture`, made against the pipeline `key`
-/// selects (a bind group only fits its own pipeline). Lit textured draws
-/// need the shadow map and sampler too (see `lit_textured_shader_wgsl`'s
-/// bindings 3 and 4); unlit draws ignore lighting, so theirs stays the
-/// plain three bindings.
+/// A fresh bind group naming the `[albedo, metallic_roughness]` textures,
+/// made against the pipeline `key` selects (a bind group only fits its own
+/// pipeline). Lit textured draws need the shadow map and sampler too and
+/// the metallic-roughness map (see `lit_textured_shader_wgsl`'s bindings 3
+/// to 5); unlit draws ignore lighting, so theirs stays the plain three
+/// bindings.
 fn textured_bind_group(
     device: &Device,
     renderer: &SceneRenderer,
-    texture: &Texture,
+    [albedo, surface_map]: [&Texture; 2],
     key: PipelineKey,
 ) -> crate::BindGroup {
     let pipeline = &renderer.pipelines.get(key).pipeline;
@@ -150,20 +160,23 @@ fn textured_bind_group(
         device.create_textured_shadow_bind_group(
             pipeline,
             &renderer.uniform_buffer,
-            SampledTexture {
-                texture,
-                sampler: &renderer.sampler,
-            },
-            SampledTexture {
-                texture: &renderer.shadow_map,
-                sampler: &renderer.shadow_sampler,
+            LitTextures {
+                albedo: SampledTexture {
+                    texture: albedo,
+                    sampler: &renderer.sampler,
+                },
+                metallic_roughness: surface_map,
+                shadow: SampledTexture {
+                    texture: &renderer.shadow_map,
+                    sampler: &renderer.shadow_sampler,
+                },
             },
         )
     } else {
         device.create_textured_bind_group(
             pipeline,
             &renderer.uniform_buffer,
-            texture,
+            albedo,
             &renderer.sampler,
         )
     }

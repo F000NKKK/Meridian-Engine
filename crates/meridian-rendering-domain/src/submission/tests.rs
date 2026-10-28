@@ -228,6 +228,7 @@ fn key(mesh: crate::MeshHandle, state: DrawState) -> BatchKey {
     BatchKey {
         mesh,
         albedo: None,
+        metallic_roughness: None,
         lit: true,
         state,
         casts_shadow: true,

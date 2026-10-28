@@ -141,6 +141,10 @@ impl TextureStore for GpuFrameRecorder {
         self.textures.upload(image)
     }
 
+    fn upload_linear(&mut self, image: &ImageAsset) -> TextureHandle {
+        self.textures.upload_linear(image)
+    }
+
     fn upload_solid(&mut self, rgba: [u8; 4]) -> TextureHandle {
         self.textures.upload_solid(rgba)
     }
