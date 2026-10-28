@@ -9,14 +9,18 @@ use crate::{VertexAttributeDesc, VertexFormat, VertexLayout, VertexStep};
 /// Bytes of one mesh vertex: position, normal, UV.
 pub(crate) const MESH_VERTEX_BYTES: u64 = 32;
 
-/// Bytes of one instance record: model matrix, colour, emissive, surface (roughness, metallic).
-pub(crate) const INSTANCE_BYTES: u64 = 100;
+/// Bytes of one instance record: model matrix, colour, emissive, surface
+/// (roughness, metallic), map strengths (normal scale, occlusion strength)
+/// and the emissive factor of an emissive map.
+pub(crate) const INSTANCE_BYTES: u64 = 120;
 
 /// `@location` of the first of the four model matrix columns.
 const MODEL_LOCATION: u32 = 3;
 const COLOR_LOCATION: u32 = 7;
 const EMISSIVE_LOCATION: u32 = 8;
 const SURFACE_LOCATION: u32 = 9;
+const MAP_STRENGTH_LOCATION: u32 = 10;
+const MAPPED_EMISSIVE_LOCATION: u32 = 11;
 
 fn attribute(location: u32, format: VertexFormat, offset: u64) -> VertexAttributeDesc {
     VertexAttributeDesc {
@@ -71,6 +75,16 @@ pub(crate) fn instance_vertex_layout() -> VertexLayout {
     attributes.push(attribute(COLOR_LOCATION, VertexFormat::Float32x4, 64));
     attributes.push(attribute(EMISSIVE_LOCATION, VertexFormat::Float32x3, 80));
     attributes.push(attribute(SURFACE_LOCATION, VertexFormat::Float32x2, 92));
+    attributes.push(attribute(
+        MAP_STRENGTH_LOCATION,
+        VertexFormat::Float32x2,
+        100,
+    ));
+    attributes.push(attribute(
+        MAPPED_EMISSIVE_LOCATION,
+        VertexFormat::Float32x3,
+        108,
+    ));
     instance_layout(attributes)
 }
 

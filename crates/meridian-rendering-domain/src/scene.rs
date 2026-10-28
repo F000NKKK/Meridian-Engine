@@ -48,6 +48,19 @@ pub struct Material {
     /// metalness in the blue one, each multiplied with `roughness` and
     /// `metallic` (ADR 031). `None` uses the factors alone.
     pub metallic_roughness: Option<TextureHandle>,
+    /// A tangent-space normal map (linear data, `upload_linear`) that bends
+    /// the surface normal per texel (ADR 033). `None` keeps the mesh normal.
+    pub normal: Option<TextureHandle>,
+    /// How strongly `normal` bends: `1.0` as authored, `0.0` flat.
+    pub normal_scale: f32,
+    /// Ambient occlusion in the red channel (linear data) that dims the
+    /// ambient light per texel (ADR 033). `None` leaves ambient alone.
+    pub occlusion: Option<TextureHandle>,
+    /// How strongly `occlusion` dims ambient: `1.0` as authored, `0.0` not at all.
+    pub occlusion_strength: f32,
+    /// A colour map (sRGB) multiplied with `emissive` per texel (ADR 033).
+    /// `None` uses `emissive` as it is.
+    pub emissive_map: Option<TextureHandle>,
     /// RGBA multiplier — the material's color when unlit or textureless.
     pub base_color_factor: [f32; 4],
     /// Skips lighting entirely — the world-space UI / unshaded case (see
@@ -81,6 +94,11 @@ impl Default for Material {
         Self {
             albedo: None,
             metallic_roughness: None,
+            normal: None,
+            normal_scale: 1.0,
+            occlusion: None,
+            occlusion_strength: 1.0,
+            emissive_map: None,
             base_color_factor: [0.0; 4],
             unlit: false,
             always_on_top: false,

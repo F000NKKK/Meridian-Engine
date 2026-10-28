@@ -3,13 +3,14 @@
 use meridian_gac::{Motor3, Vec3};
 use meridian_rendering_domain::scene::{Material, Renderable3d, Scene3d};
 use meridian_rendering_domain::{
-    BatchKey, DrawItem, DrawState, MeshHandle, MeshSource, TextureHandle, plan_batches,
+    BatchKey, DrawItem, DrawState, MaterialMaps, MeshHandle, MeshSource, TextureHandle,
+    plan_batches,
 };
 
 use super::instance_data::push_instance;
 use super::main_pipelines::PipelineKey;
 use super::{DrawKind, PreparedBatch, SceneAssets, SceneRenderer};
-use crate::{Buffer, BufferUsage, Device, LitTextures, SampledTexture, Texture};
+use crate::{Buffer, BufferUsage, Device, LitTextures, SampledTexture, SurfaceTextures, Texture};
 
 /// A renderable whose mesh and material resolved.
 struct Resolved<'a> {
@@ -17,10 +18,8 @@ struct Resolved<'a> {
     source: &'a MeshSource,
     material: &'a Material,
     frame: &'a Motor3,
-    /// The albedo texture, when the material names one that resolved.
-    albedo: Option<(TextureHandle, &'a Texture)>,
-    /// The metallic-roughness map, when the material names one that resolved.
-    surface_map: Option<(TextureHandle, &'a Texture)>,
+    /// The material's textures that are registered.
+    maps: MaterialMaps,
     casts_shadow: bool,
 }
 
@@ -30,19 +29,21 @@ impl<'a> Resolved<'a> {
     fn of(renderable: &'a Renderable3d, assets: &SceneAssets<'a>) -> Option<Self> {
         let source = assets.meshes.get(renderable.mesh)?;
         let material = assets.materials.get(renderable.material)?;
-        let albedo = material
-            .albedo
-            .and_then(|handle| assets.textures.get(handle).map(|texture| (handle, texture)));
-        let surface_map = material
-            .metallic_roughness
-            .and_then(|handle| assets.textures.get(handle).map(|texture| (handle, texture)));
+        let known = |handle: Option<TextureHandle>| {
+            handle.filter(|&handle| assets.textures.get(handle).is_some())
+        };
         Some(Self {
             mesh: renderable.mesh,
             source,
             material,
             frame: &renderable.frame,
-            albedo,
-            surface_map,
+            maps: MaterialMaps {
+                albedo: known(material.albedo),
+                metallic_roughness: known(material.metallic_roughness),
+                normal: known(material.normal),
+                occlusion: known(material.occlusion),
+                emissive: known(material.emissive_map),
+            },
             casts_shadow: renderable.casts_shadow,
         })
     }
@@ -52,8 +53,7 @@ impl<'a> Resolved<'a> {
         DrawItem {
             key: BatchKey {
                 mesh: self.mesh,
-                albedo: self.albedo.map(|(handle, _)| handle),
-                metallic_roughness: self.surface_map.map(|(handle, _)| handle),
+                maps: self.maps,
                 lit: !self.material.unlit,
                 state: DrawState::of(self.material),
                 casts_shadow: self.casts_shadow,
@@ -100,7 +100,7 @@ pub(crate) fn bake_batches(
         let count = u32::try_from(planned.members.len()).unwrap_or(u32::MAX);
         batches.push(PreparedBatch {
             mesh: lead.mesh,
-            kind: draw_kind(device, renderer, lead),
+            kind: draw_kind(device, renderer, assets, lead),
             lit: planned.key.lit,
             state: planned.key.state,
             casts_shadow: planned.key.casts_shadow,
@@ -114,8 +114,13 @@ pub(crate) fn bake_batches(
     }
 }
 
-fn draw_kind(device: &Device, renderer: &SceneRenderer, lead: &Resolved<'_>) -> DrawKind {
-    if lead.albedo.is_none() && lead.surface_map.is_none() {
+fn draw_kind(
+    device: &Device,
+    renderer: &SceneRenderer,
+    assets: &SceneAssets<'_>,
+    lead: &Resolved<'_>,
+) -> DrawKind {
+    if !lead.maps.any() {
         return DrawKind::Colored;
     }
     let key = PipelineKey {
@@ -123,14 +128,26 @@ fn draw_kind(device: &Device, renderer: &SceneRenderer, lead: &Resolved<'_>) -> 
         lit: !lead.material.unlit,
         state: DrawState::of(lead.material),
     };
-    let albedo = lead
-        .albedo
-        .map_or(&renderer.white_albedo, |(_, texture)| texture);
-    let surface_map = lead
-        .surface_map
-        .map_or(&renderer.white_surface, |(_, texture)| texture);
+    let find = |handle: Option<TextureHandle>, neutral| {
+        handle
+            .and_then(|handle| assets.textures.get(handle))
+            .unwrap_or(neutral)
+    };
+    let neutral = &renderer.neutral;
+    let maps = lead.maps;
     DrawKind::Textured {
-        bind_group: textured_bind_group(device, renderer, [albedo, surface_map], key),
+        bind_group: textured_bind_group(
+            device,
+            renderer,
+            [
+                find(maps.albedo, &neutral.white_albedo),
+                find(maps.metallic_roughness, &neutral.white_linear),
+                find(maps.normal, &neutral.flat_normal),
+                find(maps.occlusion, &neutral.white_linear),
+                find(maps.emissive, &neutral.white_albedo),
+            ],
+            key,
+        ),
     }
 }
 
@@ -143,16 +160,16 @@ fn upload_instances(device: &Device, bytes: &[u8]) -> Option<Buffer> {
     Some(buffer)
 }
 
-/// A fresh bind group naming the `[albedo, metallic_roughness]` textures,
-/// made against the pipeline `key` selects (a bind group only fits its own
-/// pipeline). Lit textured draws need the shadow map and sampler too and
-/// the metallic-roughness map (see `lit_textured_shader_wgsl`'s bindings 3
-/// to 5); unlit draws ignore lighting, so theirs stays the plain three
-/// bindings.
+/// A fresh bind group naming the `[albedo, metallic_roughness, normal,
+/// occlusion, emissive]` textures, made against the pipeline `key` selects (a
+/// bind group only fits its own pipeline). Lit textured draws need the
+/// shadow map and sampler too and the four surface maps (see
+/// `lit_textured_shader_wgsl`'s bindings 3 to 8); unlit draws ignore
+/// lighting, so theirs stays the plain three bindings.
 fn textured_bind_group(
     device: &Device,
     renderer: &SceneRenderer,
-    [albedo, surface_map]: [&Texture; 2],
+    [albedo, metallic_roughness, normal, occlusion, emissive]: [&Texture; 5],
     key: PipelineKey,
 ) -> crate::BindGroup {
     let pipeline = &renderer.pipelines.get(key).pipeline;
@@ -165,7 +182,12 @@ fn textured_bind_group(
                     texture: albedo,
                     sampler: &renderer.sampler,
                 },
-                metallic_roughness: surface_map,
+                surface: SurfaceTextures {
+                    metallic_roughness,
+                    normal,
+                    occlusion,
+                    emissive,
+                },
                 shadow: SampledTexture {
                     texture: &renderer.shadow_map,
                     sampler: &renderer.shadow_sampler,

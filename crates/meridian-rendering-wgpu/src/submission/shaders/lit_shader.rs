@@ -98,7 +98,7 @@ fn fresnel_schlick(v_dot_h: f32, f0: vec3<f32>) -> vec3<f32> {
 /// Light intensity keeps its pre-PBR meaning (a white diffuse surface facing
 /// a light of intensity 1 is fully lit), so diffuse has no 1/pi and the
 /// specular lobe is scaled by pi to match.
-fn shade(world_pos: vec3<f32>, world_normal: vec3<f32>, base_color: vec3<f32>, surface: vec2<f32>, shadow_factor: f32) -> vec3<f32> {
+fn shade(world_pos: vec3<f32>, world_normal: vec3<f32>, base_color: vec3<f32>, surface: vec2<f32>, occlusion: f32, shadow_factor: f32) -> vec3<f32> {
     let n = normalize(world_normal);
     let view_dir = normalize(u.camera_pos.xyz - world_pos);
     let n_dot_v = max(dot(n, view_dir), 0.0001);
@@ -113,8 +113,8 @@ fn shade(world_pos: vec3<f32>, world_normal: vec3<f32>, base_color: vec3<f32>, s
     // the normal's lookup lights the diffuse part, the reflection's the
     // specular part, with Fresnel damped by roughness.
     let ambient_fresnel = f0 + (max(vec3<f32>(1.0 - roughness), f0) - f0) * pow(1.0 - n_dot_v, 5.0);
-    var result = hemisphere_ambient(n) * diffuse_color
-        + hemisphere_ambient(reflect(-view_dir, n)) * ambient_fresnel;
+    var result = (hemisphere_ambient(n) * diffuse_color
+        + hemisphere_ambient(reflect(-view_dir, n)) * ambient_fresnel) * occlusion;
 
     let count = min(u.light_count.x, 4u);
     for (var i: u32 = 0u; i < count; i = i + 1u) {
@@ -218,7 +218,7 @@ fn vs_main(in: VertexInput) -> VertexOutput {
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let shadow_factor = compute_shadow_factor(in.world_position, in.world_normal);
-    let shaded = shade(in.world_position, in.world_normal, in.color.rgb, in.surface, shadow_factor) + in.emissive;
+    let shaded = shade(in.world_position, in.world_normal, in.color.rgb, in.surface, 1.0, shadow_factor) + in.emissive;
     return vec4<f32>(shaded, in.color.a);
 }
 "#;
@@ -243,6 +243,36 @@ var shadow_sampler: sampler_comparison;
 // Roughness in green, metalness in blue (glTF layout); linear data.
 @group(0) @binding(5)
 var surface_tex: texture_2d<f32>;
+// Tangent-space normal, occlusion in red, emitted colour (ADR 033).
+@group(0) @binding(6)
+var normal_tex: texture_2d<f32>;
+@group(0) @binding(7)
+var occlusion_tex: texture_2d<f32>;
+@group(0) @binding(8)
+var emissive_tex: texture_2d<f32>;
+
+/// `world_normal` bent by the tangent-space `map_normal`. The tangent frame
+/// comes from the screen-space derivatives of position and UV, so meshes
+/// need no tangent attribute; the bitangent is `cross(n, t)`, which is
+/// glTF's convention for a v axis that points down the image.
+fn perturb_normal(n: vec3<f32>, world_pos: vec3<f32>, uv: vec2<f32>, map_normal: vec3<f32>) -> vec3<f32> {
+    let dp1 = dpdx(world_pos);
+    let dp2 = dpdy(world_pos);
+    let duv1 = dpdx(uv);
+    let duv2 = dpdy(uv);
+    let det = duv1.x * duv2.y - duv2.x * duv1.y;
+    if (abs(det) < 1e-12) {
+        return n;
+    }
+    var t = (dp1 * duv2.y - dp2 * duv1.y) / det;
+    t = t - n * dot(n, t);
+    if (dot(t, t) < 1e-12) {
+        return n;
+    }
+    t = normalize(t);
+    let b = cross(n, t);
+    return normalize(t * map_normal.x + b * map_normal.y + n * map_normal.z);
+}
 
 // See the colored-lit shader's identical `compute_shadow_factor` for
 // why the bias is slope-scaled, not a flat constant.
@@ -267,6 +297,8 @@ struct VertexInput {
     @location(7) color: vec4<f32>,
     @location(8) emissive: vec3<f32>,
     @location(9) surface: vec2<f32>,
+    @location(10) map_strength: vec2<f32>,
+    @location(11) mapped_emissive: vec3<f32>,
 };
 
 struct VertexOutput {
@@ -277,6 +309,8 @@ struct VertexOutput {
     @location(3) tint: vec4<f32>,
     @location(4) emissive: vec3<f32>,
     @location(5) surface: vec2<f32>,
+    @location(6) map_strength: vec2<f32>,
+    @location(7) mapped_emissive: vec3<f32>,
 };
 
 @vertex
@@ -292,6 +326,8 @@ fn vs_main(in: VertexInput) -> VertexOutput {
     out.tint = in.color;
     out.emissive = in.emissive;
     out.surface = in.surface;
+    out.map_strength = in.map_strength;
+    out.mapped_emissive = in.mapped_emissive;
     return out;
 }
 
@@ -299,10 +335,15 @@ fn vs_main(in: VertexInput) -> VertexOutput {
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let sampled = textureSample(albedo_tex, albedo_sampler, in.uv);
     let base_color = sampled.rgb * in.tint.rgb;
-    let shadow_factor = compute_shadow_factor(in.world_position, in.world_normal);
     let mapped = textureSample(surface_tex, albedo_sampler, in.uv);
     let surface = vec2<f32>(in.surface.x * mapped.g, in.surface.y * mapped.b);
-    let shaded = shade(in.world_position, in.world_normal, base_color, surface, shadow_factor) + in.emissive;
+    let tangent_normal = textureSample(normal_tex, albedo_sampler, in.uv).xyz * 2.0 - 1.0;
+    let scaled = vec3<f32>(tangent_normal.xy * in.map_strength.x, tangent_normal.z);
+    let world_normal = perturb_normal(normalize(in.world_normal), in.world_position, in.uv, normalize(scaled));
+    let occlusion = mix(1.0, textureSample(occlusion_tex, albedo_sampler, in.uv).r, in.map_strength.y);
+    let emitted = in.emissive + in.mapped_emissive * textureSample(emissive_tex, albedo_sampler, in.uv).rgb;
+    let shadow_factor = compute_shadow_factor(in.world_position, world_normal);
+    let shaded = shade(in.world_position, world_normal, base_color, surface, occlusion, shadow_factor) + emitted;
     return vec4<f32>(shaded, sampled.a * in.tint.a);
 }
 "#;
