@@ -146,3 +146,43 @@ async fn available_capacity_reflects_buffer_size() {
     );
     assert!(stream.can_push(128));
 }
+
+// -- StreamSink --
+
+fn sink_with_capacity(capacity: usize) -> (StreamSink, crossbeam_channel::Receiver<f32>) {
+    let (sample_tx, rx) = crossbeam_channel::bounded(capacity);
+    (
+        StreamSink {
+            sample_tx,
+            capacity,
+        },
+        rx,
+    )
+}
+
+#[test]
+fn the_sink_can_cross_threads() {
+    fn assert_send<T: Send>() {}
+    assert_send::<StreamSink>();
+}
+
+#[test]
+fn pushed_samples_reach_the_ring_in_order_and_use_up_room() {
+    let (sink, rx) = sink_with_capacity(4);
+    assert!(sink.can_push(4));
+
+    sink.push_interleaved(&[0.1, 0.2, 0.3]);
+
+    assert!(!sink.can_push(2));
+    assert!(sink.can_push(1));
+    assert_eq!(rx.try_iter().collect::<Vec<_>>(), vec![0.1, 0.2, 0.3]);
+    assert!(sink.can_push(4));
+}
+
+#[test]
+fn pushing_after_the_stream_is_gone_is_a_no_op() {
+    let (sink, rx) = sink_with_capacity(4);
+    drop(rx);
+
+    sink.push_interleaved(&[0.5; 3]);
+}

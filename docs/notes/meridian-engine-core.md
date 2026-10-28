@@ -43,8 +43,7 @@ trait over the `FrameRecorder` port.
 `Runtime`: a registered [`PhysicsStepStage`] and the sdk's render stage. They
 run at different multiplicities per display frame (a fixed-timestep
 accumulator calls the physics stage 0-8 times, rendering exactly once), which
-is what [`Runtime::tick_only`] is for. `examples/magic_figures` does not use
-`Runtime`: it has no physics bodies and needs `audio-domain::BinauralRenderer`'s
-per-sample synthesis, whose inputs (orbit positions, the camera pose) are
-plain application state; forcing it through `AudioSubsystem::mix` was
-rejected.
+is what [`Runtime::tick_only`] is for. `examples/magic_figures` runs its audio as an `AudioStage` over an
+`AudioScene` whose renderer is `audio-domain::BinauralRenderer`; the
+`AudioSubsystem::mix` gain path stays for consumers that only need
+per-channel gains.

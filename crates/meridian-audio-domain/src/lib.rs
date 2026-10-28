@@ -27,11 +27,13 @@
 #![forbid(unsafe_code)]
 
 mod attenuation_model;
+mod block_renderer;
 mod channel;
 pub mod effects;
 mod emitter;
 mod listener;
 mod mixer;
+mod playback;
 #[cfg(test)]
 mod render_and_output_tests;
 mod spatial_gains;
@@ -41,6 +43,7 @@ mod speaker_layout;
 mod tests;
 
 pub use attenuation_model::AttenuationModel;
+pub use block_renderer::BlockRenderer;
 pub use channel::Channel;
 pub use effects::{
     AcousticMedium, BinauralConfig, BinauralRenderer, Declicker, DspGraph, DspNode, Gain,
@@ -49,6 +52,7 @@ pub use effects::{
 pub use emitter::Emitter;
 pub use listener::Listener;
 pub use mixer::Mixer;
-pub use spatial_gains::spatial_gains;
+pub use playback::{MemorySource, PlaybackState, Repeat, SampleSource, Voice};
+pub use spatial_gains::{spatial_gains, spatial_gains_into};
 pub use speaker::Speaker;
 pub use speaker_layout::{SpeakerLayout, fold_to_front_hemisphere};

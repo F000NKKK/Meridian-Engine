@@ -11,10 +11,14 @@
 #![doc = include_str!("../README.md")]
 #![forbid(unsafe_code)]
 
+mod audio_scene;
 mod audio_sink;
 mod audio_subsystem;
 #[cfg(any(test, feature = "testing"))]
 pub mod testing;
+mod voice_id;
 
+pub use audio_scene::AudioScene;
 pub use audio_sink::AudioSink;
 pub use audio_subsystem::AudioSubsystem;
+pub use voice_id::VoiceId;

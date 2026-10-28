@@ -38,14 +38,13 @@ pub use meridian_asset_png::PngDecoder;
 pub use meridian_asset_symphonia::{
     AnyAudioDecoder, AudioAsset, DecodeStrategy, StreamingAudioDecoder, open_audio,
 };
-// -- meridian-audio-app: the output port and audio state --
-pub use meridian_audio_app::{AudioSink, AudioSubsystem};
-// -- meridian-audio-cpal: the platform audio adapter --
+// -- meridian-audio-app / -cpal: the output port, audio state and platform adapter --
+pub use meridian_audio_app::{AudioScene, AudioSink, AudioSubsystem, VoiceId};
 pub use meridian_audio_cpal::{AudioStream, open_output};
 // -- meridian-audio-domain: spatial audio --
 pub use meridian_audio_domain::{
     AcousticMedium, AttenuationModel, BinauralRenderer, Channel, Declicker, DspNode, Emitter,
-    Listener, Mixer, SpeakerLayout,
+    Listener, MemorySource, Mixer, Repeat, SampleSource, SpeakerLayout, Voice,
 };
 // -- meridian-compute-app: dispatch ports --
 pub use meridian_compute_app::{ComputeContext, ComputeDevice, GpuBackend};
@@ -88,7 +87,8 @@ pub use meridian_rendering_wgpu::{
 };
 // -- meridian-runtime-app: Runtime, the single frame-work entry point --
 pub use meridian_runtime_app::{
-    ComputeStage, EventSystem, Job, JobExecutor, PhysicsStepStage, Runtime, Shared, Stage, StageId,
+    AudioStage, ComputeStage, EventSystem, Job, JobExecutor, PhysicsStepStage, Runtime, Shared,
+    Stage, StageId,
 };
 // -- meridian-runtime-threads: the threaded job executor --
 pub use meridian_runtime_threads::{BackgroundPool, TaskExecutor};

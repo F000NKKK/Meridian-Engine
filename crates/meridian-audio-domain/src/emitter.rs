@@ -2,7 +2,7 @@
 
 use meridian_gac::{Motor3, Vec3};
 
-/// A sound source's spatial frame + playback state.
+/// A sound source's spatial frame. Playback state lives in `Voice`.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Emitter {
     pub frame: Motor3,

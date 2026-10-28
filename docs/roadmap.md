@@ -448,12 +448,10 @@ tested in isolation.** `examples/physic_figures` drives its physics
 stepping through a real `Runtime` (`Runtime::tick_fixed` inside a
 fixed-timestep accumulator, replacing the `meridian_sdk::pipeline::Pipeline`
 it used before that) — the first real application in this workspace to
-actually construct and step a `Runtime`. `examples/magic_figures` still
-doesn't go through `Runtime`: it needs `audio-domain::BinauralRenderer`'s
-real per-sample stereo synthesis, which `AudioSubsystem::mix`'s
-per-channel-gain model can't express, so it hand-assembles its own
-audio rig instead (see `meridian_sdk::pipeline`'s own module doc for
-why that's the documented escape hatch, not a gap). `meridian_sdk::pipeline::Pipeline`
+actually construct and step a `Runtime`. `examples/magic_figures` drives its audio
+through a `Runtime` too: an `AudioStage` renders an `AudioScene` (looping
+`Voice`s, `BinauralRenderer`, `Declicker`) into the stream's `StreamSink`,
+while the example only sets the listener and voice emitters each frame. `meridian_sdk::pipeline::Pipeline`
 itself remains real, tested (`cargo test -p meridian-sdk`), and
 available for exactly that kind of custom multi-stage composition — it
 just isn't `physic_figures`' driver anymore, since a single fixed

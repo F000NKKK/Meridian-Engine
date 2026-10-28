@@ -30,16 +30,9 @@ impl AudioSubsystem {
     ///
     /// This is one specific, opinionated audio path (`Mixer::mix`'s
     /// per-channel gain model), not "the" audio pipeline every consumer
-    /// must fit. A richer consumer (`examples/magic_figures`, which
-    /// needs `BinauralRenderer`'s real per-sample stereo synthesis —
-    /// ITD, head-shadow filtering, its own declick stage — none of which
-    /// `Mixer::mix`'s gains can express) is deliberately **not** forced
-    /// through this type: bolting a second fixed pipeline (a
-    /// `binaural: Option<BinauralRenderer>` field plus a matching
-    /// hardcoded declick stage) onto `AudioSubsystem` alongside this one
-    /// would repeat the same mistake — runtime-app dictating a specific
-    /// effect chain — rather than fixing it. An application-defined
-    /// runtime stage can own a `BinauralRenderer` directly instead.
+    /// must fit. A consumer that plays sounds (voices with playback state,
+    /// a `BinauralRenderer`, post effects) uses [`AudioScene`](crate::AudioScene)
+    /// instead, driven by `runtime-app`'s `AudioStage`.
     pub fn mix(&self) -> Vec<(meridian_audio_domain::Channel, f32)> {
         self.mixer.mix(&self.listener, &self.emitters)
     }

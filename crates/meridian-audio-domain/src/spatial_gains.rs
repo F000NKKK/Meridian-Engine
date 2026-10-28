@@ -23,12 +23,35 @@ pub fn spatial_gains(
     layout: &SpeakerLayout,
     attenuation: &AttenuationModel,
 ) -> Vec<(Channel, f32)> {
-    let local = listener.frame.inverse().transform_point(emitter.position());
-    let distance_gain = attenuation.gain(local.length());
-    let azimuth = azimuth_of(local);
+    let mut gains = vec![0.0; layout.speakers.len()];
+    spatial_gains_into(listener, *emitter, layout, *attenuation, &mut gains);
     layout
-        .pan(azimuth)
-        .into_iter()
-        .map(|(channel, gain)| (channel, gain * distance_gain))
+        .speakers
+        .iter()
+        .zip(gains)
+        .map(|(speaker, gain)| (speaker.channel, gain))
         .collect()
+}
+
+/// [`spatial_gains`] without allocating: writes the gain of
+/// `layout.speakers[i]` into `gains[i]` (see [`SpeakerLayout::pan_into`]). An
+/// emitter at a non-finite position is silent.
+pub fn spatial_gains_into(
+    listener: &Listener,
+    emitter: Emitter,
+    layout: &SpeakerLayout,
+    attenuation: AttenuationModel,
+    gains: &mut [f32],
+) {
+    let local = listener.frame.inverse().transform_point(emitter.position());
+    let distance = local.length();
+    if !distance.is_finite() {
+        gains.fill(0.0);
+        return;
+    }
+    layout.pan_into(azimuth_of(local), gains);
+    let distance_gain = attenuation.gain(distance);
+    for gain in gains.iter_mut() {
+        *gain *= distance_gain;
+    }
 }

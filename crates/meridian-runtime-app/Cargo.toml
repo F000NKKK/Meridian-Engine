@@ -5,15 +5,18 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Runtime use cases: stages run in dependency order through a job-executor port, the event system, and the physics and compute step stages."
+description = "Runtime use cases: stages run in dependency order through a job-executor port, the event system, and the audio, physics and compute step stages."
 readme = "README.md"
 
 [dependencies]
+meridian-audio-app = { workspace = true }
 meridian-diagnostics = { workspace = true }
 meridian-physics-app = { workspace = true }
 meridian-compute-app = { workspace = true }
 
 [dev-dependencies]
+meridian-audio-app = { workspace = true, features = ["testing"] }
+meridian-audio-domain = { workspace = true }
 meridian-compute-app = { workspace = true, features = ["testing"] }
 meridian-gac = { workspace = true }
 meridian-physics-domain = { workspace = true }
