@@ -12,12 +12,14 @@ mod fly;
 mod frustum;
 mod graph_resource_id;
 mod mesh_handle;
+mod morph;
 mod render_graph;
 mod render_graph_error;
 mod render_pass;
 pub mod scene;
 mod shader_handle;
 mod shapes;
+mod skin;
 pub mod sprites;
 pub mod submission;
 #[cfg(test)]
@@ -29,12 +31,14 @@ mod tonemap_operator;
 pub use bloom_config::BloomConfig;
 pub use camera::{Camera, look_at_rotor};
 pub use environment::{
-    EnvironmentError, EnvironmentLevel, EnvironmentMap, Sky, direction_to_uv, uv_to_direction,
+    Background, CubeFaces, EnvironmentError, EnvironmentLevel, EnvironmentMap, Sky,
+    direction_to_uv, uv_to_direction,
 };
 pub use fly::{FlyCamera, FlyControls};
 pub use frustum::Frustum;
 pub use graph_resource_id::GraphResourceId;
 pub use mesh_handle::{MeshHandle, MeshMarker};
+pub use morph::{MeshMorph, MorphTarget, MorphWeights};
 pub use render_graph::{AllocationPlan, RenderGraph, ResourceLifetime};
 pub use render_graph_error::RenderGraphError;
 pub use render_pass::RenderPass;
@@ -48,14 +52,17 @@ pub use shapes::{
     cube_mesh_source, ground_mesh_source, icosphere_mesh_source, pyramid_mesh_source,
     smooth_normals,
 };
+pub use skin::{JointPalette, VertexSkin};
 pub use sprites::{
     ClipRect, ClipSpan, Overlay2d, ScissorRect, SpriteBatch, SpriteVertex, SpriteView,
     batch_scene2d, batch_scene2d_clipped,
 };
 pub use submission::{
-    BatchKey, DrawBatch, DrawItem, DrawState, MaterialMaps, MaterialRegistry, MeshRegistry,
-    MeshRegistryError, MeshSource, OrderedDraw, SHADOW_VOLUME_HALF_EXTENT, ShadowLight,
-    ViewUniforms, directional_shadow_camera, order_draws, plan_batches,
+    BatchKey, DrawBatch, DrawItem, DrawState, LocalShadow, MAX_LOCAL_SHADOWS, MAX_SHADOW_DISTANCE,
+    MaterialMaps, MaterialRegistry, MeshRegistry, MeshRegistryError, MeshSource, OrderedDraw,
+    POINT_SHADOW_FACES, POINT_SHADOW_NEAR, PointShadow, SHADOW_CASCADES, SHADOW_VOLUME_HALF_EXTENT,
+    SPOT_MAX_OUTER_ANGLE, SPOT_SHADOW_NEAR, ShadowCascades, ShadowLight, SpotShadow, ViewUniforms,
+    directional_shadow_camera, order_draws, plan_batches, spot_cone,
 };
 pub use texture_handle::{TextureHandle, TextureMarker};
 pub use tonemap_config::TonemapConfig;

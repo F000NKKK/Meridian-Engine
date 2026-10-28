@@ -27,6 +27,15 @@ pub(crate) fn flatten(document: &Document) -> Result<Vec<PlacedNode<'_>>, GltfEr
     Ok(placed)
 }
 
+/// The accumulated world matrix of each placed node, by node index.
+pub(crate) fn worlds(document: &Document, placed: &[PlacedNode<'_>]) -> Vec<Option<[[f32; 4]; 4]>> {
+    let mut worlds = vec![None; document.nodes().len()];
+    for (node, world) in placed {
+        worlds[node.index()] = Some(*world);
+    }
+    worlds
+}
+
 const IDENTITY: [[f32; 4]; 4] = [
     [1.0, 0.0, 0.0, 0.0],
     [0.0, 1.0, 0.0, 0.0],

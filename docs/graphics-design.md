@@ -33,7 +33,7 @@ Post Processing      -- real (HDR scene target, bloom, tone mapping; ADR 034)
 `Camera`, frustum culling, render graph pass ordering, scene extraction,
 lighting and the submission bridge are all real and tested (`cargo test
 -p meridian-rendering-domain`) — see "Implementation order" below for the
-step-by-step history and exactly what's still open (shadow cascades, skinning). `rendering-wgpu` is real too, both headless (`Device::new`) and
+step-by-step history and exactly what's still open (skinning, point-light shadows). `rendering-wgpu` is real too, both headless (`Device::new`) and
 windowed (`Device::new_windowed`, a real swapchain `Surface` —
 `Buffer`/`Texture`/`Shader`/compute `Pipeline`/`CommandBuffer` either
 way). `Animation` is the one row above with no work started yet — no
@@ -175,8 +175,9 @@ All CPU-side, plain data, in `rendering-domain`:
   `always_on_top: bool` (world-space UI), blend mode
   (`Opaque`/`AlphaBlend`). Not a manager, not a shader: the submission
   bridge maps materials onto pipelines.
-- **`Light`** — `Directional { direction, color, intensity }` and
-  `Point { position, color, intensity, range }`. Lit with the
+- **`Light`** — `Directional { direction, color, intensity }`,
+  `Point { position, color, intensity, range }` and `Spot` (a point light with
+  a direction and inner and outer cone angles, ADR 045). Lit with the
   metallic-roughness model of ADR 032, forward-shaded.
 - **`Renderable3d`** — `{ mesh, material, frame: Motor3, billboard:
   bool }`; **`Sprite`** (the 2D renderable) — `{ texture, source_rect,

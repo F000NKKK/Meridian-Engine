@@ -2,30 +2,35 @@
 
 use meridian_gac::Vec3;
 
-use super::directional_shadow_camera;
+use super::{LocalShadow, MAX_LOCAL_SHADOWS, ShadowCascades};
 use crate::scene::{Light, Scene3d};
 
 /// The light that casts this view's shadows, as
 /// `SceneRenderer::render_shadow_pass` (the adapter)
-/// computed it: the light-space view-projection matrix, the light's travel
+/// computed it: the cascaded light-space volumes, the light's travel
 /// direction, and its index in the scene's lights. `caster` is `u32::MAX`
 /// when the scene has no directional light, which the lit shaders' shadow
 /// lookup never matches.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ShadowLight {
-    /// Light-space view-projection matrix.
-    pub view_proj: [[f32; 4]; 4],
+    /// The light-space volumes, one per cascade of the view's depth.
+    pub cascades: ShadowCascades,
     /// The light's travel direction (unit vector).
     pub direction: Vec3,
     /// Index of the shadow-casting light in the scene's lights.
     pub caster: u32,
+    /// The point and spot lights nearest the camera, which cast shadows too
+    /// (ADR 041, ADR 043, ADR 045).
+    pub locals: [Option<LocalShadow>; MAX_LOCAL_SHADOWS],
 }
 
 impl ShadowLight {
     /// The scene's first directional light as a shadow caster, or
-    /// `caster = u32::MAX` (matched by no light) when there is none.
+    /// `caster = u32::MAX` (matched by no light) when there is none, with
+    /// cascades fitted to the scene's camera and rendered into tiles of
+    /// `tile_size` texels.
     #[must_use]
-    pub fn for_scene(scene: &Scene3d) -> Self {
+    pub fn for_scene(scene: &Scene3d, tile_size: u32) -> Self {
         let caster = scene
             .lights
             .iter()
@@ -36,11 +41,11 @@ impl ShadowLight {
             Some(Light::Directional { direction, .. }) => direction.transform_vector(Vec3::X),
             _ => Vec3::new(0.0, -1.0, 0.0),
         };
-        let camera = directional_shadow_camera(direction, Vec3::ZERO);
         Self {
-            view_proj: camera.view_projection_matrix(),
+            cascades: ShadowCascades::fit(&scene.camera, direction, tile_size),
             direction,
             caster,
+            locals: LocalShadow::nearest(scene),
         }
     }
 }
@@ -51,7 +56,7 @@ mod tests {
 
     #[test]
     fn a_scene_without_a_directional_light_has_no_caster() {
-        let shadow = ShadowLight::for_scene(&Scene3d::default());
+        let shadow = ShadowLight::for_scene(&Scene3d::default(), 1024);
         assert_eq!(shadow.caster, u32::MAX);
         assert_eq!(shadow.direction, Vec3::new(0.0, -1.0, 0.0));
     }

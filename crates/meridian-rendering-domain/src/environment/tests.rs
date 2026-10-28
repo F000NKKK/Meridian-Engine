@@ -1,6 +1,6 @@
 //! Tests of the environment build.
 
-use super::{EnvironmentError, EnvironmentMap, Sky, direction_to_uv, uv_to_direction};
+use super::{CubeFaces, EnvironmentError, EnvironmentMap, Sky, direction_to_uv, uv_to_direction};
 
 fn close(a: [f32; 3], b: [f32; 3], tolerance: f32) -> bool {
     a.iter().zip(b).all(|(x, y)| (x - y).abs() <= tolerance)
@@ -74,4 +74,82 @@ fn a_sky_is_brighter_above_than_below_and_roughness_blurs_the_sun() {
     };
     assert!(peak(0) > peak(2) && peak(2) > peak(5), "the sun spreads");
     assert!(peak(5) > 0.0);
+}
+
+/// Faces of 4 x 4 texels, each filled with its own colour.
+fn coloured_cube() -> CubeFaces {
+    let colours = [
+        [1.0, 0.0, 0.0],
+        [0.0, 1.0, 0.0],
+        [0.0, 0.0, 1.0],
+        [1.0, 1.0, 0.0],
+        [0.0, 1.0, 1.0],
+        [1.0, 0.0, 1.0],
+    ];
+    CubeFaces::new(4, colours.map(|colour| vec![colour; 16])).unwrap()
+}
+
+#[test]
+fn each_axis_direction_reads_its_own_face() {
+    let cube = coloured_cube();
+    let axes = [
+        ([1.0, 0.0, 0.0], [1.0, 0.0, 0.0]),
+        ([-1.0, 0.0, 0.0], [0.0, 1.0, 0.0]),
+        ([0.0, 1.0, 0.0], [0.0, 0.0, 1.0]),
+        ([0.0, -1.0, 0.0], [1.0, 1.0, 0.0]),
+        ([0.0, 0.0, 1.0], [0.0, 1.0, 1.0]),
+        ([0.0, 0.0, -1.0], [1.0, 0.0, 1.0]),
+    ];
+    for (direction, colour) in axes {
+        assert!(close(cube.sample(direction), colour, 1e-5), "{direction:?}");
+    }
+}
+
+#[test]
+fn faces_keep_their_orientation_in_the_equirect_image() {
+    // Up in the cube is up in the image: the top row reads the +y face.
+    let equirect = coloured_cube().to_equirect(16);
+    assert!(close(equirect[0], [0.0, 0.0, 1.0], 1e-5));
+    assert!(close(equirect[equirect.len() - 1], [1.0, 1.0, 0.0], 1e-5));
+    // The image centre looks along -z: the -z face.
+    let centre = equirect[4 * 16 + 8];
+    assert!(close(centre, [1.0, 0.0, 1.0], 1e-5), "{centre:?}");
+}
+
+#[test]
+fn a_gradient_across_a_face_is_sampled_bilinearly() {
+    // Left half of the +z face is black, right half white (x grows with s).
+    let texels: Vec<[f32; 3]> = (0..16)
+        .map(|i| if i % 4 < 2 { [0.0; 3] } else { [1.0; 3] })
+        .collect();
+    let black = || vec![[0.0; 3]; 16];
+    let faces = CubeFaces::new(4, [black(), black(), black(), black(), texels, black()]).unwrap();
+    assert!(faces.sample([-0.5, 0.0, 1.0])[0] < 0.1);
+    assert!(faces.sample([0.5, 0.0, 1.0])[0] > 0.9);
+    assert!((faces.sample([0.0, 0.0, 1.0])[0] - 0.5).abs() < 1e-4);
+}
+
+#[test]
+fn a_cube_builds_a_map_that_lights_from_the_right_side() {
+    let map = EnvironmentMap::from_cube(&coloured_cube()).unwrap();
+    let up = map.irradiance_at([0.0, 1.0, 0.0]);
+    let down = map.irradiance_at([0.0, -1.0, 0.0]);
+    assert!(up[2] > up[0] && up[2] > up[1], "{up:?}");
+    assert!(down[0] > down[2] && down[1] > down[2], "{down:?}");
+}
+
+#[test]
+fn malformed_cubes_are_refused() {
+    let face = || vec![[0.0; 3]; 4];
+    let faces = || [face(), face(), face(), face(), face(), face()];
+    assert_eq!(CubeFaces::new(0, faces()), Err(EnvironmentError::Empty));
+    let mut short = faces();
+    short[3].pop();
+    assert_eq!(
+        CubeFaces::new(2, short),
+        Err(EnvironmentError::TexelCountMismatch {
+            expected: 4,
+            actual: 3
+        })
+    );
 }

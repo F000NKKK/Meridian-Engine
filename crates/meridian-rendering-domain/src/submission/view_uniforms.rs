@@ -21,10 +21,10 @@ pub struct ViewUniforms<'a> {
 
 impl<'a> ViewUniforms<'a> {
     /// The uniforms for drawing `scene` with `shadow`.
-    pub fn of_scene(scene: &'a Scene3d, shadow: ShadowLight) -> Self {
+    pub fn of_scene(scene: &'a Scene3d, shadow: &ShadowLight) -> Self {
         Self {
             camera: &scene.camera,
-            shadow,
+            shadow: *shadow,
             ambient_ground: scene.ambient_ground,
             ambient_sky: scene.ambient_sky,
             lights: &scene.lights,

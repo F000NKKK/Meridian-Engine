@@ -17,4 +17,7 @@ pub struct BatchKey {
     pub state: DrawState,
     /// Whether the draw is part of the shadow-casting pass.
     pub casts_shadow: bool,
+    /// Set for a draw that cannot share a call because it has vertices of
+    /// its own (a skinned instance, ADR 047): the draw's own index.
+    pub own: Option<usize>,
 }

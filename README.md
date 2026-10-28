@@ -59,7 +59,7 @@ crate has its own README.
 | [`meridian-rendering-domain`](crates/meridian-rendering-domain) | rendering | Render graph, scenes, culling, lighting, materials, camera, bloom |
 | [`meridian-physics-domain`](crates/meridian-physics-domain) | physics | Rigid bodies, collision, solver, integrator, soft bodies |
 | [`meridian-audio-domain`](crates/meridian-audio-domain) | audio | Spatial mixer, DSP graph, listener and emitters |
-| [`meridian-asset-domain`](crates/meridian-asset-domain) | assets | `Decoder` port, CPU asset types and the pure BMP, WAV, OBJ and shader parsers |
+| [`meridian-asset-domain`](crates/meridian-asset-domain) | assets | `Decoder` port, CPU asset types and the pure BMP, Radiance HDR, WAV, OBJ and shader parsers |
 | [`meridian-ui-domain`](crates/meridian-ui-domain) | ui | WPF-style retained UI tree, layout, hit testing |
 
 **Application**

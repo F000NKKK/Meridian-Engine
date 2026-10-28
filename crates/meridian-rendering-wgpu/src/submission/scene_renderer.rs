@@ -1,15 +1,22 @@
 //! Pipelines and state that render a 3-D scene.
 
-use meridian_rendering_domain::scene::Scene3d;
-use meridian_rendering_domain::{EnvironmentMap, ShadowLight, ViewUniforms};
+use core::ops::Range;
 
+use meridian_rendering_domain::scene::Scene3d;
+use meridian_rendering_domain::{
+    EnvironmentMap, Frustum, LocalShadow, MeshRegistry, ShadowLight, ViewUniforms,
+};
+
+use super::batching::VisibleBatches;
 use super::environment::GpuEnvironment;
 use super::main_pipelines::{MainBindings, MainPipelines};
 use super::mesh_cache::MeshCache;
 use super::registries::NeutralTextures;
+use super::skinning::SkinPipeline;
 use super::{
-    DrawKind, LIT_UNIFORM_BYTES, MAX_LIGHTS, PreparedBatch, PreparedScene, SceneAssets,
-    ShadowDepthPass, bake_batches, lit_uniform_bytes, mat4_to_bytes,
+    ATLAS_COLUMNS, ATLAS_ROWS, CascadeCasters, DrawKind, LIT_UNIFORM_BYTES, MAX_LIGHTS,
+    PreparedBatch, PreparedScene, SceneAssets, ShadowDepthPass, bake_batches, face_tile,
+    lit_uniform_bytes, mat4_to_bytes, spot_tile, tile_rect,
 };
 use crate::{
     Buffer, BufferUsage, ColorFormat, CommandBuffer, Device, RenderPass as DriverRenderPass,
@@ -33,7 +40,8 @@ pub struct SceneRenderer {
     pub(crate) meshes: MeshCache,
     pub(crate) uniform_buffer: Buffer,
     pub(crate) sampler: Sampler,
-    /// A `Depth32Float` texture, both a render target (the shadow depth
+    /// The shadow atlas: a 2 x 2 grid of cascade tiles of
+    /// [`tile_size`](Self::tile_size) texels, in one `Depth32Float` texture, both a render target (the shadow depth
     /// pass writes into it) and sampleable (the lit shaders' shadow
     /// lookup reads it) — see
     /// `rendering-wgpu::Device::create_shadow_map_texture`'s own doc
@@ -41,19 +49,23 @@ pub struct SceneRenderer {
     /// render-target-only `DepthTexture`.
     pub(crate) shadow_map: Texture,
     pub(crate) shadow_sampler: Sampler,
+    /// Texels along one side of a cascade's tile in the shadow atlas.
+    tile_size: u32,
     /// What a draw binds for each map its material lacks.
     pub(crate) neutral: NeutralTextures,
     /// The environment lit surfaces are lit with (ADR 035), or a stand-in.
     pub(crate) environment: GpuEnvironment,
     shadow_depth: ShadowDepthPass,
+    /// Poses skinned meshes before the passes draw them (ADR 047).
+    pub(crate) skinning: SkinPipeline,
 }
 
-/// [`SceneRenderer::new`]'s default shadow map resolution — generous
-/// enough that both example scenes' shadows don't read as visibly
-/// blocky, without the per-frame cost a much larger map would add. A
-/// caller that wants sharper (or cheaper, blockier) shadows picks their
-/// own value via [`SceneRenderer::with_shadow_map_size`] instead.
-pub const DEFAULT_SHADOW_MAP_SIZE: u32 = 2048;
+/// [`SceneRenderer::new`]'s default shadow resolution: texels along one side
+/// of a cascade's map (ADR 037). The four cascades together are a 2048-texel
+/// atlas, the size the single map had before cascades. A caller that wants
+/// sharper (or cheaper, blockier) shadows picks their own value via
+/// [`SceneRenderer::with_shadow_map_size`] instead.
+pub const DEFAULT_SHADOW_MAP_SIZE: u32 = 1024;
 
 impl SceneRenderer {
     /// Builds a renderer drawing into targets of `format`, with
@@ -70,17 +82,22 @@ impl SceneRenderer {
         Self::with_shadow_map_size(device, format, DEFAULT_SHADOW_MAP_SIZE)
     }
 
+    /// Like [`new`](Self::new) with `shadow_map_size` texels along one side of
+    /// each cascade's map; the atlas holding the four is twice that wide.
     #[must_use]
     pub fn with_shadow_map_size(
         device: &Device,
         format: ColorFormat,
         shadow_map_size: u32,
     ) -> Self {
-        let shadow_map = device.create_shadow_map_texture(shadow_map_size);
+        let shadow_map = device.create_shadow_map_texture(
+            shadow_map_size * ATLAS_COLUMNS,
+            shadow_map_size * ATLAS_ROWS,
+        );
         let shadow_sampler = device.create_comparison_sampler();
         let shadow_depth = ShadowDepthPass::new(device);
 
-        // 416 bytes: see `lit_uniform_bytes`'s doc comment for the
+        // See `lit_uniform_bytes`'s doc comment for the
         // layout. The unlit pipelines only read the first 64 (view_proj)
         // but share this same buffer — one write serves every pipeline.
         let uniform_buffer = device.create_buffer(LIT_UNIFORM_BYTES, BufferUsage::Uniform);
@@ -108,9 +125,11 @@ impl SceneRenderer {
             sampler,
             shadow_map,
             shadow_sampler,
+            tile_size: shadow_map_size,
             neutral: NeutralTextures::new(device),
             environment,
             shadow_depth,
+            skinning: SkinPipeline::new(device),
         };
 
         renderer.clear_shadow_map(device);
@@ -210,35 +229,69 @@ impl SceneRenderer {
         scene: &Scene3d,
         assets: &SceneAssets<'_>,
     ) -> PreparedScene {
-        let shadow = ShadowLight::for_scene(scene);
-        device.write_buffer(
-            &self.shadow_depth.uniform_buffer,
-            &mat4_to_bytes(shadow.view_proj),
-        );
+        let shadow = ShadowLight::for_scene(scene, self.tile_size);
+        let tiles = shadow_tiles(&shadow);
+        for tile in &tiles {
+            device.write_buffer(
+                &self.shadow_depth.tiles[tile.index].buffer,
+                &mat4_to_bytes(tile.view_proj),
+            );
+        }
+        let frusta: Vec<Frustum> = tiles.iter().map(|tile| tile.frustum.clone()).collect();
         let baked = bake_batches(device, self, scene, assets);
-        self.record_shadow_casters(commands, &baked.batches, baked.instances.as_ref());
+        for job in &baked.skin_jobs {
+            commands.dispatch_compute(self.skinning.pipeline(), &job.bind_group, job.workgroups);
+        }
+        let casters = CascadeCasters::cull(&baked.batches, &baked.records, &baked.bounds, &frusta);
+        let indices: Vec<usize> = tiles.iter().map(|tile| tile.index).collect();
+        let draws = TileDraws {
+            tiles: &indices,
+            casters: &casters,
+        };
+        self.record_shadow_casters(commands, &baked.batches, &draws, casters.upload(device));
+        let view = Frustum::from_view_projection(scene.camera.view_projection_matrix());
+        let visible = VisibleBatches::cull(&baked.batches, &baked.records, &baked.bounds, &view);
         PreparedScene {
-            batches: baked.batches,
-            instances: baked.instances,
+            instances: visible.upload(device),
+            batches: visible.batches,
             shadow,
         }
     }
 
-    /// Records the depth-only pass of every shadow-casting batch.
+    /// Readies the renderer to bake a scene: drops the GPU copies of meshes
+    /// that are no longer registered and starts the frame's skinned
+    /// instances over (ADR 047).
+    pub(crate) fn begin_bake(&mut self, registry: &MeshRegistry) {
+        self.meshes.retain_registered(registry);
+        self.skinning.begin_frame();
+    }
+
+    /// Records the depth-only pass: each cascade draws only the casters that
+    /// reach its volume (ADR 040), from its own copy of their records.
     fn record_shadow_casters(
         &self,
         commands: &mut CommandBuffer<'_>,
         batches: &[PreparedBatch],
-        instances: Option<&Buffer>,
+        draws: &TileDraws<'_>,
+        records: Option<Buffer>,
     ) {
         let mut pass = commands.begin_shadow_pass(&self.shadow_map);
-        let Some(instances) = instances else {
+        let Some(records) = records else {
             return;
         };
         pass.set_pipeline(&self.shadow_depth.pipeline);
-        pass.set_bind_group(0, &self.shadow_depth.bind_group);
-        for batch in batches.iter().filter(|batch| batch.casts_shadow) {
-            self.draw_batch(&mut pass, batch, instances);
+        for (&index, runs) in draws.tiles.iter().zip(&draws.casters.runs) {
+            let rect = tile_rect(index, self.tile_size);
+            pass.set_viewport(rect.x, rect.y, rect.size, rect.size);
+            pass.set_bind_group(0, &self.shadow_depth.tiles[index].bind_group);
+            for run in runs {
+                self.draw_instances(
+                    &mut pass,
+                    &batches[run.batch],
+                    &records,
+                    run.instances.clone(),
+                );
+            }
         }
     }
 
@@ -252,14 +305,17 @@ impl SceneRenderer {
         let Some(instances) = &prepared.instances else {
             return;
         };
+        let mut bound: Option<&PreparedBatch> = None;
         for batch in &prepared.batches {
-            let main = self.pipelines.get(batch.pipeline_key());
-            pass.set_pipeline(&main.pipeline);
-            match (&batch.kind, &main.shared_bind_group) {
-                (DrawKind::Textured { bind_group }, _) | (DrawKind::Colored, Some(bind_group)) => {
-                    pass.set_bind_group(0, bind_group);
+            if bound.is_none_or(|previous| !previous.binds_like(batch)) {
+                let main = self.pipelines.get(batch.pipeline_key());
+                pass.set_pipeline(&main.pipeline);
+                match (&batch.kind, &main.shared_bind_group) {
+                    (DrawKind::Textured { bind_group }, _) => pass.set_bind_group(0, bind_group),
+                    (DrawKind::Colored, Some(bind_group)) => pass.set_bind_group(0, bind_group),
+                    (DrawKind::Colored, None) => continue,
                 }
-                (DrawKind::Colored, None) => continue,
+                bound = Some(batch);
             }
             self.draw_batch(pass, batch, instances);
         }
@@ -273,12 +329,81 @@ impl SceneRenderer {
         batch: &PreparedBatch,
         instances: &Buffer,
     ) {
+        self.draw_instances(pass, batch, instances, batch.instances.clone());
+    }
+
+    /// [`draw_batch`](Self::draw_batch) for just the records `range` of
+    /// `instances`.
+    fn draw_instances(
+        &self,
+        pass: &mut DriverRenderPass<'_>,
+        batch: &PreparedBatch,
+        instances: &Buffer,
+        range: Range<u32>,
+    ) {
         let Some(mesh) = self.meshes.get(batch.mesh) else {
             return;
         };
-        pass.set_vertex_buffer(0, &mesh.vertex_buffer);
+        pass.set_vertex_buffer(0, batch.vertices.as_deref().unwrap_or(&mesh.vertex_buffer));
         pass.set_vertex_buffer(1, instances);
         pass.set_index_buffer_u32(&mesh.index_buffer);
-        pass.draw_indexed_instanced(0..mesh.index_count, batch.instances.clone());
+        pass.draw_indexed_instanced(0..mesh.index_count, range);
     }
+}
+
+/// The atlas tile of each list of runs in `casters`, in the same order.
+struct TileDraws<'a> {
+    tiles: &'a [usize],
+    casters: &'a CascadeCasters,
+}
+
+/// One shadow tile to draw: its place in the atlas, the light's view of it
+/// and the volume casters are culled against.
+struct ShadowTile {
+    index: usize,
+    view_proj: [[f32; 4]; 4],
+    frustum: Frustum,
+}
+
+/// The tiles of `shadow` to draw: the four cascades, then the six faces of
+/// each point light that casts one (ADR 043) and the one tile of each spot
+/// light (ADR 045). A light keeps its slot's tiles, so the shader finds them
+/// by slot whichever slots are empty.
+fn shadow_tiles(shadow: &ShadowLight) -> Vec<ShadowTile> {
+    let cascades = shadow
+        .cascades
+        .view_proj
+        .into_iter()
+        .zip(shadow.cascades.frusta());
+    let mut tiles: Vec<ShadowTile> = cascades
+        .enumerate()
+        .map(|(index, (view_proj, frustum))| ShadowTile {
+            index,
+            view_proj,
+            frustum,
+        })
+        .collect();
+    for (slot, local) in shadow.locals.iter().enumerate() {
+        match local {
+            Some(LocalShadow::Point(point)) => {
+                let faces = point.view_proj.into_iter().zip(point.frusta());
+                tiles.extend(
+                    faces
+                        .enumerate()
+                        .map(|(face, (view_proj, frustum))| ShadowTile {
+                            index: face_tile(slot, face),
+                            view_proj,
+                            frustum,
+                        }),
+                );
+            }
+            Some(LocalShadow::Spot(spot)) => tiles.push(ShadowTile {
+                index: spot_tile(slot),
+                view_proj: spot.view_proj,
+                frustum: spot.frustum(),
+            }),
+            None => {}
+        }
+    }
+    tiles
 }

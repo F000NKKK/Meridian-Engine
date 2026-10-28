@@ -38,6 +38,19 @@ impl RenderPass<'_> {
         self.raw.set_scissor_rect(x, y, width, height);
     }
 
+    /// Maps clip space onto a rectangle of the target, in pixels with the
+    /// origin at the top-left (depth keeps its full `0..=1` range). Geometry
+    /// outside the clip volume stays outside the rectangle. Persists until
+    /// set again.
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "pixel counts are far below 2^24"
+    )]
+    pub fn set_viewport(&mut self, x: u32, y: u32, width: u32, height: u32) {
+        self.raw
+            .set_viewport(x as f32, y as f32, width as f32, height as f32, 0.0, 1.0);
+    }
+
     pub fn draw(&mut self, vertices: core::ops::Range<u32>) {
         self.raw.draw(vertices, 0..1);
     }

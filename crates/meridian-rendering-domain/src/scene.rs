@@ -11,11 +11,11 @@
 //! future submission bridge is the only place that resolves a handle to
 //! an actual GPU resource.
 
-use meridian_ecs::{Component, Transform, World};
+use meridian_ecs::{Component, GlobalTransform, Transform, World};
 use meridian_gac::{Aabb, Motor3};
 use meridian_resource::ResourceId;
 
-use crate::{Frustum, MeshHandle, TextureHandle};
+use crate::{Frustum, JointPalette, MeshHandle, MorphWeights, TextureHandle};
 
 /// Typed identity for a material — see the module doc's handle note.
 #[derive(Debug)]
@@ -141,6 +141,28 @@ pub enum Light {
         intensity: f32,
         range: f32,
     },
+    /// A point light that shines only into a cone: along `direction` (the
+    /// light's X axis, as for [`Directional`](Self::Directional)), at full
+    /// strength inside `inner_angle` and fading to nothing at `outer_angle`
+    /// (both half-angles in radians). Falls off with distance like a
+    /// [`Point`](Self::Point) light, out to `range`.
+    Spot {
+        /// Where the light sits.
+        position: Motor3,
+        /// Its frame's X axis is the direction the cone points.
+        direction: Motor3,
+        /// Linear RGB.
+        color: [f32; 3],
+        /// Scales `color`.
+        intensity: f32,
+        /// Distance at which the light has faded to nothing.
+        range: f32,
+        /// Half-angle in radians inside which the light is at full strength.
+        inner_angle: f32,
+        /// Half-angle in radians at which the light has faded to nothing;
+        /// limited to `SPOT_MAX_OUTER_ANGLE`.
+        outer_angle: f32,
+    },
 }
 
 /// One 3D-scene instance: a mesh drawn with a material at a world frame.
@@ -164,6 +186,13 @@ pub struct Renderable3d {
     /// *main* pass at all — a `casts_shadow: false` renderable still
     /// draws and still receives shadows from everything else normally.
     pub casts_shadow: bool,
+    /// The joint matrices of a skinned mesh for this frame (ADR 047); `None`
+    /// draws the mesh rigid. Ignored when the mesh has no skin.
+    pub palette: Option<JointPalette>,
+    /// The weight of each morph target of the mesh for this frame (ADR 047),
+    /// in the order of its targets; targets past the end weigh zero, and a
+    /// mesh without targets ignores them.
+    pub morph_weights: Vec<f32>,
 }
 
 /// Attaches a [`Renderable3d`] (minus its frame, which comes from the
@@ -247,6 +276,8 @@ pub struct Scene3d {
     /// Ambient color an upward-facing surface (`normal.y = 1`)
     /// receives — the color of the sky/open air.
     pub ambient_sky: [f32; 3],
+    /// What shows behind the geometry.
+    pub background: crate::Background,
 }
 
 impl Default for Scene3d {
@@ -260,6 +291,7 @@ impl Default for Scene3d {
             // per-scene via the fields directly.
             ambient_ground: [0.025, 0.025, 0.03],
             ambient_sky: [0.035, 0.035, 0.045],
+            background: crate::Background::Clear,
         }
     }
 }
@@ -307,6 +339,12 @@ impl FrameScene {
 /// the join happens here, in `rendering-domain`, per dependency-rules
 /// rule 6 (ECS stays generic and data-oriented).
 ///
+/// An entity's frame is its `GlobalTransform` when the transform stage has
+/// resolved one (so children follow their parents), else its `Transform`.
+///
+/// An entity that also has a [`JointPalette`] or [`MorphWeights`] component
+/// is drawn posed by them (ADR 047).
+///
 /// Lights aren't extracted yet (no light component exists); callers add
 /// them to the returned scene directly until one does.
 pub fn extract_scene3d(world: &World, camera: crate::Camera) -> Scene3d {
@@ -314,12 +352,20 @@ pub fn extract_scene3d(world: &World, camera: crate::Camera) -> Scene3d {
         .query::<MeshRenderer>()
         .filter_map(|(entity, renderer)| {
             let transform = world.get::<Transform>(entity)?;
+            let frame = world
+                .get::<GlobalTransform>(entity)
+                .map_or(transform.motor, |global| global.motor);
             Some(Renderable3d {
                 mesh: renderer.mesh,
                 material: renderer.material,
-                frame: transform.motor,
+                frame,
                 billboard: renderer.billboard,
                 casts_shadow: true,
+                palette: world.get::<JointPalette>(entity).cloned(),
+                morph_weights: world
+                    .get::<MorphWeights>(entity)
+                    .map(|weights| weights.0.clone())
+                    .unwrap_or_default(),
             })
         })
         .collect();
@@ -467,6 +513,8 @@ mod tests {
             frame: Motor3::translation(Vec3::new(10.0, 0.0, 0.0)),
             billboard: false,
             casts_shadow: true,
+            palette: None,
+            morph_weights: Vec::new(),
         };
         let behind = Renderable3d {
             mesh: MeshHandle::new(meridian_memory::Handle::default()),
@@ -474,6 +522,8 @@ mod tests {
             frame: Motor3::translation(Vec3::new(-10.0, 0.0, 0.0)),
             billboard: false,
             casts_shadow: true,
+            palette: None,
+            morph_weights: Vec::new(),
         };
         let scene = Scene3d {
             renderables: vec![ahead.clone(), behind],
@@ -498,6 +548,8 @@ mod tests {
             frame: Motor3::translation(Vec3::new(-10.0, 0.0, 0.0)),
             billboard: false,
             casts_shadow: true,
+            palette: None,
+            morph_weights: Vec::new(),
         };
         let scene = Scene3d {
             renderables: vec![renderable],

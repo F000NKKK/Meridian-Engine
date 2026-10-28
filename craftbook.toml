@@ -196,6 +196,11 @@ layer = "interface"
 context = "runtime"
 
 [[crate]]
+name = "meridian-animation-domain"
+layer = "domain"
+context = "animation"
+
+[[crate]]
 name = "meridian-text-domain"
 layer = "domain"
 context = "text"
@@ -305,6 +310,11 @@ relation = "customer-supplier"
 [[context_edge]]
 from = "runtime"
 to = "compute"
+relation = "customer-supplier"
+
+[[context_edge]]
+from = "runtime"
+to = "animation"
 relation = "customer-supplier"
 
 [[context_edge]]

@@ -1,16 +1,18 @@
 //! Turning a scene's renderables into instanced batches.
 
-use meridian_gac::{Motor3, Vec3};
+use meridian_gac::{Aabb, Motor3, Vec3};
 use meridian_rendering_domain::scene::{Material, Renderable3d, Scene3d};
 use meridian_rendering_domain::{
-    BatchKey, DrawItem, DrawState, MaterialMaps, MeshHandle, MeshSource, TextureHandle,
-    plan_batches,
+    BatchKey, DrawItem, DrawState, JointPalette, MaterialMaps, MeshHandle, MeshSource,
+    TextureHandle, plan_batches, world_space_bounds,
 };
 
+use super::batching::BindGroupCache;
 use super::instance_data::push_instance;
 use super::main_pipelines::PipelineKey;
+use super::skinning::{MeshPose, SkinJob};
 use super::{DrawKind, PreparedBatch, SceneAssets, SceneRenderer};
-use crate::{Buffer, BufferUsage, Device, LitTextures, SampledTexture, SurfaceTextures, Texture};
+use crate::{Device, LitTextures, SampledTexture, SurfaceTextures, Texture};
 
 /// A renderable whose mesh and material resolved.
 struct Resolved<'a> {
@@ -21,6 +23,10 @@ struct Resolved<'a> {
     /// The material's textures that are registered.
     maps: MaterialMaps,
     casts_shadow: bool,
+    /// The joint matrices when the mesh is skinned and the renderable poses it.
+    palette: Option<&'a JointPalette>,
+    /// The morph weights when the mesh has targets and any is not zero.
+    morph_weights: Option<&'a [f32]>,
 }
 
 impl<'a> Resolved<'a> {
@@ -45,10 +51,23 @@ impl<'a> Resolved<'a> {
                 emissive: known(material.emissive_map),
             },
             casts_shadow: renderable.casts_shadow,
+            palette: renderable
+                .palette
+                .as_ref()
+                .filter(|palette| source.skin.is_some() && !palette.matrices().is_empty()),
+            morph_weights: Some(renderable.morph_weights.as_slice())
+                .filter(|weights| source.morph.is_some() && weights.iter().any(|w| *w != 0.0)),
         })
     }
 
-    fn item(&self, eye: Vec3) -> DrawItem {
+    /// Whether a compute pass poses the mesh for this renderable.
+    fn is_posed(&self) -> bool {
+        self.palette.is_some() || self.morph_weights.is_some()
+    }
+
+    /// The item to plan for the renderable at `index`; a posed one gets a
+    /// batch of its own since its vertices are its own.
+    fn item(&self, eye: Vec3, index: usize) -> DrawItem {
         let origin = self.frame.transform_point(Vec3::ZERO);
         DrawItem {
             key: BatchKey {
@@ -57,61 +76,101 @@ impl<'a> Resolved<'a> {
                 lit: !self.material.unlit,
                 state: DrawState::of(self.material),
                 casts_shadow: self.casts_shadow,
+                own: self.is_posed().then_some(index),
             },
             distance_squared: (origin - eye).length_squared(),
         }
     }
 }
 
-/// The batches of one scene and the instance buffer they index.
+/// The batches of one scene and the instance records they index.
 pub(crate) struct BakedBatches {
     pub batches: Vec<PreparedBatch>,
-    pub instances: Option<Buffer>,
+    /// Every instance's record, `INSTANCE_STRIDE` bytes each, which the
+    /// batches' ranges index. Not uploaded as it is: each pass uploads the
+    /// instances it draws (ADR 040, ADR 046).
+    pub records: Vec<u8>,
+    /// Each instance's world-space box, `None` where its mesh has no vertices.
+    pub bounds: Vec<Option<Aabb>>,
+    /// The dispatches that pose the skinned instances, which must run before
+    /// any pass draws the batches.
+    pub skin_jobs: Vec<SkinJob>,
 }
 
 /// Resolves `scene`'s renderables, uploads any mesh not yet on the GPU,
-/// groups the renderables into batches in drawing order and uploads their
-/// instance records in one buffer.
+/// and groups the renderables into batches in drawing order with their
+/// instance records.
 pub(crate) fn bake_batches(
     device: &Device,
     renderer: &mut SceneRenderer,
     scene: &Scene3d,
     assets: &SceneAssets<'_>,
 ) -> BakedBatches {
-    renderer.meshes.retain_registered(assets.meshes);
+    renderer.begin_bake(assets.meshes);
     let eye = scene.camera.frame.transform_point(Vec3::ZERO);
     let resolved: Vec<Resolved<'_>> = scene
         .renderables
         .iter()
         .filter_map(|renderable| Resolved::of(renderable, assets))
         .collect();
-    let items: Vec<DrawItem> = resolved.iter().map(|r| r.item(eye)).collect();
+    let items: Vec<DrawItem> = resolved
+        .iter()
+        .enumerate()
+        .map(|(index, r)| r.item(eye, index))
+        .collect();
 
     let mut bytes = Vec::new();
+    let mut bounds = Vec::new();
     let mut batches = Vec::new();
+    let mut skin_jobs = Vec::new();
     let mut first = 0u32;
+    let mut groups = BindGroupCache::default();
     for planned in plan_batches(&items) {
         let lead = &resolved[planned.members[0]];
         renderer.meshes.ensure(device, lead.mesh, lead.source);
+        let local_bounds = lead.source.bounds();
+        let job = pose(device, renderer, lead);
         for &member in &planned.members {
             let instance = &resolved[member];
             push_instance(&mut bytes, instance.frame, instance.material);
+            // A posed mesh leaves its bind-pose box, so it is never culled.
+            let known = local_bounds.filter(|_| job.is_none());
+            bounds.push(known.map(|local| world_space_bounds(&local, instance.frame)));
         }
         let count = u32::try_from(planned.members.len()).unwrap_or(u32::MAX);
         batches.push(PreparedBatch {
             mesh: lead.mesh,
-            kind: draw_kind(device, renderer, assets, lead),
+            kind: draw_kind(device, renderer, assets, lead, &mut groups),
             lit: planned.key.lit,
             state: planned.key.state,
             casts_shadow: planned.key.casts_shadow,
+            emissive_map: planned.key.maps.emissive,
             instances: first..first.saturating_add(count),
+            vertices: job.as_ref().map(|job| job.posed.clone()),
         });
+        skin_jobs.extend(job);
         first = first.saturating_add(count);
     }
+    renderer.skinning.end_frame();
     BakedBatches {
         batches,
-        instances: upload_instances(device, &bytes),
+        records: bytes,
+        bounds,
+        skin_jobs,
     }
+}
+
+/// The dispatch that poses `lead`'s mesh, when the renderable is skinned or morphed.
+fn pose(device: &Device, renderer: &mut SceneRenderer, lead: &Resolved<'_>) -> Option<SkinJob> {
+    if !lead.is_posed() {
+        return None;
+    }
+    let mesh = renderer.meshes.get(lead.mesh)?;
+    let pose = MeshPose {
+        palette: lead.palette,
+        weights: lead.morph_weights.unwrap_or_default(),
+    };
+    renderer.skinning.job(device, lead.mesh, mesh, pose)
 }
 
 fn draw_kind(
@@ -119,6 +178,7 @@ fn draw_kind(
     renderer: &SceneRenderer,
     assets: &SceneAssets<'_>,
     lead: &Resolved<'_>,
+    groups: &mut BindGroupCache,
 ) -> DrawKind {
     if !lead.maps.any() {
         return DrawKind::Colored;
@@ -135,8 +195,8 @@ fn draw_kind(
     };
     let neutral = &renderer.neutral;
     let maps = lead.maps;
-    DrawKind::Textured {
-        bind_group: textured_bind_group(
+    let bind_group = groups.group_for(key, maps, || {
+        textured_bind_group(
             device,
             renderer,
             [
@@ -147,17 +207,9 @@ fn draw_kind(
                 find(maps.emissive, &neutral.white_albedo),
             ],
             key,
-        ),
-    }
-}
-
-fn upload_instances(device: &Device, bytes: &[u8]) -> Option<Buffer> {
-    if bytes.is_empty() {
-        return None;
-    }
-    let buffer = device.create_buffer(bytes.len(), BufferUsage::Vertex);
-    device.write_buffer(&buffer, bytes);
-    Some(buffer)
+        )
+    });
+    DrawKind::Textured { bind_group }
 }
 
 /// A fresh bind group naming the `[albedo, metallic_roughness, normal,

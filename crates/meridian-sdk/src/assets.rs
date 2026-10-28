@@ -19,17 +19,24 @@
 use std::collections::{HashMap, VecDeque};
 use std::path::Path;
 
+pub use meridian_animation_domain::{
+    Animation, AnimationController, AnimationGraph, AnimationLayer, AnimationPlayer,
+    AnimationState, AnimationTarget, Animator, Condition, GraphError, ParamId, ParamKind, Playback,
+    Repeat as AnimationRepeat, SkeletonClip, StateId, Transition,
+};
 use meridian_asset_domain::{Decoder, ImageAsset, ObjDecoder};
 use meridian_asset_gltf::GltfDecoder;
 use meridian_asset_symphonia::{AudioAsset, DecodeStrategy, StreamingAudioDecoder, open_audio};
 use meridian_audio_domain::{Repeat, SampleSource};
 use meridian_rendering_app::{MeshStore, TextureStore};
+pub use meridian_rendering_domain::{JointPalette, VertexSkin};
 use meridian_rendering_domain::{
     MeshHandle, MeshRegistryError, MeshSource, TextureHandle, smooth_normals,
 };
 
 use crate::any_image_decoder::AnyImageDecoder;
-pub use crate::model_loading::ModelPiece;
+pub use crate::model_loading::rig::ModelRig;
+pub use crate::model_loading::{LoadedModel, ModelInstance, ModelPiece};
 use crate::{model_files, model_loading};
 
 /// Reads and decodes a real image asset file, identified by its magic
@@ -247,7 +254,7 @@ fn fade_loop_seam(mono: &mut [f32], sample_rate: u32) {
 pub struct AssetCache {
     textures: HashMap<String, TextureHandle>,
     meshes: HashMap<String, MeshHandle>,
-    models: HashMap<String, Vec<ModelPiece>>,
+    models: HashMap<String, LoadedModel>,
 }
 
 impl AssetCache {
@@ -300,6 +307,8 @@ impl AssetCache {
             normals,
             uvs,
             indices: mesh_data.indices,
+            skin: None,
+            morph: None,
         };
         let handle = meshes
             .add(source)
@@ -311,7 +320,8 @@ impl AssetCache {
     /// Loads a `.glb` (or self-contained `.gltf`) model at `path` through
     /// `asset-gltf::GltfDecoder` and registers each part's mesh and its
     /// textures (ADR 030), cached by `path` like [`load_texture`](Self::load_texture).
-    /// Skins and animations are ignored. A `.gltf` that names external
+    /// Skins and the animations of their joints come back as the model's
+    /// [`rig`](LoadedModel::rig) (ADR 047). A `.gltf` that names external
     /// buffers or images has them read from beside it.
     ///
     /// # Errors
@@ -323,9 +333,9 @@ impl AssetCache {
         meshes: &mut impl MeshStore,
         textures: &mut impl TextureStore,
         path: &str,
-    ) -> Result<Vec<ModelPiece>, String> {
-        if let Some(pieces) = self.models.get(path) {
-            return Ok(pieces.clone());
+    ) -> Result<LoadedModel, String> {
+        if let Some(model) = self.models.get(path) {
+            return Ok(model.clone());
         }
         let bytes = std::fs::read(path).map_err(|e| format!("failed to read {path}: {e}"))?;
         let uris = GltfDecoder::required_uris(&bytes)
@@ -334,9 +344,9 @@ impl AssetCache {
         let files = model_files::read_all(base, &uris).map_err(|e| format!("{path}: {e}"))?;
         let model = GltfDecoder::decode_with(&bytes, &files)
             .map_err(|e| format!("failed to decode {path}: {e}"))?;
-        let pieces =
+        let loaded =
             model_loading::register(model, meshes, textures).map_err(|e| format!("{path}: {e}"))?;
-        self.models.insert(path.to_string(), pieces.clone());
-        Ok(pieces)
+        self.models.insert(path.to_string(), loaded.clone());
+        Ok(loaded)
     }
 }

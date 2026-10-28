@@ -54,9 +54,10 @@ The lit uniform grows from 416 to 576 bytes (`env_sh`: nine `vec4`, then
 `env_params`: enabled, highest mip level). Lit pipelines bind the environment
 at 3 and 4 (flat colour) or 9 and 10 (textured).
 
-**D5 — loading an environment image is not part of this ADR.** The procedural
-`Sky` is the source until a Radiance `.hdr` (or EXR) adapter exists in the
-asset layer; it only has to produce the `width`, `height`, texel list that
+**D5 — loading an environment image is not part of this ADR** (done in
+[ADR 036](036-radiance-hdr-environment-loader.md); a cube-map source in
+[ADR 038](038-cube-map-environment-source.md)). The procedural `Sky` was
+the only source until a Radiance `.hdr` decoder existed in the asset layer; it only has to produce the `width`, `height`, texel list that
 `from_equirect` takes.
 
 ## Consequences
@@ -67,9 +68,10 @@ asset layer; it only has to produce the `width`, `height`, texel list that
   (`MERIDIAN_ENV=none` turns it off).
 - Building a map costs about a million lookups (a 256x128 source), done once
   at setup, not per frame.
-- Specular occlusion and horizon occlusion are not modelled: occlusion maps dim
-  the whole ambient term, as in ADR 033, and a reflection can show sky through
-  a nearby wall.
+- Specular occlusion and horizon occlusion were not modelled here: occlusion
+  maps dimmed the whole ambient term, as in ADR 033, and a reflection could
+  show sky through a nearby wall. [ADR 044](044-specular-and-horizon-occlusion.md)
+  adds both.
 - The sun in a `Sky` and a directional light are separate: a scene that wants
   both must place them consistently.
 - One more texture and sampler on every lit pipeline; the textured one now

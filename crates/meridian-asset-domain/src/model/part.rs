@@ -1,9 +1,11 @@
 //! One drawable piece of a model.
 
-use super::ModelMaterial;
+use super::{ModelMaterial, PartMorph, PartSkin};
 
-/// One triangle-list primitive with its node transforms already applied, so
-/// every part is in the model's own space and carries no matrix of its own.
+/// One triangle-list primitive. A rigid part has its node transforms already
+/// applied, so it is in the model's own space and carries no matrix of its
+/// own; a skinned part (`skin` is set) stays as authored and follows its
+/// skeleton instead.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct ModelPart {
     /// Vertex positions in the model's space.
@@ -16,4 +18,8 @@ pub struct ModelPart {
     pub indices: Vec<u32>,
     /// How the part is shaded.
     pub material: ModelMaterial,
+    /// The skeleton the vertices follow, for a skinned part.
+    pub skin: Option<PartSkin>,
+    /// The blend shapes, when the part has any.
+    pub morph: Option<PartMorph>,
 }

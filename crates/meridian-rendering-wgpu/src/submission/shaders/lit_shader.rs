@@ -1,15 +1,16 @@
 //! The lit WGSL shaders and the light limit they are compiled for.
 
 use super::environment_shader::ENVIRONMENT_WGSL;
+use super::shadow_lookup_shader::SHADOW_LOOKUP_WGSL;
 
 /// The uniform array's fixed capacity — see the module doc.
 pub const MAX_LIGHTS: usize = 4;
 
 /// Shared by every lit shader: the `Uniforms` struct layout (view-proj,
-/// the shadow-casting light's own view-proj, camera position, hemisphere
+/// the shadow cascades' light-space view-projections, camera position, hemisphere
 /// ambient, light count/array, which light index casts the shadow) plus
-/// the metallic-roughness `shade` helper and the light-space projection helper
-/// every shadow lookup shares. WGSL has no `#include`, so this text is
+/// the metallic-roughness `shade` helper. The shadow lookup is its own text,
+/// `shadow_lookup_shader`. WGSL has no `#include`, so this text is
 /// spliced verbatim into each lit shader constant below — keeping one
 /// source of truth here rather than hand-duplicating it at each call
 /// site. The shadow *map*/*sampler* bindings themselves are declared per
@@ -17,22 +18,31 @@ pub const MAX_LIGHTS: usize = 4;
 /// use different binding numbers for their own resources (the textured
 /// shader's albedo texture/sampler occupy bindings 1/2), so the shadow
 /// map/sampler can't share one fixed binding number across both; each
-/// flavor's own `compute_shadow_factor` wraps its own declarations and
-/// hands `shade` a plain `f32`, keeping this shared text binding-number-
-/// agnostic.
+/// flavor's `compute_shadow_factor` (in `shadow_lookup_shader`) reads those
+/// declarations and hands `shade` a plain `f32`, keeping this shared text
+/// binding-number-agnostic.
 const LIT_UNIFORMS_AND_SHADING_WGSL: &str = r#"
 struct LightData {
-    // xyz: direction (kind 0) or world position (kind 1); w: kind (0 = directional, 1 = point).
+    // xyz: direction (kind 0) or world position (kinds 1 and 2); w: kind
+    // (0 = directional, 1 = point, 2 = spot).
     dir_or_pos: vec4<f32>,
     // rgb: color; a: intensity.
     color_intensity: vec4<f32>,
-    // x: range (point lights only).
+    // x: range (point and spot lights); y: 1 / (cos inner - cos outer) of a
+    // spot light's cone.
     range_pad: vec4<f32>,
+    // A spot light's travel direction in xyz, the cosine of its outer angle in w.
+    spot: vec4<f32>,
 };
 
 struct Uniforms {
     view_proj: mat4x4<f32>,
-    light_view_proj: mat4x4<f32>,
+    // The shadow cascades (ADR 037): one light-space matrix each, the view
+    // distance at which each ends, and the normalised depth one shadow texel
+    // of each spans.
+    light_view_proj: array<mat4x4<f32>, 4>,
+    cascade_far: vec4<f32>,
+    cascade_texel_depth: vec4<f32>,
     camera_pos: vec4<f32>,
     ambient_ground: vec4<f32>,
     ambient_sky: vec4<f32>,
@@ -50,6 +60,15 @@ struct Uniforms {
     // x: 1 when an environment is set, y: its highest mip level.
     env_sh: array<vec4<f32>, 9>,
     env_params: vec4<f32>,
+    // The point lights' shadow cubes (ADR 041, ADR 043), four slots: six
+    // face view-projections each (slot * 6 + face), or a spot light's
+    // single one in the first (ADR 045); xyz: the light's position,
+    // w: its range; x: the faces' near plane; the `lights` index of each
+    // slot, `0xffffffff` for an empty one.
+    point_view_proj: array<mat4x4<f32>, 24>,
+    point_position: array<vec4<f32>, 4>,
+    point_params: vec4<f32>,
+    point_casters: vec4<u32>,
 };
 
 @group(0) @binding(0)
@@ -62,20 +81,6 @@ var<uniform> u: Uniforms;
 fn hemisphere_ambient(world_normal: vec3<f32>) -> vec3<f32> {
     let t = world_normal.y * 0.5 + 0.5;
     return mix(u.ambient_ground.rgb, u.ambient_sky.rgb, t);
-}
-
-/// `world_pos` remapped into the shadow map's `[0,1]` UV space plus its
-/// light-space depth in `z` — shared by every shader flavor's own
-/// `compute_shadow_factor` (declared per-flavor below, since each names
-/// its own `shadow_map`/`shadow_sampler` bindings). Orthographic
-/// projection: `clip.w` is always `1.0`, so the divide is a no-op in
-/// practice — kept for clarity, and so this still works unmodified if a
-/// perspective shadow projection (e.g. for a point-light shadow) is ever
-/// spliced in against the same `light_view_proj` slot.
-fn light_space_uv_and_depth(world_pos: vec3<f32>) -> vec3<f32> {
-    let clip = u.light_view_proj * vec4<f32>(world_pos, 1.0);
-    let ndc = clip.xyz / clip.w;
-    return vec3<f32>(ndc.x * 0.5 + 0.5, 1.0 - (ndc.y * 0.5 + 0.5), ndc.z);
 }
 
 const PI: f32 = 3.14159265;
@@ -100,11 +105,32 @@ fn fresnel_schlick(v_dot_h: f32, f0: vec3<f32>) -> vec3<f32> {
     return f0 + (vec3<f32>(1.0) - f0) * pow(1.0 - v_dot_h, 5.0);
 }
 
+/// How far below the horizon a reflection may point before it fades out
+/// (ADR 044): 1 fades only straight into the surface, larger values start
+/// earlier.
+const HORIZON_FADE: f32 = 1.3;
+
+/// Occlusion for the reflected light (Lagarde & de Rousiers): a rough
+/// surface is occluded as much as its diffuse light, a smooth one only where
+/// the view and the occluder line up, so a mirror-like crevice still shows
+/// its reflection at grazing angles.
+fn specular_occlusion(n_dot_v: f32, occlusion: f32, roughness: f32) -> f32 {
+    let exponent = exp2(-16.0 * roughness - 1.0);
+    return clamp(pow(n_dot_v + occlusion, exponent) - 1.0 + occlusion, 0.0, 1.0);
+}
+
+/// A reflection that points into the geometric surface, which a bent normal
+/// can produce, has nothing to reflect; fade it out smoothly.
+fn horizon_occlusion(reflected: vec3<f32>, geometric_normal: vec3<f32>) -> f32 {
+    let visible = clamp(1.0 + HORIZON_FADE * dot(reflected, normalize(geometric_normal)), 0.0, 1.0);
+    return visible * visible;
+}
+
 /// Metallic-roughness shading (ADR 032): `surface` is (roughness, metallic).
 /// Light intensity keeps its pre-PBR meaning (a white diffuse surface facing
 /// a light of intensity 1 is fully lit), so diffuse has no 1/pi and the
 /// specular lobe is scaled by pi to match.
-fn shade(world_pos: vec3<f32>, world_normal: vec3<f32>, base_color: vec3<f32>, surface: vec2<f32>, occlusion: f32, shadow_factor: f32) -> vec3<f32> {
+fn shade(world_pos: vec3<f32>, world_normal: vec3<f32>, base_color: vec3<f32>, surface: vec2<f32>, occlusion: f32, shadow_factor: f32, geometric_normal: vec3<f32>) -> vec3<f32> {
     let n = normalize(world_normal);
     let view_dir = normalize(u.camera_pos.xyz - world_pos);
     let n_dot_v = max(dot(n, view_dir), 0.0001);
@@ -120,15 +146,19 @@ fn shade(world_pos: vec3<f32>, world_normal: vec3<f32>, base_color: vec3<f32>, s
     // sky/ground gradient stands in for it, looked up the same two ways,
     // with Fresnel damped by roughness.
     let reflected = reflect(-view_dir, n);
-    var ambient: vec3<f32>;
+    var ambient_diffuse: vec3<f32>;
+    var ambient_specular: vec3<f32>;
     if (u.env_params.x > 0.5) {
-        ambient = environment_irradiance(n) * diffuse_color
-            + environment_reflection(reflected, roughness) * environment_brdf(f0, roughness, n_dot_v);
+        ambient_diffuse = environment_irradiance(n) * diffuse_color;
+        ambient_specular = environment_reflection(reflected, roughness) * environment_brdf(f0, roughness, n_dot_v);
     } else {
         let ambient_fresnel = f0 + (max(vec3<f32>(1.0 - roughness), f0) - f0) * pow(1.0 - n_dot_v, 5.0);
-        ambient = hemisphere_ambient(n) * diffuse_color + hemisphere_ambient(reflected) * ambient_fresnel;
+        ambient_diffuse = hemisphere_ambient(n) * diffuse_color;
+        ambient_specular = hemisphere_ambient(reflected) * ambient_fresnel;
     }
-    var result = ambient * occlusion;
+    let reflection_occlusion = specular_occlusion(n_dot_v, occlusion, roughness)
+        * horizon_occlusion(reflected, geometric_normal);
+    var result = ambient_diffuse * occlusion + ambient_specular * reflection_occlusion;
 
     let count = min(u.light_count.x, 4u);
     for (var i: u32 = 0u; i < count; i = i + 1u) {
@@ -144,9 +174,23 @@ fn shade(world_pos: vec3<f32>, world_normal: vec3<f32>, base_color: vec3<f32>, s
             light_dir = to_light / max(dist, 0.0001);
             attenuation = clamp(1.0 - dist / range, 0.0, 1.0);
             attenuation = attenuation * attenuation;
+            if (light.dir_or_pos.w > 1.5) {
+                let across = dot(normalize(light.spot.xyz), -light_dir);
+                let cone = clamp((across - light.spot.w) * light.range_pad.y, 0.0, 1.0);
+                attenuation = attenuation * cone * cone;
+            }
         }
         if (i == u.shadow_caster.x) {
             attenuation = attenuation * shadow_factor;
+        }
+        for (var slot: u32 = 0u; slot < 4u; slot = slot + 1u) {
+            if (i == u.point_casters[slot]) {
+                if (light.dir_or_pos.w > 1.5) {
+                    attenuation = attenuation * spot_shadow_factor(slot, world_pos, n, light.spot.xyz, light.spot.w);
+                } else {
+                    attenuation = attenuation * point_shadow_factor(slot, world_pos, n);
+                }
+            }
         }
         let n_dot_l = max(dot(n, light_dir), 0.0);
         let half_dir = normalize(light_dir + view_dir);
@@ -165,7 +209,7 @@ fn shade(world_pos: vec3<f32>, world_normal: vec3<f32>, base_color: vec3<f32>, s
 
 /// The lit fragment/vertex stage text spliced after the shared
 /// uniforms and shading helpers.
-const LIT_COLORED_BODY_WGSL: &str = r#"
+const LIT_COLORED_BODY_WGSL: &str = r"
 
 @group(0) @binding(1)
 var shadow_map: texture_depth_2d;
@@ -175,26 +219,6 @@ var shadow_sampler: sampler_comparison;
 var env_map: texture_2d<f32>;
 @group(0) @binding(4)
 var env_sampler: sampler;
-
-// Slope-scaled bias: a surface nearly edge-on to the light (small
-// `n_dot_l`) needs a much bigger depth push than one facing the light
-// head-on, or it reads as "acne" — regularly-spaced false self-shadow
-// stripes from the shadow map's own texel quantization (a pyramid's
-// steep triangular faces were the concrete case that went essentially
-// solid-black from this before the slope term existed: at a grazing
-// angle, a constant bias big enough to fix the steepest face was still
-// far too small there, and the acne covered the whole face). The base
-// term alone still matters for a face that's *exactly* perpendicular to
-// the light (n_dot_l = 1), where the slope term contributes nothing.
-fn compute_shadow_factor(world_pos: vec3<f32>, world_normal: vec3<f32>) -> f32 {
-    let lsuv = light_space_uv_and_depth(world_pos);
-    if (lsuv.x < 0.0 || lsuv.x > 1.0 || lsuv.y < 0.0 || lsuv.y > 1.0) {
-        return 1.0;
-    }
-    let n_dot_l = max(dot(normalize(world_normal), normalize(-u.light_direction.xyz)), 0.0);
-    let bias = max(0.0008, 0.006 * (1.0 - n_dot_l));
-    return textureSampleCompare(shadow_map, shadow_sampler, lsuv.xy, lsuv.z - bias);
-}
 
 struct VertexInput {
     @location(0) position: vec3<f32>,
@@ -236,15 +260,17 @@ fn vs_main(in: VertexInput) -> VertexOutput {
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let shadow_factor = compute_shadow_factor(in.world_position, in.world_normal);
-    let shaded = shade(in.world_position, in.world_normal, in.color.rgb, in.surface, 1.0, shadow_factor) + in.emissive;
+    let shaded = shade(in.world_position, in.world_normal, in.color.rgb, in.surface, 1.0, shadow_factor, in.world_normal) + in.emissive;
     return vec4<f32>(shaded, in.color.a);
 }
-"#;
+";
 
 /// [`UNLIT_SHADER_WGSL`](crate::submission::UNLIT_SHADER_WGSL)'s lit counterpart: metallic-roughness-shaded flat
 /// color. Used for lit materials with no resolvable albedo texture.
 pub(crate) fn lit_shader_wgsl() -> String {
-    format!("{LIT_UNIFORMS_AND_SHADING_WGSL}{ENVIRONMENT_WGSL}{LIT_COLORED_BODY_WGSL}")
+    format!(
+        "{LIT_UNIFORMS_AND_SHADING_WGSL}{ENVIRONMENT_WGSL}{SHADOW_LOOKUP_WGSL}{LIT_COLORED_BODY_WGSL}"
+    )
 }
 
 /// The lit textured fragment/vertex stage text spliced after the shared
@@ -295,18 +321,6 @@ fn perturb_normal(n: vec3<f32>, world_pos: vec3<f32>, uv: vec2<f32>, map_normal:
     t = normalize(t);
     let b = cross(n, t);
     return normalize(t * map_normal.x + b * map_normal.y + n * map_normal.z);
-}
-
-// See the colored-lit shader's identical `compute_shadow_factor` for
-// why the bias is slope-scaled, not a flat constant.
-fn compute_shadow_factor(world_pos: vec3<f32>, world_normal: vec3<f32>) -> f32 {
-    let lsuv = light_space_uv_and_depth(world_pos);
-    if (lsuv.x < 0.0 || lsuv.x > 1.0 || lsuv.y < 0.0 || lsuv.y > 1.0) {
-        return 1.0;
-    }
-    let n_dot_l = max(dot(normalize(world_normal), normalize(-u.light_direction.xyz)), 0.0);
-    let bias = max(0.0008, 0.006 * (1.0 - n_dot_l));
-    return textureSampleCompare(shadow_map, shadow_sampler, lsuv.xy, lsuv.z - bias);
 }
 
 struct VertexInput {
@@ -366,12 +380,14 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let occlusion = mix(1.0, textureSample(occlusion_tex, albedo_sampler, in.uv).r, in.map_strength.y);
     let emitted = in.emissive + in.mapped_emissive * textureSample(emissive_tex, albedo_sampler, in.uv).rgb;
     let shadow_factor = compute_shadow_factor(in.world_position, world_normal);
-    let shaded = shade(in.world_position, world_normal, base_color, surface, occlusion, shadow_factor) + emitted;
+    let shaded = shade(in.world_position, world_normal, base_color, surface, occlusion, shadow_factor, in.world_normal) + emitted;
     return vec4<f32>(shaded, sampled.a * in.tint.a);
 }
 "#;
 
 /// [`TEXTURED_SHADER_WGSL`](crate::submission::TEXTURED_SHADER_WGSL)'s lit counterpart.
 pub(crate) fn lit_textured_shader_wgsl() -> String {
-    format!("{LIT_UNIFORMS_AND_SHADING_WGSL}{ENVIRONMENT_WGSL}{LIT_TEXTURED_BODY_WGSL}")
+    format!(
+        "{LIT_UNIFORMS_AND_SHADING_WGSL}{ENVIRONMENT_WGSL}{SHADOW_LOOKUP_WGSL}{LIT_TEXTURED_BODY_WGSL}"
+    )
 }

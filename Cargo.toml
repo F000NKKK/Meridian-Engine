@@ -51,6 +51,7 @@ meridian-data-substrate = { path = "crates/meridian-data-substrate", version = "
 meridian-editor-domain = { path = "crates/meridian-editor-domain", version = "0.1" }
 meridian-editor-app = { path = "crates/meridian-editor-app", version = "0.1" }
 meridian-editor-tcp = { path = "crates/meridian-editor-tcp", version = "0.1" }
+meridian-animation-domain = { path = "crates/meridian-animation-domain", version = "0.1" }
 meridian-text-domain = { path = "crates/meridian-text-domain", version = "0.1" }
 meridian-ui-domain = { path = "crates/meridian-ui-domain", version = "0.1" }
 meridian-ui-scene2d = { path = "crates/meridian-ui-scene2d", version = "0.1" }

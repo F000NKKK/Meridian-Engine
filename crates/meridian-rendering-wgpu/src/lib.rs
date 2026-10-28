@@ -38,6 +38,7 @@ mod overlay_pass;
 mod render_pass;
 mod render_pipeline;
 mod shader_stages;
+mod sky;
 mod sprites;
 mod submission;
 mod surface;
@@ -62,12 +63,13 @@ pub use gpu_texture_store::GpuTextureStore;
 // resource-type-naming precedent as `gac-wgpu`'s direct `gpu-wgpu`
 // dependency (ADR 011), applied by re-export instead of a second edge.
 pub use meridian_gpu_wgpu::{
-    BindGroup, Buffer, BufferUsage, DeviceError, LitTextures, SampledTexture, Sampler,
-    SurfaceTextures, Texture,
+    BindGroup, Buffer, BufferUsage, ComputePipeline, DeviceError, LitTextures, SampledTexture,
+    Sampler, SurfaceTextures, Texture,
 };
 pub use render_pass::RenderPass;
 pub use render_pipeline::RenderPipeline;
 pub use shader_stages::ShaderStages;
+pub use sky::SkyPass;
 pub use sprites::{PreparedSprites, SPRITE_SHADER_WGSL, SPRITE_VERTEX_BYTES, SpriteRenderer};
 pub use submission::{
     DEFAULT_SHADOW_MAP_SIZE, EMISSIVE_EXTRACT_SHADER_WGSL, MAX_LIGHTS, PreparedBatch,

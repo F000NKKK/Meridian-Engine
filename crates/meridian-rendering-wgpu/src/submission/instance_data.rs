@@ -3,14 +3,17 @@
 use meridian_gac::Motor3;
 use meridian_rendering_domain::scene::Material;
 
+/// Bytes of one instance record: thirty `f32`s (see [`push_instance`]).
+pub(crate) const INSTANCE_STRIDE: usize = 120;
+
 /// Appends the instance record [`instance_vertex_layout`](super::vertex_layout)
 /// describes: the model matrix (column-major), the material's colour,
 /// emissive, roughness, metallic, normal scale, occlusion strength and the
 /// emissive factor that scales an emissive map.
 ///
 /// A material with an emissive map puts its factor in the last slot and a
-/// zero in the plain emissive one, which is what bloom reads: bloom does not
-/// sample the map, so a mapped material does not bloom (ADR 033).
+/// zero in the plain emissive one. Bloom's plain pass reads the plain slot;
+/// its mapped pass reads the last slot and samples the map (ADR 042).
 pub(crate) fn push_instance(bytes: &mut Vec<u8>, frame: &Motor3, material: &Material) {
     let matrix = frame.to_mat4();
     let (plain, mapped) = if material.emissive_map.is_some() {

@@ -94,6 +94,8 @@ fn entity_renderables(entities: &[RenderEntity], bodies: &[RigidBody]) -> Vec<Re
             frame: mesh_render_frame(&re.mesh_shape, re.collider, body.frame),
             billboard: false,
             casts_shadow: true,
+            palette: None,
+            morph_weights: Vec::new(),
         })
         .collect()
 }
@@ -131,6 +133,7 @@ impl AppHandler for App {
                         .unwrap_or_else(std::sync::PoisonError::into_inner),
                     ambient_ground: [0.02, 0.02, 0.025],
                     ambient_sky: [0.04, 0.04, 0.055],
+                    ..Scene3d::default()
                 }
             });
         self.render_stage = Some(self.physics.runtime.add_stage(

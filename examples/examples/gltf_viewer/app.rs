@@ -1,8 +1,11 @@
 //! The viewer's window, GPU state and frame loop.
 
+use meridian_sdk::assets::{
+    AnimationPlayer, AnimationRepeat, JointPalette, ModelPiece, ModelRig, VertexSkin,
+};
 use meridian_sdk::{
-    AppHandler, Camera, Device, EnvironmentMap, FrameRecorder, GraphicsSession, InputState, Light,
-    Motor3, Renderable3d, Scene3d, Sky, Vec3, Window, look_at_rotor,
+    AppHandler, Background, Camera, Device, EnvironmentMap, FrameRecorder, GraphicsSession,
+    InputState, Light, Motor3, Renderable3d, Scene3d, Sky, Vec3, Window, look_at_rotor,
 };
 
 const SUN: Vec3 = Vec3 {
@@ -24,6 +27,14 @@ struct GpuState {
     scene: Scene3d,
     center: Vec3,
     radius: f32,
+    pieces: Vec<ModelPiece>,
+    rig: std::sync::Arc<ModelRig>,
+    player: AnimationPlayer,
+    /// Seconds an animation plays before the viewer crossfades to the next
+    /// one (`MERIDIAN_CYCLE`), when the file has several.
+    cycle: Option<f32>,
+    since_switch: f32,
+    last_frame: std::time::Instant,
 }
 
 impl App {
@@ -40,11 +51,13 @@ impl App {
 
 impl GpuState {
     fn build(mut base: GraphicsSession, path: &str) -> Self {
-        let pieces = base.load_model_gltf(path).unwrap_or_else(|err| {
+        let model = base.load_model_gltf(path).unwrap_or_else(|err| {
             meridian_sdk::log_error!("cannot load {path}: {err}");
             std::process::exit(1)
         });
-        let (center, radius) = bounds(&base, pieces.iter().map(|piece| piece.mesh));
+        let (pieces, rig) = (model.pieces, model.rig);
+        let animation = chosen_animation(&rig);
+        let (center, radius) = bounds(&base, &pieces, &rig);
         meridian_sdk::log_info!("{path}: {} parts, radius {radius:.2}", pieces.len());
         let renderables = pieces
             .iter()
@@ -54,6 +67,8 @@ impl GpuState {
                 frame: Motor3::identity(),
                 billboard: false,
                 casts_shadow: true,
+                palette: None,
+                morph_weights: Vec::new(),
             })
             .collect();
         light_with_sky(&mut base);
@@ -69,6 +84,9 @@ impl GpuState {
             }],
             ambient_ground: [0.12, 0.1, 0.09],
             ambient_sky: [0.22, 0.25, 0.3],
+            // The sky is the backdrop too; it falls back to the clear colour
+            // when `MERIDIAN_ENV=none` leaves no environment.
+            background: Background::Environment { blur: 0.0 },
             ..Scene3d::default()
         };
         Self {
@@ -76,21 +94,96 @@ impl GpuState {
             scene,
             center,
             radius,
+            pieces,
+            rig,
+            player: AnimationPlayer::new(animation),
+            cycle: std::env::var("MERIDIAN_CYCLE")
+                .ok()
+                .and_then(|value| value.parse().ok()),
+            since_switch: 0.0,
+            last_frame: std::time::Instant::now(),
+        }
+    }
+
+    /// Moves the playing animation on by the time since the last frame and
+    /// hands each skinned piece its joint matrices and each morphed one its weights.
+    fn animate(&mut self) {
+        let now = std::time::Instant::now();
+        let delta = now.duration_since(self.last_frame).as_secs_f32();
+        self.last_frame = now;
+        self.cycle_animations(delta);
+        self.player.advance(&self.rig, delta);
+        let layers = self.player.layers();
+        let palettes: Vec<JointPalette> = self
+            .rig
+            .matrices_mixed(&layers)
+            .into_iter()
+            .map(JointPalette::new)
+            .collect();
+        let morphs = self.rig.weights_mixed(&layers);
+        let pieces = self.pieces.iter().zip(morphs);
+        for (renderable, (piece, weights)) in self.scene.renderables.iter_mut().zip(pieces) {
+            renderable.palette = piece
+                .skeleton
+                .and_then(|skeleton| palettes.get(skeleton).cloned());
+            renderable.morph_weights = weights;
         }
     }
 }
 
-/// The centre and radius of a sphere around every vertex of `meshes`.
-fn bounds(
-    base: &GraphicsSession,
-    meshes: impl Iterator<Item = meridian_sdk::MeshHandle>,
-) -> (Vec3, f32) {
+impl GpuState {
+    /// Crossfades to the file's next animation every `cycle` seconds.
+    fn cycle_animations(&mut self, delta: f32) {
+        let count = self.rig.animations.len();
+        self.since_switch += delta;
+        let due = self
+            .cycle
+            .is_some_and(|period| count > 1 && self.since_switch >= period);
+        if due {
+            self.since_switch = 0.0;
+            let next = self
+                .player
+                .animation()
+                .map_or(0, |index| (index + 1) % count);
+            self.player
+                .crossfade_to(Some(next), 0.5, AnimationRepeat::Loop);
+        }
+    }
+}
+
+/// The animation `MERIDIAN_ANIMATION` names (an index), else the first one
+/// the file has.
+fn chosen_animation(rig: &ModelRig) -> Option<usize> {
+    let count = rig.animations.len();
+    if count == 0 {
+        return None;
+    }
+    let wanted = std::env::var("MERIDIAN_ANIMATION")
+        .ok()
+        .and_then(|value| value.parse::<usize>().ok())
+        .unwrap_or(0);
+    meridian_sdk::log_info!("{count} animations, playing {}", wanted.min(count - 1));
+    Some(wanted.min(count - 1))
+}
+
+/// The centre and radius of a sphere around every vertex of `pieces`, a
+/// skinned piece posed at rest.
+fn bounds(base: &GraphicsSession, pieces: &[ModelPiece], rig: &ModelRig) -> (Vec3, f32) {
+    let rest = rig.matrices(None, 0.0);
     let (mut low, mut high) = ([f32::MAX; 3], [f32::MIN; 3]);
-    for mesh in meshes {
-        let Some(source) = base.render.meshes.get(mesh) else {
+    for piece in pieces {
+        let Some(source) = base.render.meshes.get(piece.mesh) else {
             continue;
         };
-        for position in &source.positions {
+        let palette = piece
+            .skeleton
+            .and_then(|skeleton| rest.get(skeleton))
+            .map(Vec::as_slice);
+        for (vertex, position) in source.positions.iter().enumerate() {
+            let position = match (palette, &source.skin) {
+                (Some(palette), Some(skin)) => rest_position(palette, skin, vertex, *position),
+                _ => *position,
+            };
             for axis in 0..3 {
                 low[axis] = low[axis].min(position[axis]);
                 high[axis] = high[axis].max(position[axis]);
@@ -111,6 +204,29 @@ fn bounds(
     )
 }
 
+/// `position` of `vertex` moved by the weighted joint matrices of `palette`.
+fn rest_position(
+    palette: &[[[f32; 4]; 4]],
+    skin: &VertexSkin,
+    vertex: usize,
+    position: [f32; 3],
+) -> [f32; 3] {
+    let mut moved = [0.0; 3];
+    for (joint, weight) in skin.joints[vertex].iter().zip(skin.weights[vertex]) {
+        let Some(matrix) = palette.get(usize::from(*joint)) else {
+            continue;
+        };
+        for (row, out) in moved.iter_mut().enumerate() {
+            let sum = matrix[0][row] * position[0]
+                + matrix[1][row] * position[1]
+                + matrix[2][row] * position[2]
+                + matrix[3][row];
+            *out += weight * sum;
+        }
+    }
+    moved
+}
+
 impl AppHandler for App {
     fn on_ready(&mut self, window: &Window) {
         let target = window.surface_target();
@@ -127,6 +243,7 @@ impl AppHandler for App {
         let Some(gpu) = &mut self.gpu else {
             return;
         };
+        gpu.animate();
         let angle = self.start.elapsed().as_secs_f32() * 0.4;
         let distance = gpu.radius * self.distance;
         let eye = gpu.center
@@ -159,11 +276,37 @@ impl AppHandler for App {
     }
 }
 
+/// Whether `path` names a Radiance panorama.
+fn is_hdr_path(path: &str) -> bool {
+    std::path::Path::new(path)
+        .extension()
+        .is_some_and(|ext| ext.eq_ignore_ascii_case("hdr"))
+}
+
+/// Loads the environment a `MERIDIAN_ENV` value names: six comma-separated
+/// cube faces (`+x,-x,+y,-y,+z,-z`, ADR 038) or one `<file>.hdr` panorama
+/// (ADR 036). `None` when the value names neither.
+fn load_named_environment(base: &mut GraphicsSession, value: &str) -> Option<Result<(), String>> {
+    if let Ok(faces) = <[&str; 6]>::try_from(value.split(',').collect::<Vec<_>>()) {
+        return Some(base.load_environment_cube(faces));
+    }
+    is_hdr_path(value).then(|| base.load_environment(value))
+}
+
 /// Lights the model with a procedural sky (ADR 035) whose sun sits where the
-/// directional light does; `MERIDIAN_ENV=none` keeps the ambient colours alone.
+/// directional light does; `MERIDIAN_ENV=none` keeps the ambient colours alone,
+/// and any other `MERIDIAN_ENV` that [`load_named_environment`] understands
+/// lights it with that image instead.
 fn light_with_sky(base: &mut GraphicsSession) {
-    if std::env::var("MERIDIAN_ENV").as_deref() == Ok("none") {
-        return;
+    if let Ok(value) = std::env::var("MERIDIAN_ENV") {
+        if value == "none" {
+            return;
+        }
+        match load_named_environment(base, &value) {
+            Some(Ok(())) => return,
+            Some(Err(err)) => meridian_sdk::log_error!("environment: {err}"),
+            None => {}
+        }
     }
     let sky = Sky {
         sun_direction: [-SUN.x, -SUN.y, -SUN.z],

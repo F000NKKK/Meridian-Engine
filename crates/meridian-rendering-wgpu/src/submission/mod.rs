@@ -13,6 +13,7 @@
 //! Design notes: docs/notes/meridian-rendering-domain.md (`submission`).
 
 mod bake_batches;
+mod batching;
 mod environment;
 mod gpu_mesh;
 mod instance_data;
@@ -25,6 +26,7 @@ mod scene_assets;
 mod scene_renderer;
 mod shaders;
 mod shadows;
+mod skinning;
 mod submit_scene3d;
 #[cfg(test)]
 mod tests;
@@ -32,6 +34,7 @@ mod uniform_bytes;
 mod vertex_layout;
 
 pub(crate) use bake_batches::bake_batches;
+pub(crate) use environment::GpuEnvironment;
 pub(crate) use prepared_batch::DrawKind;
 pub use prepared_batch::PreparedBatch;
 pub use prepared_scene::PreparedScene;
@@ -39,10 +42,13 @@ pub use registries::TextureRegistry;
 pub use scene_assets::SceneAssets;
 pub use scene_renderer::{DEFAULT_SHADOW_MAP_SIZE, SceneRenderer};
 pub use shaders::*;
-pub(crate) use shadows::ShadowDepthPass;
+pub(crate) use shadows::{
+    ATLAS_COLUMNS, ATLAS_ROWS, CascadeCasters, SHADOW_TILES, ShadowDepthPass, face_tile, spot_tile,
+    tile_rect,
+};
 pub use submit_scene3d::submit_scene3d;
 pub(crate) use uniform_bytes::{LIT_UNIFORM_BYTES, lit_uniform_bytes, mat4_to_bytes};
 pub(crate) use vertex_layout::{
-    emissive_instance_layout, instance_vertex_layout, mesh_vertex_layout,
-    position_only_mesh_layout, shadow_instance_layout,
+    emissive_instance_layout, emissive_mapped_instance_layout, instance_vertex_layout,
+    mesh_vertex_layout, position_only_mesh_layout, shadow_instance_layout,
 };

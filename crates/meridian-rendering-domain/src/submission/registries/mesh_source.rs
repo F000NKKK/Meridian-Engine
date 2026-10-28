@@ -1,5 +1,9 @@
 //! CPU-side mesh geometry awaiting upload.
 
+use meridian_gac::{Aabb, Vec3};
+
+use crate::{MeshMorph, VertexSkin};
+
 /// The CPU-side source a [`MeshHandle`](crate::MeshHandle) resolves to: local-space
 /// positions, per-vertex normals and UVs, and triangle indices, decoded
 /// elsewhere (typically `asset-domain::ObjDecoder`/glTF once that lands)
@@ -14,4 +18,59 @@ pub struct MeshSource {
     pub normals: Vec<[f32; 3]>,
     pub uvs: Vec<[f32; 2]>,
     pub indices: Vec<u32>,
+    /// The joints and weights that move each vertex, for a skinned mesh
+    /// (ADR 047); its positions and normals are the bind pose.
+    pub skin: Option<VertexSkin>,
+    /// The blend shapes of the mesh, if it has any (ADR 047); a renderable
+    /// weights them. They apply before the skin does.
+    pub morph: Option<MeshMorph>,
+}
+
+impl MeshSource {
+    /// The local-space box around every vertex, `None` for a mesh without any.
+    #[must_use]
+    pub fn bounds(&self) -> Option<Aabb> {
+        let mut points = self.positions.iter().map(|&[x, y, z]| Vec3::new(x, y, z));
+        let first = points.next()?;
+        let (min, max) = points.fold((first, first), |(min, max), p| {
+            (
+                Vec3::new(min.x.min(p.x), min.y.min(p.y), min.z.min(p.z)),
+                Vec3::new(max.x.max(p.x), max.y.max(p.y), max.z.max(p.z)),
+            )
+        });
+        Some(Aabb { min, max })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn mesh(positions: Vec<[f32; 3]>) -> MeshSource {
+        MeshSource {
+            positions,
+            normals: Vec::new(),
+            uvs: Vec::new(),
+            indices: Vec::new(),
+            skin: None,
+            morph: None,
+        }
+    }
+
+    #[test]
+    fn bounds_enclose_every_vertex() {
+        let bounds = mesh(vec![[1.0, -2.0, 3.0], [-4.0, 5.0, 0.0]]).bounds();
+        assert_eq!(
+            bounds,
+            Some(Aabb {
+                min: Vec3::new(-4.0, -2.0, 0.0),
+                max: Vec3::new(1.0, 5.0, 3.0),
+            })
+        );
+    }
+
+    #[test]
+    fn a_mesh_without_vertices_has_no_bounds() {
+        assert_eq!(mesh(Vec::new()).bounds(), None);
+    }
 }

@@ -58,5 +58,7 @@ pub(crate) fn sun_renderable(base: &mut GraphicsSession) -> Renderable3d {
         // otherwise occlude the light for the whole scene below it —
         // see `Renderable3d::casts_shadow`'s own doc comment.
         casts_shadow: false,
+        palette: None,
+        morph_weights: Vec::new(),
     }
 }

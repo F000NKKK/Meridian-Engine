@@ -14,14 +14,15 @@ pub struct PreparedScene {
     /// One entry per instanced draw: opaque first, then translucent far to
     /// near, then on-top draws.
     pub batches: Vec<PreparedBatch>,
-    /// One record per drawn renderable, `None` for an empty scene.
+    /// One record per drawn renderable, `None` when nothing is visible.
     pub(crate) instances: Option<Buffer>,
     /// The shadow-casting light of this view.
     pub shadow: ShadowLight,
 }
 
 impl PreparedScene {
-    /// How many renderables the scene draws, across all batches.
+    /// How many renderables the scene draws, across all batches: the visible
+    /// ones (ADR 046).
     #[must_use]
     pub fn instance_count(&self) -> u32 {
         self.batches.iter().map(PreparedBatch::instance_count).sum()

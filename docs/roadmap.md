@@ -468,8 +468,8 @@ depth-only pass (`SceneRenderer::render_shadow_pass`, `rendering-wgpu`'s
 new `create_shadow_map_texture`/`create_shadow_pipeline`/
 `begin_shadow_pass`) renders occluder depth into a
 `Depth32Float` shadow map from the light's own orthographic view (see
-`directional_shadow_camera` — a fixed, scene-independent shadow volume,
-not a per-frame frustum-fit cascade, the disclosed simplification), and
+`directional_shadow_camera` — a fixed volume, since replaced by four
+frustum-fitted cascades in a 2 x 2 atlas, ADR 037), and
 both lit shader flavors (`lit_shader_wgsl`/`lit_textured_shader_wgsl`)
 sample it via `textureSampleCompare` (hardware PCF via a comparison
 sampler) with a small constant bias, combined with front-face culling
@@ -481,9 +481,8 @@ math (depth ordering, scene-center centering) is unit-tested in
 isolation (`cargo test -p meridian-rendering-domain`), the same
 "unverifiable-without-a-window, so windowed examples are the proof"
 convention this crate's own test module already documents for
-`SceneRenderer` itself. **Not yet done:** an environment image loader (IBL runs on
-a procedural sky, ADR 035), shadow cascades/frustum-fitting, soft point-light
-shadows (HDR and tone mapping are done, ADR 034), not a blanket
+`SceneRenderer` itself. Radiance `.hdr` panoramas and cube maps load as environments and can
+be the visible backdrop (ADR 036, ADR 038, ADR 039). Emissive maps bloom (ADR 042). Shadows are cascaded, culled per cascade and blended at the seams (ADR 037, ADR 040), and the four point or spot lights nearest the camera cast their own (ADR 041, ADR 043, ADR 045). Reflections are occluded by their own term, with a horizon fade (ADR 044). The main pass draws only what meets the camera frustum and reuses bind groups (ADR 046). **Not yet done:** soft shadows (HDR and tone mapping are done, ADR 034), not a blanket
 "every other crate is a scaffold." Audio is wired end-to-end:
 `audio-domain::AudioOutput` + `Mixer::render_interleaved` bridge mixed
 samples into `audio-cpal`'s real stream (the declared
@@ -810,8 +809,18 @@ the rest are not started.
    animated machine (Satisfactory conveyors, at least beyond a
    procedural spin). glTF (which carries skinning data OBJ can't) is
    the natural next format, not a bigger OBJ. Static glTF models are done
-   ([ADR 030](adr/030-gltf-static-models-through-an-asset-adapter.md));
-   skinning and animation stay open.
+   ([ADR 030](adr/030-gltf-static-models-through-an-asset-adapter.md)).
+   Skeletal animation has its vocabulary and math in `animation-domain`
+   ([ADR 047](adr/047-skeletal-animation-vocabulary.md)); `asset-gltf` reads
+   skins, joint weights and joint animations, `rendering-wgpu` poses skinned
+   meshes (and morphs them) with a compute kernel, nodes that animation moves
+   play through a node skeleton, clips crossfade, and `gltf_viewer` plays a
+   model's animations. Animators run in the runtime as ECS components and an
+   `AnimationStage` ([ADR 048](adr/048-animation-in-the-runtime.md)), and
+   `GraphicsSession::spawn_model` puts a loaded model into a world. An
+   `AnimationGraph` state machine (`AnimationController`) and `RootMotion`
+   steer and move it, with yaw, and states can play 1D/2D blend trees.
+   Still open: layered state machines, IK.
 
 **Rough sequencing, if picking one order**: (4) (batched physics
 dispatch) is done. (1) and (2) next — they're the two things that make

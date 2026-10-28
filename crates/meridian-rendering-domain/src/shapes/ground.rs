@@ -24,5 +24,7 @@ pub fn ground_mesh_source(half_size: f32, uv_tiles: f32) -> MeshSource {
         // Winding front-facing from +Y — verified the same way as
         // `cube_mesh_source`'s faces.
         indices: vec![0, 2, 1, 0, 3, 2],
+        skin: None,
+        morph: None,
     }
 }

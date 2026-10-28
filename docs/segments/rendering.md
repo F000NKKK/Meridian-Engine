@@ -44,7 +44,7 @@ Real and tested on CPU: `Camera`, `Frustum` (Gribb/Hartmann vs any
 `directional_shadow_camera`. Real on GPU, proven by the windowed examples
 `magic_figures`/`physic_figures`: textured/unlit/lit pipelines (metallic-roughness,
 directional + point, `MAX_LIGHTS = 4`), hemisphere ambient, one directional
-shadow map with PCF, HDR bloom and tone mapping (ADR 034). `rendering-wgpu` has headless and
+shadow map with PCF in four fitted cascades (ADR 037), HDR bloom and tone mapping (ADR 034). `rendering-wgpu` has headless and
 windowed (`Surface`) devices. 30 `#[test]`s across the three crates.
 
 ## Backlog
@@ -84,20 +84,30 @@ Not started; ordered by suggested priority. Items wait for an explicit task.
    decoder adapter `meridian-asset-gltf`, `AssetCache::load_model_gltf`.
    JPEG textures (`meridian-asset-jpeg`), external-file `.gltf` and `u32`
    mesh indices are done; checked on Khronos DamagedHelmet, Duck and Sponza
-   with the `gltf_viewer` example. Follow-ups: skins and animation.
+   with the `gltf_viewer` example. Skins and animation: item 23.
 9. **Metallic-roughness materials — done (2026-10-28).**
    [ADR 032](../adr/032-metallic-roughness-materials.md): `roughness`/`metallic`
    factors, the glTF metallic-roughness map (linear upload), GGX shading.
    Normal, occlusion and emissive maps followed in
    [ADR 033](../adr/033-normal-occlusion-and-emissive-maps.md) (derivative
-   tangent frame; emissive-mapped surfaces do not bloom yet).
+   tangent frame; emissive-mapped surfaces bloom since [ADR 042](../adr/042-bloom-for-emissive-maps.md)).
 10. HDR scene target, HDR bloom and tone mapping:
    [ADR 034](../adr/034-hdr-scene-target-and-tone-mapping.md).
 11. Image-based lighting from a prefiltered environment (procedural sky for
    now): [ADR 035](../adr/035-image-based-lighting.md).
-12. **Larger, ADR-gated:** shadow cascades/frustum fitting, point-light
-   shadows, an environment image loader (`.hdr`), a cube-map environment, skinned glTF and
-   animation (no vocabulary yet), concrete backend crates.
+12. Radiance `.hdr` environment loader: [ADR 036](../adr/036-radiance-hdr-environment-loader.md).
+13. Cascaded shadow maps: [ADR 037](../adr/037-cascaded-shadow-maps.md).
+14. Cube-map environment source: [ADR 038](../adr/038-cube-map-environment-source.md).
+15. Visible environment backdrop: [ADR 039](../adr/039-visible-environment-backdrop.md).
+16. Per-cascade caster culling and cascade blending: [ADR 040](../adr/040-per-cascade-casters-and-blending.md).
+17. Shadows from one point light (a six-face cube in the atlas): [ADR 041](../adr/041-point-light-shadows.md).
+18. Bloom for emissive-mapped materials: [ADR 042](../adr/042-bloom-for-emissive-maps.md).
+19. Shadows from the nearest four point lights: [ADR 043](../adr/043-nearest-point-light-shadows.md).
+20. Specular and horizon occlusion: [ADR 044](../adr/044-specular-and-horizon-occlusion.md).
+21. Spot lights and their shadows: [ADR 045](../adr/045-spot-lights-and-their-shadows.md).
+22. Main-pass frustum culling and bind-group reuse: [ADR 046](../adr/046-main-pass-culling-and-bind-group-reuse.md).
+23. Skeletal animation vocabulary ([ADR 047](../adr/047-skeletal-animation-vocabulary.md)): `animation-domain`, glTF skins, GPU skinning and clip playback in `gltf_viewer` (done).
+24. **Larger, ADR-gated:** concrete backend crates.
 
 ## Standards gaps
 
