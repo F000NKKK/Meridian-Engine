@@ -1,6 +1,7 @@
 //! A source converted to another sample rate.
 
-use super::{SampleSource, anti_alias::AntiAlias};
+use super::SampleSource;
+use super::anti_alias::AntiAlias;
 
 /// Samples pulled from the wrapped source per refill.
 const CHUNK: usize = 256;
