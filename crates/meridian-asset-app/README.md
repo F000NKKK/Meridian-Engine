@@ -4,7 +4,7 @@ Asset loading ports: where bytes come from, where background work runs, and the 
 
 **Layer and context:** application · assets
 
-- **For:** `ByteSource` (read the bytes of an `AssetPath`), `Spawn` (run a job in the background), `AssetLoader` (read + decode as one background job) and `Pending<T>` (poll or wait for the result). ADR 027.
+- **For:** `ByteSource` (read the bytes of an `AssetPath`), `Spawn` (run a job in the background), `AssetLoader` (read + decode as one background job) and `Pending<T>` (poll or wait for the result), and `PackSource`, a `.mpak` served as a `ByteSource`. ADR 027.
 - **Not for:** decoding (the `Decoder` port is `meridian-asset-domain`), file access (`meridian-asset-fs`), threads (`meridian-runtime-threads`), or deciding how long a loaded asset lives (`meridian-resource`).
 
 ## Usage

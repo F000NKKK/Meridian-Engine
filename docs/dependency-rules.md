@@ -101,6 +101,13 @@ editor host and scene loading are wired up (docs/roadmap.md). The
 `data` features of `numeric`/`gac` add no internal edge — only
 the optional external `substrate-data` dependency.
 
+`meridian-asset-domain` also holds Meridian's own asset formats, `.meta` and
+`.mpak` ([data-formats.md](data-formats.md)). They take the external
+`substrate-data` and `thiserror` and add no internal edge; the `ReadAt` port
+the pack is read through is owned here, implemented by `asset-fs`
+(`FileReadAt`, hence its edge to this crate) and served to the loader by
+`asset-app`'s `PackSource`.
+
 `meridian-editor-domain` is the wire protocol between a running game and
 its editor (Meridian IDLE): typed `Request`/`Response`/`Event` messages as
 Substrate Data frames (see [editor-domain.md](editor-domain.md)). It
@@ -265,7 +272,7 @@ bottom-up.
 - `meridian-diagnostics-fs` -> `meridian-diagnostics`
 - `meridian-asset-domain` -> `meridian-diagnostics`
 - `meridian-asset-app` -> `meridian-asset-domain`
-- `meridian-asset-fs` -> `meridian-asset-app`
+- `meridian-asset-fs` -> `meridian-asset-app`, `meridian-asset-domain`
 - `meridian-asset-http` -> `meridian-asset-app`
 - `meridian-asset-gltf` -> `meridian-asset-domain`, `meridian-gac`
 - `meridian-asset-jpeg` -> `meridian-asset-domain`
