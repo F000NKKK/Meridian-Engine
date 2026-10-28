@@ -98,8 +98,9 @@ references and paths after one parse), as everywhere else.
    Which modules a project may use is decided by the host, not the file: the
    file lists them, the CLI refuses a module kind it cannot build or load.
 6. **One runner, no per-project main.** `meridian run <project>` and
-   `meridian build <project>` (the CLI, a thin composition root over
-   `meridian-sdk`: `Layers`, `Importers::standard()`, the component and
+   `meridian build <project>` (the CLI, owned by Meridian-CLI; the IDE starts it
+   as a process and reads its `--message-format json` stream; a thin composition
+   root over `meridian-sdk`: `Layers`, `Importers::standard()`, the component and
    settings registries, `WorldFiles`) read the `.mproj`, mount the asset roots
    (or the packs under `build/`), register what the modules provide, load
    `startup` and run the frame loop. A data-only project runs on the prebuilt
