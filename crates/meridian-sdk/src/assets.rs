@@ -22,7 +22,7 @@ use std::path::Path;
 use meridian_asset_domain::{Decoder, ImageAsset, ObjDecoder};
 use meridian_asset_gltf::GltfDecoder;
 use meridian_asset_symphonia::{AudioAsset, DecodeStrategy, StreamingAudioDecoder, open_audio};
-use meridian_audio_domain::SampleSource;
+use meridian_audio_domain::{Repeat, SampleSource};
 use meridian_rendering_app::{MeshStore, TextureStore};
 use meridian_rendering_domain::{
     MeshHandle, MeshRegistryError, MeshSource, TextureHandle, smooth_normals,
@@ -50,89 +50,111 @@ pub fn load_image_asset(path: &str) -> ImageAsset {
         .unwrap_or_else(|e| panic!("failed to decode asset {path}: {e}"))
 }
 
-/// One looping mono audio source's decoded samples, however
-/// [`load_audio_track`] chose to get them — the two arms of
-/// `asset-symphonia::AudioAsset`, exposed behind one
-/// [`SampleSource`] face so a caller never needs to know which one it got. Downmixed to mono here (spatializers
-/// like `audio-domain::BinauralRenderer` take one channel per source and
-/// pan it themselves) — not cached by [`AssetCache`] like textures/
-/// meshes, since a track carries its own playback cursor and two
-/// listeners of the same file need two independent cursors, not one
-/// shared handle.
+/// One mono audio source's decoded samples, however [`load_audio_track`]
+/// chose to get them — the two arms of `asset-symphonia::AudioAsset`,
+/// exposed behind one [`SampleSource`] face so a caller never needs to know
+/// which one it got. Downmixed to mono here (spatializers like
+/// `audio-domain::BinauralRenderer` take one channel per source and pan it
+/// themselves) — not cached by [`AssetCache`] like textures/meshes, since a
+/// track carries its own playback cursor and two listeners of the same file
+/// need two independent cursors, not one shared handle.
+///
+/// A [`Repeat::Loop`] track never ends (background music); a
+/// [`Repeat::Once`] track ends at the last sample (a sound effect).
 #[derive(Debug)]
 pub enum AudioTrack {
     Memory {
         mono: Vec<f32>,
         cursor: usize,
+        repeat: Repeat,
     },
     Streamed {
         decoder: StreamingAudioDecoder,
         channels: usize,
         queue: VecDeque<f32>,
+        repeat: Repeat,
     },
 }
 
 impl AudioTrack {
-    /// Fills `out` with the next mono samples, looping seamlessly when the
-    /// source ends (rewinding a streamed decoder, wrapping a decoded
-    /// buffer's cursor) — every track this loads is meant to loop
-    /// indefinitely, e.g. background music, not a one-shot sound effect.
-    /// A failed stream pads the rest of `out` with silence.
-    fn fill_looping(&mut self, out: &mut [f32]) {
+    /// Fills `out` with the next mono samples and returns how many it wrote.
+    /// Looping wraps seamlessly (rewinding a streamed decoder, wrapping a
+    /// decoded buffer's cursor); a failed looping stream pads with silence.
+    fn fill(&mut self, out: &mut [f32]) -> usize {
         match self {
-            AudioTrack::Memory { mono, .. } if mono.is_empty() => out.fill(0.0),
-            AudioTrack::Memory { mono, cursor } => {
-                let mut filled = 0;
-                while filled < out.len() {
-                    let run = (out.len() - filled).min(mono.len() - *cursor);
-                    out[filled..filled + run].copy_from_slice(&mono[*cursor..*cursor + run]);
-                    filled += run;
-                    *cursor = (*cursor + run) % mono.len();
-                }
-            }
+            AudioTrack::Memory {
+                mono,
+                cursor,
+                repeat,
+            } => fill_from_memory(mono, cursor, *repeat, out),
             AudioTrack::Streamed {
                 decoder,
                 channels,
                 queue,
-            } => {
-                fill_from_stream(decoder, *channels, queue, out);
-            }
+                repeat,
+            } => fill_from_stream(decoder, *channels, queue, *repeat, out),
         }
     }
 }
 
 impl SampleSource for AudioTrack {
-    /// Fills `out` with the next mono samples; a track loops, so it never ends.
+    /// Fills `out` with the next mono samples; fewer than `out.len()` means
+    /// a [`Repeat::Once`] track has ended.
     fn read(&mut self, out: &mut [f32]) -> usize {
-        self.fill_looping(out);
-        out.len()
+        self.fill(out)
     }
 }
 
-/// Fills `out` from `queue`, decoding more blocks as it drains; a failed
-/// stream leaves silence in the rest of `out`.
+/// Copies from the decoded buffer, wrapping at its end when looping.
+fn fill_from_memory(mono: &[f32], cursor: &mut usize, repeat: Repeat, out: &mut [f32]) -> usize {
+    if mono.is_empty() {
+        out.fill(0.0);
+        return if repeat == Repeat::Loop { out.len() } else { 0 };
+    }
+    let mut filled = 0;
+    while filled < out.len() && *cursor < mono.len() {
+        let run = (out.len() - filled).min(mono.len() - *cursor);
+        out[filled..filled + run].copy_from_slice(&mono[*cursor..*cursor + run]);
+        filled += run;
+        *cursor += run;
+        if *cursor == mono.len() && repeat == Repeat::Loop {
+            *cursor = 0;
+        }
+    }
+    filled
+}
+
+/// Fills `out` from `queue`, decoding more blocks as it drains. At the end
+/// (or on a failure) a looping stream leaves silence in the rest of `out`
+/// and a one-shot stream stops there.
 fn fill_from_stream(
     decoder: &mut StreamingAudioDecoder,
     channels: usize,
     queue: &mut VecDeque<f32>,
+    repeat: Repeat,
     out: &mut [f32],
-) {
-    for slot in out {
-        if queue.is_empty() && !refill_queue(decoder, channels, queue) {
+) -> usize {
+    for (written, slot) in out.iter_mut().enumerate() {
+        if queue.is_empty() && !refill_queue(decoder, channels, queue, repeat) {
+            if repeat == Repeat::Once {
+                return written;
+            }
             *slot = 0.0;
             continue;
         }
         *slot = queue.pop_front().unwrap_or(0.0);
     }
+    out.len()
 }
 
 /// Decodes the next block into `queue` as mono samples, rewinding at the
-/// end of the stream. `false` when the stream failed, so the caller pads
-/// with silence.
+/// end of a looping stream. `false` when the stream ended (one-shot) or
+/// failed, so the caller stops or pads with silence.
 fn refill_queue(
     decoder: &mut StreamingAudioDecoder,
     channels: usize,
     queue: &mut VecDeque<f32>,
+    repeat: Repeat,
 ) -> bool {
     match decoder.next_block() {
         Ok(Some(block)) => {
@@ -142,7 +164,7 @@ fn refill_queue(
             }
             true
         }
-        Ok(None) => decoder.rewind().is_ok(),
+        Ok(None) => repeat == Repeat::Loop && decoder.rewind().is_ok(),
         Err(_) => false,
     }
 }
@@ -155,8 +177,23 @@ fn refill_queue(
 /// (last sample -> first) faded over ~10 ms so looping passes through
 /// silence instead of clicking; a streamed track loops via
 /// `StreamingAudioDecoder::rewind` instead, so no seam fade is needed
-/// there.
+/// there. The track loops; [`load_audio_track_with`] picks one-shot
+/// playback for sound effects.
+///
+/// # Errors
+///
+/// The file cannot be read or decoded.
 pub fn load_audio_track(path: &str) -> Result<(AudioTrack, u32), String> {
+    load_audio_track_with(path, Repeat::Loop)
+}
+
+/// [`load_audio_track`] with the repeat mode chosen: a [`Repeat::Once`]
+/// track ends at its last sample and gets no seam fade.
+///
+/// # Errors
+///
+/// The file cannot be read or decoded.
+pub fn load_audio_track_with(path: &str, repeat: Repeat) -> Result<(AudioTrack, u32), String> {
     let bytes = std::fs::read(path).map_err(|e| format!("failed to read {path}: {e}"))?;
     let asset = open_audio(&bytes, &DecodeStrategy::default())
         .map_err(|e| format!("failed to decode {path}: {e}"))?;
@@ -170,22 +207,34 @@ pub fn load_audio_track(path: &str) -> Result<(AudioTrack, u32), String> {
                     frame.iter().map(|&s| f32::from(s) / 32768.0).sum::<f32>() / channels as f32
                 })
                 .collect();
-            let fade = (sample_rate as usize / 100).min(mono.len() / 2);
-            for i in 0..fade {
-                let ramp = i as f32 / fade as f32;
-                mono[i] *= ramp;
-                let end = mono.len() - 1 - i;
-                mono[end] *= ramp;
+            if repeat == Repeat::Loop {
+                fade_loop_seam(&mut mono, sample_rate);
             }
-            AudioTrack::Memory { mono, cursor: 0 }
+            AudioTrack::Memory {
+                mono,
+                cursor: 0,
+                repeat,
+            }
         }
         AudioAsset::Streaming(decoder) => AudioTrack::Streamed {
             decoder,
             channels,
             queue: VecDeque::new(),
+            repeat,
         },
     };
     Ok((track, sample_rate))
+}
+
+/// Fades both ends of `mono` over ~10 ms so a loop passes through silence.
+fn fade_loop_seam(mono: &mut [f32], sample_rate: u32) {
+    let fade = (sample_rate as usize / 100).min(mono.len() / 2);
+    for i in 0..fade {
+        let ramp = i as f32 / fade as f32;
+        mono[i] *= ramp;
+        let end = mono.len() - 1 - i;
+        mono[end] *= ramp;
+    }
 }
 
 /// Path-keyed cache over texture/mesh loading — an application (or

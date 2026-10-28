@@ -23,7 +23,9 @@ pub mod scene;
 
 pub use any_image_decoder::AnyImageDecoder;
 pub use asset_loader::{asset_loader, default_asset_loader, load_image};
-pub use assets::{AssetCache, AudioTrack, load_audio_track, load_image_asset};
+pub use assets::{
+    AssetCache, AudioTrack, load_audio_track, load_audio_track_with, load_image_asset,
+};
 pub use dsl::dsl_core;
 pub use fly_controls::fly_controls;
 pub use meridian_asset_app::{
@@ -48,9 +50,8 @@ pub use meridian_audio_domain::{
 // -- meridian-compute-app / -wgpu: dispatch ports and the platform adapter --
 pub use meridian_compute_app::{ComputeContext, ComputeDevice, GpuBackend};
 pub use meridian_compute_wgpu::{CpuComputeDevice, GpuComputeDevice, cpu_context, gpu_context};
-// -- meridian-diagnostics: errors and the log kernel --
+// -- meridian-diagnostics / -fs: errors, the log kernel, the log file and the crash report --
 pub use meridian_diagnostics::{EngineError, log_error, log_info, log_warn, logging};
-// -- meridian-diagnostics-fs: the log file and the crash report --
 pub use meridian_diagnostics_fs::{CrashReportConfig, FileLog, FileLogConfig, install_crash_hook};
 // -- meridian-gac: spatial math --
 pub use meridian_gac::{Aabb, Bivector3, Motor3, Projection, Rotor, Vec3};
@@ -83,12 +84,11 @@ pub use meridian_rendering_wgpu::{
     GpuFrameRecorder, GpuTextureStore, PreparedBatch, RenderPass, SceneRenderer, Surface,
     TextureRegistry, submit_scene3d,
 };
-// -- meridian-runtime-app: Runtime, the single frame-work entry point --
+// -- meridian-runtime-app / -threads: Runtime, the frame-work entry point, the job executor --
 pub use meridian_runtime_app::{
     AudioStage, ComputeStage, EventSystem, Job, JobExecutor, PhysicsStepStage, Runtime, Shared,
     Stage, StageId,
 };
-// -- meridian-runtime-threads: the threaded job executor --
 pub use meridian_runtime_threads::{BackgroundPool, TaskExecutor};
 /// The retained UI runtime (ADR 018), named by generated `.meui` glue; and
 /// `ui_scene2d`, its extraction to a `Scene2d` (ADR 021).

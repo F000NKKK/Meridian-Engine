@@ -84,6 +84,7 @@ Not started; ordered by suggested priority. Items wait for an explicit task.
 9. ~~`AudioTrack` reads without the per-block `Vec`~~ — done (`SampleSource::read` fills the caller's buffer).
 10. ~~Distance curves~~ — done: `AttenuationCurve` (`Inverse`, `Linear`, `Exponential`).
 11. ~~Buses~~ — done: `BusId`, `AudioScene::add_bus` / `add_voice_to` / `set_bus_gain`, master gain.
+12. ~~Streamed decode~~ — already covered by ADR 014 (`AudioTrack::Streamed`); added one-shot tracks (`load_audio_track_with(path, Repeat::Once)`) so sound effects can come from files and streams end.
 
 Deliberately not queued: `meridian-audio-effects` (only when an effect
 needs an FFT/external crate), HRTF, height channels, a `Fixed` flavor
