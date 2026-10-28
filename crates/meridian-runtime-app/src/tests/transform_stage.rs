@@ -9,9 +9,7 @@ use crate::testing::InlineExecutor;
 use crate::*;
 
 fn translated(x: f32) -> Transform {
-    Transform {
-        motor: Motor3::translation(Vec3::new(x, 0.0, 0.0)),
-    }
+    Transform::from_motor(Motor3::translation(Vec3::new(x, 0.0, 0.0)))
 }
 
 /// The stage must run after a stage that moves the parent and before one

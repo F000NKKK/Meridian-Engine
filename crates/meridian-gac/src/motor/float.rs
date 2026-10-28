@@ -79,6 +79,20 @@ impl Motor3 {
         Motor3(self.0.reverse())
     }
 
+    /// The same rotation with its translation stretched per axis by `scale`:
+    /// where the motor sends the origin is multiplied component-wise, the
+    /// rotation stays. This is how a child's placement follows a scaled parent
+    /// (`T * R * S` composition); `Vec3::ONE` returns `self` unchanged.
+    #[must_use]
+    pub fn stretched(self, scale: Vec3) -> Motor3 {
+        if scale == Vec3::ONE {
+            return self;
+        }
+        let origin = self.origin();
+        let rotation = self.compose(Motor3::translation(-origin));
+        rotation.compose(Motor3::translation(origin.component_mul(scale)))
+    }
+
     /// Transforms a point through this rigid motion: the sandwich product
     /// `M P M~`, where `P` is `point` embedded as the PGA trivector
     /// `e123 - x*e023 + y*e013 - z*e012`.

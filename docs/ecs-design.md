@@ -96,7 +96,9 @@ backwards: a restore advances it once and stamps every column changed, so
 `Parent(Entity)` is a plain component: the entity another one hangs under.
 `propagate_transforms(&mut World)` writes a `GlobalTransform` for every entity
 with a `Transform`, `local.compose(parent_global)` down each chain (the order
-of `gac-wgpu`'s batch kernels). An entity whose parent is despawned, has no
+of `gac-wgpu`'s batch kernels), and multiplies the local `Transform::scale` into
+the parent's global scale (a child's translation stretches with it; a parent
+with unit scale takes the exact path it had before scale existed). An entity whose parent is despawned, has no
 `Transform` or is on a cycle is a root, so a dangling or looping link never
 panics and never depends on visit order. A `GlobalTransform` is rewritten only
 when its value changes, so a pass that moves nothing leaves `Changed<GlobalTransform>`

@@ -92,6 +92,7 @@ fn entity_renderables(entities: &[RenderEntity], bodies: &[RigidBody]) -> Vec<Re
             mesh: re.mesh,
             material: re.material,
             frame: mesh_render_frame(&re.mesh_shape, re.collider, body.frame),
+            scale: Vec3::ONE,
             billboard: false,
             casts_shadow: true,
             palette: None,

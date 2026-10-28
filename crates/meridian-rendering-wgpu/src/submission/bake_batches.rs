@@ -20,6 +20,7 @@ struct Resolved<'a> {
     source: &'a MeshSource,
     material: &'a Material,
     frame: &'a Motor3,
+    scale: Vec3,
     /// The material's textures that are registered.
     maps: MaterialMaps,
     casts_shadow: bool,
@@ -43,6 +44,7 @@ impl<'a> Resolved<'a> {
             source,
             material,
             frame: &renderable.frame,
+            scale: renderable.scale,
             maps: MaterialMaps {
                 albedo: known(material.albedo),
                 metallic_roughness: known(material.metallic_roughness),
@@ -58,6 +60,16 @@ impl<'a> Resolved<'a> {
             morph_weights: Some(renderable.morph_weights.as_slice())
                 .filter(|weights| source.morph.is_some() && weights.iter().any(|w| *w != 0.0)),
         })
+    }
+
+    /// Appends this renderable's instance record.
+    fn push_record(&self, bytes: &mut Vec<u8>) {
+        push_instance(bytes, self.frame, self.scale, self.material);
+    }
+
+    /// `local` (the mesh's own box) placed in the world by frame and scale.
+    fn world_bounds(&self, local: Option<Aabb>) -> Option<Aabb> {
+        local.map(|local| world_space_bounds(&local, self.frame, self.scale))
     }
 
     /// Whether a compute pass poses the mesh for this renderable.
@@ -132,10 +144,9 @@ pub(crate) fn bake_batches(
         let job = pose(device, renderer, lead);
         for &member in &planned.members {
             let instance = &resolved[member];
-            push_instance(&mut bytes, instance.frame, instance.material);
+            instance.push_record(&mut bytes);
             // A posed mesh leaves its bind-pose box, so it is never culled.
-            let known = local_bounds.filter(|_| job.is_none());
-            bounds.push(known.map(|local| world_space_bounds(&local, instance.frame)));
+            bounds.push(instance.world_bounds(local_bounds.filter(|_| job.is_none())));
         }
         let count = u32::try_from(planned.members.len()).unwrap_or(u32::MAX);
         batches.push(PreparedBatch {

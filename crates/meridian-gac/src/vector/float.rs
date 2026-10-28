@@ -25,6 +25,12 @@ impl Vec3 {
         y: 0.0,
         z: 0.0,
     };
+    /// All ones: the unit scale, and the identity of [`Vec3::component_mul`].
+    pub const ONE: Vec3 = Vec3 {
+        x: 1.0,
+        y: 1.0,
+        z: 1.0,
+    };
     pub const X: Vec3 = Vec3 {
         x: 1.0,
         y: 0.0,
@@ -43,6 +49,12 @@ impl Vec3 {
 
     pub const fn new(x: Scalar, y: Scalar, z: Scalar) -> Self {
         Self { x, y, z }
+    }
+
+    /// The component-wise product: `self` scaled along each axis by `rhs`.
+    #[must_use]
+    pub fn component_mul(self, rhs: Vec3) -> Vec3 {
+        Vec3::new(self.x * rhs.x, self.y * rhs.y, self.z * rhs.z)
     }
 
     pub fn dot(self, rhs: Vec3) -> Scalar {

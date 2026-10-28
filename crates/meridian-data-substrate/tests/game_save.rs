@@ -40,9 +40,7 @@ fn playing() -> (World, SceneMap) {
     let hero = world.spawn();
     world.insert(
         hero,
-        Transform {
-            motor: Motor3::translation(Vec3::new(1.0, 2.0, 3.0)),
-        },
+        Transform::from_motor(Motor3::translation(Vec3::new(1.0, 2.0, 3.0))),
     );
     world.insert(
         hero,

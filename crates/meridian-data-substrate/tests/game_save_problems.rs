@@ -15,12 +15,7 @@ fn saved() -> Vec<u8> {
     let mut world = World::new();
     let mut scene = SceneMap::new(None);
     let a = world.spawn();
-    world.insert(
-        a,
-        Transform {
-            motor: Motor3::translation(Vec3::X),
-        },
-    );
+    world.insert(a, Transform::from_motor(Motor3::translation(Vec3::X)));
     scene.push(SceneEntity::new(key("a"), a)).unwrap();
     registry().save_game(&SaveHeader::new("demo", 1_700_000_000), &world, &scene, &())
 }

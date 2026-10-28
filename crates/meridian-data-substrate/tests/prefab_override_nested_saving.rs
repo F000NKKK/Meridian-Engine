@@ -75,9 +75,7 @@ fn a_game_save_keeps_edits_to_generated_entities() {
     let (mut world, map) = load(SCENE.as_bytes());
     world.insert(
         at(&map, "h/gun"),
-        Transform {
-            motor: Motor3::translation(Vec3::new(0.0, 0.0, 8.0)),
-        },
+        Transform::from_motor(Motor3::translation(Vec3::new(0.0, 0.0, 8.0))),
     );
     let reg = registry();
     let header = SaveHeader::new("demo", 1);

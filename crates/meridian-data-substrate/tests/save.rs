@@ -23,19 +23,12 @@ fn built_world() -> (World, SceneMap) {
     let mut world = World::new();
     let mut scene = SceneMap::new(Some(DisplayName::new("@generated")));
     let root = world.spawn();
-    world.insert(
-        root,
-        Transform {
-            motor: general_motor(),
-        },
-    );
+    world.insert(root, Transform::from_motor(general_motor()));
     scene.push(SceneEntity::new(key("root"), root)).unwrap();
     let child = world.spawn();
     world.insert(
         child,
-        Transform {
-            motor: Motor3::translation(Vec3::new(-0.0, 0.1, 1e-7)),
-        },
+        Transform::from_motor(Motor3::translation(Vec3::new(-0.0, 0.1, 1e-7))),
     );
     world.insert(
         child,
@@ -144,9 +137,7 @@ fn the_registry_is_keyed_by_name_and_type() {
 
 #[test]
 fn transform_form_converts_both_ways() {
-    let t = Transform {
-        motor: Motor3::translation(Vec3::new(1.0, 2.0, 3.0)),
-    };
+    let t = Transform::from_motor(Motor3::translation(Vec3::new(1.0, 2.0, 3.0)));
     let text = substrate_data::to_text(&TransformForm::from(t));
     let back: TransformForm = substrate_data::from_text(&text).unwrap().value;
     assert_eq!(Transform::from(back).motor, t.motor);

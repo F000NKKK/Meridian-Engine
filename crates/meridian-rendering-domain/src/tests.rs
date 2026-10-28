@@ -1,5 +1,6 @@
 //! Tests of this module.
 
+use meridian_ecs::{GlobalTransform, Transform, World};
 use meridian_gac::{Aabb, Motor3, Projection, Sphere, Vec3, mat4_mul};
 
 use super::*;
@@ -284,9 +285,7 @@ fn light_sources_are_extracted_as_lights_at_their_entity_frame() {
     let lamp = world.spawn();
     world.insert(
         lamp,
-        Transform {
-            motor: Motor3::translation(Vec3::new(0.0, 3.0, 0.0)),
-        },
+        Transform::from_motor(Motor3::translation(Vec3::new(0.0, 3.0, 0.0))),
     );
     world.insert(
         lamp,
@@ -314,4 +313,49 @@ fn light_sources_are_extracted_as_lights_at_their_entity_frame() {
             .iter()
             .any(|light| matches!(light, Light::Directional { .. }))
     );
+}
+
+#[test]
+fn world_space_bounds_scales_before_placing() {
+    let local = Aabb {
+        min: Vec3::new(-1.0, -1.0, -1.0),
+        max: Vec3::new(1.0, 1.0, 1.0),
+    };
+    let frame = Motor3::translation(Vec3::new(10.0, 0.0, 0.0));
+    let world = world_space_bounds(&local, &frame, Vec3::new(2.0, -1.0, 0.5));
+    assert_eq!(world.min, Vec3::new(8.0, -1.0, -0.5));
+    assert_eq!(world.max, Vec3::new(12.0, 1.0, 0.5));
+}
+
+#[test]
+fn extract_scene3d_carries_the_global_scale() {
+    let mut world = World::new();
+    let entity = world.spawn();
+    world.insert(
+        entity,
+        Transform {
+            scale: Vec3::new(2.0, 2.0, 2.0),
+            ..Transform::default()
+        },
+    );
+    world.insert(
+        entity,
+        MeshRenderer {
+            mesh: MeshHandle::new(meridian_memory::Handle::default()),
+            material: MaterialHandle::new(meridian_memory::Handle::default()),
+            billboard: false,
+        },
+    );
+    let alone = extract_scene3d(&world, Camera::default());
+    assert_eq!(alone.renderables[0].scale, Vec3::new(2.0, 2.0, 2.0));
+
+    world.insert(
+        entity,
+        GlobalTransform {
+            scale: Vec3::new(6.0, 6.0, 6.0),
+            ..GlobalTransform::default()
+        },
+    );
+    let resolved = extract_scene3d(&world, Camera::default());
+    assert_eq!(resolved.renderables[0].scale, Vec3::new(6.0, 6.0, 6.0));
 }

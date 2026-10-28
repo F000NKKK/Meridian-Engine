@@ -142,6 +142,15 @@ change that closed them.
    treated as roots ([ecs-design.md](../ecs-design.md#hierarchy)). `runtime-app`'s `TransformStage` runs it every
    frame (`runtime-app` now depends on `ecs`). Open: skipping subtrees that did
    not change, and exposing `World` through `sdk`.
+11. **Done: `Transform::scale`.** A per-axis `Vec3` (`ONE` by default) next to the
+    motor, requested by the editor's Scale gizmo. `propagate_transforms` multiplies
+    scales down a chain and stretches a child's translation with its parent's scale
+    (`Motor3::stretched`); `GlobalTransform` carries the result. `.mscene` stores
+    `transform: { motor, scale }`, `scale` defaulting to one so scenes written
+    before it load unchanged (`TransformForm`, hence Describe/Schema, lists both
+    fields). `Renderable3d::scale` reaches the instance matrix (axis columns scaled),
+    the culling box and, through the column lengths, the normal matrix. Physics
+    colliders and the DSL `Transform` tag (translation only) do not read the scale yet.
 
 The Craftbook migration (ADR 019/020) owns the `runtime-app`/`sdk` rework,
 the driver direction and the `unwrap` cleanup; see `docs/adr/020-craftbook-adoption.md`.

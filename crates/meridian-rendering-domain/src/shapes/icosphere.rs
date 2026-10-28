@@ -6,9 +6,9 @@ use crate::submission::MeshSource;
 
 /// Builds a [`MeshSource`] for an icosphere of the given `radius`,
 /// centered at its own local origin (world placement is
-/// `Renderable3d::frame`'s job — `Motor3` has no scale component, so
-/// radius has to be baked into the mesh itself, not applied per
-/// instance). Normals are the unit-length vertex directions, UVs an
+/// `Renderable3d::frame`'s job; a per-instance size is
+/// `Renderable3d::scale`, so a mesh shared by many spheres can be built once
+/// and `radius` kept at 1). Normals are the unit-length vertex directions, UVs an
 /// equirectangular projection.
 #[must_use]
 pub fn icosphere_mesh_source(subdivisions: u32, radius: f32) -> MeshSource {

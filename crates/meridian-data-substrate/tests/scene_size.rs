@@ -16,12 +16,7 @@ fn generated(n: usize) -> (World, SceneMap) {
     for i in 0..n {
         let entity = world.spawn();
         let at = Vec3::new(i as f32 * 0.37, (i % 17) as f32 * 1.5, -(i as f32) * 0.125);
-        world.insert(
-            entity,
-            Transform {
-                motor: Motor3::translation(at),
-            },
-        );
+        world.insert(entity, Transform::from_motor(Motor3::translation(at)));
         world.insert(
             entity,
             RigidBody {

@@ -142,6 +142,7 @@ fn renderable(
         mesh,
         material,
         frame,
+        scale: Vec3::ONE,
         billboard: false,
         casts_shadow: true,
         palette: None,

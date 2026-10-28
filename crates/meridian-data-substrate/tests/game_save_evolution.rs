@@ -49,12 +49,7 @@ fn one_entity() -> (World, SceneMap) {
     let mut world = World::new();
     let mut scene = SceneMap::new(None);
     let p = world.spawn();
-    world.insert(
-        p,
-        Transform {
-            motor: Motor3::translation(Vec3::Y),
-        },
-    );
+    world.insert(p, Transform::from_motor(Motor3::translation(Vec3::Y)));
     scene.push(SceneEntity::new(key("p"), p)).unwrap();
     (world, scene)
 }

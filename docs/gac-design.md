@@ -135,16 +135,20 @@ Meridian uses:
 ```rust
 struct Transform {
     motor: Motor3,
+    scale: Vec3, // per axis, ONE by default
 }
 ```
 
 Rotation and translation compose through the same operator (geometric
 product), so chaining parent/child transforms is one multiplication instead
 of a position-plus-rotation merge. Non-uniform scale is deliberately not
-folded into the motor — it's a separate, explicit factor where a subsystem
-needs it (e.g. rendering), because scale doesn't behave like a rigid motion
-and baking it into the spatial primitive is what causes shear bugs in
-matrix-based engines.
+folded into the motor — it's a separate field next to it (`Transform::scale`,
+applied first in the entity's own axes, then the motor places the result), because scale
+doesn't behave like a rigid motion and baking it into the spatial primitive is what
+causes shear bugs in matrix-based engines. Down a hierarchy the scales multiply
+per axis and a child's translation stretches with its parent's scale
+(`Motor3::stretched`); a rotated parent with a non-uniform scale does not
+shear its children, the per-axis product is all that is kept.
 
 `Motor3` has three ways to apply itself: `transform_point` (the sandwich
 product, points move by rotation *and* translation), `transform_vector`

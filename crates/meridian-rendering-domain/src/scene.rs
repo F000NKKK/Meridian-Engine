@@ -12,7 +12,7 @@
 //! an actual GPU resource.
 
 use meridian_ecs::{Component, GlobalTransform, Transform, World};
-use meridian_gac::{Aabb, Motor3};
+use meridian_gac::{Aabb, Motor3, Vec3};
 use meridian_resource::ResourceId;
 
 use crate::{Frustum, JointPalette, MeshHandle, MorphWeights, TextureHandle};
@@ -171,6 +171,9 @@ pub struct Renderable3d {
     pub mesh: MeshHandle,
     pub material: MaterialHandle,
     pub frame: Motor3,
+    /// The size along each local axis, applied before `frame`;
+    /// `Vec3::ONE` draws the mesh at its own size.
+    pub scale: Vec3,
     /// Re-oriented to face the camera at extraction time — the common
     /// case for a world-space UI billboard or an impostor sprite.
     pub billboard: bool,
@@ -351,13 +354,16 @@ pub fn extract_scene3d(world: &World, camera: crate::Camera) -> Scene3d {
         .query::<MeshRenderer>()
         .filter_map(|(entity, renderer)| {
             let transform = world.get::<Transform>(entity)?;
-            let frame = world
+            let (frame, scale) = world
                 .get::<GlobalTransform>(entity)
-                .map_or(transform.motor, |global| global.motor);
+                .map_or((transform.motor, transform.scale), |global| {
+                    (global.motor, global.scale)
+                });
             Some(Renderable3d {
                 mesh: renderer.mesh,
                 material: renderer.material,
                 frame,
+                scale,
                 billboard: renderer.billboard,
                 casts_shadow: true,
                 palette: world.get::<JointPalette>(entity).cloned(),
@@ -376,15 +382,13 @@ pub fn extract_scene3d(world: &World, camera: crate::Camera) -> Scene3d {
     }
 }
 
-/// `bounds` (a mesh's local-space AABB) transformed by `frame` into
-/// world space: every corner is mapped through `frame` and the result is
+/// `bounds` (a mesh's local-space AABB) scaled by `scale`, then transformed by
+/// `frame` into world space: every corner is mapped through both and the result is
 /// the enclosing box of those eight points. Conservative like every
 /// AABB-under-rotation approximation (the box can grow, never shrink),
 /// which is exactly what a culling test needs — a false "visible" costs
 /// a wasted draw, a false "culled" is a visible bug.
-pub fn world_space_bounds(bounds: &Aabb, frame: &Motor3) -> Aabb {
-    use meridian_gac::Vec3;
-
+pub fn world_space_bounds(bounds: &Aabb, frame: &Motor3, scale: Vec3) -> Aabb {
     let (min, max) = (bounds.min, bounds.max);
     let corners = [
         Vec3::new(min.x, min.y, min.z),
@@ -396,7 +400,7 @@ pub fn world_space_bounds(bounds: &Aabb, frame: &Motor3) -> Aabb {
         Vec3::new(max.x, max.y, min.z),
         Vec3::new(max.x, max.y, max.z),
     ]
-    .map(|corner| frame.transform_point(corner));
+    .map(|corner| frame.transform_point(corner.component_mul(scale)));
 
     let mut world_min = corners[0];
     let mut world_max = corners[0];
@@ -436,7 +440,7 @@ pub fn cull_scene3d(
         .iter()
         .filter(|renderable| match mesh_bounds(renderable.mesh) {
             Some(local_bounds) => {
-                let bounds = world_space_bounds(&local_bounds, &renderable.frame);
+                let bounds = world_space_bounds(&local_bounds, &renderable.frame, renderable.scale);
                 frustum.intersects(&bounds)
             }
             None => true,
@@ -466,7 +470,7 @@ mod tests {
             max: Vec3::new(1.0, 1.0, 1.0),
         };
         let frame = Motor3::translation(Vec3::new(10.0, 0.0, 0.0));
-        let world = world_space_bounds(&local, &frame);
+        let world = world_space_bounds(&local, &frame, Vec3::ONE);
         assert_eq!(world.min, Vec3::new(9.0, -1.0, -1.0));
         assert_eq!(world.max, Vec3::new(11.0, 1.0, 1.0));
     }
@@ -478,9 +482,7 @@ mod tests {
         let visible = world.spawn();
         world.insert(
             visible,
-            Transform {
-                motor: Motor3::translation(Vec3::new(5.0, 0.0, 0.0)),
-            },
+            Transform::from_motor(Motor3::translation(Vec3::new(5.0, 0.0, 0.0))),
         );
         world.insert(
             visible,
@@ -511,6 +513,7 @@ mod tests {
             mesh: MeshHandle::new(meridian_memory::Handle::default()),
             material: MaterialHandle::new(meridian_memory::Handle::default()),
             frame: Motor3::translation(Vec3::new(10.0, 0.0, 0.0)),
+            scale: Vec3::ONE,
             billboard: false,
             casts_shadow: true,
             palette: None,
@@ -520,6 +523,7 @@ mod tests {
             mesh: MeshHandle::new(meridian_memory::Handle::default()),
             material: MaterialHandle::new(meridian_memory::Handle::default()),
             frame: Motor3::translation(Vec3::new(-10.0, 0.0, 0.0)),
+            scale: Vec3::ONE,
             billboard: false,
             casts_shadow: true,
             palette: None,
@@ -546,6 +550,7 @@ mod tests {
             mesh: MeshHandle::new(meridian_memory::Handle::default()),
             material: MaterialHandle::new(meridian_memory::Handle::default()),
             frame: Motor3::translation(Vec3::new(-10.0, 0.0, 0.0)),
+            scale: Vec3::ONE,
             billboard: false,
             casts_shadow: true,
             palette: None,

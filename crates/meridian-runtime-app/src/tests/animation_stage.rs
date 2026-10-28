@@ -215,9 +215,7 @@ fn root_motion_moves_the_entity_in_its_own_frame_and_pins_the_pose() {
         );
         world.insert(
             animator,
-            Transform {
-                motor: Motor3::from_rotation_translation(facing, Vec3::ZERO),
-            },
+            Transform::from_motor(Motor3::from_rotation_translation(facing, Vec3::ZERO)),
         );
         (animator, spawn_target(&mut world, animator, Some(0)))
     };

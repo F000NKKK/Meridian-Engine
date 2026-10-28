@@ -1,6 +1,7 @@
 //! The lit WGSL shaders and the light limit they are compiled for.
 
 use super::environment_shader::ENVIRONMENT_WGSL;
+use super::normal_matrix_shader::AXIS_SCALE_WGSL;
 use super::shadow_lookup_shader::SHADOW_LOOKUP_WGSL;
 
 /// The uniform array's fixed capacity — see the module doc.
@@ -247,7 +248,7 @@ fn vs_main(in: VertexInput) -> VertexOutput {
     var out: VertexOutput;
     let model = mat4x4<f32>(in.model_0, in.model_1, in.model_2, in.model_3);
     let world = model * vec4<f32>(in.position, 1.0);
-    let world_normal = (model * vec4<f32>(in.normal, 0.0)).xyz;
+    let world_normal = (model * vec4<f32>(in.normal / axis_scale_squared(model), 0.0)).xyz;
     out.clip_position = u.view_proj * world;
     out.world_position = world.xyz;
     out.world_normal = world_normal;
@@ -269,7 +270,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
 /// color. Used for lit materials with no resolvable albedo texture.
 pub(crate) fn lit_shader_wgsl() -> String {
     format!(
-        "{LIT_UNIFORMS_AND_SHADING_WGSL}{ENVIRONMENT_WGSL}{SHADOW_LOOKUP_WGSL}{LIT_COLORED_BODY_WGSL}"
+        "{LIT_UNIFORMS_AND_SHADING_WGSL}{AXIS_SCALE_WGSL}{ENVIRONMENT_WGSL}{SHADOW_LOOKUP_WGSL}{LIT_COLORED_BODY_WGSL}"
     )
 }
 
@@ -355,7 +356,7 @@ fn vs_main(in: VertexInput) -> VertexOutput {
     var out: VertexOutput;
     let model = mat4x4<f32>(in.model_0, in.model_1, in.model_2, in.model_3);
     let world = model * vec4<f32>(in.position, 1.0);
-    let world_normal = (model * vec4<f32>(in.normal, 0.0)).xyz;
+    let world_normal = (model * vec4<f32>(in.normal / axis_scale_squared(model), 0.0)).xyz;
     out.clip_position = u.view_proj * world;
     out.world_position = world.xyz;
     out.world_normal = world_normal;
@@ -388,6 +389,6 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
 /// [`TEXTURED_SHADER_WGSL`](crate::submission::TEXTURED_SHADER_WGSL)'s lit counterpart.
 pub(crate) fn lit_textured_shader_wgsl() -> String {
     format!(
-        "{LIT_UNIFORMS_AND_SHADING_WGSL}{ENVIRONMENT_WGSL}{SHADOW_LOOKUP_WGSL}{LIT_TEXTURED_BODY_WGSL}"
+        "{LIT_UNIFORMS_AND_SHADING_WGSL}{AXIS_SCALE_WGSL}{ENVIRONMENT_WGSL}{SHADOW_LOOKUP_WGSL}{LIT_TEXTURED_BODY_WGSL}"
     )
 }

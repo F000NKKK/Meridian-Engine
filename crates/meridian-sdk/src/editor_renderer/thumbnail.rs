@@ -1,6 +1,6 @@
 //! Previews of single assets: a material on a sphere, a mesh, a model, a scene.
 
-use meridian_gac::Motor3;
+use meridian_gac::{Motor3, Vec3};
 use meridian_rendering_domain::{
     Material, MaterialHandle, MeshHandle, Renderable3d, Scene3d, icosphere_mesh_source,
 };
@@ -108,6 +108,7 @@ fn still(mesh: MeshHandle, material: MaterialHandle) -> Renderable3d {
         mesh,
         material,
         frame: Motor3::identity(),
+        scale: Vec3::ONE,
         billboard: false,
         casts_shadow: true,
         palette: None,

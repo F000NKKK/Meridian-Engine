@@ -1,13 +1,17 @@
 //! Resolves every [`Transform`] into a [`GlobalTransform`] along [`Parent`] links.
 
-use meridian_gac::Motor3;
+use meridian_gac::{Motor3, Vec3};
 
 use super::{GlobalTransform, Parent};
 use crate::{Entity, Transform, World};
 
 /// Writes a [`GlobalTransform`] for every entity with a [`Transform`]: the
 /// local motor composed with its parent's global motor
-/// (`local.compose(parent)`, the order of `gac-wgpu`'s batch kernels).
+/// (`local.compose(parent)`, the order of `gac-wgpu`'s batch kernels), and
+/// the local scale multiplied by the parent's global scale. The child's
+/// translation stretches with the parent's scale, so a child half a metre
+/// to the right of a parent scaled by two sits a metre away (`T * R * S`
+/// down the chain). An unscaled chain takes the exact path it always had.
 ///
 /// An entity is a root, so its global motor is its local one, when it has no
 /// [`Parent`], when the parent is despawned or has no [`Transform`], or when
@@ -37,10 +41,29 @@ struct Table {
     slots: Vec<Option<Slot>>,
 }
 
+/// A transform: the motor and the scale that together place an entity.
+#[derive(Clone, Copy)]
+struct Placement {
+    motor: Motor3,
+    scale: Vec3,
+}
+
+impl Placement {
+    /// `self` seen from the frame of `parent`, whose own placement is `self`'s
+    /// ancestor chain resolved: the scale multiplies, and the translation
+    /// stretches with the parent's scale before the parent's motor places it.
+    fn under(self, parent: Placement) -> Placement {
+        Placement {
+            motor: self.motor.stretched(parent.scale).compose(parent.motor),
+            scale: self.scale.component_mul(parent.scale),
+        }
+    }
+}
+
 struct Slot {
     entity: Entity,
-    local: Motor3,
-    global: Option<Motor3>,
+    local: Placement,
+    global: Option<Placement>,
 }
 
 impl Table {
@@ -53,7 +76,10 @@ impl Table {
             }
             slots[at] = Some(Slot {
                 entity,
-                local: transform.motor,
+                local: Placement {
+                    motor: transform.motor,
+                    scale: transform.scale,
+                },
                 global: None,
             });
         }
@@ -78,20 +104,25 @@ impl Table {
             .filter(|slot| slot.entity == entity)
     }
 
-    fn local(&self, entity: Entity) -> Motor3 {
-        self.slot(entity)
-            .map_or_else(Motor3::identity, |slot| slot.local)
+    fn local(&self, entity: Entity) -> Placement {
+        self.slot(entity).map_or(
+            Placement {
+                motor: Motor3::identity(),
+                scale: Vec3::ONE,
+            },
+            |slot| slot.local,
+        )
     }
 
-    fn resolved(&self, entity: Entity) -> Option<Motor3> {
+    fn resolved(&self, entity: Entity) -> Option<Placement> {
         self.slot(entity)?.global
     }
 
-    fn global(&self, entity: Entity) -> Motor3 {
+    fn global(&self, entity: Entity) -> Placement {
         self.resolved(entity).unwrap_or_else(|| self.local(entity))
     }
 
-    fn set(&mut self, entity: Entity, global: Motor3) {
+    fn set(&mut self, entity: Entity, global: Placement) {
         if let Some(slot) = self.slot_mut(entity) {
             slot.global = Some(global);
         }
@@ -121,7 +152,7 @@ fn resolve(world: &World, table: &mut Table, start: Entity, chain: &mut Vec<Enti
     };
     while let Some(entity) = chain.pop() {
         let local = table.local(entity);
-        let global = above.map_or(local, |parent| local.compose(parent));
+        let global = above.map_or(local, |parent| local.under(parent));
         table.set(entity, global);
         above = Some(global);
     }
@@ -133,16 +164,20 @@ fn parent_of(world: &World, table: &Table, entity: Entity) -> Option<Entity> {
     table.slot(parent).map(|slot| slot.entity)
 }
 
-/// Stores `motor` as the entity's `GlobalTransform`; whether that changed it.
-fn store(world: &mut World, entity: Entity, motor: Motor3) -> bool {
+/// Stores `placement` as the entity's `GlobalTransform`; whether that changed it.
+fn store(world: &mut World, entity: Entity, placement: Placement) -> bool {
+    let next = GlobalTransform {
+        motor: placement.motor,
+        scale: placement.scale,
+    };
     match world.get::<GlobalTransform>(entity) {
-        Some(current) if current.motor == motor => false,
+        Some(current) if *current == next => false,
         Some(_) => {
             if let Some(global) = world.get_mut::<GlobalTransform>(entity) {
-                global.motor = motor;
+                *global = next;
             }
             true
         }
-        None => world.insert(entity, GlobalTransform { motor }),
+        None => world.insert(entity, next),
     }
 }

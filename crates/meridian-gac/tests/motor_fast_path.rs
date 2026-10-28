@@ -169,3 +169,27 @@ mod fixed {
         assert!(drift <= 64, "round trip drifted {drift} units");
     }
 }
+
+#[test]
+fn stretched_scales_the_translation_and_keeps_the_rotation() {
+    let turn = Rotor::from_axis_angle(Vec3::Z, 0.7);
+    let motor = Motor3::from_rotation_translation(turn, Vec3::new(1.0, 2.0, 3.0));
+    let stretched = motor.stretched(Vec3::new(2.0, 3.0, 4.0));
+
+    let origin = stretched.transform_point(Vec3::ZERO);
+    for (got, want) in [(origin.x, 2.0), (origin.y, 6.0), (origin.z, 12.0)] {
+        assert!((got - want).abs() < 1e-5, "{got} vs {want}");
+    }
+    let before = motor.transform_vector(Vec3::X);
+    let after = stretched.transform_vector(Vec3::X);
+    assert!((before - after).length() < 1e-5);
+}
+
+#[test]
+fn stretching_by_one_changes_nothing() {
+    let motor = Motor3::from_rotation_translation(
+        Rotor::from_axis_angle(Vec3::Y, 1.1),
+        Vec3::new(4.0, 5.0, 6.0),
+    );
+    assert_eq!(motor.stretched(Vec3::ONE), motor);
+}

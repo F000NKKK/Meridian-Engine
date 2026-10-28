@@ -53,6 +53,7 @@ pub(crate) fn sun_renderable(base: &mut GraphicsSession) -> Renderable3d {
         mesh,
         material,
         frame: Motor3::translation(position),
+        scale: Vec3::ONE,
         billboard: false,
         // Sitting along the light's own incoming direction, this would
         // otherwise occlude the light for the whole scene below it —

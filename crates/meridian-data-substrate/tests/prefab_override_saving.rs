@@ -65,9 +65,7 @@ fn a_component_whose_form_changes_is_written_whole() {
     // A pure translation is written as `translation` or as `dual`, by what
     // it holds exactly: the keys differ, so no field patch can express it.
     let (mut world, map) = load(SCENE.as_bytes());
-    let moved = Transform {
-        motor: Motor3::translation(Vec3::new(0.5, 3.0, 0.0)),
-    };
+    let moved = Transform::from_motor(Motor3::translation(Vec3::new(0.5, 3.0, 0.0)));
     world.insert(at(&map, "h/gun"), moved);
     let saved = save(&world, &map);
     let whole = value_at(&saved, "entities[0].overrides.h/gun.components.transform");

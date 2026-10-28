@@ -182,7 +182,7 @@ fn an_instance_record_fills_its_layout_and_carries_matrix_and_surface() {
     };
     let frame = Motor3::translation(Vec3::new(1.0, 2.0, 3.0));
     let mut bytes = Vec::new();
-    push_instance(&mut bytes, &frame, &material);
+    push_instance(&mut bytes, &frame, Vec3::ONE, &material);
 
     assert_eq!(
         u64::try_from(bytes.len()).unwrap(),
@@ -207,6 +207,24 @@ fn an_instance_record_fills_its_layout_and_carries_matrix_and_surface() {
 }
 
 #[test]
+fn an_instance_scale_stretches_the_axis_columns_and_not_the_translation() {
+    use super::instance_data::push_instance;
+
+    let frame = Motor3::translation(Vec3::new(1.0, 2.0, 3.0));
+    let mut bytes = Vec::new();
+    push_instance(
+        &mut bytes,
+        &frame,
+        Vec3::new(2.0, 3.0, 4.0),
+        &Material::default(),
+    );
+    let float =
+        |index: usize| f32::from_le_bytes(bytes[index * 4..index * 4 + 4].try_into().unwrap());
+    assert_eq!([float(0), float(5), float(10)], [2.0, 3.0, 4.0]);
+    assert_eq!([float(12), float(13), float(14)], [1.0, 2.0, 3.0]);
+}
+
+#[test]
 fn a_mapped_emissive_goes_to_its_own_slot_and_bloom_reads_none() {
     use super::instance_data::push_instance;
 
@@ -221,7 +239,7 @@ fn a_mapped_emissive_goes_to_its_own_slot_and_bloom_reads_none() {
         ..Material::default()
     };
     let mut bytes = Vec::new();
-    push_instance(&mut bytes, &Motor3::identity(), &material);
+    push_instance(&mut bytes, &Motor3::identity(), Vec3::ONE, &material);
     let float =
         |index: usize| f32::from_le_bytes(bytes[index * 4..index * 4 + 4].try_into().unwrap());
     assert_eq!(

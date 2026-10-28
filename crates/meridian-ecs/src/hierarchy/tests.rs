@@ -6,9 +6,7 @@ use super::*;
 use crate::{Changed, Entity, Transform, World};
 
 fn at(x: f32, y: f32, z: f32) -> Transform {
-    Transform {
-        motor: Motor3::translation(Vec3::new(x, y, z)),
-    }
+    Transform::from_motor(Motor3::translation(Vec3::new(x, y, z)))
 }
 
 fn spawn(world: &mut World, transform: Transform, parent: Option<Entity>) -> Entity {
@@ -48,12 +46,10 @@ fn a_root_keeps_its_local_motor() {
 #[test]
 fn a_chain_applies_the_local_motor_first_then_each_ancestor() {
     let mut world = World::new();
-    let turned = Transform {
-        motor: Motor3::from_rotation_translation(
-            Rotor::from_axis_angle(Vec3::Z, std::f32::consts::FRAC_PI_2),
-            Vec3::new(10.0, 0.0, 0.0),
-        ),
-    };
+    let turned = Transform::from_motor(Motor3::from_rotation_translation(
+        Rotor::from_axis_angle(Vec3::Z, std::f32::consts::FRAC_PI_2),
+        Vec3::new(10.0, 0.0, 0.0),
+    ));
     let root = spawn(&mut world, turned, None);
     let middle = spawn(&mut world, at(0.0, 2.0, 0.0), Some(root));
     let leaf = spawn(&mut world, at(1.0, 0.0, 0.0), Some(middle));
@@ -217,4 +213,65 @@ fn reparenting_changes_the_global_motor() {
         global_point(&world, child, Vec3::ZERO),
         Vec3::new(5.0, 1.0, 0.0),
     );
+}
+
+fn scaled(x: f32, scale: Vec3) -> Transform {
+    Transform {
+        scale,
+        ..at(x, 0.0, 0.0)
+    }
+}
+
+#[test]
+fn scales_multiply_down_the_chain_and_stretch_the_child_placement() {
+    let mut world = World::new();
+    let root = spawn(&mut world, scaled(0.0, Vec3::new(2.0, 2.0, 2.0)), None);
+    let child = spawn(
+        &mut world,
+        scaled(1.0, Vec3::new(3.0, 1.0, 1.0)),
+        Some(root),
+    );
+    propagate_transforms(&mut world);
+
+    let global = world.get::<GlobalTransform>(child).expect("propagated");
+    assert_near(global.scale, Vec3::new(6.0, 2.0, 2.0));
+    assert_near(
+        global_point(&world, child, Vec3::ZERO),
+        Vec3::new(2.0, 0.0, 0.0),
+    );
+}
+
+#[test]
+fn a_turned_scaled_parent_places_the_child_along_its_own_axes() {
+    let mut world = World::new();
+    let turned = Transform {
+        motor: Motor3::from_rotation_translation(
+            Rotor::from_axis_angle(Vec3::Z, std::f32::consts::FRAC_PI_2),
+            Vec3::new(10.0, 0.0, 0.0),
+        ),
+        scale: Vec3::new(2.0, 1.0, 1.0),
+    };
+    let root = spawn(&mut world, turned, None);
+    let child = spawn(&mut world, at(1.0, 0.0, 0.0), Some(root));
+    propagate_transforms(&mut world);
+
+    // One unit along the parent's x, stretched to two, then turned onto +y.
+    assert_near(
+        global_point(&world, child, Vec3::ZERO),
+        Vec3::new(10.0, 2.0, 0.0),
+    );
+}
+
+#[test]
+fn an_unscaled_chain_keeps_unit_scale_and_changing_scale_marks_it_changed() {
+    let mut world = World::new();
+    let root = spawn(&mut world, at(1.0, 0.0, 0.0), None);
+    propagate_transforms(&mut world);
+    let global = world.get::<GlobalTransform>(root).expect("propagated");
+    assert_eq!(global.scale, Vec3::ONE);
+
+    world.insert(root, scaled(1.0, Vec3::new(1.0, 2.0, 1.0)));
+    assert_eq!(propagate_transforms(&mut world), 1);
+    let rescaled = world.get::<GlobalTransform>(root).expect("propagated");
+    assert_eq!(rescaled.scale, Vec3::new(1.0, 2.0, 1.0));
 }

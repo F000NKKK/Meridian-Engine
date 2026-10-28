@@ -66,6 +66,7 @@ impl GpuState {
                 mesh: piece.mesh,
                 material: base.render.materials.register(piece.material),
                 frame: Motor3::identity(),
+                scale: Vec3::ONE,
                 billboard: false,
                 casts_shadow: true,
                 palette: None,

@@ -39,9 +39,7 @@ fn model(rig: Rig, skeleton: Option<usize>) -> LoadedModel {
 #[test]
 fn a_static_model_is_a_root_with_drawn_children_and_no_animator() {
     let mut world = World::new();
-    let at = Transform {
-        motor: Motor3::translation(Vec3::new(3.0, 0.0, 0.0)),
-    };
+    let at = Transform::from_motor(Motor3::translation(Vec3::new(3.0, 0.0, 0.0)));
     let instance = spawn(
         &mut world,
         &model(Rig::default(), None),
