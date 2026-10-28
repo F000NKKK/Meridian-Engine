@@ -31,7 +31,10 @@ async fn one_kernel_stays_exact_across_growing_and_shrinking_bodies() {
     for (round, mut gpu_body) in bodies.into_iter().enumerate() {
         let mut cpu_body = gpu_body.clone();
         for step in 0..5 {
-            kernel.step(&context, &mut gpu_body, &integrator, dt).await;
+            kernel
+                .step(&context, &mut gpu_body, &integrator, dt)
+                .await
+                .expect("GPU context");
             integrator.step(&mut cpu_body, dt);
             assert_eq!(
                 gpu_body.positions, cpu_body.positions,

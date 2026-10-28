@@ -1469,6 +1469,7 @@ dependencies = [
  "meridian-numeric",
  "meridian-physics-app",
  "meridian-physics-domain",
+ "thiserror 2.0.21",
  "tokio",
 ]
 

@@ -18,7 +18,7 @@
 //! over `float`'s.
 
 use meridian_compute_app::ComputeContext;
-use meridian_compute_wgpu::{GpuComputeDevice, ScratchPool};
+use meridian_compute_wgpu::ScratchPool;
 use meridian_gac::{FixedFlavor, FixedVec3};
 use meridian_gpu_wgpu::ComputePipeline;
 use meridian_numeric::Fixed;
@@ -31,10 +31,7 @@ use super::scratch::SoftBodyScratch;
 use super::step_inputs::{
     StepInputs, Word, edge_bytes, pack_vec3s, params_bytes, unpack_vec3s, words_to_bytes,
 };
-
-const GPU_MISSING_NEW: &str = "FixedSoftBodyGpuKernel::new requires a ComputeContext with a GPU backend (see ComputeContext::with_gpu)";
-const GPU_MISSING_STEP: &str =
-    "FixedSoftBodyGpuKernel::step requires a ComputeContext with a GPU backend";
+use crate::gpu_backend_missing::{GpuBackendMissing, require_gpu};
 
 fn word(scalar: Fixed) -> Word {
     scalar.to_bits().to_le_bytes()
@@ -60,15 +57,19 @@ pub struct FixedSoftBodyGpuKernel {
 
 impl FixedSoftBodyGpuKernel {
     /// `context` must already have a GPU backend
-    /// ([`ComputeContext::with_gpu`]) — panics otherwise.
-    pub fn new(context: &ComputeContext) -> Self {
-        let gpu = context.gpu::<GpuComputeDevice>().expect(GPU_MISSING_NEW);
+    /// ([`ComputeContext::with_gpu`]).
+    ///
+    /// # Errors
+    ///
+    /// [`GpuBackendMissing`] if `context` has no GPU backend.
+    pub fn new(context: &ComputeContext) -> Result<Self, GpuBackendMissing> {
+        let gpu = require_gpu(context, "FixedSoftBodyGpuKernel::new")?;
         let shader = gpu.create_shader("soft_body_step_fixed", &source());
         let pipeline = gpu.create_compute_pipeline(&shader, "soft_body_step");
-        Self {
+        Ok(Self {
             pipeline,
             scratch: ScratchPool::new(),
-        }
+        })
     }
 
     /// Advances every particle of `body` by one timestep `dt` on the GPU,
@@ -76,13 +77,17 @@ impl FixedSoftBodyGpuKernel {
     /// writes the result back into `body` — bit-exact against
     /// `FixedSoftBodyIntegrator::step` for the same inputs (see the
     /// module doc).
+    ///
+    /// # Errors
+    ///
+    /// [`GpuBackendMissing`] if `context` has no GPU backend.
     pub async fn step(
         &self,
         context: &ComputeContext,
         body: &mut FixedSoftBody,
         integrator: &FixedSoftBodyIntegrator,
         dt: Fixed,
-    ) {
+    ) -> Result<(), GpuBackendMissing> {
         let inputs = step_inputs(body, integrator, dt);
         let mut scratch = self.scratch.take();
         let (new_positions, new_velocities) = run(
@@ -90,13 +95,14 @@ impl FixedSoftBodyGpuKernel {
             context,
             &inputs,
             &mut scratch,
-            GPU_MISSING_STEP,
+            "FixedSoftBodyGpuKernel::step",
         )
-        .await;
+        .await?;
         self.scratch.put(scratch);
         let count = inputs.particle_count;
         body.positions = unpack_vec3s(&new_positions, count, vec3_from_words);
         body.velocities = unpack_vec3s(&new_velocities, count, vec3_from_words);
+        Ok(())
     }
 }
 

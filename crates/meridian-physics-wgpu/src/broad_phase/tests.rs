@@ -31,7 +31,7 @@ async fn gpu_pairs_match_direct_find_candidate_pairs() {
             return;
         }
     };
-    let kernel = BroadPhaseGpuKernel::new(&context);
+    let kernel = BroadPhaseGpuKernel::new(&context).expect("GPU context");
 
     let bodies = vec![
         sphere_at(0.0),
@@ -43,7 +43,7 @@ async fn gpu_pairs_match_direct_find_candidate_pairs() {
     let mut broad_phase = meridian_physics_domain::collision::BroadPhase::<FloatFlavor>::new();
     let expected = broad_phase.find_candidate_pairs(&bodies).to_vec();
 
-    let got = kernel.pairs(&context, &bodies).await;
+    let got = kernel.pairs(&context, &bodies).await.expect("GPU context");
     assert_eq!(got, expected);
 }
 
@@ -59,7 +59,7 @@ async fn gpu_pairs_match_direct_find_candidate_pairs_large_batch() {
             return;
         }
     };
-    let kernel = BroadPhaseGpuKernel::new(&context);
+    let kernel = BroadPhaseGpuKernel::new(&context).expect("GPU context");
 
     // 60 spheres, radius 0.5, spaced 0.4 apart -> every consecutive
     // pair overlaps, none else do -> 1770 candidate pairs.
@@ -68,6 +68,6 @@ async fn gpu_pairs_match_direct_find_candidate_pairs_large_batch() {
     let mut broad_phase = meridian_physics_domain::collision::BroadPhase::<FloatFlavor>::new();
     let expected = broad_phase.find_candidate_pairs(&bodies).to_vec();
 
-    let got = kernel.pairs(&context, &bodies).await;
+    let got = kernel.pairs(&context, &bodies).await.expect("GPU context");
     assert_eq!(got, expected);
 }

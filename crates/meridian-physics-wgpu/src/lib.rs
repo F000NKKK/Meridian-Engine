@@ -68,9 +68,11 @@
 mod batched_stepper;
 pub mod broad_phase;
 pub mod constraint_solver;
+mod gpu_backend_missing;
 pub mod narrow_phase;
 mod readback;
 pub mod rigid_body;
 pub mod soft_body;
 
 pub use batched_stepper::BatchedStepper;
+pub use gpu_backend_missing::GpuBackendMissing;
