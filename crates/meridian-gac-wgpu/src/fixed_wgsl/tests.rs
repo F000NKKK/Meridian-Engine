@@ -222,7 +222,7 @@ fn interesting_angles() -> Vec<Fixed> {
     let mut degrees = -720i32;
     let mut angles = Vec::new();
     while degrees <= 720 {
-        let radians = degrees as f64 * core::f64::consts::PI / 180.0;
+        let radians = f64::from(degrees) * core::f64::consts::PI / 180.0;
         angles.push(Fixed::from_num(radians));
         degrees += 15;
     }

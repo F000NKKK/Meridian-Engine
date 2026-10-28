@@ -9,6 +9,7 @@ impl Device {
     /// `DepthTexture` is a thin wrapper calling this with `Depth32Float` +
     /// `RENDER_ATTACHMENT`; a color texture at `Rgba8Unorm` +
     /// `TEXTURE_BINDING | COPY_DST | COPY_SRC` is the other common case.
+    #[must_use]
     pub fn create_texture(
         &self,
         width: u32,
@@ -32,7 +33,7 @@ impl Device {
         usage: wgpu::TextureUsages,
         mip_levels: u32,
     ) -> Texture {
-        let raw = self.device.create_texture(&wgpu::TextureDescriptor {
+        let raw = self.raw.create_texture(&wgpu::TextureDescriptor {
             label: None,
             size: wgpu::Extent3d {
                 width: width.max(1),
@@ -129,8 +130,9 @@ impl Device {
     /// pattern. `Repeat` is exactly equivalent to `ClampToEdge` for the
     /// non-tiling case (UVs that never leave `[0,1]`), so this is
     /// strictly the more general default, not a trade-off.
+    #[must_use]
     pub fn create_sampler(&self) -> Sampler {
-        let raw = self.device.create_sampler(&wgpu::SamplerDescriptor {
+        let raw = self.raw.create_sampler(&wgpu::SamplerDescriptor {
             label: None,
             address_mode_u: wgpu::AddressMode::Repeat,
             address_mode_v: wgpu::AddressMode::Repeat,
@@ -154,8 +156,9 @@ impl Device {
     /// edge showing a ghost of its glow on the right). `ClampToEdge`
     /// instead repeats the nearest edge pixel, which fades toward
     /// whatever's actually at that edge.
+    #[must_use]
     pub fn create_clamp_sampler(&self) -> Sampler {
-        let raw = self.device.create_sampler(&wgpu::SamplerDescriptor {
+        let raw = self.raw.create_sampler(&wgpu::SamplerDescriptor {
             label: None,
             address_mode_u: wgpu::AddressMode::ClampToEdge,
             address_mode_v: wgpu::AddressMode::ClampToEdge,
@@ -173,7 +176,7 @@ impl Device {
     /// clamping at the poles (`v`).
     #[must_use]
     pub fn create_environment_sampler(&self) -> Sampler {
-        let raw = self.device.create_sampler(&wgpu::SamplerDescriptor {
+        let raw = self.raw.create_sampler(&wgpu::SamplerDescriptor {
             label: None,
             address_mode_u: wgpu::AddressMode::Repeat,
             address_mode_v: wgpu::AddressMode::ClampToEdge,
@@ -196,8 +199,9 @@ impl Device {
     /// shadow-mapping comparison (see `rendering-domain::submission`'s
     /// shadow-lookup WGSL for the bias that keeps this from
     /// self-shadowing every lit surface, "shadow acne").
+    #[must_use]
     pub fn create_comparison_sampler(&self) -> Sampler {
-        let raw = self.device.create_sampler(&wgpu::SamplerDescriptor {
+        let raw = self.raw.create_sampler(&wgpu::SamplerDescriptor {
             label: None,
             address_mode_u: wgpu::AddressMode::ClampToEdge,
             address_mode_v: wgpu::AddressMode::ClampToEdge,

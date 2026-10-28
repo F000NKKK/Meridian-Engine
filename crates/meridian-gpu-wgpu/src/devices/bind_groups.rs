@@ -25,6 +25,7 @@ impl Device {
     /// compute-dispatch path here and by `rendering-wgpu`'s uniform bind
     /// group for its render pipelines — same single-binding shape either
     /// way.
+    #[must_use]
     pub fn create_single_buffer_bind_group(
         &self,
         pipeline_layout: &wgpu::BindGroupLayout,
@@ -38,20 +39,21 @@ impl Device {
     /// than one bound resource (e.g. a compute kernel reading from one
     /// storage buffer and writing to another) —
     /// [`Device::create_single_buffer_bind_group`](crate::Device::create_single_buffer_bind_group)'s general form.
+    #[must_use]
     pub fn create_bind_group(
         &self,
         pipeline_layout: &wgpu::BindGroupLayout,
         buffers: &[&Buffer],
     ) -> BindGroup {
-        let entries: Vec<wgpu::BindGroupEntry> = buffers
+        let entries: Vec<wgpu::BindGroupEntry<'_>> = buffers
             .iter()
-            .enumerate()
-            .map(|(i, buffer)| wgpu::BindGroupEntry {
-                binding: i as u32,
+            .zip(0u32..)
+            .map(|(buffer, binding)| wgpu::BindGroupEntry {
+                binding,
                 resource: buffer.raw.as_entire_binding(),
             })
             .collect();
-        let raw = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+        let raw = self.raw.create_bind_group(&wgpu::BindGroupDescriptor {
             label: None,
             layout: pipeline_layout,
             entries: &entries,
@@ -65,6 +67,7 @@ impl Device {
     /// samples one texture, alongside one uniform buffer, needs. See
     /// [`create_bind_group`](Self::create_bind_group) for the
     /// buffers-only general form this specializes.
+    #[must_use]
     pub fn create_texture_bind_group(
         &self,
         pipeline_layout: &wgpu::BindGroupLayout,
@@ -72,7 +75,7 @@ impl Device {
         texture: &Texture,
         sampler: &Sampler,
     ) -> BindGroup {
-        let raw = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+        let raw = self.raw.create_bind_group(&wgpu::BindGroupDescriptor {
             label: None,
             layout: pipeline_layout,
             entries: &[
@@ -101,6 +104,7 @@ impl Device {
     /// receiving lit shader needs (uniform, albedo texture, albedo sampler,
     /// shadow map, shadow sampler, the four surface maps, then the
     /// environment).
+    #[must_use]
     pub fn create_textured_shadow_bind_group(
         &self,
         pipeline_layout: &wgpu::BindGroupLayout,
@@ -113,7 +117,7 @@ impl Device {
             shadow,
             environment,
         } = textures;
-        let raw = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+        let raw = self.raw.create_bind_group(&wgpu::BindGroupDescriptor {
             label: None,
             layout: pipeline_layout,
             entries: &[
@@ -142,6 +146,7 @@ impl Device {
     /// `@binding(0)`, shadow map at `@binding(1)`, shadow sampler at
     /// `@binding(2)`, environment at `@binding(3)` and its sampler at
     /// `@binding(4)`.
+    #[must_use]
     pub fn create_shadow_bind_group(
         &self,
         pipeline_layout: &wgpu::BindGroupLayout,
@@ -149,7 +154,7 @@ impl Device {
         shadow: SampledTexture<'_>,
         environment: SampledTexture<'_>,
     ) -> BindGroup {
-        let raw = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+        let raw = self.raw.create_bind_group(&wgpu::BindGroupDescriptor {
             label: None,
             layout: pipeline_layout,
             entries: &[

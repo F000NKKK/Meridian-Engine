@@ -79,11 +79,7 @@ async fn texture_reports_requested_dimensions() {
 #[cfg(feature = "hw-tests")]
 #[tokio::test]
 async fn compute_dispatch_doubles_every_element() {
-    let Some(device) = device_or_skip().await else {
-        return;
-    };
-
-    const SHADER: &str = r#"
+    const SHADER: &str = r"
         @group(0) @binding(0)
         var<storage, read_write> data: array<u32>;
 
@@ -91,7 +87,11 @@ async fn compute_dispatch_doubles_every_element() {
         fn double_elements(@builtin(global_invocation_id) id: vec3<u32>) {
             data[id.x] = data[id.x] * 2u;
         }
-    "#;
+    ";
+
+    let Some(device) = device_or_skip().await else {
+        return;
+    };
 
     let input: [u32; 4] = [1, 2, 3, 4];
     let bytes: Vec<u8> = input.iter().flat_map(|v| v.to_le_bytes()).collect();

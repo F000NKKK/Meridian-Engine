@@ -14,12 +14,17 @@ use meridian_gac::Motor3;
 /// crate.
 #[derive(Debug)]
 pub struct MotorTransformKernel {
+    /// The motor every local motor is composed with.
     pub parent: Motor3,
+    /// The child motors, one result per entry.
     pub locals: Vec<Motor3>,
     results: Mutex<Vec<Motor3>>,
 }
 
 impl MotorTransformKernel {
+    /// Creates a kernel for `parent` and `locals`; every result starts as
+    /// the identity until [`dispatch`](ComputeKernel::dispatch) has run.
+    #[must_use]
     pub fn new(parent: Motor3, locals: Vec<Motor3>) -> Self {
         let results = Mutex::new(vec![Motor3::identity(); locals.len()]);
         Self {

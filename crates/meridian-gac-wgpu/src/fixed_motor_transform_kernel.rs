@@ -10,12 +10,17 @@ use meridian_gac::FixedMotor3;
 /// (and [`FixedMotorComposeKernel`](crate::FixedMotorComposeKernel)) are CPU-dispatch only.
 #[derive(Debug)]
 pub struct FixedMotorTransformKernel {
+    /// The motor every local motor is composed with.
     pub parent: FixedMotor3,
+    /// The child motors, one result per entry.
     pub locals: Vec<FixedMotor3>,
     results: Mutex<Vec<FixedMotor3>>,
 }
 
 impl FixedMotorTransformKernel {
+    /// Creates a kernel for `parent` and `locals`; every result starts as
+    /// the identity until [`dispatch`](ComputeKernel::dispatch) has run.
+    #[must_use]
     pub fn new(parent: FixedMotor3, locals: Vec<FixedMotor3>) -> Self {
         let results = Mutex::new(vec![FixedMotor3::identity(); locals.len()]);
         Self {
@@ -25,6 +30,9 @@ impl FixedMotorTransformKernel {
         }
     }
 
+    /// The `locals[i].compose(parent)` results from the most recent
+    /// dispatch. All-identity if `dispatch` hasn't run yet.
+    #[must_use]
     pub fn results(&self) -> Vec<FixedMotor3> {
         self.results
             .lock()

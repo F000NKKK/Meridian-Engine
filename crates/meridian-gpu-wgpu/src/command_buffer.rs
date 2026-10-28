@@ -67,6 +67,7 @@ impl CommandBuffer<'_> {
     /// The [`Device`](crate::Device) this buffer was opened from — needed by
     /// `rendering-wgpu`'s render-pass recording alongside
     /// [`CommandBuffer::encoder_mut`].
+    #[must_use]
     pub fn device(&self) -> &Device {
         self.device
     }

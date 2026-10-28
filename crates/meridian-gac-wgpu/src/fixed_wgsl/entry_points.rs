@@ -12,7 +12,7 @@ use super::{CORDIC_LIB_WGSL, FIXED_ARITHMETIC_LIB_WGSL};
 /// that convenience method — see [`FixedArithmeticKernels::dispatch`](super::FixedArithmeticKernels::dispatch).
 pub(crate) fn dispatch_entry_points_wgsl() -> String {
     format!(
-        r#"
+        r"
 {FIXED_ARITHMETIC_LIB_WGSL}
 {CORDIC_LIB_WGSL}
 
@@ -68,6 +68,6 @@ fn dispatch_sin_cos(@builtin(global_invocation_id) id: vec3<u32>) {{
     results[2u * id.x] = sc.x;
     results[2u * id.x + 1u] = sc.y;
 }}
-"#
+"
     )
 }

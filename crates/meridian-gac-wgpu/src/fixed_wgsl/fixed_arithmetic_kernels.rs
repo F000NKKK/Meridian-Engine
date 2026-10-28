@@ -24,10 +24,14 @@ pub struct FixedArithmeticKernels {
 impl FixedArithmeticKernels {
     /// Compiles the WGSL module and builds every pipeline (the four
     /// binary ops plus `sqrt`). `context` must already have a GPU
-    /// backend ([`ComputeContext::with_gpu`]) — panics otherwise, the
-    /// same "caller opted into GPU dispatch explicitly, so a missing
+    /// backend ([`ComputeContext::with_gpu`]).
+    ///
+    /// # Panics
+    ///
+    /// Panics if `context` has no GPU backend — the same "caller opted into GPU dispatch explicitly, so a missing
     /// backend is a logic error to surface immediately" policy
     /// `meridian-rendering-wgpu`'s own headless-device tests use.
+    #[must_use]
     pub fn new(context: &ComputeContext) -> Self {
         let gpu = context
             .gpu::<GpuComputeDevice>()
@@ -67,6 +71,10 @@ impl FixedArithmeticKernels {
     /// the result buffer back waits on in-flight GPU work (see
     /// `meridian_gpu_wgpu`'s module doc for this workspace's "async on
     /// genuine I/O" policy).
+    ///
+    /// # Panics
+    ///
+    /// Panics if `context` has no GPU backend, see [`Self::new`].
     pub async fn dispatch(
         &self,
         context: &ComputeContext,
@@ -102,7 +110,7 @@ impl FixedArithmeticKernels {
         commands.dispatch_compute_with_bind_group(
             pipeline,
             &bind_group,
-            (pairs.len() as u32).div_ceil(64).max(1),
+            workgroup_count(pairs.len()),
         );
         commands.submit();
 
@@ -121,6 +129,10 @@ impl FixedArithmeticKernels {
     /// CPU side; WGSL has no panic, so passing a negative value here
     /// produces a nonsensical (not merely wrong-sign) result rather than
     /// erroring, and callers are responsible for upholding it themselves.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `context` has no GPU backend, see [`Self::new`].
     pub async fn dispatch_sqrt(&self, context: &ComputeContext, values: &[Fixed]) -> Vec<Fixed> {
         let gpu = context.gpu::<GpuComputeDevice>().expect(
             "FixedArithmeticKernels::dispatch_sqrt requires a ComputeContext with a GPU backend",
@@ -143,7 +155,7 @@ impl FixedArithmeticKernels {
         commands.dispatch_compute_with_bind_group(
             &self.sqrt,
             &bind_group,
-            (values.len() as u32).div_ceil(64).max(1),
+            workgroup_count(values.len()),
         );
         commands.submit();
 
@@ -161,6 +173,10 @@ impl FixedArithmeticKernels {
     /// the `results` buffer holds two `i32`s per invocation
     /// (`fixed_sin_cos`'s `vec2<i32>`), so this builds its own
     /// double-width buffer rather than reusing [`dispatch`](Self::dispatch).
+    ///
+    /// # Panics
+    ///
+    /// Panics if `context` has no GPU backend, see [`Self::new`].
     pub async fn dispatch_sin_cos(
         &self,
         context: &ComputeContext,
@@ -187,7 +203,7 @@ impl FixedArithmeticKernels {
         commands.dispatch_compute_with_bind_group(
             &self.sin_cos,
             &bind_group,
-            (thetas.len() as u32).div_ceil(64).max(1),
+            workgroup_count(thetas.len()),
         );
         commands.submit();
 
@@ -210,4 +226,15 @@ impl FixedArithmeticKernels {
 /// is in range for every index the caller computes from that size.
 fn le_word(bytes: &[u8], at: usize) -> [u8; 4] {
     [bytes[at], bytes[at + 1], bytes[at + 2], bytes[at + 3]]
+}
+
+/// Threads per workgroup every `dispatch_*` entry point is compiled for.
+const WORKGROUP_SIZE: usize = 64;
+
+/// Workgroups needed to cover `elements` invocations, at least one so an
+/// empty batch still records a valid dispatch. Saturates at `u32::MAX`,
+/// which wgpu rejects as over its dispatch limit instead of silently
+/// processing a truncated count.
+fn workgroup_count(elements: usize) -> u32 {
+    u32::try_from(elements.div_ceil(WORKGROUP_SIZE).max(1)).unwrap_or(u32::MAX)
 }

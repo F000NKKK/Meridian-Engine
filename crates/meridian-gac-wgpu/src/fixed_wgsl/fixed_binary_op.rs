@@ -4,9 +4,13 @@
 /// runs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FixedBinaryOp {
+    /// `a + b`.
     Add,
+    /// `a - b`.
     Sub,
+    /// `a * b`.
     Mul,
+    /// `a / b`.
     Div,
     /// `atan2(a, b)` (`a` is the y-coordinate) — fits the same `(a, b) ->
     /// one result` dispatch shape as the four arithmetic ops above, so it

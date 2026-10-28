@@ -5,9 +5,13 @@
 /// [`Device::create_buffer`](crate::Device::create_buffer)'s doc comment.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BufferUsage {
+    /// Bound as a vertex buffer.
     Vertex,
+    /// Bound as an index buffer.
     Index,
+    /// Bound as a uniform buffer.
     Uniform,
+    /// Bound as a storage buffer, readable and writable by shaders.
     Storage,
     /// Written by a compute shader as storage, then read as a vertex buffer
     /// (skinned meshes, ADR 047).

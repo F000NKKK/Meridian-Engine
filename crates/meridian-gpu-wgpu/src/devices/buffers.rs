@@ -10,8 +10,9 @@ impl Device {
     /// generous default rather than fine-grained per-buffer usage-flag
     /// control, which is future work once a concrete need for tighter
     /// flags shows up.
+    #[must_use]
     pub fn create_buffer(&self, byte_len: usize, usage: BufferUsage) -> Buffer {
-        let raw = self.device.create_buffer(&wgpu::BufferDescriptor {
+        let raw = self.raw.create_buffer(&wgpu::BufferDescriptor {
             label: None,
             size: byte_len as u64,
             usage: usage.to_wgpu() | wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::COPY_DST,
@@ -34,8 +35,14 @@ impl Device {
     /// which itself blocks the calling thread until the GPU catches up —
     /// so that poll runs inside [`tokio::task::spawn_blocking`] rather
     /// than on this `async fn`'s own task.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the device poll task panics or fails, or if the staging
+    /// buffer cannot be mapped — the device is lost or out of memory, which
+    /// this API does not model as a recoverable error.
     pub async fn read_buffer(&self, buffer: &Buffer) -> Vec<u8> {
-        let staging = self.device.create_buffer(&wgpu::BufferDescriptor {
+        let staging = self.raw.create_buffer(&wgpu::BufferDescriptor {
             label: Some("meridian-gpu-wgpu readback staging buffer"),
             size: buffer.byte_len as u64,
             usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
@@ -43,7 +50,7 @@ impl Device {
         });
 
         let mut encoder = self
-            .device
+            .raw
             .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
         encoder.copy_buffer_to_buffer(&buffer.raw, 0, &staging, 0, buffer.byte_len as u64);
         self.queue.submit(Some(encoder.finish()));
@@ -58,7 +65,7 @@ impl Device {
             }
         });
 
-        let device = self.device.clone();
+        let device = self.raw.clone();
         tokio::task::spawn_blocking(move || device.poll(wgpu::PollType::wait_indefinitely()))
             .await
             .expect("device poll task panicked")

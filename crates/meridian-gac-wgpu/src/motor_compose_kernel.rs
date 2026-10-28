@@ -11,16 +11,23 @@ use meridian_gac::Motor3;
 /// this when a batch doesn't share one common parent motor.
 #[derive(Debug)]
 pub struct MotorComposeKernel {
+    /// The `(child, parent)` pairs to compose, one result per pair.
     pub pairs: Vec<(Motor3, Motor3)>,
     results: Mutex<Vec<Motor3>>,
 }
 
 impl MotorComposeKernel {
+    /// Creates a kernel over `pairs`; every result starts as the identity
+    /// until [`dispatch`](ComputeKernel::dispatch) has run.
+    #[must_use]
     pub fn new(pairs: Vec<(Motor3, Motor3)>) -> Self {
         let results = Mutex::new(vec![Motor3::identity(); pairs.len()]);
         Self { pairs, results }
     }
 
+    /// The `pairs[i].0.compose(pairs[i].1)` results from the most recent
+    /// dispatch. All-identity if `dispatch` hasn't run yet.
+    #[must_use]
     pub fn results(&self) -> Vec<Motor3> {
         self.results
             .lock()
