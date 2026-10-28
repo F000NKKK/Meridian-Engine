@@ -1,9 +1,4 @@
 //! Extraction of backgrounds into sprites.
-#![expect(
-    clippy::float_cmp,
-    reason = "extraction copies layout floats verbatim, so exact equality is the contract"
-)]
-
 use meridian_memory::Handle;
 use meridian_rendering_domain::TextureHandle;
 use meridian_ui_domain::layout::value::{Length, Visibility};

@@ -1,9 +1,4 @@
 //! Scroll viewers clip their content.
-#![expect(
-    clippy::float_cmp,
-    reason = "extraction copies layout floats verbatim, so exact equality is the contract"
-)]
-
 use meridian_memory::Handle;
 use meridian_rendering_domain::{SpriteBatch, TextureHandle, batch_scene2d_clipped};
 use meridian_ui_domain::layout::value::Length;
@@ -91,5 +86,5 @@ fn a_tree_without_viewers_has_no_clips() {
     let surface = Size::new(100.0, 100.0);
     compute_layout(&mut tree, root, surface, &FixedAdvanceText::default()).expect("layout");
     let out = extract_clipped(&tree, root, surface, paint()).expect("extract");
-    assert!(out.clips.is_empty());
+    assert_eq!(out.clips, Vec::new());
 }

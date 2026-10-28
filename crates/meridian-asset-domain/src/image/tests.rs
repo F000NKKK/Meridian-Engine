@@ -4,7 +4,7 @@ use super::*;
 
 #[test]
 fn detect_identifies_bmp_and_png_and_rejects_unknown() {
-    let bmp = crate::image::bmp_decoder::tests_support::make_bmp(1, 1, (1, 2, 3));
+    let bmp = bmp_decoder::tests_support::make_bmp(1, 1, (1, 2, 3));
     assert_eq!(ImageFormat::detect(&bmp), Some(ImageFormat::Bmp));
 
     let png_signature = [0x89, b'P', b'N', b'G', 0x0d, 0x0a, 0x1a, 0x0a, 0, 0];

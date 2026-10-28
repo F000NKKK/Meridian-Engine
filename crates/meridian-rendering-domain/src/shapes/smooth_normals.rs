@@ -10,7 +10,7 @@
 /// shared OBJ-style topology without duplicating any vertex.
 pub fn smooth_normals(positions: &[[f32; 3]], indices: &[u32]) -> Vec<[f32; 3]> {
     let mut accum = vec![[0.0f32; 3]; positions.len()];
-    for tri in indices.chunks_exact(3) {
+    for tri in indices.as_chunks::<3>().0 {
         let (i0, i1, i2) = (tri[0] as usize, tri[1] as usize, tri[2] as usize);
         let (p0, p1, p2) = (positions[i0], positions[i1], positions[i2]);
         let face_normal = cross(sub(p1, p0), sub(p2, p0));

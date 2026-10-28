@@ -162,7 +162,7 @@ fn place(part: &mut ModelPart, world: &Matrix) {
         }
     }
     if determinant(world) < 0.0 {
-        for triangle in part.indices.chunks_exact_mut(3) {
+        for triangle in part.indices.as_chunks_mut::<3>().0 {
             triangle.swap(1, 2);
         }
     }

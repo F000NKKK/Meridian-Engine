@@ -34,11 +34,11 @@ fn rms(samples: impl Iterator<Item = f32>) -> f32 {
 }
 
 fn left(out: &[f32]) -> impl Iterator<Item = f32> + '_ {
-    out.chunks_exact(2).map(|f| f[0])
+    out.as_chunks::<2>().0.iter().map(|f| f[0])
 }
 
 fn right(out: &[f32]) -> impl Iterator<Item = f32> + '_ {
-    out.chunks_exact(2).map(|f| f[1])
+    out.as_chunks::<2>().0.iter().map(|f| f[1])
 }
 
 #[test]
@@ -163,7 +163,7 @@ fn consecutive_blocks_with_a_pose_jump_stay_smooth() {
     // And within the second block no adjacent-sample jump exceeds
     // what a 220 Hz sine with slowly ramping parameters can produce.
     for ear in 0..2 {
-        let channel: Vec<f32> = block_b.chunks_exact(2).map(|f| f[ear]).collect();
+        let channel: Vec<f32> = block_b.as_chunks::<2>().0.iter().map(|f| f[ear]).collect();
         for pair in channel.windows(2) {
             assert!(
                 (pair[1] - pair[0]).abs() < 0.08,
@@ -210,7 +210,9 @@ fn water_shrinks_the_interaural_delay() {
             256,
         );
         let peak = |ear: usize| {
-            out.chunks_exact(2)
+            out.as_chunks::<2>()
+                .0
+                .iter()
                 .map(|f| f[ear])
                 .enumerate()
                 .max_by(|a, b| a.1.abs().total_cmp(&b.1.abs()))

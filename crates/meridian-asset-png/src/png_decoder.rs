@@ -50,7 +50,9 @@ impl Decoder<ImageAsset> for PngDecoder {
         let pixels = match info.color_type {
             png::ColorType::Rgba => decoded.to_vec(),
             png::ColorType::GrayscaleAlpha => decoded
-                .chunks_exact(2)
+                .as_chunks::<2>()
+                .0
+                .iter()
                 .flat_map(|ga| [ga[0], ga[0], ga[0], ga[1]])
                 .collect(),
             other => {

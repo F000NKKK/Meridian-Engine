@@ -213,7 +213,7 @@ impl BinauralRenderer {
         // at 30° and its mirror at 150°, which is correct: ILD/ITD are
         // front/back-symmetric; the rear term below is what differs.
         let gain_l = ((1.0 - sin_az) / 2.0).sqrt();
-        let gain_r = ((1.0 + sin_az) / 2.0).sqrt();
+        let gain_r = f32::midpoint(1.0, sin_az).sqrt();
 
         // Behind: mildly quieter and duller on both ears.
         let rear = (-cos_az).max(0.0);

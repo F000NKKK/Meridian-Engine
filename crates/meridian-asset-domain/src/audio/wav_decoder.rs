@@ -79,7 +79,9 @@ impl Decoder<AudioClip> for WavDecoder {
         }
 
         let samples = data
-            .chunks_exact(2)
+            .as_chunks::<2>()
+            .0
+            .iter()
             .map(|s| i16::from_le_bytes([s[0], s[1]]))
             .collect();
 

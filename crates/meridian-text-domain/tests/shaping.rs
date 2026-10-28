@@ -35,7 +35,7 @@ fn control_characters_draw_nothing() {
 #[test]
 fn empty_text_has_no_width_but_keeps_line_metrics() {
     let run = shape(&face(), "", 100.0);
-    assert!(run.glyphs.is_empty());
+    assert_eq!(run.glyphs, Vec::new());
     assert!(run.width.abs() < 1e-6);
     assert!((run.ascent - 80.0).abs() < 1e-3);
     assert!((run.line_height - 109.0).abs() < 1e-3);

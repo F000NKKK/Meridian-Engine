@@ -69,7 +69,7 @@ fn an_invalid_value_is_refused_with_diagnostics_and_changes_nothing() {
     else {
         panic!("expected InvalidValue, got {sent:?}");
     };
-    assert!(!diagnostics.is_empty());
+    assert_ne!(diagnostics.as_slice(), []);
     assert!(
         diagnostics
             .iter()

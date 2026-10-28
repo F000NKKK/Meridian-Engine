@@ -151,7 +151,7 @@ fn build_pipeline(
 /// `[left, right, bottom, top]` as the shader's `vec4`.
 fn camera_bytes(camera: Camera2d) -> [u8; 16] {
     let mut bytes = [0u8; 16];
-    for (chunk, value) in bytes.chunks_exact_mut(4).zip(camera.extents) {
+    for (chunk, value) in bytes.as_chunks_mut::<4>().0.iter_mut().zip(camera.extents) {
         chunk.copy_from_slice(&value.to_le_bytes());
     }
     bytes

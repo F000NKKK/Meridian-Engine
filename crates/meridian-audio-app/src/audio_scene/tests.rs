@@ -26,7 +26,12 @@ fn a_voice_right_of_the_listener_plays_in_the_right_channel() {
     let mut out = [0.0f32; 8];
     scene.render_block(&mut out);
 
-    assert!(out.chunks_exact(2).all(|f| f[1] > 0.5 && f[0].abs() < 1e-3));
+    assert!(
+        out.as_chunks::<2>()
+            .0
+            .iter()
+            .all(|f| f[1] > 0.5 && f[0].abs() < 1e-3)
+    );
 }
 
 #[test]

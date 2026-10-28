@@ -1,9 +1,4 @@
 //! Text blocks become glyph sprites.
-#![expect(
-    clippy::float_cmp,
-    reason = "glyph origins are snapped to whole pixels, so positions are exact"
-)]
-
 use meridian_memory::Handle;
 use meridian_rendering_domain::{Scene2d, TextureHandle};
 use meridian_text_domain::synthetic::{DEFAULT, font};

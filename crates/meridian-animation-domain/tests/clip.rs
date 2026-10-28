@@ -152,7 +152,7 @@ fn a_clip_is_as_long_as_its_latest_key_and_leaves_other_properties_alone() {
     let skeleton = Skeleton::default();
     let mut pose = Pose::rest(&skeleton);
     clip.sample(1.0, &mut pose); // an empty pose: every channel is skipped, nothing panics
-    assert!(pose.transforms().is_empty());
+    assert_eq!(pose.transforms(), []);
 }
 
 #[test]

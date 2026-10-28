@@ -17,7 +17,7 @@ fn self_closing_element_with_attrs() {
     assert!(root.name.is_plain("Mesh"));
     assert_eq!(text(&root, "path"), Some("cube.obj"));
     assert_eq!(text(&root, "scale"), Some("2"));
-    assert!(root.children.is_empty());
+    assert_eq!(root.children, Vec::new());
 }
 
 #[test]

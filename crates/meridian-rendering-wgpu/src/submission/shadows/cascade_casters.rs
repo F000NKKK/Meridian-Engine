@@ -164,7 +164,7 @@ mod tests {
         let bounds = [Some(unit_box(Vec3::new(2.0, 0.0, 0.0)))];
         let casters = CascadeCasters::cull(&[batch(false, 0..1)], &records(1), &bounds, &frusta());
         assert!(casters.runs.iter().all(Vec::is_empty));
-        assert!(casters.records.is_empty());
+        assert_eq!(casters.records, Vec::new());
     }
 
     #[test]

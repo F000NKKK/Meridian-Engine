@@ -101,7 +101,7 @@ async fn a_refused_edit_travels_as_typed_diagnostics() {
             value: Value::Bool(true),
         };
         let (response, events) = client.call(set).await;
-        assert!(events.is_empty());
+        assert_eq!(events, Vec::new());
         assert!(matches!(
             response,
             Response::Failed {

@@ -233,7 +233,7 @@ fn isqrt_u64(n: u64) -> u64 {
     let mut y = x.div_ceil(2);
     while y < x {
         x = y;
-        y = (x + n / x) / 2;
+        y = u64::midpoint(x, n / x);
     }
     x
 }

@@ -226,7 +226,7 @@ fn equal_distances_keep_submission_order() {
 
 #[test]
 fn nothing_to_order_gives_an_empty_order() {
-    assert!(order_draws(&[]).is_empty());
+    assert_eq!(order_draws(&[]), Vec::new());
 }
 
 fn key(mesh: crate::MeshHandle, state: DrawState) -> BatchKey {
@@ -316,7 +316,7 @@ fn batches_follow_the_draw_state_order() {
 
 #[test]
 fn no_items_plan_no_batches() {
-    assert!(plan_batches(&[]).is_empty());
+    assert_eq!(plan_batches(&[]), Vec::new());
 }
 
 #[test]

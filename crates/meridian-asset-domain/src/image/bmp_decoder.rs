@@ -182,7 +182,7 @@ mod tests {
         let image = BmpDecoder.decode(&bytes).unwrap();
         assert_eq!((image.width, image.height), (3, 2));
         assert_eq!(image.pixels.len(), 3 * 2 * 4);
-        for px in image.pixels.chunks_exact(4) {
+        for px in image.pixels.as_chunks::<4>().0 {
             assert_eq!(px, &[10, 20, 30, 255]);
         }
     }

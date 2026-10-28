@@ -64,7 +64,7 @@ mod tests {
         let mut first = pool.take();
         first.push(1);
         let second = pool.take();
-        assert!(second.is_empty());
+        assert_eq!(second, Vec::new());
         pool.put(first);
         pool.put(second);
     }

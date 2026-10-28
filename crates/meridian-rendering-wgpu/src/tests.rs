@@ -23,7 +23,7 @@ async fn device_reports_a_nonempty_adapter_name() {
     let Some(device) = device_or_skip().await else {
         return;
     };
-    assert!(!device.adapter_name().is_empty());
+    assert_ne!(device.adapter_name(), "");
 }
 
 #[cfg(feature = "hw-tests")]

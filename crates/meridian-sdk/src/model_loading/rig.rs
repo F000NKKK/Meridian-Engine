@@ -147,7 +147,9 @@ fn keys<const N: usize>(
 ) -> Result<Keys<N>, String> {
     let values = source
         .values
-        .chunks_exact(N)
+        .as_chunks::<N>()
+        .0
+        .iter()
         .map(|chunk| std::array::from_fn(|i| chunk[i]))
         .collect();
     Keys::new(source.times.clone(), values, interpolation).map_err(|err| err.to_string())

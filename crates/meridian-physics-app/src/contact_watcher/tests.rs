@@ -57,7 +57,10 @@ fn bodies_far_apart_report_nothing() {
         .bodies
         .push(sphere(Vec3::new(50.0, 0.0, 0.0), Vec3::ZERO, 1.0));
 
-    assert!(run(&mut physics, &mut ContactWatcher::new(0.0), 5).is_empty());
+    assert_eq!(
+        run(&mut physics, &mut ContactWatcher::new(0.0), 5),
+        Vec::new()
+    );
 }
 
 #[test]
@@ -86,7 +89,7 @@ fn a_slow_touch_below_the_gate_is_silent_and_does_not_fire_later() {
     let mut physics = head_on_spheres();
     let mut watcher = ContactWatcher::new(100.0);
 
-    assert!(run(&mut physics, &mut watcher, 120).is_empty());
+    assert_eq!(run(&mut physics, &mut watcher, 120), Vec::new());
 }
 
 #[test]
