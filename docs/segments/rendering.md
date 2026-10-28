@@ -100,8 +100,8 @@ Not started; ordered by suggested priority. Items wait for an explicit task.
 14. Cube-map environment source: [ADR 038](../adr/038-cube-map-environment-source.md).
 15. Visible environment backdrop: [ADR 039](../adr/039-visible-environment-backdrop.md).
 16. Per-cascade caster culling and cascade blending: [ADR 040](../adr/040-per-cascade-casters-and-blending.md).
-17. **Larger, ADR-gated:** point-light
-   shadows, skinned glTF and
+17. Shadows from one point light (a six-face cube in the atlas): [ADR 041](../adr/041-point-light-shadows.md).
+18. **Larger, ADR-gated:** skinned glTF and
    animation (no vocabulary yet), concrete backend crates.
 
 ## Standards gaps

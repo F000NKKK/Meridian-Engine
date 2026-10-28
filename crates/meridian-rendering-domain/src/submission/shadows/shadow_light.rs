@@ -2,7 +2,7 @@
 
 use meridian_gac::Vec3;
 
-use super::ShadowCascades;
+use super::{PointShadow, ShadowCascades};
 use crate::scene::{Light, Scene3d};
 
 /// The light that casts this view's shadows, as
@@ -19,6 +19,8 @@ pub struct ShadowLight {
     pub direction: Vec3,
     /// Index of the shadow-casting light in the scene's lights.
     pub caster: u32,
+    /// The scene's first point light, when it has one (ADR 041).
+    pub point: Option<PointShadow>,
 }
 
 impl ShadowLight {
@@ -42,6 +44,7 @@ impl ShadowLight {
             cascades: ShadowCascades::fit(&scene.camera, direction, tile_size),
             direction,
             caster,
+            point: PointShadow::for_scene(scene),
         }
     }
 }

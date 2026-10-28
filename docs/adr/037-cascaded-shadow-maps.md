@@ -63,4 +63,4 @@ which reproduces the old bias exactly for the fixed volume.
   culls casters per cascade and blends the seam.
 - The scene camera, not the view that is drawn, fits the cascades; a second
   view drawn with another camera needs its own `render_shadow_pass`.
-- Point-light shadows and soft (PCSS) shadows are still not supported.
+- Point-light shadows are [ADR 041](041-point-light-shadows.md); soft (PCSS) shadows are still not supported.

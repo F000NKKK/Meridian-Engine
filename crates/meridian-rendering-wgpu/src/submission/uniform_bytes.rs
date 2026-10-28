@@ -2,13 +2,21 @@
 
 use meridian_gac::Vec3;
 use meridian_rendering_domain::scene::Light;
-use meridian_rendering_domain::{SHADOW_CASCADES, ShadowCascades, ShadowLight, ViewUniforms};
+use meridian_rendering_domain::{
+    POINT_SHADOW_FACES, POINT_SHADOW_NEAR, PointShadow, SHADOW_CASCADES, ShadowCascades,
+    ShadowLight, ViewUniforms,
+};
 
 use super::MAX_LIGHTS;
 use super::environment::EnvironmentUniform;
 
 /// Bytes of the lit uniform: the view, the cascades, the lights, then the environment.
-pub(crate) const LIT_UNIFORM_BYTES: usize = 640 + EnvironmentUniform::BYTES;
+pub(crate) const LIT_UNIFORM_BYTES: usize =
+    640 + EnvironmentUniform::BYTES + POINT_SHADOW_UNIFORM_BYTES;
+
+/// The point light's shadow cube: six matrices, then its position and range,
+/// its near plane, and its light index.
+const POINT_SHADOW_UNIFORM_BYTES: usize = POINT_SHADOW_FACES * 64 + 48;
 
 // The WGSL `Uniforms` holds the cascades as an `array<mat4x4, 4>` and two `vec4`s.
 const _: () = assert!(SHADOW_CASCADES == 4);
@@ -40,7 +48,8 @@ fn vec3_to_padded_bytes(v: [f32; 3]) -> [u8; 16] {
 /// `ambient_ground` (16), `ambient_sky` (16), `light_direction` (16),
 /// `light_count` (16), `shadow_caster` (16), then [`MAX_LIGHTS`](super::MAX_LIGHTS)
 /// `LightData` entries (48 bytes each), then the environment's `env_sh` (9 x 16)
-/// and `env_params` (16) — 800 bytes total. Lights beyond
+/// and `env_params` (16), then the point light's shadow cube (see
+/// `point_shadow_to_bytes`) — 1232 bytes total. Lights beyond
 /// the cap are dropped (logged once by the caller, not here — see
 /// `bake_batches`). `shadow_caster` is the index into
 /// `lights` of the shadow-casting light (see
@@ -59,6 +68,7 @@ pub(crate) fn lit_uniform_bytes(
         cascades,
         direction,
         caster,
+        point,
     } = view.shadow;
     let camera_pos = view.camera.frame.transform_point(Vec3::ZERO);
     let count = view.lights.len().min(MAX_LIGHTS) as u32;
@@ -83,6 +93,32 @@ pub(crate) fn lit_uniform_bytes(
         bytes.extend_from_slice(&light_to_bytes(view.lights.get(index)));
     }
     bytes.extend_from_slice(&environment.to_bytes());
+    bytes.extend_from_slice(&point_shadow_to_bytes(point.as_ref()));
+    bytes
+}
+
+/// The point light's shadow cube as the shader's `point_view_proj`,
+/// `point_position`, `point_params` and `point_caster`; a light index of
+/// `u32::MAX` when there is none, which no light matches.
+fn point_shadow_to_bytes(point: Option<&PointShadow>) -> Vec<u8> {
+    let mut bytes = Vec::with_capacity(POINT_SHADOW_UNIFORM_BYTES);
+    for view_proj in point.map_or([[[0.0; 4]; 4]; POINT_SHADOW_FACES], |p| p.view_proj) {
+        bytes.extend_from_slice(&mat4_to_bytes(view_proj));
+    }
+    let (position, far) = point.map_or((Vec3::ZERO, 0.0), |p| (p.position, p.far));
+    for value in [
+        position.x,
+        position.y,
+        position.z,
+        far,
+        POINT_SHADOW_NEAR,
+        0.0,
+        0.0,
+        0.0,
+    ] {
+        bytes.extend_from_slice(&value.to_le_bytes());
+    }
+    bytes.extend_from_slice(&u32_to_padded_bytes(point.map_or(u32::MAX, |p| p.caster)));
     bytes
 }
 

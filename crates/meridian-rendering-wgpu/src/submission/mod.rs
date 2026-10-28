@@ -18,6 +18,8 @@ mod gpu_mesh;
 mod instance_data;
 mod main_pipelines;
 mod mesh_cache;
+#[cfg(test)]
+mod point_shadow_tests;
 mod prepared_batch;
 mod prepared_scene;
 mod registries;

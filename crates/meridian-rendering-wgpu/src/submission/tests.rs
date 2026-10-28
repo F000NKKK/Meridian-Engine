@@ -13,6 +13,9 @@ use super::{lit_uniform_bytes, mat4_to_bytes, *};
 const LIGHTS_START: usize = 64 + 4 * 64 + 16 + 16 + 6 * 16;
 
 /// The `u32` at `offset`.
+/// Bytes of the point light's shadow cube at the end of the lit uniform.
+const POINT_BYTES: usize = 6 * 64 + 48;
+
 fn u32_at(bytes: &[u8], offset: usize) -> u32 {
     u32::from_le_bytes(bytes[offset..offset + 4].try_into().unwrap())
 }
@@ -54,6 +57,7 @@ fn lit_uniform_bytes_has_the_documented_layout_and_size() {
                 cascades: ShadowCascades::fixed(Vec3::new(0.0, -1.0, 0.0), 1024),
                 direction: Vec3::new(0.0, -1.0, 0.0),
                 caster: 0,
+                point: None,
             },
             ambient_ground: [0.1, 0.1, 0.1],
             ambient_sky: [0.2, 0.2, 0.2],
@@ -63,7 +67,7 @@ fn lit_uniform_bytes_has_the_documented_layout_and_size() {
     );
     assert_eq!(
         bytes.len(),
-        LIGHTS_START + MAX_LIGHTS * 48 + EnvironmentUniform::BYTES
+        LIGHTS_START + MAX_LIGHTS * 48 + EnvironmentUniform::BYTES + POINT_BYTES
     );
 
     let count = u32_at(&bytes, LIGHTS_START - 32);
@@ -109,6 +113,7 @@ fn lit_uniform_bytes_caps_extra_lights_silently_at_the_byte_level() {
                 cascades: ShadowCascades::fixed(Vec3::new(0.0, -1.0, 0.0), 1024),
                 direction: Vec3::new(0.0, -1.0, 0.0),
                 caster: u32::MAX,
+                point: None,
             },
             ambient_ground: [0.0, 0.0, 0.0],
             ambient_sky: [0.0, 0.0, 0.0],
@@ -118,7 +123,7 @@ fn lit_uniform_bytes_caps_extra_lights_silently_at_the_byte_level() {
     );
     assert_eq!(
         bytes.len(),
-        LIGHTS_START + MAX_LIGHTS * 48 + EnvironmentUniform::BYTES
+        LIGHTS_START + MAX_LIGHTS * 48 + EnvironmentUniform::BYTES + POINT_BYTES
     );
     let count = u32::from_le_bytes(
         bytes[LIGHTS_START - 32..LIGHTS_START - 28]

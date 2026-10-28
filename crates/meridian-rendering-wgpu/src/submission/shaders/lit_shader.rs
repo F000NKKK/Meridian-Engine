@@ -56,6 +56,13 @@ struct Uniforms {
     // x: 1 when an environment is set, y: its highest mip level.
     env_sh: array<vec4<f32>, 9>,
     env_params: vec4<f32>,
+    // The point light's shadow cube (ADR 041): a view-projection per face,
+    // xyz: its position, w: its range; x: the faces' near plane; x: its
+    // `lights` index, `0xffffffff` when no point light casts a shadow.
+    point_view_proj: array<mat4x4<f32>, 6>,
+    point_position: vec4<f32>,
+    point_params: vec4<f32>,
+    point_caster: vec4<u32>,
 };
 
 @group(0) @binding(0)
@@ -139,6 +146,9 @@ fn shade(world_pos: vec3<f32>, world_normal: vec3<f32>, base_color: vec3<f32>, s
         }
         if (i == u.shadow_caster.x) {
             attenuation = attenuation * shadow_factor;
+        }
+        if (i == u.point_caster.x) {
+            attenuation = attenuation * point_shadow_factor(world_pos, n);
         }
         let n_dot_l = max(dot(n, light_dir), 0.0);
         let half_dir = normalize(light_dir + view_dir);

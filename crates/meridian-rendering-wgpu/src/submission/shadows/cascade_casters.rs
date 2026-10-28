@@ -1,9 +1,9 @@
-//! Which shadow casters each cascade draws (ADR 040).
+//! Which shadow casters each shadow tile draws (ADR 040, ADR 041).
 
 use core::ops::Range;
 
 use meridian_gac::Aabb;
-use meridian_rendering_domain::{Frustum, SHADOW_CASCADES};
+use meridian_rendering_domain::Frustum;
 
 use crate::submission::PreparedBatch;
 use crate::submission::instance_data::INSTANCE_STRIDE;
@@ -22,7 +22,8 @@ pub(crate) struct CasterRun {
 #[derive(Debug, Default, PartialEq, Eq)]
 pub(crate) struct CascadeCasters {
     pub(crate) records: Vec<u8>,
-    pub(crate) runs: [Vec<CasterRun>; SHADOW_CASCADES],
+    /// One list of runs per tile, in the order of the frusta culled against.
+    pub(crate) runs: Vec<Vec<CasterRun>>,
 }
 
 impl CascadeCasters {
@@ -33,18 +34,18 @@ impl CascadeCasters {
         batches: &[PreparedBatch],
         records: &[u8],
         bounds: &[Option<Aabb>],
-        frusta: &[Frustum; SHADOW_CASCADES],
+        frusta: &[Frustum],
     ) -> Self {
         let mut casters = Self::default();
-        for (frustum, cascade) in frusta.iter().zip(0..) {
-            let runs = casters.copy_cascade(batches, records, bounds, frustum);
-            casters.runs[cascade] = runs;
+        for frustum in frusta {
+            let runs = casters.copy_tile(batches, records, bounds, frustum);
+            casters.runs.push(runs);
         }
         casters
     }
 
-    /// Appends one cascade's surviving records and returns their runs.
-    fn copy_cascade(
+    /// Appends one tile's surviving records and returns their runs.
+    fn copy_tile(
         &mut self,
         batches: &[PreparedBatch],
         records: &[u8],
@@ -91,7 +92,9 @@ impl CascadeCasters {
 #[cfg(test)]
 mod tests {
     use meridian_gac::{Motor3, Projection, Vec3};
-    use meridian_rendering_domain::{Camera, DrawState, MeshHandle, ShadowCascades};
+    use meridian_rendering_domain::{
+        Camera, DrawState, MeshHandle, SHADOW_CASCADES, ShadowCascades,
+    };
 
     use super::*;
     use crate::submission::DrawKind;

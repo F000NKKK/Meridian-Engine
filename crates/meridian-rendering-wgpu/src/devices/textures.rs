@@ -21,13 +21,12 @@ impl Device {
     /// as a sampled `texture_depth_2d` (for the shadow lookup in a later
     /// lit-shader pass) — unlike [`create_depth_texture`](Self::create_depth_texture)'s
     /// plain [`DepthTexture`](crate::DepthTexture), which is only ever a render target
-    /// (nothing samples the main pass's own depth buffer). Square, since
-    /// every real caller today wants a square shadow map; nothing about
-    /// the type requires it.
-    pub fn create_shadow_map_texture(&self, size: u32) -> Texture {
+    /// (nothing samples the main pass's own depth buffer). `width` by
+    /// `height` texels: the shadow atlas is a grid of square tiles (ADR 041).
+    pub fn create_shadow_map_texture(&self, width: u32, height: u32) -> Texture {
         self.0.create_texture(
-            size,
-            size,
+            width,
+            height,
             wgpu::TextureFormat::Depth32Float,
             wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
         )
