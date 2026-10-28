@@ -55,7 +55,8 @@ The lit uniform grows from 416 to 576 bytes (`env_sh`: nine `vec4`, then
 at 3 and 4 (flat colour) or 9 and 10 (textured).
 
 **D5 — loading an environment image is not part of this ADR** (done in
-[ADR 036](036-radiance-hdr-environment-loader.md)). The procedural `Sky` was
+[ADR 036](036-radiance-hdr-environment-loader.md); a cube-map source in
+[ADR 038](038-cube-map-environment-source.md)). The procedural `Sky` was
 the only source until a Radiance `.hdr` decoder existed in the asset layer; it only has to produce the `width`, `height`, texel list that
 `from_equirect` takes.
 
