@@ -37,7 +37,7 @@ pub use meridian_asset_symphonia::{
     AnyAudioDecoder, AudioAsset, DecodeStrategy, StreamingAudioDecoder, open_audio,
 };
 // -- meridian-audio-app / -cpal: the output port, audio state and platform adapter --
-pub use meridian_audio_app::{AudioScene, AudioSink, AudioSubsystem, VoiceId};
+pub use meridian_audio_app::{AudioScene, AudioSink, AudioSubsystem, BusId, VoiceId};
 pub use meridian_audio_cpal::{AudioStream, open_output};
 // -- meridian-audio-domain: spatial audio --
 pub use meridian_audio_domain::{

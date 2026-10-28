@@ -140,6 +140,13 @@ impl Voice {
     /// The returned slice is valid until the next call; [`block`](Self::block)
     /// returns it again without advancing.
     pub fn render(&mut self, frames: usize) -> &[f32] {
+        self.render_scaled(frames, 1.0)
+    }
+
+    /// Like [`render`](Self::render), with the voice's gain multiplied by
+    /// `scale` for this block (how a scene applies a bus gain without a
+    /// copy).
+    pub fn render_scaled(&mut self, frames: usize, scale: f32) -> &[f32] {
         self.block.clear();
         self.block.resize(frames, 0.0);
         if self.source_ended || self.fade.is_silent() {
@@ -147,7 +154,7 @@ impl Voice {
         }
         let read = self.source.read(&mut self.block);
         for sample in &mut self.block[..read] {
-            *sample *= self.gain * self.fade.advance();
+            *sample *= self.gain * scale * self.fade.advance();
         }
         if read < frames {
             self.source_ended = true;
