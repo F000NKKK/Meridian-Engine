@@ -82,8 +82,9 @@ Not started; ordered by suggested priority. Items wait for an explicit task.
 8. **glTF static models — done (2026-10-28).** See
    [ADR 030](../adr/030-gltf-static-models-through-an-asset-adapter.md);
    decoder adapter `meridian-asset-gltf`, `AssetCache::load_model_gltf`.
-   Follow-ups: JPEG textures, external-file `.gltf` through the loader, `u32`
-   indices for large meshes, skins and animation.
+   JPEG textures (`meridian-asset-jpeg`), external-file `.gltf` and `u32`
+   mesh indices are done; checked on Khronos DamagedHelmet, Duck and Sponza
+   with the `gltf_viewer` example. Follow-ups: skins and animation, PBR maps.
 9. **Larger, ADR-gated:** HDR (`Rgba16Float` + tone mapping), shadow
    cascades/frustum fitting, point-light shadows, IBL, skinned glTF and
    animation (no vocabulary yet), concrete backend crates.

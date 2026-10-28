@@ -17,9 +17,6 @@ pub enum GltfError {
     /// An index points past the primitive's vertices, or the index count is
     /// not a multiple of three.
     BadIndices,
-    /// A primitive has more vertices than the renderer's `u16` indices
-    /// address.
-    TooManyVertices(usize),
     /// The model expands beyond the total vertex bound.
     ModelTooLarge,
     /// Nodes nest deeper than the decoder follows.
@@ -39,12 +36,6 @@ impl core::fmt::Display for GltfError {
                 write!(f, "unsupported primitive mode {mode}: only triangle lists")
             }
             GltfError::BadIndices => write!(f, "indices out of range or not whole triangles"),
-            GltfError::TooManyVertices(count) => {
-                write!(
-                    f,
-                    "{count} vertices in one primitive exceed the 65535 limit"
-                )
-            }
             GltfError::ModelTooLarge => write!(f, "model expands beyond the vertex bound"),
             GltfError::TooDeep => write!(f, "node hierarchy nests too deeply"),
         }

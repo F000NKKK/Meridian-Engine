@@ -1,6 +1,7 @@
 //! Decodes any image format the engine ships, chosen by magic bytes.
 
 use meridian_asset_domain::{BmpDecoder, DecodeError, Decoder, ImageAsset, ImageFormat};
+use meridian_asset_jpeg::JpegDecoder;
 use meridian_asset_png::PngDecoder;
 
 /// The sniffing front door for images: [`ImageFormat::detect`] on the
@@ -25,8 +26,9 @@ impl Decoder<ImageAsset> for AnyImageDecoder {
         match ImageFormat::detect(bytes) {
             Some(ImageFormat::Bmp) => BmpDecoder.decode(bytes),
             Some(ImageFormat::Png) => PngDecoder.decode(bytes),
+            Some(ImageFormat::Jpeg) => JpegDecoder.decode(bytes),
             None => Err(DecodeError::Unsupported(
-                "unrecognized image signature (not BMP/PNG)",
+                "unrecognized image signature (not BMP/PNG/JPEG)",
             )),
         }
     }

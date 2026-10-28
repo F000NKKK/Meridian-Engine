@@ -3,8 +3,8 @@
 use meridian_rendering_domain::{MeshHandle, MeshRegistryError, MeshSource};
 
 /// Where mesh sources live, addressed by [`MeshHandle`]. A store validates a
-/// mesh when it takes it: a triangle list, at most `u16::MAX` vertices, and one
-/// normal and one UV per position.
+/// mesh when it takes it: a triangle list whose indices name existing vertices, and
+/// one normal and one UV per position.
 ///
 /// [`MeshRegistry`](meridian_rendering_domain::MeshRegistry) is the in-memory implementation and
 /// runs [`testing::run_mesh_store_contract`](crate::testing::run_mesh_store_contract).

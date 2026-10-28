@@ -4,7 +4,6 @@ use gltf::Primitive;
 use gltf::mesh::{Mode, Semantic};
 use meridian_asset_domain::ModelPart;
 
-use crate::limits::MAX_PRIMITIVE_VERTICES;
 use crate::{GltfError, material_reader};
 
 type Matrix = [[f32; 4]; 4];
@@ -33,9 +32,6 @@ fn load(primitive: &Primitive<'_>, buffers: &[Vec<u8>]) -> Result<ModelPart, Glt
         .read_positions()
         .ok_or(GltfError::OutOfBounds("positions"))?
         .collect();
-    if positions.len() > MAX_PRIMITIVE_VERTICES {
-        return Err(GltfError::TooManyVertices(positions.len()));
-    }
     let normals: Vec<[f32; 3]> = declared(
         primitive.get(&Semantic::Normals).is_some(),
         reader.read_normals().map(Iterator::collect),

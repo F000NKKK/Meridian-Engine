@@ -47,34 +47,41 @@ hand-rolled version would duplicate a maintained crate. The adapter depends on
 `asset-domain` only.
 
 **D4 — decoding stays separate from loading.** The decoder reads the GLB blob
-and `data:` URIs. A `.gltf` that points at an external `.bin` or image file is
-`GltfError::ExternalResource(uri)` in v1, because resolving a path is the
-loader's job (`asset-app`, `ByteSource`), not the decoder's. A later change may
-add a loader step that fetches the named resources and passes them in; the
-decoder's input type would grow, its output would not.
+and `data:` URIs and does no file I/O. A `.gltf` that points at an external
+`.bin` or image file is handled in two steps: `GltfDecoder::required_uris`
+lists the files, the loader fetches them, and `GltfDecoder::decode_with` takes
+them as a map keyed by the URI the model uses (`Decoder::decode` supplies none,
+so a model naming a file is `GltfError::ExternalResource`). The sdk's
+`AssetCache::load_model_gltf` is that loader today: it reads the files from
+beside the model, percent-decodes the URIs and refuses any that leave the
+model's directory (a scheme, an absolute path, `..`).
 
 **D5 — failures are typed and bounded.** Malformed JSON, a bad accessor,
 out-of-range indices and counts that exceed the file all return
 `GltfError`, never a panic or an allocation sized by an unchecked field.
-Meshes with more than 65 535 vertices are `GltfError::TooManyVertices` until
-the renderer takes `u32` indices (the existing `MeshSource` limit; this ADR
-does not widen it).
+The only size bounds are a total vertex count and a node depth, so a node
+tree that instances one mesh many times cannot drive allocation. Mesh indices
+are `u32` end to end (the renderer no longer has a 65 535-vertex ceiling).
 
 **D6 — the sdk wires it.** `meridian-sdk` names the adapter (ADR 025 D4);
 `AssetCache::load_model_gltf` registers each part's mesh and its images with the
 existing ports and returns `ModelPiece { mesh, material }` values that an
 application places with one frame for the whole model. Missing normals are
 filled with `smooth_normals`; missing UVs become zeros. An image the sdk
-cannot decode (JPEG, until an adapter exists) is logged and its parts keep
-their base colour. The renderer and `rendering-domain` change nothing.
+cannot decode is logged and its parts keep their base colour. JPEG textures
+decode through the adapter `meridian-asset-jpeg` (`zune-jpeg`), wired into the
+sdk's image sniffing beside PNG and BMP. The renderer and `rendering-domain` change nothing.
 
 ## Consequences
 
-- One new adapter crate and one new workspace dependency (`gltf`), the same
-  documented-exception pattern as `png` and `symphonia`.
+- New adapter crates `meridian-asset-gltf` and `meridian-asset-jpeg` and
+  workspace dependencies `gltf` and `zune-jpeg`, the same documented-exception
+  pattern as `png` and `symphonia`.
 - `docs/dependency-rules.md` gets the `asset-gltf -> asset-domain` edge.
-- Textures embedded in a GLB work end to end; multi-file `.gltf` needs the
-  loader extension named in D4.
+- GLB and multi-file `.gltf` models load end to end, checked on the Khronos
+  sample assets (DamagedHelmet with JPEG textures, Duck with PNG, Sponza with
+  103 parts and 70 external images) with the `gltf_viewer` example under
+  lavapipe.
 - Rendering of what glTF can describe beyond this scope (PBR maps, skinning,
   animation, large index counts) stays on the roadmap with the ADR that
   introduces each.

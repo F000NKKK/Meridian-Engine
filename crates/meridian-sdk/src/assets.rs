@@ -17,6 +17,7 @@
 //! about file paths or decoders).
 
 use std::collections::{HashMap, VecDeque};
+use std::path::Path;
 
 use meridian_asset_domain::{Decoder, ImageAsset, ObjDecoder};
 use meridian_asset_gltf::GltfDecoder;
@@ -27,8 +28,8 @@ use meridian_rendering_domain::{
 };
 
 use crate::any_image_decoder::AnyImageDecoder;
-use crate::model_loading;
 pub use crate::model_loading::ModelPiece;
+use crate::{model_files, model_loading};
 
 /// Reads and decodes a real image asset file, identified by its magic
 /// bytes (never its extension — the same rule
@@ -242,8 +243,8 @@ impl AssetCache {
     /// Loads a `.glb` (or self-contained `.gltf`) model at `path` through
     /// `asset-gltf::GltfDecoder` and registers each part's mesh and its
     /// textures (ADR 030), cached by `path` like [`load_texture`](Self::load_texture).
-    /// Skins and animations are ignored; a `.gltf` that names external
-    /// files is an error.
+    /// Skins and animations are ignored. A `.gltf` that names external
+    /// buffers or images has them read from beside it.
     ///
     /// # Errors
     ///
@@ -259,8 +260,11 @@ impl AssetCache {
             return Ok(pieces.clone());
         }
         let bytes = std::fs::read(path).map_err(|e| format!("failed to read {path}: {e}"))?;
-        let model = GltfDecoder
-            .decode(&bytes)
+        let uris = GltfDecoder::required_uris(&bytes)
+            .map_err(|e| format!("failed to decode {path}: {e}"))?;
+        let base = Path::new(path).parent().unwrap_or_else(|| Path::new("."));
+        let files = model_files::read_all(base, &uris).map_err(|e| format!("{path}: {e}"))?;
+        let model = GltfDecoder::decode_with(&bytes, &files)
             .map_err(|e| format!("failed to decode {path}: {e}"))?;
         let pieces =
             model_loading::register(model, meshes, textures).map_err(|e| format!("{path}: {e}"))?;

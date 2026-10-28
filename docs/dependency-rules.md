@@ -54,7 +54,7 @@ depend on crates in tiers `0..N`, never a same-tier or higher-tier one
 ```text
 tier 0  compute-app, diagnostics, markup-macros, memory, text-domain
 tier 1  asset-domain, diagnostics-fs, markup, numeric, platform-winit, resource, ui-domain
-tier 2  asset-app, asset-gltf, asset-png, asset-symphonia, gac, gpu-wgpu, ui-mel
+tier 2  asset-app, asset-gltf, asset-jpeg, asset-png, asset-symphonia, gac, gpu-wgpu, ui-mel
 tier 3  asset-fs, asset-http, audio-domain, compute-wgpu, ecs, physics-domain
 tier 4  audio-app, gac-wgpu, rendering-domain, physics-app, data-substrate
 tier 5  audio-cpal, editor-domain, runtime-app, physics-wgpu, rendering-app, ui-scene2d
@@ -265,6 +265,7 @@ bottom-up.
 - `meridian-asset-fs` -> `meridian-asset-app`
 - `meridian-asset-http` -> `meridian-asset-app`
 - `meridian-asset-gltf` -> `meridian-asset-domain`, `meridian-gac`
+- `meridian-asset-jpeg` -> `meridian-asset-domain`
 - `meridian-asset-png` -> `meridian-asset-domain`
 - `meridian-asset-symphonia` -> `meridian-asset-domain`
 - `meridian-rendering-domain` -> `meridian-ecs`, `meridian-diagnostics`, `meridian-gac`, `meridian-memory`, `meridian-resource`
@@ -283,7 +284,7 @@ bottom-up.
 - `meridian-ui-domain` -> `meridian-diagnostics`, `meridian-memory`
 - `meridian-text-domain` -> (no workspace crates)
 - `meridian-ui-scene2d` -> `meridian-gac`, `meridian-rendering-domain`, `meridian-text-domain`, `meridian-ui-domain`
-- `meridian-sdk` -> `meridian-asset-app`, `meridian-asset-fs`, `meridian-asset-http`, `meridian-asset-domain`, `meridian-asset-gltf`, `meridian-asset-png`, `meridian-asset-symphonia`, `meridian-audio-app`, `meridian-audio-domain`, `meridian-audio-cpal`, `meridian-compute-wgpu`, `meridian-compute-app`, `meridian-diagnostics-fs`, `meridian-markup`, `meridian-markup-macros`, `meridian-runtime-app`, `meridian-diagnostics`, `meridian-gac`, `meridian-rendering-domain`, `meridian-rendering-wgpu`, `meridian-physics-app`, `meridian-physics-wgpu`, `meridian-physics-domain`, `meridian-platform-winit`, `meridian-rendering-app`, `meridian-runtime-threads`, `meridian-ui-domain`
+- `meridian-sdk` -> `meridian-asset-app`, `meridian-asset-fs`, `meridian-asset-http`, `meridian-asset-domain`, `meridian-asset-gltf`, `meridian-asset-jpeg`, `meridian-asset-png`, `meridian-asset-symphonia`, `meridian-audio-app`, `meridian-audio-domain`, `meridian-audio-cpal`, `meridian-compute-wgpu`, `meridian-compute-app`, `meridian-diagnostics-fs`, `meridian-markup`, `meridian-markup-macros`, `meridian-runtime-app`, `meridian-diagnostics`, `meridian-gac`, `meridian-rendering-domain`, `meridian-rendering-wgpu`, `meridian-physics-app`, `meridian-physics-wgpu`, `meridian-physics-domain`, `meridian-platform-winit`, `meridian-rendering-app`, `meridian-runtime-threads`, `meridian-ui-domain`
 
 `meridian-runtime-app` has no edge to `meridian-rendering-domain` or
 `meridian-asset-domain`: `Runtime::tick` doesn't render a frame or load an

@@ -20,11 +20,6 @@ impl MeshRegistry {
     }
 
     pub fn register(&mut self, source: MeshSource) -> Result<MeshHandle, MeshRegistryError> {
-        if source.positions.len() > u16::MAX as usize {
-            return Err(MeshRegistryError::TooManyVertices {
-                count: source.positions.len(),
-            });
-        }
         if !source.indices.len().is_multiple_of(3) {
             return Err(MeshRegistryError::NotATriangleList {
                 index_count: source.indices.len(),
@@ -40,6 +35,17 @@ impl MeshRegistry {
             return Err(MeshRegistryError::NormalCountMismatch {
                 positions: source.positions.len(),
                 normals: source.normals.len(),
+            });
+        }
+        let vertex_count = source.positions.len();
+        if let Some(&index) = source
+            .indices
+            .iter()
+            .find(|&&index| index as usize >= vertex_count)
+        {
+            return Err(MeshRegistryError::IndexOutOfRange {
+                index,
+                vertex_count,
             });
         }
         Ok(MeshHandle::new(self.sources.insert(source)))

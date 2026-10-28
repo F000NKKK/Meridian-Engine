@@ -232,7 +232,7 @@ impl SceneRenderer {
         };
         pass.set_vertex_buffer(0, &mesh.vertex_buffer);
         pass.set_vertex_buffer(1, instances);
-        pass.set_index_buffer_u16(&mesh.index_buffer);
+        pass.set_index_buffer_u32(&mesh.index_buffer);
         pass.draw_indexed_instanced(0..mesh.index_count, batch.instances.clone());
     }
 }

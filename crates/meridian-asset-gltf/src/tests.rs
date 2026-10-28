@@ -247,3 +247,61 @@ fn base64_encode(bytes: &[u8]) -> String {
     }
     out
 }
+
+#[test]
+fn required_uris_lists_each_external_file_once() {
+    let json = document(r#", "uri": "scene.bin""#, "", "", "");
+    let uris = GltfDecoder::required_uris(json.as_bytes()).unwrap();
+    assert_eq!(uris, ["scene.bin"]);
+}
+
+#[test]
+fn data_uris_and_glb_chunks_are_not_required_files() {
+    let encoded = base64_encode(&triangle_bin());
+    let uri = format!(r#", "uri": "data:application/octet-stream;base64,{encoded}""#);
+    let json = document(&uri, "", "", "");
+    assert!(
+        GltfDecoder::required_uris(json.as_bytes())
+            .unwrap()
+            .is_empty()
+    );
+    let glb = glb(&document("", "", "", ""), &triangle_bin());
+    assert!(GltfDecoder::required_uris(&glb).unwrap().is_empty());
+}
+
+#[test]
+fn decode_with_reads_a_supplied_external_buffer() {
+    let json = document(r#", "uri": "scene.bin""#, "", "", "");
+    let mut resources = crate::Resources::new();
+    resources.insert("scene.bin".to_owned(), triangle_bin());
+    let model = GltfDecoder::decode_with(json.as_bytes(), &resources).unwrap();
+    assert_eq!(model.parts[0].indices, [0, 1, 2]);
+}
+
+#[test]
+fn decode_with_still_names_a_file_it_was_not_given() {
+    let json = document(r#", "uri": "scene.bin""#, "", "", "");
+    let mut resources = crate::Resources::new();
+    resources.insert("other.bin".to_owned(), triangle_bin());
+    assert_eq!(
+        GltfDecoder::decode_with(json.as_bytes(), &resources),
+        Err(GltfError::ExternalResource("scene.bin".to_owned()))
+    );
+}
+
+#[test]
+fn an_external_image_is_read_from_the_supplied_files() {
+    let extra = r#",
+  "materials": [{"pbrMetallicRoughness": {"baseColorTexture": {"index": 0}}}],
+  "textures": [{"source": 0}],
+  "images": [{"uri": "tex/wall.png"}]"#;
+    let json = document("", "", r#","material": 0"#, extra);
+    let mut resources = crate::Resources::new();
+    resources.insert("tex/wall.png".to_owned(), vec![1, 2, 3]);
+    assert_eq!(
+        GltfDecoder::required_uris(glb(&json, &triangle_bin()).as_slice()).unwrap(),
+        ["tex/wall.png"]
+    );
+    let model = GltfDecoder::decode_with(&glb(&json, &triangle_bin()), &resources).unwrap();
+    assert_eq!(model.images[0].bytes, [1, 2, 3]);
+}

@@ -1,8 +1,5 @@
 //! Bounds that keep a hostile file from driving allocation.
 
-/// Vertices one primitive may have: the renderer's `u16` index limit.
-pub(crate) const MAX_PRIMITIVE_VERTICES: usize = 65_535;
-
 /// Vertices across all parts of a model. A node tree can reference one
 /// mesh many times, so this caps the product, not just each primitive.
 pub(crate) const MAX_TOTAL_VERTICES: usize = 4_000_000;
