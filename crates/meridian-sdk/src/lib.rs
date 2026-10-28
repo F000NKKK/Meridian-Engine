@@ -28,6 +28,8 @@ pub use assets::{
     AssetCache, AudioTrack, load_audio_track, load_audio_track_with, load_image_asset,
 };
 pub use dsl::dsl_core;
+// -- meridian-rendering-domain: scene/material/lighting/submission --
+pub use editor_renderer::*;
 pub use fly_controls::fly_controls;
 pub use meridian_asset_app::{
     AssetLoader, AssetPath, ByteSource, LoadError, Pending, Priority, SourceError, Spawn,
@@ -71,8 +73,6 @@ pub use meridian_platform_winit::{
 pub use meridian_rendering_app::{
     FrameOutcome, FrameRecorder, FrameRequest, MeshStore, RenderSession, TextureStore,
 };
-// -- meridian-rendering-domain: scene/material/lighting/submission --
-pub use editor_renderer::*;
 pub use meridian_rendering_domain::{
     Background, BlendMode, Camera, Camera2d, ClipRect, ClipSpan, EnvironmentMap, FlyCamera,
     FlyControls, Frustum, Light, LightKind, LightSource, Material, MaterialHandle,

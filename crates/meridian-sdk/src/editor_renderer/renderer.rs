@@ -2,13 +2,13 @@
 
 use meridian_ecs::World;
 use meridian_gac::{Motor3, Vec3};
+use meridian_rendering_app::FrameRecorder as _;
 use meridian_rendering_domain::{
     Background, EnvironmentMap, Light, Scene3d, Sky, extract_scene3d, look_at_upright,
 };
 
 use super::{EditorCamera, EditorRendererError};
 use crate::GraphicsSession;
-use meridian_rendering_app::FrameRecorder as _;
 
 const SUN: Vec3 = Vec3 {
     x: -0.4,

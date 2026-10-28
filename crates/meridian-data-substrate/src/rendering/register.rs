@@ -1,8 +1,7 @@
 //! Registering the rendering components.
 
-use crate::{ComponentName, ComponentRegistry, RegisterError};
-
 use super::LightCodec;
+use crate::{ComponentName, ComponentRegistry, RegisterError};
 
 /// Registers the rendering components a scene file can hold: `light`
 /// (`LightSource`). `MeshRenderer` holds opaque handles, so it has no file

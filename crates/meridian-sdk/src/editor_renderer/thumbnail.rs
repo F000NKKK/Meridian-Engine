@@ -1,12 +1,12 @@
 //! Previews of single assets: a material on a sphere, a mesh, a model, a scene.
 
+use meridian_gac::Motor3;
 use meridian_rendering_domain::{
     Material, MaterialHandle, MeshHandle, Renderable3d, Scene3d, icosphere_mesh_source,
 };
 
 use super::framing::bounding_sphere;
 use super::{EditorCamera, EditorRenderer, ThumbnailError, ThumbnailSubject};
-use meridian_gac::Motor3;
 
 /// Bumped whenever a thumbnail would look different for the same asset, so a
 /// cache keyed with it drops its old images.
