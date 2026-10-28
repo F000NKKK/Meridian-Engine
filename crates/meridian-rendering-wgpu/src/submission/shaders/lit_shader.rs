@@ -100,11 +100,32 @@ fn fresnel_schlick(v_dot_h: f32, f0: vec3<f32>) -> vec3<f32> {
     return f0 + (vec3<f32>(1.0) - f0) * pow(1.0 - v_dot_h, 5.0);
 }
 
+/// How far below the horizon a reflection may point before it fades out
+/// (ADR 044): 1 fades only straight into the surface, larger values start
+/// earlier.
+const HORIZON_FADE: f32 = 1.3;
+
+/// Occlusion for the reflected light (Lagarde & de Rousiers): a rough
+/// surface is occluded as much as its diffuse light, a smooth one only where
+/// the view and the occluder line up, so a mirror-like crevice still shows
+/// its reflection at grazing angles.
+fn specular_occlusion(n_dot_v: f32, occlusion: f32, roughness: f32) -> f32 {
+    let exponent = exp2(-16.0 * roughness - 1.0);
+    return clamp(pow(n_dot_v + occlusion, exponent) - 1.0 + occlusion, 0.0, 1.0);
+}
+
+/// A reflection that points into the geometric surface, which a bent normal
+/// can produce, has nothing to reflect; fade it out smoothly.
+fn horizon_occlusion(reflected: vec3<f32>, geometric_normal: vec3<f32>) -> f32 {
+    let visible = clamp(1.0 + HORIZON_FADE * dot(reflected, normalize(geometric_normal)), 0.0, 1.0);
+    return visible * visible;
+}
+
 /// Metallic-roughness shading (ADR 032): `surface` is (roughness, metallic).
 /// Light intensity keeps its pre-PBR meaning (a white diffuse surface facing
 /// a light of intensity 1 is fully lit), so diffuse has no 1/pi and the
 /// specular lobe is scaled by pi to match.
-fn shade(world_pos: vec3<f32>, world_normal: vec3<f32>, base_color: vec3<f32>, surface: vec2<f32>, occlusion: f32, shadow_factor: f32) -> vec3<f32> {
+fn shade(world_pos: vec3<f32>, world_normal: vec3<f32>, base_color: vec3<f32>, surface: vec2<f32>, occlusion: f32, shadow_factor: f32, geometric_normal: vec3<f32>) -> vec3<f32> {
     let n = normalize(world_normal);
     let view_dir = normalize(u.camera_pos.xyz - world_pos);
     let n_dot_v = max(dot(n, view_dir), 0.0001);
@@ -120,15 +141,19 @@ fn shade(world_pos: vec3<f32>, world_normal: vec3<f32>, base_color: vec3<f32>, s
     // sky/ground gradient stands in for it, looked up the same two ways,
     // with Fresnel damped by roughness.
     let reflected = reflect(-view_dir, n);
-    var ambient: vec3<f32>;
+    var ambient_diffuse: vec3<f32>;
+    var ambient_specular: vec3<f32>;
     if (u.env_params.x > 0.5) {
-        ambient = environment_irradiance(n) * diffuse_color
-            + environment_reflection(reflected, roughness) * environment_brdf(f0, roughness, n_dot_v);
+        ambient_diffuse = environment_irradiance(n) * diffuse_color;
+        ambient_specular = environment_reflection(reflected, roughness) * environment_brdf(f0, roughness, n_dot_v);
     } else {
         let ambient_fresnel = f0 + (max(vec3<f32>(1.0 - roughness), f0) - f0) * pow(1.0 - n_dot_v, 5.0);
-        ambient = hemisphere_ambient(n) * diffuse_color + hemisphere_ambient(reflected) * ambient_fresnel;
+        ambient_diffuse = hemisphere_ambient(n) * diffuse_color;
+        ambient_specular = hemisphere_ambient(reflected) * ambient_fresnel;
     }
-    var result = ambient * occlusion;
+    let reflection_occlusion = specular_occlusion(n_dot_v, occlusion, roughness)
+        * horizon_occlusion(reflected, geometric_normal);
+    var result = ambient_diffuse * occlusion + ambient_specular * reflection_occlusion;
 
     let count = min(u.light_count.x, 4u);
     for (var i: u32 = 0u; i < count; i = i + 1u) {
@@ -221,7 +246,7 @@ fn vs_main(in: VertexInput) -> VertexOutput {
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let shadow_factor = compute_shadow_factor(in.world_position, in.world_normal);
-    let shaded = shade(in.world_position, in.world_normal, in.color.rgb, in.surface, 1.0, shadow_factor) + in.emissive;
+    let shaded = shade(in.world_position, in.world_normal, in.color.rgb, in.surface, 1.0, shadow_factor, in.world_normal) + in.emissive;
     return vec4<f32>(shaded, in.color.a);
 }
 ";
@@ -341,7 +366,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let occlusion = mix(1.0, textureSample(occlusion_tex, albedo_sampler, in.uv).r, in.map_strength.y);
     let emitted = in.emissive + in.mapped_emissive * textureSample(emissive_tex, albedo_sampler, in.uv).rgb;
     let shadow_factor = compute_shadow_factor(in.world_position, world_normal);
-    let shaded = shade(in.world_position, world_normal, base_color, surface, occlusion, shadow_factor) + emitted;
+    let shaded = shade(in.world_position, world_normal, base_color, surface, occlusion, shadow_factor, in.world_normal) + emitted;
     return vec4<f32>(shaded, sampled.a * in.tint.a);
 }
 "#;
