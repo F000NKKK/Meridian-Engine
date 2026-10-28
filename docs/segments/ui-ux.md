@@ -63,7 +63,7 @@ Markup syntax is owned by team/scripting: ADR 017 (`.meui` markup and
 code-behind, branch `claude/project-thread-h5kbvo`) — `x:Class`/
 `x:ViewModel`, `x:Name`, `x:Key`, dotted property elements and attached
 properties (`Grid.Row`), compiled `{x:Bind ...}` and `{StaticResource}`,
-`foo.meui` → `foo.g.rs` via `mel_include!`. The UI-architecture ADR maps
+`foo.meui` → `foo.g.rs` via `meui_include!`. The UI-architecture ADR maps
 that syntax onto the element model; ui-ux owns the runtime
 (`meridian-ui-domain`), scripting owns syntax, `markup` and codegen.
 

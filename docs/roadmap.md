@@ -638,7 +638,7 @@ priority before writing implementations is keeping that document and the
     `markup` side is done (line/column spans, the `x:` prefix, dotted
     names and property elements, parsed markup extensions, typed
     `ParseErrorKind`), and the `meridian-ui-mel` generator
-    (`.meui` -> `.g.rs`, `mel_include!`; used by `magic_figures`), whose
+    (`.meui` -> `.g.rs`, `meui_include!`; used by `magic_figures`), whose
     `{x:Bind}` compiler parses and validates bindings, resolves them to
     `ui-domain` properties and generates `Names`, `apply_bindings` and
     `write_back_bindings` (type-checked against the `x:ViewModel`).

@@ -18,7 +18,7 @@ pub struct LiveUi {
 
 impl LiveUi {
     /// `applied` is what built the tree at `root`: the `ui` of the
-    /// `MelDocument` the compiled `build_ui` was generated from.
+    /// `MeuiDocument` the compiled `build_ui` was generated from.
     pub fn new(root: NodeId, applied: UiNode) -> Self {
         Self { root, applied }
     }

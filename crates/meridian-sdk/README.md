@@ -4,7 +4,7 @@ Single application-facing entry point: re-exports everything an app needs (gac/p
 
 **Layer and context:** interface · runtime
 
-- **For:** The single application entry point: re-exports the other crates' types, plus the scene DSL (`dsl`), `mel_include!`, `RenderStage` and windowed-app scaffolding.
+- **For:** The single application entry point: re-exports the other crates' types, plus the scene DSL (`dsl`), `meui_include!`, `RenderStage` and windowed-app scaffolding.
 - **Not for:** implementing a subsystem: applications depend on this crate alone and never on the crates it composes.
 
 ## Usage

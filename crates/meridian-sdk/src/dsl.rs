@@ -131,22 +131,22 @@ pub fn build_scene(source: &str, registry: &DslRegistry) -> Result<dsl_core::Bui
 }
 
 /// Pulls in the module `meridian-ui-mel` generated for a `.meui`
-/// document (ADR 017): `mel_include!("magic_figures")` includes
-/// `$OUT_DIR/mel/magic_figures.g.rs`, written by
+/// document (ADR 017): `meui_include!("magic_figures")` includes
+/// `$OUT_DIR/meui/magic_figures.g.rs`, written by
 /// `meridian_ui_mel::compile_dir` in the crate's `build.rs`. Use it
 /// inside the code-behind module:
 ///
 /// ```ignore
 /// mod scene {
-///     meridian_sdk::mel_include!("magic_figures");
+///     meridian_sdk::meui_include!("magic_figures");
 /// }
 /// let root = scene::build(&registry)?;
 /// let cube = scene::find(&root, scene::Name::Cube);
 /// ```
 #[macro_export]
-macro_rules! mel_include {
+macro_rules! meui_include {
     ($name:literal) => {
-        include!(concat!(env!("OUT_DIR"), "/mel/", $name, ".g.rs"));
+        include!(concat!(env!("OUT_DIR"), "/meui/", $name, ".g.rs"));
     };
 }
 

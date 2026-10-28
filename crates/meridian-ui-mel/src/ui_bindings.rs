@@ -4,18 +4,18 @@
 
 use crate::code_writer::{ALLOW, CodeWriter};
 use crate::ui_build::render_build_ui;
-use crate::{BindingMode, MelDocument, PropertyBinding};
+use crate::{BindingMode, MeuiDocument, PropertyBinding};
 
 const UI: &str = "::meridian_sdk::ui_core";
 
-/// Renders the UI half of one [`MelDocument`]; nothing for a document
+/// Renders the UI half of one [`MeuiDocument`]; nothing for a document
 /// without `{x:Bind}`.
 pub(crate) struct UiBindings<'a> {
-    document: &'a MelDocument,
+    document: &'a MeuiDocument,
 }
 
 impl<'a> UiBindings<'a> {
-    pub(crate) fn new(document: &'a MelDocument) -> Self {
+    pub(crate) fn new(document: &'a MeuiDocument) -> Self {
         Self { document }
     }
 
@@ -44,7 +44,7 @@ impl<'a> UiBindings<'a> {
 
     fn marker(&self, code: &mut CodeWriter, indent: &str, binding: &PropertyBinding) {
         code.line(format!(
-            "{indent}// @mel {}:{} {}",
+            "{indent}// @meui {}:{} {}",
             self.document.path.display(),
             binding.span,
             binding.property
@@ -153,7 +153,7 @@ impl<'a> UiBindings<'a> {
         code.line("        for node in route {");
         for handler in &self.document.events {
             code.line(format!(
-                "            // @mel {}:{} {}",
+                "            // @meui {}:{} {}",
                 self.document.path.display(),
                 handler.span,
                 handler.attribute

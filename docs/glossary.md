@@ -57,7 +57,7 @@ the other, in the same change.
 | Term | Meaning | In code |
 |---|---|---|
 | MEL | Meridian Engine Language: the compiled language of ADR 022; files `.mel`. | (planned) |
-| `.meui` | UI markup file (formerly `.mel`); paired with a `.mel` code-behind. | `MelDocument` |
+| `.meui` | UI markup file (formerly `.mel`); paired with a `.mel` code-behind. | `MeuiDocument` |
 | Element | A parsed markup node: tag, attributes, children. | `Element` |
 | Tag | A markup element kind registered with a builder. | `DslTag` |
 | Tag registry | Maps tag names to builders; built once, passed in. | `DslRegistry` |

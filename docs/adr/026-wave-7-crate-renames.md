@@ -25,7 +25,7 @@ Every crate is renamed to `meridian-<context>-<layer>`, where the layer is
 | `audio-core`, `audio-driver` | `audio-domain`, `audio-cpal` |
 | `engine-core` | `runtime-app` |
 | `dsl-core`, `dsl-macros` | `markup`, `markup-macros` |
-| `ui-core`, `ui-render`, `mel-build` | `ui-domain`, `ui-scene2d`, `ui-mel` |
+| `ui-core`, `ui-render`, `ui-mel` | `ui-domain`, `ui-scene2d`, `ui-mel` |
 | `scene` | `data-substrate` |
 | `editor-protocol`, `editor-host` | `editor-domain`, `editor-app` |
 

@@ -4,12 +4,12 @@
 use std::path::{Path, PathBuf};
 
 use crate::source_dir::{SourceFiles, insert_set, read_set};
-use crate::{BuildError, GeneratedModule, GeneratedResources, MelDocument, ResourceSets};
+use crate::{BuildError, GeneratedModule, GeneratedResources, MeuiDocument, ResourceSets};
 
 /// Compiles every `*.mres` and `*.meui` under `dir` (recursively) into
-/// `$OUT_DIR/mel/<path relative to dir>.g.rs`, so
-/// `assets/scenes/hud/main.meui` becomes `mel_include!("hud/main")` and
-/// `assets/scenes/Strings.mres` becomes `mel_include!("Strings")`, and
+/// `$OUT_DIR/meui/<path relative to dir>.g.rs`, so
+/// `assets/scenes/hud/main.meui` becomes `meui_include!("hud/main")` and
+/// `assets/scenes/Strings.mres` becomes `meui_include!("Strings")`, and
 /// asks Cargo to rerun the build script when anything under `dir`
 /// changes. Resource sets are read first: a `.meui` may name any of them
 /// with `@res:Set.name`. Returns the generated files.
@@ -17,7 +17,7 @@ pub fn compile_dir(dir: impl AsRef<Path>) -> Result<Vec<PathBuf>, BuildError> {
     let dir = dir.as_ref();
     let out_dir = std::env::var_os("OUT_DIR").ok_or(BuildError::OutDirMissing)?;
     println!("cargo:rerun-if-changed={}", dir.display());
-    compile_tree(dir, &PathBuf::from(out_dir).join("mel"))
+    compile_tree(dir, &PathBuf::from(out_dir).join("meui"))
 }
 
 /// [`compile_dir`] with the output directory given.
@@ -67,7 +67,7 @@ pub fn compile_file_with(
         .canonicalize()
         .map_err(|error| BuildError::io(source, error))?;
     let text = std::fs::read_to_string(&source).map_err(|error| BuildError::io(&source, error))?;
-    let document = MelDocument::parse_with(&source, &text, resources)?;
+    let document = MeuiDocument::parse_with(&source, &text, resources)?;
     let module = GeneratedModule::render(&document);
     write(target, &module.code, &mut Vec::new())?;
     Ok(target.to_path_buf())
@@ -88,7 +88,7 @@ mod tests {
 
     fn scratch(name: &str) -> PathBuf {
         let dir =
-            std::env::temp_dir().join(format!("meridian-mel-build-{name}-{}", std::process::id()));
+            std::env::temp_dir().join(format!("meridian-ui-mel-{name}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         dir

@@ -7,7 +7,7 @@ use meridian_ui_domain::{NodeId, UiTree};
 
 use super::{LiveUi, Refreshed, Reload, ReloadError, SourceWatcher};
 use crate::source_dir::{SourceFiles, read_sets};
-use crate::{BuildError, Culture, MelDocument, ResourceSets, UiNode};
+use crate::{BuildError, Culture, MeuiDocument, ResourceSets, UiNode};
 
 /// A document and the resource sets it uses, watched on disk. The host
 /// calls [`Self::refresh`] each frame (or at any rhythm it likes); when
@@ -26,7 +26,7 @@ pub struct HotDocument {
 }
 
 impl HotDocument {
-    /// Watches `mel` and, when given, every `.mres` under `resources`.
+    /// Watches `meui` and, when given, every `.mres` under `resources`.
     /// `root` is the document's element in the tree, built from the files
     /// as they are now (the compiled `build_ui` from the same files).
     pub fn open(
@@ -95,7 +95,7 @@ impl HotDocument {
             watched.extend(mres);
         }
         let text = std::fs::read_to_string(meui).map_err(|error| BuildError::io(meui, error))?;
-        let ui = MelDocument::parse_with(meui, &text, &sets)?
+        let ui = MeuiDocument::parse_with(meui, &text, &sets)?
             .ui
             .ok_or_else(|| ReloadError::NotUi(meui.to_path_buf()))?;
         Ok((ui, watched))
