@@ -4,7 +4,8 @@ use std::fmt;
 
 use substrate_data::Problem;
 
-use crate::{ComponentName, ComponentNameError, EntityKey};
+use super::LoadError;
+use crate::{ComponentName, ComponentNameError, EntityKey, PrefabPath};
 
 /// What can be wrong with a scene document.
 #[derive(Debug, Clone, PartialEq)]
@@ -44,6 +45,46 @@ pub enum SceneProblem {
     },
     /// A `components` key that isn't a component name at all.
     BadComponentName(ComponentNameError),
+    /// A prefab with no entity, so no root.
+    PrefabEmpty,
+    /// A prefab whose first entity, the root, has a parent.
+    PrefabRootHasParent {
+        /// The root's key.
+        key: EntityKey,
+    },
+    /// A prefab entity other than the root without a parent: a prefab is a
+    /// tree under its root.
+    PrefabOrphan {
+        /// Its key.
+        key: EntityKey,
+    },
+    /// A prefab its source could not give.
+    PrefabUnavailable {
+        /// The prefab asked for.
+        prefab: PrefabPath,
+        /// Why, for a person.
+        reason: String,
+        /// The path of a prefab there is that this is probably a typo of.
+        suggestion: Option<PrefabPath>,
+    },
+    /// A prefab that, through the prefabs it instances, instances itself.
+    PrefabCycle {
+        /// The prefabs being read, outermost first, ending with the repeat.
+        chain: Vec<PrefabPath>,
+    },
+    /// Prefabs inside prefabs deeper than [`crate::MAX_PREFAB_DEPTH`].
+    PrefabTooDeep {
+        /// The depth allowed.
+        limit: usize,
+    },
+    /// A prefab that does not load: every problem in it, as it would be
+    /// reported for a document of its own.
+    PrefabInvalid {
+        /// The prefab.
+        prefab: PrefabPath,
+        /// Its problems.
+        error: Box<LoadError>,
+    },
 }
 
 impl fmt::Display for SceneProblem {
@@ -72,6 +113,38 @@ impl fmt::Display for SceneProblem {
                 suggestion: None,
             } => write!(f, "unknown component `{name}`"),
             SceneProblem::BadComponentName(e) => e.fmt(f),
+            SceneProblem::PrefabEmpty => f.write_str("a prefab needs at least its root entity"),
+            SceneProblem::PrefabRootHasParent { key } => {
+                write!(f, "the root of a prefab (`{key}`) can't have a parent")
+            }
+            SceneProblem::PrefabOrphan { key } => {
+                write!(
+                    f,
+                    "prefab entity `{key}` needs a parent (only the root has none)"
+                )
+            }
+            SceneProblem::PrefabUnavailable {
+                prefab,
+                reason,
+                suggestion,
+            } => {
+                write!(f, "prefab `{prefab}`: {reason}")?;
+                match suggestion {
+                    Some(s) => write!(f, " — did you mean `{s}`?"),
+                    None => Ok(()),
+                }
+            }
+            SceneProblem::PrefabCycle { chain } => {
+                let chain: Vec<&str> = chain.iter().map(PrefabPath::as_str).collect();
+                write!(f, "prefabs include each other: {}", chain.join(" -> "))
+            }
+            SceneProblem::PrefabTooDeep { limit } => {
+                write!(f, "prefabs inside prefabs nest deeper than {limit}")
+            }
+            SceneProblem::PrefabInvalid { prefab, error } => {
+                let inner = error.to_string().replace('\n', "\n  ");
+                write!(f, "prefab `{prefab}` doesn't load:\n  {inner}")
+            }
         }
     }
 }

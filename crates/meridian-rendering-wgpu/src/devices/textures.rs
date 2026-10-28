@@ -56,6 +56,19 @@ impl Device {
         )
     }
 
+    /// [`create_texture_2d`](Self::create_texture_2d) in `Rgba8Unorm`: no
+    /// sRGB decode on sampling, for maps that hold numbers (a
+    /// metallic-roughness map, ADR 031) rather than colours.
+    #[must_use]
+    pub fn create_linear_texture_2d(&self, width: u32, height: u32) -> Texture {
+        self.0.create_texture(
+            width,
+            height,
+            wgpu::TextureFormat::Rgba8Unorm,
+            wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+        )
+    }
+
     /// Uploads tightly-packed RGBA8 pixel data to `texture`'s full
     /// extent — see [`meridian_gpu_wgpu::Device::write_texture`].
     pub fn write_texture(&self, texture: &Texture, rgba8_data: &[u8]) {

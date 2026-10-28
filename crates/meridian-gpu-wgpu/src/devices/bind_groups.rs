@@ -1,6 +1,6 @@
 //! Bind group creation on the device.
 
-use crate::{BindGroup, Buffer, Device, SampledTexture, Sampler, Texture};
+use crate::{BindGroup, Buffer, Device, LitTextures, Sampler, Texture};
 
 impl Device {
     /// Builds a bind group binding `buffer` at `@group(0) @binding(0)` of
@@ -78,17 +78,22 @@ impl Device {
     }
 
     /// [`create_texture_bind_group`](Self::create_texture_bind_group)
-    /// plus a shadow map at `@binding(3)` and its comparison sampler at
-    /// `@binding(4)` — the shape a textured, shadow-receiving lit shader
-    /// needs (uniform, albedo texture, albedo sampler, shadow map,
-    /// shadow sampler, in that binding order).
+    /// plus a shadow map at `@binding(3)`, its comparison sampler at
+    /// `@binding(4)` and a metallic-roughness map at `@binding(5)` — the
+    /// shape a textured, shadow-receiving lit shader needs (uniform, albedo
+    /// texture, albedo sampler, shadow map, shadow sampler, metallic-
+    /// roughness map, in that binding order).
     pub fn create_textured_shadow_bind_group(
         &self,
         pipeline_layout: &wgpu::BindGroupLayout,
         buffer: &Buffer,
-        albedo: SampledTexture<'_>,
-        shadow: SampledTexture<'_>,
+        textures: LitTextures<'_>,
     ) -> BindGroup {
+        let LitTextures {
+            albedo,
+            metallic_roughness,
+            shadow,
+        } = textures;
         let raw = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: None,
             layout: pipeline_layout,
@@ -112,6 +117,10 @@ impl Device {
                 wgpu::BindGroupEntry {
                     binding: 4,
                     resource: wgpu::BindingResource::Sampler(&shadow.sampler.raw),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: wgpu::BindingResource::TextureView(&metallic_roughness.view),
                 },
             ],
         });

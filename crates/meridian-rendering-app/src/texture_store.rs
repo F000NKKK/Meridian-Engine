@@ -16,6 +16,11 @@ pub trait TextureStore {
     /// Uploads `image`'s RGBA8 pixels and returns the new texture's handle.
     fn upload(&mut self, image: &ImageAsset) -> TextureHandle;
 
+    /// Uploads `image`'s RGBA8 pixels as linear data, with no sRGB decode on
+    /// sampling: the layout for maps that hold numbers, not colours, such as
+    /// a metallic-roughness map (ADR 031).
+    fn upload_linear(&mut self, image: &ImageAsset) -> TextureHandle;
+
     /// Uploads a 1x1 texture of one `rgba` colour: what plain coloured
     /// rectangles point at, carrying their colour in a tint.
     fn upload_solid(&mut self, rgba: [u8; 4]) -> TextureHandle;

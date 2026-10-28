@@ -1,6 +1,6 @@
 //! Bind group creation on the device.
 
-use crate::{BindGroup, Buffer, Device, RenderPipeline, SampledTexture, Sampler, Texture};
+use crate::{BindGroup, Buffer, Device, LitTextures, RenderPipeline, Sampler, Texture};
 
 impl Device {
     /// Builds a bind group binding `buffer` (a uniform, as in
@@ -25,22 +25,20 @@ impl Device {
     }
 
     /// Like [`create_textured_bind_group`](Self::create_textured_bind_group)
-    /// plus a shadow map and its comparison sampler — the bind group a
-    /// textured, shadow-receiving lit pipeline needs (see
+    /// plus a shadow map, its comparison sampler and a metallic-roughness map —
+    /// the bind group a textured, shadow-receiving lit pipeline needs (see
     /// `rendering-domain::submission`'s `lit_textured_shadow_shader_wgsl`
     /// for the binding declarations this must match).
     pub fn create_textured_shadow_bind_group(
         &self,
         pipeline: &RenderPipeline,
         buffer: &Buffer,
-        albedo: SampledTexture<'_>,
-        shadow: SampledTexture<'_>,
+        textures: LitTextures<'_>,
     ) -> BindGroup {
         self.0.create_textured_shadow_bind_group(
             &pipeline.raw.get_bind_group_layout(0),
             buffer,
-            albedo,
-            shadow,
+            textures,
         )
     }
 
