@@ -2,16 +2,20 @@
 
 use meridian_audio_domain::{BlockRenderer, DspGraph, DspNode, Emitter, Listener, Voice};
 
-use crate::VoiceId;
+use crate::{BusId, VoiceId};
 
 /// A listener, the voices playing around it, the [`BlockRenderer`] that
 /// spatializes them and an optional chain of post effects. The composition
 /// root picks the renderer (speaker-gain `Mixer` or `BinauralRenderer`)
-/// and the effects; this type dictates neither. Plain data, no lock.
+/// and the effects; this type dictates neither. Voices can be grouped on
+/// buses ([`add_bus`](Self::add_bus)) whose gain scales every voice on them;
+/// [`BusId::MASTER`] scales the whole mix. Plain data, no lock.
 pub struct AudioScene {
     /// Where the scene is heard from.
     pub listener: Listener,
-    voices: Vec<(VoiceId, Voice)>,
+    voices: Vec<(VoiceId, BusId, Voice)>,
+    /// Linear gain per bus; index 0 is [`BusId::MASTER`].
+    bus_gains: Vec<f32>,
     next_id: u64,
     max_voices: usize,
     renderer: Box<dyn BlockRenderer>,
@@ -25,6 +29,7 @@ impl AudioScene {
         Self {
             listener: Listener::default(),
             voices: Vec::new(),
+            bus_gains: vec![1.0],
             next_id: 0,
             max_voices: usize::MAX,
             renderer: Box::new(renderer),
@@ -62,6 +67,17 @@ impl AudioScene {
     /// room; if every voice outranks the new one, the new voice is dropped and
     /// its id resolves to nothing.
     pub fn add_voice(&mut self, voice: Voice) -> VoiceId {
+        self.add_voice_to(BusId::MASTER, voice)
+    }
+
+    /// Like [`add_voice`](Self::add_voice), mixing the voice through `bus`
+    /// (an unknown bus means [`BusId::MASTER`]).
+    pub fn add_voice_to(&mut self, bus: BusId, voice: Voice) -> VoiceId {
+        let bus = if bus.index() < self.bus_gains.len() {
+            bus
+        } else {
+            BusId::MASTER
+        };
         let id = VoiceId::new(self.next_id);
         self.next_id += 1;
         if self.voices.len() >= self.max_voices {
@@ -71,12 +87,12 @@ impl AudioScene {
             let Some(victim) = self.steal_candidate() else {
                 return id;
             };
-            if self.voices[victim].1.priority > voice.priority {
+            if self.voices[victim].2.priority > voice.priority {
                 return id;
             }
             self.voices.remove(victim);
         }
-        self.voices.push((id, voice));
+        self.voices.push((id, bus, voice));
         id
     }
 
@@ -85,7 +101,7 @@ impl AudioScene {
         self.voices
             .iter()
             .enumerate()
-            .min_by_key(|(index, (_, voice))| (voice.priority, *index))
+            .min_by_key(|(index, (_, _, voice))| (voice.priority, *index))
             .map(|(index, _)| index)
     }
 
@@ -93,8 +109,8 @@ impl AudioScene {
     pub fn voice_mut(&mut self, id: VoiceId) -> Option<&mut Voice> {
         self.voices
             .iter_mut()
-            .find(|(voice_id, _)| *voice_id == id)
-            .map(|(_, voice)| voice)
+            .find(|(voice_id, _, _)| *voice_id == id)
+            .map(|(_, _, voice)| voice)
     }
 
     /// Moves the emitter of voice `id`; `false` if the voice is gone.
@@ -108,8 +124,32 @@ impl AudioScene {
     /// fade-out is allowed to play out) and returns how many were removed.
     pub fn reap_finished(&mut self) -> usize {
         let before = self.voices.len();
-        self.voices.retain(|(_, voice)| !voice.is_done());
+        self.voices.retain(|(_, _, voice)| !voice.is_done());
         before - self.voices.len()
+    }
+
+    /// Creates a bus with unit gain; voices join it through
+    /// [`add_voice_to`](Self::add_voice_to).
+    pub fn add_bus(&mut self) -> BusId {
+        self.bus_gains.push(1.0);
+        BusId::new(self.bus_gains.len() - 1)
+    }
+
+    /// Sets the linear gain of `bus` (negative and non-finite values mean
+    /// silence); `false` if the bus does not exist. The gain applies from the
+    /// next block, with no ramp: pair it with voice fades for audible changes.
+    pub fn set_bus_gain(&mut self, bus: BusId, gain: f32) -> bool {
+        let gain = if gain.is_finite() { gain.max(0.0) } else { 0.0 };
+        self.bus_gains
+            .get_mut(bus.index())
+            .map(|slot| *slot = gain)
+            .is_some()
+    }
+
+    /// The gain of `bus`, if it exists.
+    #[must_use]
+    pub fn bus_gain(&self, bus: BusId) -> Option<f32> {
+        self.bus_gains.get(bus.index()).copied()
     }
 
     /// Number of voices in the scene, finished ones included.
@@ -124,15 +164,25 @@ impl AudioScene {
     /// number of frames, in the order they were added.
     pub fn render_block(&mut self, out: &mut [f32]) {
         let frames = out.len() / self.renderer.channels().max(1);
-        for (_, voice) in &mut self.voices {
-            voice.render(frames);
+        for (_, bus, voice) in &mut self.voices {
+            // The master gain is applied once, to the finished mix.
+            let scale = if *bus == BusId::MASTER {
+                1.0
+            } else {
+                self.bus_gains[bus.index()]
+            };
+            voice.render_scaled(frames, scale);
         }
         let sources: Vec<(Emitter, &[f32])> = self
             .voices
             .iter()
-            .map(|(_, voice)| (voice.emitter, voice.block()))
+            .map(|(_, _, voice)| (voice.emitter, voice.block()))
             .collect();
         self.renderer.render(&self.listener, &sources, out);
+        let master = self.bus_gains[BusId::MASTER.index()];
+        for sample in out.iter_mut() {
+            *sample *= master;
+        }
         self.post.process(out);
     }
 }

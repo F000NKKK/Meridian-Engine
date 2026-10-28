@@ -168,3 +168,72 @@ fn an_empty_scene_renders_silence() {
 
     assert!(out.iter().all(|s| s.abs() < 1e-6));
 }
+
+fn loud_voice() -> Voice {
+    Voice::new(
+        MemorySource::new(vec![1.0; 4], Repeat::Loop),
+        right_of_listener(),
+    )
+}
+
+fn right_level(scene: &mut AudioScene) -> f32 {
+    let mut out = [0.0f32; 4];
+    scene.render_block(&mut out);
+    out[1]
+}
+
+#[test]
+fn a_bus_gain_scales_only_its_voices() {
+    let mut scene = stereo_scene();
+    let music = scene.add_bus();
+    scene.add_voice_to(music, loud_voice());
+    let baseline = right_level(&mut scene);
+
+    assert!(scene.set_bus_gain(music, 0.5));
+    let halved = right_level(&mut scene);
+    scene.add_voice(loud_voice());
+    let with_direct = right_level(&mut scene);
+
+    assert!((halved - baseline * 0.5).abs() < 1e-4);
+    assert!((with_direct - (halved + baseline)).abs() < 1e-4);
+}
+
+#[test]
+fn the_master_bus_scales_the_whole_mix() {
+    let mut scene = stereo_scene();
+    let sfx = scene.add_bus();
+    scene.add_voice_to(sfx, loud_voice());
+    scene.add_voice(loud_voice());
+    let full = right_level(&mut scene);
+
+    scene.set_bus_gain(BusId::MASTER, 0.25);
+
+    assert!((right_level(&mut scene) - full * 0.25).abs() < 1e-4);
+}
+
+#[test]
+fn a_silenced_bus_is_silent_and_bad_gains_mean_silence() {
+    let mut scene = stereo_scene();
+    let bus = scene.add_bus();
+    scene.add_voice_to(bus, loud_voice());
+
+    scene.set_bus_gain(bus, f32::NAN);
+    assert!(right_level(&mut scene).abs() < 1e-6);
+    scene.set_bus_gain(bus, -2.0);
+    assert_eq!(
+        scene.bus_gain(bus).map(f32::to_bits),
+        Some(0.0f32.to_bits())
+    );
+}
+
+#[test]
+fn an_unknown_bus_falls_back_to_master_and_cannot_be_set() {
+    let mut scene = stereo_scene();
+    let other = stereo_scene().add_bus();
+
+    let id = scene.add_voice_to(other, loud_voice());
+
+    assert!(scene.voice_mut(id).is_some());
+    assert!(!scene.set_bus_gain(other, 0.5));
+    assert_eq!(scene.bus_gain(other), None);
+}

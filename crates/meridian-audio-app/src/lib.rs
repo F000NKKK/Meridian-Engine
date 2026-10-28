@@ -14,6 +14,7 @@
 mod audio_scene;
 mod audio_sink;
 mod audio_subsystem;
+mod bus_id;
 #[cfg(any(test, feature = "testing"))]
 pub mod testing;
 mod voice_id;
@@ -21,4 +22,5 @@ mod voice_id;
 pub use audio_scene::AudioScene;
 pub use audio_sink::AudioSink;
 pub use audio_subsystem::AudioSubsystem;
+pub use bus_id::BusId;
 pub use voice_id::VoiceId;

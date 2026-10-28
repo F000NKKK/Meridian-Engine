@@ -83,6 +83,7 @@ Not started; ordered by suggested priority. Items wait for an explicit task.
    (lowest first, oldest among equals) and `ResampledSource::anti_aliased`.
 9. ~~`AudioTrack` reads without the per-block `Vec`~~ — done (`SampleSource::read` fills the caller's buffer).
 10. ~~Distance curves~~ — done: `AttenuationCurve` (`Inverse`, `Linear`, `Exponential`).
+11. ~~Buses~~ — done: `BusId`, `AudioScene::add_bus` / `add_voice_to` / `set_bus_gain`, master gain.
 
 Deliberately not queued: `meridian-audio-effects` (only when an effect
 needs an FFT/external crate), HRTF, height channels, a `Fixed` flavor
