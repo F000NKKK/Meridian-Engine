@@ -54,7 +54,8 @@ pub use mesh_asset::MeshAsset;
 pub use meta::{AssetMeta, ImporterName, ImporterNameError, META_FORMAT, MetaError};
 pub use model::{
     EncodedImage, ModelAsset, ModelChannel, ModelClip, ModelInterpolation, ModelJoint,
-    ModelMaterial, ModelPart, ModelProperty, ModelSkeleton, PartSkin,
+    ModelMaterial, ModelPart, ModelProperty, ModelSkeleton, ModelWeightsChannel, MorphTarget,
+    PartMorph, PartSkin,
 };
 pub use obj_decoder::ObjDecoder;
 pub use pack::{

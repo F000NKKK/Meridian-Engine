@@ -1,5 +1,7 @@
 //! The glTF decoder.
 
+use std::collections::HashMap;
+
 use gltf::buffer::Source as BufferSource;
 use gltf::image::Source as ImageSource;
 use gltf::{Document, Gltf};
@@ -57,6 +59,7 @@ impl GltfDecoder {
             .filter(|(node, _)| node.mesh().is_some() && node.skin().is_none())
             .map(|(node, _)| node.index())
             .collect();
+        let mut node_parts: HashMap<usize, Vec<usize>> = HashMap::new();
         let motion = skins.add_motion(&document, &mesh_nodes);
         for (node, world) in &placed {
             let Some(mesh) = node.mesh() else { continue };
@@ -67,7 +70,12 @@ impl GltfDecoder {
                 motion: motion.joint_of(node.index()),
             };
             for primitive in mesh.primitives() {
-                let part = read::part::read(&primitive, &placement, &buffers)?;
+                let mut part = read::part::read(&primitive, &placement, &buffers)?;
+                read::morph::override_weights(&mut part, node.weights().or(mesh.weights()));
+                node_parts
+                    .entry(node.index())
+                    .or_default()
+                    .push(parts.len());
                 vertices = vertices.saturating_add(part.positions.len());
                 if vertices > MAX_TOTAL_VERTICES {
                     return Err(GltfError::ModelTooLarge);
@@ -76,7 +84,12 @@ impl GltfDecoder {
             }
         }
         let images = read::image::read(&document, &buffers, resources)?;
-        let clips = read::animation::read_all(&document, &buffers, &skins)?;
+        let targets = read::animation::Targets {
+            skins: &skins,
+            parts: &parts,
+            node_parts: &node_parts,
+        };
+        let clips = read::animation::read_all(&document, &buffers, &targets)?;
         Ok(ModelAsset {
             parts,
             images,

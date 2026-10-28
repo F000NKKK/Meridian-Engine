@@ -212,6 +212,7 @@ mod tests {
                     times: vec![0.0, 2.0],
                     values: vec![0.0, 1.0, 0.0, 0.0, 3.0, 0.0],
                 }],
+                weights: Vec::new(),
             }],
             ..ModelAsset::default()
         }

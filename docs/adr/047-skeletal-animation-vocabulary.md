@@ -124,3 +124,10 @@ model: `sdk`'s `ModelRig` holds the `Skeleton`s and `Clip`s of a loaded model
   node's joint with weight 1, vertices left in node space. Scale animation
   works, and the renderer needs nothing new. A model needing more than 256
   such nodes keeps them static.
+- Morph targets are plain data in asset-domain (`PartMorph`: per-vertex offset
+  targets and the starting weights; `ModelWeightsChannel`: weight keys of one
+  part, in `ModelClip::weights`). The glTF decoder keeps offsets as authored
+  for skinned parts and carries them through the node's linear transform for
+  rigid ones; a node's weights override its mesh's. A weights channel moves
+  no node, so it does not make the node a joint. At most 64 targets per
+  primitive. Playing them is left to the animation and rendering crates.
