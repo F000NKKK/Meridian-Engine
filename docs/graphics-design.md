@@ -281,7 +281,10 @@ driver.
    `Material::roughness` (default 0.5) and `Material::metallic` (default
    0.0) travel in each instance record as a `surface` pair and drive the
    lit shaders' GGX/Smith/Schlick model ([ADR 032](adr/032-metallic-roughness-materials.md));
-   they replaced the Blinn-Phong `shininess`/`specular` pair. With no
+   they replaced the Blinn-Phong `shininess`/`specular` pair.
+   `Material::metallic_roughness` (glTF layout, uploaded linear through
+   `TextureStore::upload_linear`) scales them per texel; lit textured draws
+   bind it at slot 5. With no
    environment map the hemisphere ambient stands in for reflections.
    **Material states are real:** `DrawState::of(material)` (domain) maps
    `blend` and `always_on_top` to `Opaque`, `Transparent` (alpha blended,

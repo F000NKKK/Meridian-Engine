@@ -61,7 +61,7 @@ pub use gpu_texture_store::GpuTextureStore;
 // resource-type-naming precedent as `gac-wgpu`'s direct `gpu-wgpu`
 // dependency (ADR 011), applied by re-export instead of a second edge.
 pub use meridian_gpu_wgpu::{
-    BindGroup, Buffer, BufferUsage, DeviceError, SampledTexture, Sampler, Texture,
+    BindGroup, Buffer, BufferUsage, DeviceError, LitTextures, SampledTexture, Sampler, Texture,
 };
 pub use render_pass::RenderPass;
 pub use render_pipeline::RenderPipeline;

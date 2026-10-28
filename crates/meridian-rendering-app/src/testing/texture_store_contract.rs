@@ -20,11 +20,13 @@ pub fn run_texture_store_contract<S: TextureStore>(make: impl Fn() -> S) {
     };
     let first = store.upload(&image);
     let second = store.upload_solid([255, 0, 0, 255]);
+    let linear = store.upload_linear(&image);
     assert!(
-        store.contains(first) && store.contains(second),
+        store.contains(first) && store.contains(second) && store.contains(linear),
         "uploads are live"
     );
     assert_ne!(first, second, "handles are distinct");
+    assert_ne!(first, linear, "a linear upload is a texture of its own");
 
     assert!(store.release(first), "release frees a live texture");
     assert!(!store.contains(first), "a released handle is dead");

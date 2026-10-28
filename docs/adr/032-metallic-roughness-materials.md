@@ -64,9 +64,11 @@ loader uploads the image once as linear data and fills the `Material`. The
 decoder still never decodes pixels.
 
 **D6 — delivery in two steps.** The factors and the shading (D1, D3, D4, the
-factor half of D5) land first; the map (D2, the image half of D5, the second
-texture binding and the batch key) lands next. Each step leaves the engine
-working and its examples migrated.
+factor half of D5) landed first; the map (D2, the image half of D5, the extra
+texture binding and the batch key) followed. A lit textured draw always
+samples a metallic-roughness texture: a draw without a map binds a 1x1 linear
+white one owned by the scene renderer, so the pipeline count stays the same,
+and a draw with a map but no albedo binds a 1x1 white albedo.
 
 ## Consequences
 

@@ -132,6 +132,7 @@ fn a_material_gives_its_base_colour_factors_and_texture() {
   "materials": [{"pbrMetallicRoughness": {
     "baseColorFactor": [0.5, 0.25, 1, 0.75],
     "metallicFactor": 0.25, "roughnessFactor": 0.75,
+    "metallicRoughnessTexture": {"index": 0},
     "baseColorTexture": {"index": 0}}}],
   "textures": [{"source": 0}],
   "images": [{"bufferView": 4, "mimeType": "image/png"}]"#;
@@ -145,6 +146,7 @@ fn a_material_gives_its_base_colour_factors_and_texture() {
     assert_eq!(material.base_color, [0.5, 0.25, 1.0, 0.75]);
     assert_eq!(material.base_color_image, Some(0));
     assert_eq!((material.metallic, material.roughness), (0.25, 0.75));
+    assert_eq!(material.metallic_roughness_image, Some(0));
     assert_eq!(model.images[0].bytes.len(), 4);
 }
 
