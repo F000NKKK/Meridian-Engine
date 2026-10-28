@@ -36,11 +36,15 @@ impl FixedMotorTransformKernel {
 impl ComputeKernel for FixedMotorTransformKernel {
     fn dispatch(&self, context: &ComputeContext, size: DispatchSize) {
         let count = size.total().min(self.locals.len());
-        context.parallel_for(count, |i| {
-            let world = self.locals[i].compose(self.parent);
+        context.parallel_ranges(count, |range| {
+            let world: Vec<FixedMotor3> = self.locals[range.clone()]
+                .iter()
+                .map(|local| local.compose(self.parent))
+                .collect();
             self.results
                 .lock()
-                .unwrap_or_else(std::sync::PoisonError::into_inner)[i] = world;
+                .unwrap_or_else(std::sync::PoisonError::into_inner)[range]
+                .copy_from_slice(&world);
         });
     }
 }

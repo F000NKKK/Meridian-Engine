@@ -30,11 +30,15 @@ impl FixedMotorComposeKernel {
 impl ComputeKernel for FixedMotorComposeKernel {
     fn dispatch(&self, context: &ComputeContext, size: DispatchSize) {
         let count = size.total().min(self.pairs.len());
-        context.parallel_for(count, |i| {
-            let (child, parent) = self.pairs[i];
+        context.parallel_ranges(count, |range| {
+            let composed: Vec<FixedMotor3> = self.pairs[range.clone()]
+                .iter()
+                .map(|&(child, parent)| child.compose(parent))
+                .collect();
             self.results
                 .lock()
-                .unwrap_or_else(std::sync::PoisonError::into_inner)[i] = child.compose(parent);
+                .unwrap_or_else(std::sync::PoisonError::into_inner)[range]
+                .copy_from_slice(&composed);
         });
     }
 }

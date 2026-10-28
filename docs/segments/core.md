@@ -122,9 +122,18 @@ change that closed them.
    `transform_vector` 2.58 µs -> 10 ns); its results can differ from the old
    product by a few units of the last place and stay bit-identical across
    platforms.
-8. **Benchmarks.** `ecs` has criterion benches; add them for
-   `runtime-threads` and the `gac-wgpu` batch kernels so items 3, 5 and 7 are
-   decided on numbers.
+8. **Done: benchmarks.** `ecs` has criterion benches, and so do the `gac-wgpu`
+   motor kernels (`cargo bench -p meridian-gac-wgpu`, sequential vs parallel at
+   1k to 100k items) and `BackgroundPool` (`cargo bench -p meridian-runtime-threads
+   --bench background_pool`: ~43 us for one job, ~12 us per job for 1 000 tiny
+   jobs on 4 threads, which only matters for work that is not I/O bound). The
+   first run showed the kernels locking their output once per item, so the
+   parallel path was slower than sequential at every size. Kernels now fill a
+   local buffer per range through `ComputeContext::parallel_ranges` and lock
+   once: 100k motors 13 ms sequential, 5 ms parallel. Open: the default
+   parallel cutoff of 1 024 items still loses at 1k (parallel ~270 us against
+   sequential ~115 us, a thread spawn per dispatch) and wins at 4k. Raising it
+   changes which path the physics tests exercise, so it goes through team/physics.
 
 The Craftbook migration (ADR 019/020) owns the `runtime-app`/`sdk` rework,
 the driver direction and the `unwrap` cleanup; see `docs/adr/020-craftbook-adoption.md`.

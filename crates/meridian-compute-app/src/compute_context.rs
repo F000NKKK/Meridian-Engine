@@ -1,5 +1,6 @@
 //! The compute device and its dispatch policy.
 
+use std::ops::Range;
 use std::sync::Arc;
 
 use crate::{BackendSplit, ComputeBuffer, ComputeDevice, ComputeSupport, GpuBackend, HybridKernel};
@@ -72,17 +73,22 @@ impl ComputeContext {
     /// Runs `work(i)` for every `i` in `0..count`. See the module doc for
     /// the sequential/parallel cutoff policy.
     pub fn parallel_for(&self, count: usize, work: impl Fn(usize) + Sync) {
+        self.parallel_ranges(count, |range| range.for_each(&work));
+    }
+
+    /// Runs `work` over contiguous sub-ranges that together cover `0..count`
+    /// exactly once: one range below the cutoff, one per thread above it.
+    /// A kernel that writes shared output computes a whole range into a
+    /// local buffer and publishes it once, instead of synchronising per item.
+    pub fn parallel_ranges(&self, count: usize, work: impl Fn(Range<usize>) + Sync) {
         if count == 0 {
             return;
         }
         if count < self.parallel_threshold {
-            for i in 0..count {
-                work(i);
-            }
+            work(0..count);
             return;
         }
-        self.device
-            .dispatch_ranges(count, &|range| range.for_each(&work));
+        self.device.dispatch_ranges(count, &work);
     }
 
     /// Splits `count` work items between `kernel`'s CPU and GPU
