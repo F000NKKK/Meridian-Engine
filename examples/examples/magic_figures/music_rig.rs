@@ -53,7 +53,8 @@ fn load_music_tracks(shapes: &[ShapeSpec]) -> (Vec<Box<dyn SampleSource>>, u32) 
         .into_iter()
         .map(|(track, rate)| match rate {
             Some(rate) if rate != sample_rate => {
-                Box::new(ResampledSource::new(track, rate, sample_rate)) as Box<dyn SampleSource>
+                Box::new(ResampledSource::anti_aliased(track, rate, sample_rate))
+                    as Box<dyn SampleSource>
             }
             _ => Box::new(track),
         })

@@ -1,5 +1,6 @@
 //! Playing sounds: a [`Voice`] pulls mono samples from a [`SampleSource`].
 
+mod anti_alias;
 mod memory_source;
 mod repeat;
 mod resampled_source;

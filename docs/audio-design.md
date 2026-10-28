@@ -77,8 +77,10 @@ emitter; the voice owns only playback. A source that returns fewer samples than
 asked has ended: the block is zero-padded and the voice finishes. A paused voice
 is silent and keeps its position. `MemorySource` plays a decoded buffer once or
 looping (`Repeat`). `ResampledSource` converts a source recorded at another
-rate to the stream's by linear interpolation (no low-pass before decimating, so
-large downward conversions alias).
+rate to the stream's by linear interpolation; `ResampledSource::new` does not
+low-pass before decimating (large downward conversions alias), while
+`ResampledSource::anti_aliased` first runs a 4th-order Butterworth low-pass just
+below the output Nyquist frequency when converting downward.
 
 Fades: `Voice::with_fade(frames)` fades in at start and out on pause and stop
 instead of cutting the waveform. `state()` changes at once; `is_done()` turns
@@ -90,7 +92,8 @@ samples.
 reused), one `BlockRenderer` and a post-effect chain. `render_block` advances
 every voice by the same frame count, spatializes them and applies the effects.
 `with_max_voices` caps the scene: adding a voice to a full scene drops done
-voices first, then steals the oldest. It is plain data; the lock is
+voices first, then steals the lowest-`Voice::priority` voice (oldest among
+equals); a new voice that every voice outranks is dropped. It is plain data; the lock is
 `runtime-app::Shared`.
 
 ## Output and latency

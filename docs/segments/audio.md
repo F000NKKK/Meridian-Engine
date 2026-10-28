@@ -79,9 +79,9 @@ Not started; ordered by suggested priority. Items wait for an explicit task.
    `magic_figures` resamples tracks to the stream rate.
 7. ~~Contact sounds~~ — done ([ADR 031](../adr/031-contact-events-through-the-event-system.md)):
    `ContactWatcher` in `physics-app`, `ContactSoundStage` in `runtime-app`.
-8. **Not built:** priority-based stealing (today: oldest first),
-   `AudioTrack` reads without the per-block `Vec`, a resampler with a
-   low-pass for large downward conversions.
+8. ~~Priority stealing and filtered resampling~~ — done: `Voice::priority`
+   (lowest first, oldest among equals) and `ResampledSource::anti_aliased`.
+9. **Not built:** `AudioTrack` reads without the per-block `Vec`.
 
 Deliberately not queued: `meridian-audio-effects` (only when an effect
 needs an FFT/external crate), HRTF, height channels, a `Fixed` flavor
