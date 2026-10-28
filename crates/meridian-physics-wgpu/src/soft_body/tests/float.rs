@@ -49,7 +49,7 @@ async fn kernel_or_skip() -> Option<(ComputeContext, SoftBodyGpuKernel)> {
             return None;
         }
     };
-    let kernel = SoftBodyGpuKernel::new(&context);
+    let kernel = SoftBodyGpuKernel::new(&context).expect("GPU context");
     Some((context, kernel))
 }
 
@@ -78,7 +78,10 @@ async fn gpu_step_matches_cpu_step_closely() {
     let pre_contact_steps = 20;
 
     for step in 0..120 {
-        kernel.step(&context, &mut gpu_body, &integrator, dt).await;
+        kernel
+            .step(&context, &mut gpu_body, &integrator, dt)
+            .await
+            .expect("GPU context");
         integrator.step(&mut cpu_body, dt);
 
         for (i, (gpu_p, cpu_p)) in gpu_body

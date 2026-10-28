@@ -44,22 +44,18 @@ Skills that apply: `meridian-subsystem-core-keeper`,
 
 ## Gaps and backlog
 
-Ordered roughly by priority. Nothing here is started; each item waits for
+Ordered roughly by priority. Open items wait for
 a task.
 
-### Hygiene (small, safe)
+### Hygiene (done)
 
-1. **Unused dependencies in `physics-domain/Cargo.toml`.** `meridian-gac-wgpu`,
-   `meridian-compute-app` and
-   `meridian-ecs` are declared but not referenced in `src/`. They
-   overstate the crate graph that `check-deps` validates. Remove them or
-   use them deliberately.
-2. **Stale crate docs.** `physics-domain/src/lib.rs` still says no
-   `compute-app` dispatch is wired in (it is, via `physics-wgpu`).
-3. **Panic audit.** `unwrap`/`expect` calls in non-test code paths of
-   `physics-wgpu` (for example mutex locks in the constraint-solver
-   kernel) should be reviewed against the standards `team/standards` is
-   writing in Craftbook.
+1. Unused dependencies of the domain crate removed (#36).
+2. Stale crate docs fixed (#36).
+3. Panic audit of `physics-wgpu`: a GPU kernel used with a context that has
+   no GPU backend now returns `GpuBackendMissing` instead of panicking
+   (`BroadPhaseGpuKernel`, `SoftBodyGpuKernel`, `FixedSoftBodyGpuKernel`).
+   The remaining `expect`s are internal invariants (a bound buffer slot that
+   was just filled).
 
 ### Features
 

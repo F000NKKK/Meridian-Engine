@@ -2,16 +2,12 @@
 //! rigid-body pipeline with a real WGSL shader behind it.
 
 use meridian_compute_app::ComputeContext;
-use meridian_compute_wgpu::GpuComputeDevice;
 use meridian_gac::FloatFlavor;
 use meridian_gpu_wgpu::{Buffer, BufferUsage, ComputePipeline};
 use meridian_physics_domain::dynamics::RigidBody;
 
+use crate::gpu_backend_missing::{GpuBackendMissing, require_gpu};
 use crate::readback::le_word;
-
-const GPU_MISSING_NEW: &str = "BroadPhaseGpuKernel::new requires a ComputeContext with a GPU backend (see ComputeContext::with_gpu)";
-const GPU_MISSING_PAIRS: &str =
-    "BroadPhaseGpuKernel::pairs requires a ComputeContext with a GPU backend";
 
 const BROAD_PHASE_WGSL: &str = r#"
 struct Params {
@@ -75,13 +71,12 @@ pub struct BroadPhaseGpuKernel {
 
 impl BroadPhaseGpuKernel {
     /// `context` must already have a GPU backend
-    /// ([`ComputeContext::with_gpu`]) — panics otherwise, the same
-    /// policy [`crate::soft_body::float::SoftBodyGpuKernel::new`] uses.
-    pub fn new(context: &ComputeContext) -> Self {
-        let gpu = context.gpu::<GpuComputeDevice>().expect(GPU_MISSING_NEW);
+    /// ([`ComputeContext::with_gpu`]), else [`GpuBackendMissing`].
+    pub fn new(context: &ComputeContext) -> Result<Self, GpuBackendMissing> {
+        let gpu = require_gpu(context, "BroadPhaseGpuKernel::new")?;
         let shader = gpu.create_shader("broad_phase_overlap_f32", BROAD_PHASE_WGSL);
         let pipeline = gpu.create_compute_pipeline(&shader, "broad_phase_overlap");
-        Self { pipeline }
+        Ok(Self { pipeline })
     }
 
     /// Every `(i, j)`, `i < j` candidate pair among `bodies` that
@@ -93,18 +88,18 @@ impl BroadPhaseGpuKernel {
         &self,
         context: &ComputeContext,
         bodies: &[RigidBody<FloatFlavor>],
-    ) -> Vec<(usize, usize)> {
+    ) -> Result<Vec<(usize, usize)>, GpuBackendMissing> {
         let candidates = candidate_pairs(bodies.len());
         if candidates.is_empty() {
-            return Vec::new();
+            return Ok(Vec::new());
         }
-        let overlaps = self.overlap_flags(context, bodies, &candidates).await;
-        candidates
+        let overlaps = self.overlap_flags(context, bodies, &candidates).await?;
+        Ok(candidates
             .into_iter()
             .enumerate()
             .filter(|(k, _)| u32::from_le_bytes(le_word(&overlaps, k * 4)) != 0)
             .map(|(_, (i, j))| (i as usize, j as usize))
-            .collect()
+            .collect())
     }
 
     /// Uploads the AABBs and pair list, dispatches one thread per pair and
@@ -114,8 +109,8 @@ impl BroadPhaseGpuKernel {
         context: &ComputeContext,
         bodies: &[RigidBody<FloatFlavor>],
         candidates: &[(u32, u32)],
-    ) -> Vec<u8> {
-        let gpu = context.gpu::<GpuComputeDevice>().expect(GPU_MISSING_PAIRS);
+    ) -> Result<Vec<u8>, GpuBackendMissing> {
+        let gpu = require_gpu(context, "BroadPhaseGpuKernel::pairs")?;
         let (aabb_min_bytes, aabb_max_bytes) = aabb_bytes(bodies);
         let pair_count = candidates.len() as u32;
         let pair_indices_bytes: Vec<u8> = candidates
@@ -157,7 +152,7 @@ impl BroadPhaseGpuKernel {
             pair_count.div_ceil(64).max(1),
         );
         commands.submit();
-        gpu.read_buffer(&overlaps_out_buf).await
+        Ok(gpu.read_buffer(&overlaps_out_buf).await)
     }
 }
 

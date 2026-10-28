@@ -56,7 +56,7 @@ pub(super) async fn kernel_or_skip() -> Option<(ComputeContext, FixedSoftBodyGpu
             return None;
         }
     };
-    let kernel = FixedSoftBodyGpuKernel::new(&context);
+    let kernel = FixedSoftBodyGpuKernel::new(&context).expect("GPU context");
     Some((context, kernel))
 }
 
@@ -81,7 +81,10 @@ async fn gpu_step_matches_cpu_step_bit_exact() {
     let dt = Fixed::from_num(1.0 / 240.0);
 
     for step in 0..60 {
-        kernel.step(&context, &mut gpu_body, &integrator, dt).await;
+        kernel
+            .step(&context, &mut gpu_body, &integrator, dt)
+            .await
+            .expect("GPU context");
         integrator.step(&mut cpu_body, dt);
 
         for (idx, (g, c)) in gpu_body

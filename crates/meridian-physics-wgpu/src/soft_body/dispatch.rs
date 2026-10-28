@@ -1,8 +1,8 @@
 //! The upload, dispatch and read-back sequence both flavors' soft-body
 //! kernels share.
 
+use crate::gpu_backend_missing::{GpuBackendMissing, require_gpu};
 use meridian_compute_app::ComputeContext;
-use meridian_compute_wgpu::GpuComputeDevice;
 use meridian_gpu_wgpu::{BufferUsage, ComputePipeline};
 
 use super::scratch::SoftBodyScratch;
@@ -12,16 +12,16 @@ use super::step_inputs::StepInputs;
 const WORKGROUP_SIZE: u32 = 64;
 
 /// Uploads `inputs`, dispatches one thread per particle and reads the new
-/// positions and velocities back (in that order). `gpu_missing` is the panic message when
-/// `context` has no GPU backend.
+/// positions and velocities back (in that order). `kernel` names the calling operation in
+/// [`GpuBackendMissing`] when `context` has no GPU backend.
 pub(super) async fn run(
     pipeline: &ComputePipeline,
     context: &ComputeContext,
     inputs: &StepInputs,
     scratch: &mut SoftBodyScratch,
-    gpu_missing: &'static str,
-) -> (Vec<u8>, Vec<u8>) {
-    let gpu = context.gpu::<GpuComputeDevice>().expect(gpu_missing);
+    kernel: &'static str,
+) -> Result<(Vec<u8>, Vec<u8>), GpuBackendMissing> {
+    let gpu = require_gpu(context, kernel)?;
     let storage = BufferUsage::Storage;
     let uploads = [
         (&inputs.params, BufferUsage::Uniform),
@@ -69,5 +69,5 @@ pub(super) async fn run(
         .read_buffer(velocities_slot.buffer().expect("filled"))
         .await;
     velocities.truncate(inputs.velocities.len());
-    (positions, velocities)
+    Ok((positions, velocities))
 }
