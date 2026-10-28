@@ -14,6 +14,7 @@ meridian-audio-app = { workspace = true }
 meridian-audio-domain = { workspace = true }
 meridian-diagnostics = { workspace = true }
 meridian-ecs = { workspace = true }
+meridian-gac = { workspace = true }
 meridian-physics-app = { workspace = true }
 meridian-compute-app = { workspace = true }
 meridian-rendering-domain = { workspace = true }
@@ -21,7 +22,6 @@ meridian-rendering-domain = { workspace = true }
 [dev-dependencies]
 meridian-audio-app = { workspace = true, features = ["testing"] }
 meridian-compute-app = { workspace = true, features = ["testing"] }
-meridian-gac = { workspace = true }
 meridian-physics-domain = { workspace = true }
 
 [features]

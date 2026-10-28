@@ -11,7 +11,7 @@
 //! future submission bridge is the only place that resolves a handle to
 //! an actual GPU resource.
 
-use meridian_ecs::{Component, Transform, World};
+use meridian_ecs::{Component, GlobalTransform, Transform, World};
 use meridian_gac::{Aabb, Motor3};
 use meridian_resource::ResourceId;
 
@@ -339,6 +339,9 @@ impl FrameScene {
 /// the join happens here, in `rendering-domain`, per dependency-rules
 /// rule 6 (ECS stays generic and data-oriented).
 ///
+/// An entity's frame is its `GlobalTransform` when the transform stage has
+/// resolved one (so children follow their parents), else its `Transform`.
+///
 /// An entity that also has a [`JointPalette`] or [`MorphWeights`] component
 /// is drawn posed by them (ADR 047).
 ///
@@ -349,10 +352,13 @@ pub fn extract_scene3d(world: &World, camera: crate::Camera) -> Scene3d {
         .query::<MeshRenderer>()
         .filter_map(|(entity, renderer)| {
             let transform = world.get::<Transform>(entity)?;
+            let frame = world
+                .get::<GlobalTransform>(entity)
+                .map_or(transform.motor, |global| global.motor);
             Some(Renderable3d {
                 mesh: renderer.mesh,
                 material: renderer.material,
-                frame: transform.motor,
+                frame,
                 billboard: renderer.billboard,
                 casts_shadow: true,
                 palette: world.get::<JointPalette>(entity).cloned(),

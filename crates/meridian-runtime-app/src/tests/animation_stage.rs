@@ -3,11 +3,13 @@
 use std::sync::Arc;
 
 use meridian_animation_domain::{
-    Animation, AnimationPlayer, AnimationTarget, Animator, Channel, Clip, Interpolation, Joint,
-    JointId, JointTransform, Keys, Repeat, Rig, Skeleton, SkeletonClip, Track, WeightKeys,
-    WeightsChannel,
+    Animation, AnimationController, AnimationGraph, AnimationPlayer, AnimationState,
+    AnimationTarget, Animator, Channel, Clip, Condition, Interpolation, Joint, JointId,
+    JointTransform, Keys, ParamKind, Repeat, Rig, RootMotion, Skeleton, SkeletonClip, Track,
+    Transition, WeightKeys, WeightsChannel,
 };
-use meridian_ecs::{Entity, World};
+use meridian_ecs::{Entity, Transform, World};
+use meridian_gac::{Motor3, Rotor, Vec3};
 use meridian_rendering_domain::{JointPalette, MorphWeights};
 
 use crate::{AnimationStage, FrameDelta, Shared, Stage};
@@ -153,4 +155,80 @@ fn animators_over_one_rig_play_independently() {
     };
     assert!((x(fast.1) - 2.0).abs() < 1e-5, "{}", x(fast.1));
     assert!(x(slow.1).abs() < 1e-5, "{}", x(slow.1));
+}
+
+#[test]
+fn a_controller_switches_the_animation_when_gameplay_sets_a_parameter() {
+    let rig = rig();
+    let world = Shared::new(World::new());
+    let mut graph = AnimationGraph::new(AnimationState {
+        animation: None,
+        repeat: Repeat::Loop,
+    });
+    let idle = graph.start();
+    let moving = graph.add_state(AnimationState {
+        animation: Some(0),
+        repeat: Repeat::Loop,
+    });
+    let walking = graph.add_param(ParamKind::Bool);
+    graph
+        .add_transition(Transition {
+            from: Some(idle),
+            to: moving,
+            conditions: vec![Condition::Is(walking, true)],
+            fade: 0.0,
+        })
+        .expect("a valid transition");
+    let animator = {
+        let mut world = world.lock();
+        let animator = spawn_animator(&mut world, &rig);
+        world.insert(animator, AnimationController::new(Arc::new(graph)));
+        animator
+    };
+    stage(&world, 1.0).run();
+    let player = |shared: &Shared<World>| shared.lock().get::<Animator>(animator).unwrap().player;
+    assert_eq!(player(&world).animation(), None);
+    world
+        .lock()
+        .get_mut::<AnimationController>(animator)
+        .unwrap()
+        .set_bool(walking, true);
+    stage(&world, 1.0).run();
+    assert_eq!(player(&world).animation(), Some(0));
+}
+
+#[test]
+fn root_motion_moves_the_entity_in_its_own_frame_and_pins_the_pose() {
+    let rig = rig();
+    let world = Shared::new(World::new());
+    // Turned a quarter about y, so the model's +x is the world's -z.
+    let facing = Rotor::from_axis_angle(Vec3::new(0.0, 1.0, 0.0), std::f32::consts::FRAC_PI_2);
+    let (animator, target) = {
+        let mut world = world.lock();
+        let animator = spawn_animator(&mut world, &rig);
+        world.insert(
+            animator,
+            RootMotion {
+                skeleton: 0,
+                joint: JointId::from_index(0).expect("joint 0"),
+            },
+        );
+        world.insert(
+            animator,
+            Transform {
+                motor: Motor3::from_rotation_translation(facing, Vec3::ZERO),
+            },
+        );
+        (animator, spawn_target(&mut world, animator, Some(0)))
+    };
+    stage(&world, 2.0).run();
+    let guard = world.lock();
+    let moved = guard.get::<Transform>(animator).expect("a transform").motor;
+    let at = moved.transform_point(Vec3::ZERO);
+    assert!(
+        (at.x.abs() + at.y.abs()) < 1e-4 && (at.z.abs() - 2.0).abs() < 1e-4,
+        "{at:?}"
+    );
+    let palette = guard.get::<JointPalette>(target).expect("a palette");
+    assert!(palette.matrices()[0][3][0].abs() < 1e-5);
 }

@@ -6,9 +6,14 @@ mod loaded_model;
 mod model_piece;
 mod register;
 pub(crate) mod rig;
+mod spawn;
 #[cfg(test)]
 mod tests;
 
 pub use loaded_model::LoadedModel;
 pub use model_piece::ModelPiece;
 pub(crate) use register::register;
+pub use spawn::ModelInstance;
+pub(crate) use spawn::spawn;
+#[cfg(test)]
+mod spawn_tests;

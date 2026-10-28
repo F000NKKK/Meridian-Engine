@@ -20,8 +20,9 @@ use std::collections::{HashMap, VecDeque};
 use std::path::Path;
 
 pub use meridian_animation_domain::{
-    Animation, AnimationLayer, AnimationPlayer, AnimationTarget, Animator, Playback,
-    Repeat as AnimationRepeat, SkeletonClip,
+    Animation, AnimationController, AnimationGraph, AnimationLayer, AnimationPlayer,
+    AnimationState, AnimationTarget, Animator, Condition, GraphError, ParamId, ParamKind, Playback,
+    Repeat as AnimationRepeat, SkeletonClip, StateId, Transition,
 };
 use meridian_asset_domain::{Decoder, ImageAsset, ObjDecoder};
 use meridian_asset_gltf::GltfDecoder;
@@ -35,7 +36,7 @@ use meridian_rendering_domain::{
 
 use crate::any_image_decoder::AnyImageDecoder;
 pub use crate::model_loading::rig::ModelRig;
-pub use crate::model_loading::{LoadedModel, ModelPiece};
+pub use crate::model_loading::{LoadedModel, ModelInstance, ModelPiece};
 use crate::{model_files, model_loading};
 
 /// Reads and decodes a real image asset file, identified by its magic

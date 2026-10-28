@@ -4,13 +4,14 @@
 //! per-frame logic is `meridian_rendering_app::RenderSession`.
 
 use meridian_asset_domain::{Decoder, HdrDecoder};
+use meridian_ecs::{Transform, World};
 use meridian_rendering_app::{FrameRecorder, RenderSession};
 use meridian_rendering_domain::{CubeFaces, EnvironmentMap, MeshHandle, TextureHandle};
 use meridian_rendering_wgpu::{Device, GpuFrameRecorder, Surface};
 
 use crate::any_image_decoder::AnyImageDecoder;
 use crate::assets::AssetCache;
-use crate::model_loading::LoadedModel;
+use crate::model_loading::{self, LoadedModel, ModelInstance};
 
 /// What a windowed application builds once: a [`RenderSession`] over the wgpu
 /// [`GpuFrameRecorder`] (device, swapchain, renderer, bloom, textures, plus the
@@ -78,6 +79,16 @@ impl GraphicsSession {
     pub fn load_model_gltf(&mut self, path: &str) -> Result<LoadedModel, String> {
         self.assets
             .load_model_gltf(&mut self.render.meshes, &mut self.render.recorder, path)
+    }
+
+    /// Spawns `model` into `world` at `at`: a root with the animator and a child per piece.
+    pub fn spawn_model(
+        &mut self,
+        world: &mut World,
+        model: &LoadedModel,
+        at: Transform,
+    ) -> ModelInstance {
+        model_loading::spawn(world, model, &mut self.render.materials, at)
     }
 
     /// Forwards to [`AssetCache::load_mesh_obj`].
