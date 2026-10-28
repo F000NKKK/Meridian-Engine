@@ -3,8 +3,8 @@
 use meridian_examples::paths::asset_path;
 use meridian_sdk::{
     AcousticMedium, AudioScene, AudioStage, AudioStream, AudioTrack, BinauralRenderer, Declicker,
-    Emitter, Listener, Motor3, ResampledSource, Runtime, SampleSource, Shared, SpeakerLayout, Vec3,
-    Voice, VoiceId, load_audio_track, open_output, parallel_runtime,
+    Emitter, Listener, Motor3, Repeat, ResampledSource, Runtime, SampleSource, Shared,
+    SpeakerLayout, Vec3, Voice, VoiceId, load_audio_track, open_output, parallel_runtime,
 };
 
 use crate::ShapeSpec;
@@ -42,6 +42,7 @@ fn load_music_tracks(shapes: &[ShapeSpec]) -> (Vec<Box<dyn SampleSource>>, u32) 
                     let silence = AudioTrack::Memory {
                         mono: vec![0.0; 48_000],
                         cursor: 0,
+                        repeat: Repeat::Loop,
                     };
                     (silence, None)
                 }
