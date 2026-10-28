@@ -10,14 +10,14 @@ readme = "README.md"
 
 [dependencies]
 meridian-physics-domain = { workspace = true }
-meridian-gac = { workspace = true, optional = true }
+meridian-gac = { workspace = true }
 
 [dev-dependencies]
 meridian-gac = { workspace = true }
 
 [features]
 # The `PhysicsStepper` contract suite, for adapters' own tests (Craftbook 8.4).
-testing = ["dep:meridian-gac"]
+testing = []
 
 [lints]
 workspace = true

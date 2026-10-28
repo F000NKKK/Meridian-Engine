@@ -116,6 +116,7 @@ ALLOWED = {
     },
     "meridian-runtime-app": {
         "meridian-audio-app",
+        "meridian-audio-domain",
         "meridian-diagnostics",
         "meridian-physics-app",
         "meridian-compute-app",
