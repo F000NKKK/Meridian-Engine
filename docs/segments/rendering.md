@@ -42,7 +42,7 @@ Skills to invoke here: `meridian-subsystem-core-keeper` (always),
 Real and tested on CPU: `Camera`, `Frustum` (Gribb/Hartmann vs any
 `Shape`), `RenderGraph::execution_order`, `extract_scene3d`/`cull_scene3d`,
 `directional_shadow_camera`. Real on GPU, proven by the windowed examples
-`magic_figures`/`physic_figures`: textured/unlit/lit pipelines (Blinn-Phong,
+`magic_figures`/`physic_figures`: textured/unlit/lit pipelines (metallic-roughness,
 directional + point, `MAX_LIGHTS = 4`), hemisphere ambient, one directional
 shadow map with PCF, non-HDR bloom. `rendering-wgpu` has headless and
 windowed (`Surface`) devices. 30 `#[test]`s across the three crates.
@@ -69,8 +69,8 @@ Not started; ordered by suggested priority. Items wait for an explicit task.
    graphics-design.md step 3. Follow-ups: skip rewriting unchanged
    instances, then indirect draws and compute culling (GPU-driven
    direction in graphics-design.md).
-5. **Per-material highlights — done (2026-10-27).** `Material::shininess` and
-   `Material::specular`; roughness/metallic wait for a PBR shader.
+5. **Per-material surface — done.** `shininess`/`specular` (2026-10-27) became
+   `roughness`/`metallic` with a GGX shader (2026-10-28) ([ADR 032](../adr/032-metallic-roughness-materials.md)).
 6. **Render-graph resource lifetime — planning done (2026-10-28).**
    `RenderGraph::resource_lifetimes` and `plan_allocations` (CPU, tested) say
    which transient targets can share one allocation. The real renderer

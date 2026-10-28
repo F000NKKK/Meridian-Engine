@@ -23,7 +23,7 @@ adding one is out of scope until there's a concrete backend to build (see
 Render Graph        automatic pass ordering + resource dependency tracking  -- real
 Scene Extraction     pulling renderable state out of the ECS each frame     -- real
 Visibility / Culling -- real (frustum vs AABB)
-Lighting             -- real (Blinn-Phong forward, directional + point)
+Lighting             -- real (metallic-roughness forward, directional + point; ADR 032)
 Materials            -- real (albedo/base color, unlit, emissive, blend mode field)
 Camera                -- real (Motor3 -> view/projection matrix bridge)
 Animation
@@ -176,9 +176,8 @@ All CPU-side, plain data, in `rendering-domain`:
   (`Opaque`/`AlphaBlend`). Not a manager, not a shader: the submission
   bridge maps materials onto pipelines.
 - **`Light`** — `Directional { direction, color, intensity }` and
-  `Point { position, color, intensity, range }`. First lighting model is
-  Blinn-Phong forward; PBR is a material/shader upgrade later, not a
-  vocabulary change.
+  `Point { position, color, intensity, range }`. Lit with the
+  metallic-roughness model of ADR 032, forward-shaded.
 - **`Renderable3d`** — `{ mesh, material, frame: Motor3, billboard:
   bool }`; **`Sprite`** (the 2D renderable) — `{ texture, source_rect,
   size, tint, frame: Motor3, layer: i32 }`.
@@ -279,10 +278,11 @@ driver.
    instead of clearing) — deliberately non-HDR (`Rgba8UnormSrgb`
    throughout; `Rgba16Float` + exposure is real future work if a scene
    ever needs it). Highlights are per material:
-   `Material::shininess` (the Blinn-Phong exponent, default 32) and
-   `Material::specular` (strength, default 0.3) are baked into each vertex
-   as a `gloss` pair and read by the lit shaders; a PBR upgrade replaces
-   them with roughness/metallic.
+   `Material::roughness` (default 0.5) and `Material::metallic` (default
+   0.0) travel in each instance record as a `surface` pair and drive the
+   lit shaders' GGX/Smith/Schlick model ([ADR 032](adr/032-metallic-roughness-materials.md));
+   they replaced the Blinn-Phong `shininess`/`specular` pair. With no
+   environment map the hemisphere ambient stands in for reflections.
    **Material states are real:** `DrawState::of(material)` (domain) maps
    `blend` and `always_on_top` to `Opaque`, `Transparent` (alpha blended,
    depth tested but not written), `OnTopOpaque` and `OnTopTransparent`

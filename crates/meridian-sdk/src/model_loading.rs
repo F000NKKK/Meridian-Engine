@@ -56,6 +56,8 @@ pub(crate) fn register(
         let material = Material {
             albedo,
             base_color_factor: part.material.base_color,
+            metallic: part.material.metallic,
+            roughness: part.material.roughness,
             ..Material::default()
         };
         pieces.push(ModelPiece { mesh, material });
@@ -105,6 +107,8 @@ mod tests {
         ModelMaterial {
             base_color: [0.5, 0.5, 0.5, 1.0],
             base_color_image: Some(index),
+            metallic: 0.25,
+            roughness: 0.75,
         }
     }
 
@@ -137,6 +141,10 @@ mod tests {
         assert!(pieces[0].material.albedo.is_some());
         assert_eq!(pieces[0].material.albedo, pieces[1].material.albedo);
         assert_eq!(pieces[0].material.base_color_factor, [0.5, 0.5, 0.5, 1.0]);
+        assert_eq!(
+            (pieces[0].material.metallic, pieces[0].material.roughness),
+            (0.25, 0.75)
+        );
     }
 
     #[test]

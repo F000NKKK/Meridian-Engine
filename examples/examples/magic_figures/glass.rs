@@ -32,8 +32,7 @@ pub(crate) fn scene_extras(base: &mut GraphicsSession) -> Vec<Renderable3d> {
             base,
             Material {
                 base_color_factor: [0.8, 0.8, 0.85, 1.0],
-                shininess: 200.0,
-                specular: 1.0,
+                roughness: 0.1,
                 ..Default::default()
             },
             (0.6, Vec3::new(-2.2, 0.6, 1.0)),
@@ -42,7 +41,7 @@ pub(crate) fn scene_extras(base: &mut GraphicsSession) -> Vec<Renderable3d> {
             base,
             Material {
                 base_color_factor: [0.8, 0.8, 0.85, 1.0],
-                specular: 0.0,
+                roughness: 1.0,
                 ..Default::default()
             },
             (0.6, Vec3::new(2.2, 0.6, 1.0)),

@@ -143,14 +143,14 @@ async fn texture_registry_round_trips_a_real_upload() {
 }
 
 #[test]
-fn an_instance_record_fills_its_layout_and_carries_matrix_and_gloss() {
+fn an_instance_record_fills_its_layout_and_carries_matrix_and_surface() {
     use super::instance_data::push_instance;
 
     let material = Material {
         base_color_factor: [0.1, 0.2, 0.3, 0.4],
         emissive: [0.5, 0.6, 0.7],
-        shininess: 8.0,
-        specular: 0.75,
+        roughness: 0.25,
+        metallic: 0.75,
         ..Material::default()
     };
     let frame = Motor3::translation(Vec3::new(1.0, 2.0, 3.0));
@@ -173,7 +173,7 @@ fn an_instance_record_fills_its_layout_and_carries_matrix_and_gloss() {
         [0.1, 0.2, 0.3, 0.4]
     );
     assert_eq!([float(20), float(21), float(22)], [0.5, 0.6, 0.7]);
-    assert_eq!([float(23), float(24)], [8.0, 0.75]);
+    assert_eq!([float(23), float(24)], [0.25, 0.75]);
 }
 
 #[test]
@@ -196,8 +196,8 @@ fn every_attribute_lies_within_its_layouts_stride() {
 }
 
 #[test]
-fn the_default_material_keeps_the_original_highlight() {
+fn the_default_material_is_a_fairly_rough_dielectric() {
     let material = Material::default();
-    assert_eq!(material.shininess, 32.0);
-    assert_eq!(material.specular, 0.3);
+    assert_eq!(material.roughness, 0.5);
+    assert_eq!(material.metallic, 0.0);
 }

@@ -28,7 +28,7 @@ struct VertexInput {
     @location(6) model_3: vec4<f32>,
     @location(7) color: vec4<f32>,
     @location(8) emissive: vec3<f32>,
-    @location(9) gloss: vec2<f32>,
+    @location(9) surface: vec2<f32>,
 };
 
 struct VertexOutput {

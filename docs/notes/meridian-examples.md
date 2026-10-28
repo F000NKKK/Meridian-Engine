@@ -8,7 +8,7 @@ most 30 lines). Each section belongs to the module named in its heading.
 Rendering goes entirely through `rendering-domain`'s submission bridge
 (`meridian_sdk::GraphicsSession` bundles `SceneRenderer`/`BloomPass`/the
 three registries — the same base `physic_figures` builds): the floor
-is a real Blinn-Phong-lit material under one directional light +
+is a real lit (metallic-roughness) material under one directional light +
 ambient; each shape is `unlit` + `emissive` in its own color, so it
 always reads as glowing regardless of scene lighting, and
 `BloomPass` turns that emissive value into a real halo — see

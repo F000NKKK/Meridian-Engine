@@ -11,7 +11,7 @@ pub struct BatchKey {
     pub mesh: MeshHandle,
     /// The albedo texture that resolved, if any; `None` draws flat colour.
     pub albedo: Option<TextureHandle>,
-    /// Blinn-Phong shaded rather than unlit.
+    /// Metallic-roughness shaded rather than unlit.
     pub lit: bool,
     /// Blend and depth behaviour.
     pub state: DrawState,

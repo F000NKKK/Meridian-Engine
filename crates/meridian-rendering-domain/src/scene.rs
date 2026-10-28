@@ -30,11 +30,11 @@ pub enum BlendMode {
     AlphaBlend,
 }
 
-/// The Blinn-Phong exponent [`Material::default`] uses.
-pub const DEFAULT_SHININESS: f32 = 32.0;
+/// The roughness [`Material::default`] uses: a broad, faint highlight.
+pub const DEFAULT_ROUGHNESS: f32 = 0.5;
 
-/// The specular strength [`Material::default`] uses.
-pub const DEFAULT_SPECULAR: f32 = 0.3;
+/// The metalness [`Material::default`] uses: a dielectric.
+pub const DEFAULT_METALLIC: f32 = 0.0;
 
 /// A surface's shading inputs. Pure data — mapping this onto an actual
 /// GPU pipeline is the submission bridge's job, not this type's.
@@ -59,18 +59,19 @@ pub struct Material {
     /// `emissive` above the bridge's bloom threshold blooms; zero (the
     /// default) never does.
     pub emissive: [f32; 3],
-    /// The Blinn-Phong exponent: how tight the highlight is. Low is a
-    /// broad, soft sheen (a rough surface), high a small, sharp one (a
-    /// polished one). Ignored when `unlit`.
-    pub shininess: f32,
-    /// How strong the highlight is, scaling the light's colour: `0.0`
-    /// is matte. Ignored when `unlit`.
-    pub specular: f32,
+    /// How rough the surface is, in `[0, 1]`: `0.0` is a mirror-smooth
+    /// surface with a small, sharp highlight, `1.0` a fully rough one whose
+    /// highlight is broad and faint (ADR 032). Ignored when `unlit`.
+    pub roughness: f32,
+    /// How metallic the surface is, in `[0, 1]`: `0.0` is a dielectric
+    /// (diffuse base colour, a faint white highlight), `1.0` a metal (no
+    /// diffuse, a highlight and reflection tinted by the base colour).
+    /// Ignored when `unlit`.
+    pub metallic: f32,
 }
 
 impl Default for Material {
-    /// Black, opaque-mode, lit, with the highlight the shader had before it
-    /// was configurable ([`DEFAULT_SHININESS`], [`DEFAULT_SPECULAR`]).
+    /// Black, opaque-mode, lit, a dielectric of [`DEFAULT_ROUGHNESS`].
     fn default() -> Self {
         Self {
             albedo: None,
@@ -79,8 +80,8 @@ impl Default for Material {
             always_on_top: false,
             blend: BlendMode::default(),
             emissive: [0.0; 3],
-            shininess: DEFAULT_SHININESS,
-            specular: DEFAULT_SPECULAR,
+            roughness: DEFAULT_ROUGHNESS,
+            metallic: DEFAULT_METALLIC,
         }
     }
 }
@@ -99,9 +100,8 @@ pub struct Mesh {
     pub bounds: Aabb,
 }
 
-/// A light contributing to a [`Scene3d`]. First model is Blinn-Phong
-/// forward shading; a PBR upgrade changes the shader, not this
-/// vocabulary (see docs/graphics-design.md).
+/// A light contributing to a [`Scene3d`], shaded forward with the
+/// metallic-roughness model of ADR 032 (see docs/graphics-design.md).
 #[derive(Debug, Clone, Copy)]
 pub enum Light {
     /// Uniform light from a fixed direction, no falloff (the sun).

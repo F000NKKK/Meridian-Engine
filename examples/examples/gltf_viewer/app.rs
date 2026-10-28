@@ -1,8 +1,8 @@
 //! The viewer's window, GPU state and frame loop.
 
 use meridian_sdk::{
-    AppHandler, Camera, Device, GraphicsSession, InputState, Light, Material, Motor3, Renderable3d,
-    Scene3d, Vec3, Window, look_at_rotor,
+    AppHandler, Camera, Device, GraphicsSession, InputState, Light, Motor3, Renderable3d, Scene3d,
+    Vec3, Window, look_at_rotor,
 };
 
 const SUN: Vec3 = Vec3 {
@@ -50,11 +50,7 @@ impl GpuState {
             .iter()
             .map(|piece| Renderable3d {
                 mesh: piece.mesh,
-                material: base.render.materials.register(Material {
-                    shininess: 24.0,
-                    specular: 0.25,
-                    ..piece.material
-                }),
+                material: base.render.materials.register(piece.material),
                 frame: Motor3::identity(),
                 billboard: false,
                 casts_shadow: true,

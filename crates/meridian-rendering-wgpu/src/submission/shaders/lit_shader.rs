@@ -6,7 +6,7 @@ pub const MAX_LIGHTS: usize = 4;
 /// Shared by every lit shader: the `Uniforms` struct layout (view-proj,
 /// the shadow-casting light's own view-proj, camera position, hemisphere
 /// ambient, light count/array, which light index casts the shadow) plus
-/// the Blinn-Phong `shade` helper and the light-space projection helper
+/// the metallic-roughness `shade` helper and the light-space projection helper
 /// every shadow lookup shares. WGSL has no `#include`, so this text is
 /// spliced verbatim into each lit shader constant below — keeping one
 /// source of truth here rather than hand-duplicating it at each call
@@ -72,10 +72,49 @@ fn light_space_uv_and_depth(world_pos: vec3<f32>) -> vec3<f32> {
     return vec3<f32>(ndc.x * 0.5 + 0.5, 1.0 - (ndc.y * 0.5 + 0.5), ndc.z);
 }
 
-fn shade(world_pos: vec3<f32>, world_normal: vec3<f32>, base_color: vec3<f32>, gloss: vec2<f32>, shadow_factor: f32) -> vec3<f32> {
+const PI: f32 = 3.14159265;
+
+/// GGX (Trowbridge-Reitz) normal distribution for `alpha = roughness^2`.
+fn distribution_ggx(n_dot_h: f32, alpha: f32) -> f32 {
+    let a2 = alpha * alpha;
+    let d = n_dot_h * n_dot_h * (a2 - 1.0) + 1.0;
+    return a2 / (PI * d * d);
+}
+
+/// Height-correlated Smith visibility, which folds the geometry term and the
+/// `4 * n_dot_l * n_dot_v` denominator into one factor.
+fn visibility_smith_ggx(n_dot_l: f32, n_dot_v: f32, alpha: f32) -> f32 {
+    let a2 = alpha * alpha;
+    let from_view = n_dot_l * sqrt(n_dot_v * n_dot_v * (1.0 - a2) + a2);
+    let from_light = n_dot_v * sqrt(n_dot_l * n_dot_l * (1.0 - a2) + a2);
+    return 0.5 / max(from_view + from_light, 0.0001);
+}
+
+fn fresnel_schlick(v_dot_h: f32, f0: vec3<f32>) -> vec3<f32> {
+    return f0 + (vec3<f32>(1.0) - f0) * pow(1.0 - v_dot_h, 5.0);
+}
+
+/// Metallic-roughness shading (ADR 032): `surface` is (roughness, metallic).
+/// Light intensity keeps its pre-PBR meaning (a white diffuse surface facing
+/// a light of intensity 1 is fully lit), so diffuse has no 1/pi and the
+/// specular lobe is scaled by pi to match.
+fn shade(world_pos: vec3<f32>, world_normal: vec3<f32>, base_color: vec3<f32>, surface: vec2<f32>, shadow_factor: f32) -> vec3<f32> {
     let n = normalize(world_normal);
     let view_dir = normalize(u.camera_pos.xyz - world_pos);
-    var result = hemisphere_ambient(n) * base_color;
+    let n_dot_v = max(dot(n, view_dir), 0.0001);
+    let roughness = clamp(surface.x, 0.0, 1.0);
+    let metallic = clamp(surface.y, 0.0, 1.0);
+    // A mirror-smooth lobe is a single point; keep it finite.
+    let alpha = max(roughness * roughness, 0.002);
+    let f0 = mix(vec3<f32>(0.04), base_color, metallic);
+    let diffuse_color = base_color * (1.0 - metallic);
+
+    // Without an environment map the sky/ground gradient stands in for one:
+    // the normal's lookup lights the diffuse part, the reflection's the
+    // specular part, with Fresnel damped by roughness.
+    let ambient_fresnel = f0 + (max(vec3<f32>(1.0 - roughness), f0) - f0) * pow(1.0 - n_dot_v, 5.0);
+    var result = hemisphere_ambient(n) * diffuse_color
+        + hemisphere_ambient(reflect(-view_dir, n)) * ambient_fresnel;
 
     let count = min(u.light_count.x, 4u);
     for (var i: u32 = 0u; i < count; i = i + 1u) {
@@ -95,11 +134,16 @@ fn shade(world_pos: vec3<f32>, world_normal: vec3<f32>, base_color: vec3<f32>, g
         if (i == u.shadow_caster.x) {
             attenuation = attenuation * shadow_factor;
         }
-        let diffuse = max(dot(n, light_dir), 0.0);
+        let n_dot_l = max(dot(n, light_dir), 0.0);
         let half_dir = normalize(light_dir + view_dir);
-        let specular = pow(max(dot(n, half_dir), 0.0), gloss.x) * gloss.y;
+        let n_dot_h = max(dot(n, half_dir), 0.0);
+        let v_dot_h = max(dot(view_dir, half_dir), 0.0);
+        let specular = distribution_ggx(n_dot_h, alpha)
+            * visibility_smith_ggx(n_dot_l, n_dot_v, alpha)
+            * fresnel_schlick(v_dot_h, f0)
+            * PI;
         let radiance = light.color_intensity.rgb * light.color_intensity.a * attenuation;
-        result = result + (base_color * diffuse + vec3<f32>(specular, specular, specular)) * radiance;
+        result = result + (diffuse_color + specular) * n_dot_l * radiance;
     }
     return result;
 }
@@ -144,7 +188,7 @@ struct VertexInput {
     @location(6) model_3: vec4<f32>,
     @location(7) color: vec4<f32>,
     @location(8) emissive: vec3<f32>,
-    @location(9) gloss: vec2<f32>,
+    @location(9) surface: vec2<f32>,
 };
 
 struct VertexOutput {
@@ -153,7 +197,7 @@ struct VertexOutput {
     @location(1) world_normal: vec3<f32>,
     @location(2) color: vec4<f32>,
     @location(3) emissive: vec3<f32>,
-    @location(4) gloss: vec2<f32>,
+    @location(4) surface: vec2<f32>,
 };
 
 @vertex
@@ -167,19 +211,19 @@ fn vs_main(in: VertexInput) -> VertexOutput {
     out.world_normal = world_normal;
     out.color = in.color;
     out.emissive = in.emissive;
-    out.gloss = in.gloss;
+    out.surface = in.surface;
     return out;
 }
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let shadow_factor = compute_shadow_factor(in.world_position, in.world_normal);
-    let shaded = shade(in.world_position, in.world_normal, in.color.rgb, in.gloss, shadow_factor) + in.emissive;
+    let shaded = shade(in.world_position, in.world_normal, in.color.rgb, in.surface, shadow_factor) + in.emissive;
     return vec4<f32>(shaded, in.color.a);
 }
 "#;
 
-/// [`UNLIT_SHADER_WGSL`](crate::submission::UNLIT_SHADER_WGSL)'s lit counterpart: Blinn-Phong-shaded flat
+/// [`UNLIT_SHADER_WGSL`](crate::submission::UNLIT_SHADER_WGSL)'s lit counterpart: metallic-roughness-shaded flat
 /// color. Used for lit materials with no resolvable albedo texture.
 pub(crate) fn lit_shader_wgsl() -> String {
     format!("{LIT_UNIFORMS_AND_SHADING_WGSL}{LIT_COLORED_BODY_WGSL}")
@@ -219,7 +263,7 @@ struct VertexInput {
     @location(6) model_3: vec4<f32>,
     @location(7) color: vec4<f32>,
     @location(8) emissive: vec3<f32>,
-    @location(9) gloss: vec2<f32>,
+    @location(9) surface: vec2<f32>,
 };
 
 struct VertexOutput {
@@ -229,7 +273,7 @@ struct VertexOutput {
     @location(2) uv: vec2<f32>,
     @location(3) tint: vec4<f32>,
     @location(4) emissive: vec3<f32>,
-    @location(5) gloss: vec2<f32>,
+    @location(5) surface: vec2<f32>,
 };
 
 @vertex
@@ -244,7 +288,7 @@ fn vs_main(in: VertexInput) -> VertexOutput {
     out.uv = in.uv;
     out.tint = in.color;
     out.emissive = in.emissive;
-    out.gloss = in.gloss;
+    out.surface = in.surface;
     return out;
 }
 
@@ -253,7 +297,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let sampled = textureSample(albedo_tex, albedo_sampler, in.uv);
     let base_color = sampled.rgb * in.tint.rgb;
     let shadow_factor = compute_shadow_factor(in.world_position, in.world_normal);
-    let shaded = shade(in.world_position, in.world_normal, base_color, in.gloss, shadow_factor) + in.emissive;
+    let shaded = shade(in.world_position, in.world_normal, base_color, in.surface, shadow_factor) + in.emissive;
     return vec4<f32>(shaded, sampled.a * in.tint.a);
 }
 "#;
