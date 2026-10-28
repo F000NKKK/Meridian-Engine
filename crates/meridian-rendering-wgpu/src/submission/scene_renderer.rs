@@ -5,7 +5,7 @@ use meridian_rendering_domain::{ShadowLight, ViewUniforms};
 
 use super::main_pipelines::{MainBindings, MainPipelines};
 use super::mesh_cache::MeshCache;
-use super::neutral_textures::NeutralTextures;
+use super::registries::NeutralTextures;
 use super::{
     DrawKind, MAX_LIGHTS, PreparedBatch, PreparedScene, SceneAssets, ShadowDepthPass, bake_batches,
     lit_uniform_bytes, mat4_to_bytes,
