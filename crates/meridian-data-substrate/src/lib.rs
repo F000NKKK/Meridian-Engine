@@ -9,10 +9,14 @@
 //! [ADR 016](../../../docs/adr/016-data-formats-on-substrate-data.md).
 
 mod document_keys;
+mod document_kind;
+mod draft;
 mod identity;
 mod load;
 mod mapping;
 mod no_resolver;
+mod prefab;
+mod read;
 mod registry;
 mod scene_writer;
 mod transform_form;
@@ -25,6 +29,9 @@ pub use identity::{
 pub use load::{LoadError, SceneIssue, SceneProblem};
 pub use mapping::{DuplicateKey, KeptComponent, Parent, SceneEntity, SceneMap};
 pub use no_resolver::NoResolver;
+pub use prefab::{
+    MAX_PREFAB_DEPTH, PrefabInstance, PrefabLibrary, PrefabSource, PrefabUnavailable,
+};
 pub use registry::{
     ComponentEditError, ComponentRegistry, ComponentShape, RegisterError, UnknownComponents,
 };

@@ -1,12 +1,11 @@
 //! [`DocumentSource`]: a document's text or bytes, parsed and read.
 
-use substrate_data::{Bump, Resolve, binary, text};
+use substrate_data::{Bump, binary, text};
 
-use super::LoadError;
-use super::document_draft::DocumentDraft;
-use super::document_reader::DocumentReader;
 use super::placement::Placement;
-use crate::ComponentRegistry;
+use super::{DocumentRole, ReadContext};
+use crate::draft::DocumentDraft;
+use crate::load::LoadError;
 
 /// A document as it arrives: text, or the `SDAT` binary form.
 #[derive(Clone, Copy)]
@@ -39,21 +38,19 @@ impl<'a> DocumentSource<'a> {
     /// every problem in it, placed.
     pub(crate) fn draft(
         self,
-        registry: &ComponentRegistry,
-        resolver: &mut dyn Resolve,
+        role: &DocumentRole,
+        cx: &mut ReadContext<'_>,
     ) -> Result<DocumentDraft, LoadError> {
         let arena = Bump::new();
         match self {
             DocumentSource::Text(source) => {
                 let doc = text::parse(source).map_err(LoadError::syntax)?;
                 let root = doc.value.borrow(&arena);
-                let reading = DocumentReader::read(registry, &root, resolver);
-                Placement::Text(source, &doc).draft(reading)
+                Placement::Text(source, &doc).draft(cx.read(role, &root))
             }
             DocumentSource::Binary(bytes) => {
                 let root = binary::decode_ref(bytes, &arena).map_err(LoadError::decode)?;
-                let reading = DocumentReader::read(registry, &root, resolver);
-                Placement::Binary.draft(reading)
+                Placement::Binary.draft(cx.read(role, &root))
             }
         }
     }

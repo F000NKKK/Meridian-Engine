@@ -7,7 +7,6 @@ crates/meridian-audio-domain/src/effects/medium.rs	C108	AcousticMedium	1
 crates/meridian-audio-domain/src/speaker_layout.rs	C101		1
 crates/meridian-audio-domain/src/tests.rs	C101		1
 crates/meridian-audio-domain/src/tests.rs	D305		7
-crates/meridian-data-substrate/src/load/pending_entity.rs	C108	ComponentsDraft	1
 crates/meridian-data-substrate/src/transform_form.rs	C108	TransformCodec	1
 crates/meridian-ecs/src/world.rs	C101		1
 crates/meridian-editor-domain/src/version.rs	C108	ProtocolVersion	1

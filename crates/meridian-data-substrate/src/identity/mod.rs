@@ -3,10 +3,12 @@
 
 mod component_name;
 mod display_name;
+mod edit_distance;
 mod entity_key;
 mod prefab_path;
 
 pub use component_name::{ComponentName, ComponentNameError};
 pub use display_name::DisplayName;
+pub(crate) use edit_distance::closest_spelling;
 pub use entity_key::{EntityKey, EntityKeyError, EntityKind};
 pub use prefab_path::{PrefabKind, PrefabPath, PrefabPathError};

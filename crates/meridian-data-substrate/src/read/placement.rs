@@ -3,10 +3,10 @@
 
 use substrate_data::{Diagnostic, Doc};
 
-use super::document_draft::DocumentDraft;
-use super::finding::Finding;
+use super::Finding;
 use super::reading::Reading;
-use super::{LoadError, SceneIssue};
+use crate::draft::DocumentDraft;
+use crate::load::{LoadError, SceneIssue};
 
 /// How problems are placed: in text, by line and column; in binary there
 /// are neither, so a problem keeps its path (and a decode error its byte

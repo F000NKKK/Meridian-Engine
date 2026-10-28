@@ -15,8 +15,8 @@ pub struct SceneEntity {
     pub entity: Entity,
     /// A name for people.
     pub name: Option<DisplayName>,
-    /// The prefab it starts from (checked by the caller's resolver; not
-    /// instanced yet).
+    /// The prefab it starts from: the entity is the instance root, with the
+    /// prefab's other entities generated under it (see `generated_by`).
     pub prefab: Option<PrefabPath>,
     /// Its parent in the same document. A [`crate::Parent`] component, when
     /// the entity has one, wins over this on save.
@@ -24,6 +24,10 @@ pub struct SceneEntity {
     /// Components the registry doesn't know, kept as written when it
     /// [keeps them](crate::UnknownComponents::Keep).
     pub kept: Vec<KeptComponent>,
+    /// For an entity a prefab instance made: the instance root it hangs
+    /// under (`hero` for `hero/gun`). The prefab makes these again on every
+    /// load, so saving a scene leaves them out.
+    pub generated_by: Option<EntityKey>,
 }
 
 impl SceneEntity {
@@ -37,6 +41,7 @@ impl SceneEntity {
             prefab: None,
             parent: None,
             kept: Vec::new(),
+            generated_by: None,
         }
     }
 }

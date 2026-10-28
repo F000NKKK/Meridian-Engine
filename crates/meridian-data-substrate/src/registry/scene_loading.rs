@@ -5,7 +5,9 @@ use substrate_data::{Resolve, Value};
 
 use super::ComponentRegistry;
 use crate::SceneMap;
-use crate::load::{DocumentSource, LoadError};
+use crate::document_kind::DocumentKind;
+use crate::load::LoadError;
+use crate::read::{DocumentRole, DocumentSource, ReadContext};
 use crate::scene_writer::SceneWriter;
 
 impl ComponentRegistry {
@@ -24,7 +26,8 @@ impl ComponentRegistry {
         world: &mut World,
         resolver: &mut dyn Resolve,
     ) -> Result<SceneMap, LoadError> {
-        let draft = DocumentSource::Text(text).draft(self, resolver)?;
+        let draft = DocumentSource::Text(text)
+            .draft(&DocumentRole::Scene, &mut ReadContext::new(self, resolver))?;
         Ok(draft.spawn(world))
     }
 
@@ -44,7 +47,8 @@ impl ComponentRegistry {
         world: &mut World,
         resolver: &mut dyn Resolve,
     ) -> Result<SceneMap, LoadError> {
-        let draft = DocumentSource::Binary(bytes).draft(self, resolver)?;
+        let draft = DocumentSource::Binary(bytes)
+            .draft(&DocumentRole::Scene, &mut ReadContext::new(self, resolver))?;
         Ok(draft.spawn(world))
     }
 
@@ -61,27 +65,28 @@ impl ComponentRegistry {
         world: &mut World,
         resolver: &mut dyn Resolve,
     ) -> Result<SceneMap, LoadError> {
-        let draft = DocumentSource::detect(bytes)?.draft(self, resolver)?;
+        let source = DocumentSource::detect(bytes)?;
+        let draft = source.draft(&DocumentRole::Scene, &mut ReadContext::new(self, resolver))?;
         Ok(draft.spawn(world))
     }
 
     /// `world`'s entities listed in `scene`, as `.mscene` text.
     #[must_use]
     pub fn save_scene(&self, world: &World, scene: &SceneMap) -> String {
-        SceneWriter::new(self, world, scene).text()
+        SceneWriter::new(self, world, scene).text(DocumentKind::Scene)
     }
 
     /// `world`'s entities listed in `scene`, in the `SDAT` binary form
     /// (the same document as [`ComponentRegistry::save_scene`]).
     #[must_use]
     pub fn save_scene_binary(&self, world: &World, scene: &SceneMap) -> Vec<u8> {
-        SceneWriter::new(self, world, scene).bytes()
+        SceneWriter::new(self, world, scene).bytes(DocumentKind::Scene)
     }
 
     /// The scene document of `world`'s entities listed in `scene`, as a
     /// value: what both forms spell, and what a `.msave` embeds.
     #[must_use]
     pub fn scene_document(&self, world: &World, scene: &SceneMap) -> Value {
-        SceneWriter::new(self, world, scene).document()
+        SceneWriter::new(self, world, scene).document(DocumentKind::Scene)
     }
 }

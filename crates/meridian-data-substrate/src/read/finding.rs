@@ -2,7 +2,7 @@
 
 use substrate_data::Path;
 
-use super::SceneProblem;
+use crate::load::SceneProblem;
 
 /// A problem found here, where it is, and whether at its key.
 pub(crate) struct Finding {

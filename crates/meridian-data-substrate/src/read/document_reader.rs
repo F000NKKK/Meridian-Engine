@@ -5,15 +5,13 @@ use std::collections::HashMap;
 use substrate_data::schema::is_metadata_key;
 use substrate_data::{Expected, Id, MapRef, Path, Reader, Resolve, Seg, ValueRef};
 
-use super::SceneProblem;
-use super::document_draft::DocumentDraft;
+use super::DocumentRole;
 use super::document_resolver::DocumentResolver;
 use super::finding::Finding;
-use super::pending_entity::{ComponentsDraft, PendingEntity};
 use super::reading::Reading;
-use crate::document_keys::{
-    COMPONENTS, DOCUMENT, ENTITIES, ENTITY, FORMAT_KEY, ID, NAME, PARENT, PREFAB,
-};
+use crate::document_keys::{COMPONENTS, ENTITIES, ENTITY, FORMAT_KEY, ID, NAME, PARENT, PREFAB};
+use crate::draft::{ComponentsDraft, DocumentDraft, PendingEntity};
+use crate::load::SceneProblem;
 use crate::{
     ComponentName, ComponentRegistry, DisplayName, EntityKey, EntityKind, FORMAT, KeptComponent,
     PrefabKind, UnknownComponents,
@@ -24,6 +22,7 @@ use crate::{
 /// next to those it does.
 pub(crate) struct DocumentReader<'r> {
     registry: &'r ComponentRegistry,
+    role: &'r DocumentRole,
     findings: Vec<Finding>,
     first_at: HashMap<EntityKey, usize>,
 }
@@ -34,14 +33,15 @@ impl<'r> DocumentReader<'r> {
     /// the document, every other kind through `resolver`. Nothing is
     /// spawned: the draft is all or nothing.
     pub(crate) fn read(
-        registry: &'r ComponentRegistry,
+        (registry, role): (&'r ComponentRegistry, &'r DocumentRole),
         root: &ValueRef<'_>,
         resolver: &mut dyn Resolve,
     ) -> Reading {
-        let mut resolver = DocumentResolver::new(root, resolver);
+        let mut resolver = DocumentResolver::new(root, resolver, role);
         let mut cx = Reader::with_resolver(&mut resolver);
         let mut reader = DocumentReader {
             registry,
+            role,
             findings: Vec::new(),
             first_at: HashMap::new(),
         };
@@ -65,7 +65,7 @@ impl<'r> DocumentReader<'r> {
 
     fn read_document(&mut self, root: &ValueRef<'_>, cx: &mut Reader<'_>) -> Option<DocumentDraft> {
         let map = cx.map(root)?;
-        cx.unknown_keys(map, &DOCUMENT);
+        cx.unknown_keys(map, self.role.keys());
         let format: Option<u32> = cx.field(map, FORMAT_KEY);
         if let Some(found) = format.filter(|f| *f != FORMAT) {
             self.find(
@@ -76,6 +76,9 @@ impl<'r> DocumentReader<'r> {
         }
         let name: Option<Option<DisplayName>> = cx.field(map, NAME);
         let entities = self.read_entities(map, cx);
+        if self.role.is_prefab() && entities.as_ref().is_some_and(Vec::is_empty) {
+            self.find(SceneProblem::PrefabEmpty, cx.path().key(ENTITIES), false);
+        }
         Some(DocumentDraft {
             name: name?,
             entities: entities?,
@@ -124,14 +127,43 @@ impl<'r> DocumentReader<'r> {
             );
             return None;
         }
+        if !self.check_tree(index, (&key, parent.is_some()), cx) {
+            return None;
+        }
         let prefab = prefab?.map(|p| p.id);
         Some(PendingEntity {
+            index,
+            generated_by: None,
             key,
             name: name?,
             prefab,
             parent,
             components: components?,
         })
+    }
+
+    /// Whether entity `index` (`key`, with a parent or not) fits a prefab's
+    /// tree: the first is the root and has no parent, every other one has.
+    /// (A scene's entities may all be roots.)
+    fn check_tree(
+        &mut self,
+        index: usize,
+        (key, has_parent): (&EntityKey, bool),
+        cx: &Reader<'_>,
+    ) -> bool {
+        if !self.role.is_prefab() || (index == 0) != has_parent {
+            return true;
+        }
+        let (problem, path) = if index == 0 {
+            (
+                SceneProblem::PrefabRootHasParent { key: key.clone() },
+                cx.path().key(PARENT),
+            )
+        } else {
+            (SceneProblem::PrefabOrphan { key: key.clone() }, cx.path())
+        };
+        self.find(problem, path, false);
+        false
     }
 
     /// The entity's key, refused when an earlier entity has it.
@@ -151,7 +183,7 @@ impl<'r> DocumentReader<'r> {
             return None;
         }
         self.first_at.insert(key.clone(), index);
-        Some(key)
+        Some(self.role.key_of(key, index == 0))
     }
 
     fn read_components(
@@ -191,7 +223,9 @@ impl<'r> DocumentReader<'r> {
         };
         if let Some(entry) = self.registry.entry(&name) {
             let read = cx.at(Seg::Key(key.into()), |cx| (entry.read)(value, cx));
-            return read.map(|insert| draft.inserts.push(insert)).is_some();
+            return read
+                .map(|insert| draft.inserts.push((name, insert)))
+                .is_some();
         }
         if self.registry.unknown_components() == UnknownComponents::Keep {
             draft.kept.push(KeptComponent {

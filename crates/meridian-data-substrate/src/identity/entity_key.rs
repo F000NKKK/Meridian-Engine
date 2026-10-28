@@ -37,6 +37,13 @@ impl EntityKey {
     pub fn as_str(&self) -> &str {
         &self.0
     }
+
+    /// `local` under `self`, the way a prefab instance names the entities
+    /// of its prefab: `hero/gun` (`local` `gun` under `hero`).
+    #[must_use]
+    pub fn under(&self, local: &EntityKey) -> EntityKey {
+        EntityKey([&*self.0, "/", &*local.0].concat().into())
+    }
 }
 
 impl fmt::Display for EntityKey {
