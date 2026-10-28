@@ -43,9 +43,12 @@ frame with NaN components) renders silence, never NaN gains or a panic.
 
 ## Attenuation
 
-`AttenuationModel` is OpenAL's inverse-clamped-distance model: gain `1.0` at or
-inside `reference_distance`, falling as `ref / (ref + rolloff·(d − ref))`, with
-`d` clamped to `max_distance` so a far source never reaches exactly zero.
+`AttenuationModel` follows OpenAL's clamped distance models: gain `1.0` at or
+inside `reference_distance`, `d` clamped to `max_distance`, and the fall between
+them chosen by `AttenuationCurve`: `Inverse` (default) is
+`ref / (ref + rolloff·(d − ref))` and never reaches zero; `Linear` is
+`1 − rolloff·(d − ref)/(max − ref)` and is silent at `max_distance`;
+`Exponential` is `(d / ref)^−rolloff`.
 
 ## Rendering
 

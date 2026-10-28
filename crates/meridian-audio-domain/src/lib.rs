@@ -26,6 +26,7 @@
 
 #![forbid(unsafe_code)]
 
+mod attenuation_curve;
 mod attenuation_model;
 mod block_renderer;
 mod channel;
@@ -42,6 +43,7 @@ mod speaker_layout;
 #[cfg(test)]
 mod tests;
 
+pub use attenuation_curve::AttenuationCurve;
 pub use attenuation_model::AttenuationModel;
 pub use block_renderer::BlockRenderer;
 pub use channel::Channel;
