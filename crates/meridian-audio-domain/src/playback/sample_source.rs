@@ -9,3 +9,9 @@ pub trait SampleSource: Send {
     /// has ended; a looping source never ends and always fills `out`.
     fn read(&mut self, out: &mut [f32]) -> usize;
 }
+
+impl<S: SampleSource + ?Sized> SampleSource for Box<S> {
+    fn read(&mut self, out: &mut [f32]) -> usize {
+        (**self).read(out)
+    }
+}

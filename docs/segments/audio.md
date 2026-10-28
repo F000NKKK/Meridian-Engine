@@ -74,10 +74,13 @@ Not started; ordered by suggested priority. Items wait for an explicit task.
 5. ~~`magic_figures` through a `Stage`~~ — done: `AudioStage` in
    `runtime-app`; the example sets the listener and voice emitters and
    ticks.
-6. **Voice features not built:** fades/ramps on play and stop, one-shots
-   triggered by physics contacts (events), a voice cap with stealing,
-   resampling when a track's rate differs from the stream's, and
-   `AudioTrack` reads without the per-block `Vec`.
+6. ~~Voice features~~ — done: fades (`Voice::with_fade`), voice limit with
+   stealing (`AudioScene::with_max_voices`), `ResampledSource`;
+   `magic_figures` resamples tracks to the stream rate.
+7. **Not built:** one-shots triggered by physics contacts (needs an event
+   path from `runtime-app`), priority-based stealing (today: oldest first),
+   `AudioTrack` reads without the per-block `Vec`, a resampler with a
+   low-pass for large downward conversions.
 
 Deliberately not queued: `meridian-audio-effects` (only when an effect
 needs an FFT/external crate), HRTF, height channels, a `Fixed` flavor
