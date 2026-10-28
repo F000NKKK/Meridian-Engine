@@ -129,6 +129,29 @@ references and paths after one parse), as everywhere else.
    as a `meridian-sdk` example package named as such, not as the way to make a
    game. `meridian.toml` disappears from the formats table.
 
+## What the examples need that data cannot express yet
+
+From team/rendering's inventory. Already in the scene file: `transform`,
+`light`, `mesh_renderer`, `scale`.
+
+| Example | Not data today | Becomes |
+|---|---|---|
+| `magic_figures` | orbit and spin of the shapes, fly camera and input, HUD, music and listener, glass/glow look | `spin`/`orbit` components (or an animation of `transform`), `camera` component, input section, `audio_source`/`audio_listener` components, HUD as `.meui`/`.mel` module |
+| `physic_figures` | physics world, sun with `casts_shadow: false` | `rigid_body`/`collider` components (physics-domain), `light.casts_shadow`, `physics` settings section |
+| `gltf_viewer` | camera orbit, animation clip | `camera` component plus an animation-player component; the model is a `mesh_renderer` on a `.glb` |
+| `ui_scroll` | the UI | `.meui`/`.mel` module (not a rendering example) |
+| `render_bench` | measurement loop, GPU timers, report, ppm output | a tool, `meridian bench <project>`; its scenes (helmet, shadows, instances, crowd as N copies of a prefab) are plain data projects |
+
+New data pieces this implies (owners decide their shapes, none changes
+`.mproj`): a `camera` component beside `transform` (`fov_y`, `near`, `far`,
+perspective; the active camera is a marker, else the first in the scene; the
+editor's orbit camera is the IDE's and is never written to a file), the
+`render` settings section (`bloom { intensity }`,
+`background: clear | environment { blur }`, `sky { zenith, horizon, ground,
+sun_direction, sun_radiance, sun_radius }`, `ambient_sky`, `ambient_ground`;
+shadow and tone-mapping fields are added with the type that owns them), and
+the environment map as a typed asset reference.
+
 ## Solutions and subprojects
 
 Question for the user: does Meridian need a `.msln`-style file grouping several
