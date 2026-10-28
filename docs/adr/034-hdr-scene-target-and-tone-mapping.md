@@ -52,7 +52,7 @@ clamped before feed the blur unclamped. `BloomPass::new` no longer takes a
 - One more full-resolution texture (8 bytes per pixel) and one more
   full-screen draw per frame.
 - The bloom bright pass still redraws geometry and reads only the plain
-  emissive slot; emissive maps do not bloom (ADR 033).
+  emissive slot; emissive maps bloom through a second pipeline (ADR 042).
 - No auto exposure, no per-channel white point, no colour grading. The
   operator is an enum so they can be added later without touching the scene
   passes.

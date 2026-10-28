@@ -115,6 +115,7 @@ impl GpuFrameRecorder {
             &BloomInput {
                 renderer: &self.renderer,
                 prepared,
+                textures: self.textures.registry(),
                 target: &self.scene,
             },
         );

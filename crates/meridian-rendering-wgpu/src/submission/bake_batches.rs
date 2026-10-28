@@ -111,6 +111,7 @@ pub(crate) fn bake_batches(
             lit: planned.key.lit,
             state: planned.key.state,
             casts_shadow: planned.key.casts_shadow,
+            emissive_map: planned.key.maps.emissive,
             instances: first..first.saturating_add(count),
         });
         first = first.saturating_add(count);

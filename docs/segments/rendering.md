@@ -90,7 +90,7 @@ Not started; ordered by suggested priority. Items wait for an explicit task.
    factors, the glTF metallic-roughness map (linear upload), GGX shading.
    Normal, occlusion and emissive maps followed in
    [ADR 033](../adr/033-normal-occlusion-and-emissive-maps.md) (derivative
-   tangent frame; emissive-mapped surfaces do not bloom yet).
+   tangent frame; emissive-mapped surfaces bloom since [ADR 042](../adr/042-bloom-for-emissive-maps.md)).
 10. HDR scene target, HDR bloom and tone mapping:
    [ADR 034](../adr/034-hdr-scene-target-and-tone-mapping.md).
 11. Image-based lighting from a prefiltered environment (procedural sky for
