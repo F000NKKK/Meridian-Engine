@@ -15,7 +15,7 @@ use meridian_ecs::{Component, Transform, World};
 use meridian_gac::{Aabb, Motor3};
 use meridian_resource::ResourceId;
 
-use crate::{Frustum, JointPalette, MeshHandle, TextureHandle};
+use crate::{Frustum, JointPalette, MeshHandle, MorphWeights, TextureHandle};
 
 /// Typed identity for a material — see the module doc's handle note.
 #[derive(Debug)]
@@ -339,6 +339,9 @@ impl FrameScene {
 /// the join happens here, in `rendering-domain`, per dependency-rules
 /// rule 6 (ECS stays generic and data-oriented).
 ///
+/// An entity that also has a [`JointPalette`] or [`MorphWeights`] component
+/// is drawn posed by them (ADR 047).
+///
 /// Lights aren't extracted yet (no light component exists); callers add
 /// them to the returned scene directly until one does.
 pub fn extract_scene3d(world: &World, camera: crate::Camera) -> Scene3d {
@@ -352,8 +355,11 @@ pub fn extract_scene3d(world: &World, camera: crate::Camera) -> Scene3d {
                 frame: transform.motor,
                 billboard: renderer.billboard,
                 casts_shadow: true,
-                palette: None,
-                morph_weights: Vec::new(),
+                palette: world.get::<JointPalette>(entity).cloned(),
+                morph_weights: world
+                    .get::<MorphWeights>(entity)
+                    .map(|weights| weights.0.clone())
+                    .unwrap_or_default(),
             })
         })
         .collect();

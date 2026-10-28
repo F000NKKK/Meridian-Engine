@@ -115,12 +115,14 @@ ALLOWED = {
         "meridian-gac",
     },
     "meridian-runtime-app": {
+        "meridian-animation-domain",
         "meridian-audio-app",
         "meridian-audio-domain",
         "meridian-diagnostics",
         "meridian-ecs",
         "meridian-physics-app",
         "meridian-compute-app",
+        "meridian-rendering-domain",
     },
     "meridian-physics-app": {"meridian-physics-domain", "meridian-gac"},
     "meridian-data-substrate": {"meridian-ecs", "meridian-gac"},
@@ -135,7 +137,7 @@ ALLOWED = {
     "meridian-markup-macros": set(),
     "meridian-ui-mel": {"meridian-markup", "meridian-ui-domain"},
     "meridian-ui-domain": {"meridian-diagnostics", "meridian-memory"},
-    "meridian-animation-domain": {"meridian-gac"},
+    "meridian-animation-domain": {"meridian-ecs", "meridian-gac"},
     "meridian-text-domain": set(),
     "meridian-ui-scene2d": {
         "meridian-gac",

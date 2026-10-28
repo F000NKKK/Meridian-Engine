@@ -114,7 +114,12 @@ impl GpuState {
         self.cycle_animations(delta);
         self.player.advance(&self.rig, delta);
         let layers = self.player.layers();
-        let palettes = self.rig.palettes_mixed(&layers);
+        let palettes: Vec<JointPalette> = self
+            .rig
+            .matrices_mixed(&layers)
+            .into_iter()
+            .map(JointPalette::new)
+            .collect();
         let morphs = self.rig.weights_mixed(&layers);
         let pieces = self.pieces.iter().zip(morphs);
         for (renderable, (piece, weights)) in self.scene.renderables.iter_mut().zip(pieces) {
@@ -164,7 +169,7 @@ fn chosen_animation(rig: &ModelRig) -> Option<usize> {
 /// The centre and radius of a sphere around every vertex of `pieces`, a
 /// skinned piece posed at rest.
 fn bounds(base: &GraphicsSession, pieces: &[ModelPiece], rig: &ModelRig) -> (Vec3, f32) {
-    let rest = rig.palettes(None, 0.0);
+    let rest = rig.matrices(None, 0.0);
     let (mut low, mut high) = ([f32::MAX; 3], [f32::MIN; 3]);
     for piece in pieces {
         let Some(source) = base.render.meshes.get(piece.mesh) else {
@@ -173,7 +178,7 @@ fn bounds(base: &GraphicsSession, pieces: &[ModelPiece], rig: &ModelRig) -> (Vec
         let palette = piece
             .skeleton
             .and_then(|skeleton| rest.get(skeleton))
-            .map(JointPalette::matrices);
+            .map(Vec::as_slice);
         for (vertex, position) in source.positions.iter().enumerate() {
             let position = match (palette, &source.skin) {
                 (Some(palette), Some(skin)) => rest_position(palette, skin, vertex, *position),

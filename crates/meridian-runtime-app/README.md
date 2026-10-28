@@ -4,7 +4,7 @@ Runtime use cases: stages run in dependency order through a job-executor port, t
 
 **Layer and context:** application · runtime
 
-- **For:** `Runtime` and `Stage`s run in dependency order through the `JobExecutor` port, `Shared` state handles, `EventSystem`, `PhysicsStepStage`, `TransformStage` and `ComputeStage`.
+- **For:** `Runtime` and `Stage`s run in dependency order through the `JobExecutor` port, `Shared` state handles, `EventSystem`, `PhysicsStepStage`, `TransformStage`, `AnimationStage` and `ComputeStage`.
 - **Not for:** owning application state or naming adapters (ADR 025): threads come from `meridian-runtime-threads`, physics steppers from `meridian-physics-app` and `meridian-physics-wgpu`, subsystem algorithms from the `*-core` crates.
 
 ## Usage
@@ -38,7 +38,7 @@ assert_eq!(*frames.lock(), 1);
 
 ## Depends on / used by
 
-- Depends on: [`meridian-audio-app`](../meridian-audio-app), [`meridian-audio-domain`](../meridian-audio-domain), [`meridian-compute-app`](../meridian-compute-app), [`meridian-diagnostics`](../meridian-diagnostics), [`meridian-physics-app`](../meridian-physics-app)
+- Depends on: [`meridian-animation-domain`](../meridian-animation-domain), [`meridian-audio-app`](../meridian-audio-app), [`meridian-audio-domain`](../meridian-audio-domain), [`meridian-compute-app`](../meridian-compute-app), [`meridian-diagnostics`](../meridian-diagnostics), [`meridian-physics-app`](../meridian-physics-app), [`meridian-rendering-domain`](../meridian-rendering-domain)
 - Used by: [`meridian-sdk`](../meridian-sdk), [`meridian-runtime-threads`](../meridian-runtime-threads)
 
 ## License

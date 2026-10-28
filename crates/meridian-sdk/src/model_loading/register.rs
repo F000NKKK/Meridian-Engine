@@ -7,7 +7,7 @@ use meridian_rendering_domain::{MeshMorph, MeshSource, MorphTarget, VertexSkin, 
 use super::image_uploads::ImageUploads;
 use super::loaded_model::LoadedModel;
 use super::model_piece::ModelPiece;
-use super::rig::ModelRig;
+use super::rig::rig_of;
 
 /// Registers every part of `model`: meshes with `meshes` (missing normals
 /// are derived from the triangles, missing UVs are zero), images with
@@ -19,7 +19,7 @@ pub(crate) fn register(
     meshes: &mut impl MeshStore,
     textures: &mut impl TextureStore,
 ) -> Result<LoadedModel, String> {
-    let rig = ModelRig::of(&model)?;
+    let rig = rig_of(&model)?;
     let mut uploads = ImageUploads::new(&model.images, textures);
     let mut pieces = Vec::with_capacity(model.parts.len());
     for part in model.parts {

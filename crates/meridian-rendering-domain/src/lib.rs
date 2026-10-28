@@ -38,7 +38,7 @@ pub use fly::{FlyCamera, FlyControls};
 pub use frustum::Frustum;
 pub use graph_resource_id::GraphResourceId;
 pub use mesh_handle::{MeshHandle, MeshMarker};
-pub use morph::{MeshMorph, MorphTarget};
+pub use morph::{MeshMorph, MorphTarget, MorphWeights};
 pub use render_graph::{AllocationPlan, RenderGraph, ResourceLifetime};
 pub use render_graph_error::RenderGraphError;
 pub use render_pass::RenderPass;

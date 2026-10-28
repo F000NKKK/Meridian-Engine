@@ -802,9 +802,11 @@ the rest are not started.
    Skeletal animation has its vocabulary and math in `animation-domain`
    ([ADR 047](adr/047-skeletal-animation-vocabulary.md)); `asset-gltf` reads
    skins, joint weights and joint animations, `rendering-wgpu` poses skinned
-   meshes with a compute kernel, and `gltf_viewer` plays a model's animations.
-   Still open: morph targets, animation of non-joint nodes, blending and
-   state machines.
+   meshes (and morphs them) with a compute kernel, nodes that animation moves
+   play through a node skeleton, clips crossfade, and `gltf_viewer` plays a
+   model's animations. Animators run in the runtime as ECS components and an
+   `AnimationStage` ([ADR 048](adr/048-animation-in-the-runtime.md)). Still
+   open: state machines and root motion.
 
 **Rough sequencing, if picking one order**: (4) (batched physics
 dispatch) is done. (1) and (2) next — they're the two things that make
