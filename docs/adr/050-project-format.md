@@ -85,9 +85,10 @@ references and paths after one parse), as everywhere else.
      .meridian/         editor caches, thumbnails, per-user state -- git-ignored
    ```
 
-   Nothing derived or per-user is stored in `.mproj`: window layout, recent
-   scene, thumbnails live under `.meridian/`, so the project file stays
-   reviewable and mergeable.
+   Nothing derived or per-user is stored in `.mproj`: thumbnails and other
+   caches live under `.meridian/`; recent folders and window layout belong to
+   the application, not the project. The project file stays reviewable and
+   mergeable.
 5. **Code is a module, and Cargo is one kind of module.** `modules` lists code
    the project adds on top of the data:
    - `mel`: a folder of `.mel`/`.meui` files (ADR 022): compiled by the
