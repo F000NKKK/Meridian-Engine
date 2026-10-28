@@ -96,3 +96,39 @@ fn a_thumbnail_subject_is_drawn_or_refused_with_a_reason() {
     let empty = renderer.thumbnail(ThumbnailSubject::Scene(Box::default()), 24);
     assert!(matches!(empty, Err(ThumbnailError::Empty)));
 }
+
+#[test]
+fn a_scene_file_with_asset_references_is_bound_and_drawn() {
+    use meridian_data_substrate::{ComponentRegistry, NoResolver, register_rendering};
+    use meridian_sdk::BuiltinAssets;
+
+    let Some(mut renderer) = renderer() else {
+        return;
+    };
+    let mut registry = ComponentRegistry::new();
+    registry
+        .register_with::<Transform, meridian_data_substrate::TransformCodec>(
+            meridian_data_substrate::ComponentName::new("transform").unwrap(),
+        )
+        .unwrap();
+    register_rendering(&mut registry).unwrap();
+    let text = r#"{ format: 1, entities: [
+        { id: "ball", components: {
+            transform: { motor: { rotor: [1, 0, 0, 0] } },
+            mesh_renderer: { mesh: "@asset:builtin/sphere", material: "@asset:builtin/default" } } },
+        { id: "lost", components: {
+            transform: { motor: { rotor: [1, 0, 0, 0] } },
+            mesh_renderer: { mesh: "@asset:meshes/nowhere.obj", material: "@asset:builtin/default" } } },
+    ] }"#;
+    let mut world = World::new();
+    registry
+        .load_scene(text, &mut world, &mut NoResolver)
+        .expect("the scene loads");
+    let unbound = renderer.bind_references(&mut world, &mut BuiltinAssets::default());
+    assert_eq!(unbound.len(), 1);
+    assert_eq!(unbound[0].missing.as_str(), "meshes/nowhere.obj");
+    let pixels = renderer
+        .render(&world, &EditorCamera::default())
+        .expect("a frame");
+    assert!(varied(pixels), "the bound sphere shows up");
+}
