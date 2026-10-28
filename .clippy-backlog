@@ -15,7 +15,7 @@ clippy::let_underscore_untyped	1
 clippy::manual_midpoint	2
 clippy::many_single_char_names	3
 clippy::map_unwrap_or	6
-clippy::missing_errors_doc	30
+clippy::missing_errors_doc	29
 clippy::missing_panics_doc	10
 clippy::module_name_repetitions	25
 clippy::must_use_candidate	245
@@ -36,5 +36,5 @@ clippy::unused_self	4
 elided_lifetimes_in_paths	1
 missing_docs	653
 unreachable_pub	12
-unused_qualifications	5
+unused_qualifications	3
 unused_variables	1

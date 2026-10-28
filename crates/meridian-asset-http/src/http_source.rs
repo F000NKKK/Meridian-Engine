@@ -3,15 +3,18 @@
 use std::time::Duration;
 
 use meridian_asset_app::{AssetPath, ByteSource, SourceError};
+use ureq::tls::{Certificate, RootCerts, TlsConfig};
 
 use crate::HttpSourceError;
 use crate::asset_url::asset_url;
 
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(30);
 const DEFAULT_MAX_BYTES: u64 = 64 * 1024 * 1024;
-const SCHEME: &str = "http://";
+const SCHEMES: [&str; 2] = ["http://", "https://"];
 
-/// A [`ByteSource`] that reads `GET <base>/<asset path>`. It never follows a
+/// A [`ByteSource`] that reads `GET <base>/<asset path>` over `http` or
+/// `https` (certificates are checked against the Mozilla roots unless
+/// [`with_root_certificate`](Self::with_root_certificate) says otherwise). It never follows a
 /// redirect (an asset server that moves files should say so in its base URL),
 /// gives up after a timeout, and refuses a body over a size cap, so a hostile
 /// or broken server cannot hold a loader thread or fill memory.
@@ -20,33 +23,49 @@ pub struct HttpSource {
     base: String,
     agent: ureq::Agent,
     max_bytes: u64,
+    timeout: Duration,
+    roots: Vec<Certificate<'static>>,
 }
 
 impl HttpSource {
-    /// A source below `base_url` (`http://host[:port][/prefix]`).
+    /// A source below `base_url` (`http[s]://host[:port][/prefix]`).
     ///
     /// # Errors
     ///
-    /// [`HttpSourceError::UnsupportedScheme`] unless it starts with `http://`,
-    /// [`HttpSourceError::MissingHost`] if no host follows.
+    /// [`HttpSourceError::UnsupportedScheme`] unless it starts with `http://`
+    /// or `https://`, [`HttpSourceError::MissingHost`] if no host follows.
     pub fn new(base_url: &str) -> Result<Self, HttpSourceError> {
-        let rest = base_url
-            .strip_prefix(SCHEME)
+        let rest = SCHEMES
+            .iter()
+            .find_map(|scheme| base_url.strip_prefix(scheme))
             .ok_or_else(|| HttpSourceError::UnsupportedScheme(base_url.to_owned()))?;
         if rest.is_empty() || rest.starts_with('/') {
             return Err(HttpSourceError::MissingHost(base_url.to_owned()));
         }
         Ok(Self {
             base: base_url.trim_end_matches('/').to_owned(),
-            agent: build_agent(DEFAULT_TIMEOUT),
+            agent: build_agent(DEFAULT_TIMEOUT, &[]),
             max_bytes: DEFAULT_MAX_BYTES,
+            timeout: DEFAULT_TIMEOUT,
+            roots: Vec::new(),
         })
     }
 
     /// Gives up on a request after `timeout` (connecting, waiting and reading together).
     #[must_use]
     pub fn with_timeout(mut self, timeout: Duration) -> Self {
-        self.agent = build_agent(timeout);
+        self.timeout = timeout;
+        self.agent = build_agent(timeout, &self.roots);
+        self
+    }
+
+    /// Trusts the DER-encoded certificate `der` for `https`, for a server with a
+    /// private or self-signed certificate. Once any is given, **only** the given
+    /// certificates are trusted, not the public roots.
+    #[must_use]
+    pub fn with_root_certificate(mut self, der: &[u8]) -> Self {
+        self.roots.push(Certificate::from_der(der).to_owned());
+        self.agent = build_agent(self.timeout, &self.roots);
         self
     }
 
@@ -58,8 +77,16 @@ impl HttpSource {
     }
 }
 
-fn build_agent(timeout: Duration) -> ureq::Agent {
+fn build_agent(timeout: Duration, roots: &[Certificate<'static>]) -> ureq::Agent {
+    let tls = if roots.is_empty() {
+        TlsConfig::default()
+    } else {
+        TlsConfig::builder()
+            .root_certs(RootCerts::new_with_certs(roots))
+            .build()
+    };
     ureq::Agent::config_builder()
+        .tls_config(tls)
         .timeout_global(Some(timeout))
         .max_redirects(0)
         .http_status_as_error(false)
