@@ -1,0 +1,32 @@
+[package]
+name = "meridian-physics-wgpu"
+version = "0.6.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Compute adapter for physics-domain: WGSL soft-body (mass-spring) GPU kernels (float and Fixed flavors), plus compute-runtime-batched rigid-body Integrator and NarrowPhase::test_pair kernels (generic over GaFlavor, CPU dispatch today). The adapter between physics-domain's domain model and compute-app's dispatch interface — mirrors meridian-gac-wgpu's role for GAC batch ops (see docs/dependency-rules.md rule 11)."
+readme = "README.md"
+
+[dependencies]
+meridian-diagnostics = { workspace = true }
+meridian-physics-domain = { workspace = true }
+meridian-physics-app = { workspace = true }
+meridian-gac = { workspace = true }
+meridian-gac-wgpu = { workspace = true }
+meridian-compute-app = { workspace = true }
+meridian-compute-wgpu = { workspace = true }
+meridian-numeric = { workspace = true }
+meridian-gpu-wgpu = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true }
+meridian-physics-app = { workspace = true, features = ["testing"] }
+meridian-compute-app = { workspace = true, features = ["testing"] }
+
+[features]
+# Tests that need a real GPU or audio device; CI has neither (docs/adr/020).
+hw-tests = []
+
+[lints]
+workspace = true

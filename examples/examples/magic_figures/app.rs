@@ -3,12 +3,13 @@
 use meridian_examples::paths::asset_path;
 use meridian_sdk::{
     AppHandler, Device, FlyCamera, GraphicsSession, InputState, KeyCode, Light, Listener, Material,
-    Motor3, Renderable3d, Rotor, Scene3d, Vec3, Window, ground_mesh_source, look_at_rotor,
+    Motor3, Renderable3d, Rotor, Scene3d, Vec3, Window, fly_controls, ground_mesh_source,
+    look_at_rotor,
 };
 
 use crate::{
-    MusicRig, ORBIT_RADIUS, SUN_DIRECTION, ShapeSpec, load_scene, mesh_source_for, orbit_position,
-    sun_renderable,
+    Hud, MusicRig, ORBIT_RADIUS, SUN_DIRECTION, ShapeSpec, load_scene, mesh_source_for,
+    orbit_position, scene_extras,
 };
 
 pub(crate) struct App {
@@ -25,6 +26,7 @@ pub(crate) struct App {
 struct GpuState {
     base: GraphicsSession,
     scene: Scene3d,
+    hud: Hud,
     /// Per-shape index into `scene.renderables`, in the same order as
     /// `App::shapes`, so `on_redraw` can update each shape's frame every
     /// tick without re-walking `shapes`.
@@ -67,7 +69,7 @@ impl GpuState {
             shape_renderable_indices.push(renderables.len());
             renderables.push(shape_renderable(&mut base, shape));
         }
-        renderables.push(sun_renderable(&mut base));
+        renderables.extend(scene_extras(&mut base));
 
         let (lights, point_light_indices) = scene_lights(shapes);
         let scene = Scene3d {
@@ -77,9 +79,11 @@ impl GpuState {
             ambient_sky: [0.02, 0.02, 0.028],
             ..Scene3d::default()
         };
+        let hud = Hud::new(&mut base);
         Self {
             base,
             scene,
+            hud,
             shape_renderable_indices,
             point_light_indices,
         }
@@ -89,12 +93,13 @@ impl GpuState {
 /// The textured floor.
 fn floor_renderable(base: &mut GraphicsSession) -> Renderable3d {
     let floor_texture = base.load_texture(&asset_path("assets/textures/floor.png"));
-    let material = base.materials.register(Material {
+    let material = base.render.materials.register(Material {
         albedo: Some(floor_texture),
         base_color_factor: [1.0, 1.0, 1.0, 1.0],
         ..Default::default()
     });
     let mesh = base
+        .render
         .meshes
         .register(ground_mesh_source(14.0, 10.0))
         .expect("floor mesh must be valid");
@@ -110,11 +115,12 @@ fn floor_renderable(base: &mut GraphicsSession) -> Renderable3d {
 /// One orbiting shape at its starting position.
 fn shape_renderable(base: &mut GraphicsSession, shape: &ShapeSpec) -> Renderable3d {
     let mesh = base
+        .render
         .meshes
         .register(mesh_source_for(shape))
         .unwrap_or_else(|e| panic!("{} mesh must be valid: {e}", shape.name));
     let texture = base.load_texture(&asset_path(&shape.texture_file));
-    let material = base.materials.register(Material {
+    let material = base.render.materials.register(Material {
         albedo: Some(texture),
         base_color_factor: [
             shape.glow_color[0],
@@ -194,7 +200,7 @@ impl AppHandler for App {
         let frame_dt = (now - self.last_frame).as_secs_f32().min(0.1);
         self.last_frame = now;
         if self.cursor_grabbed {
-            self.camera.update(input, frame_dt);
+            self.camera.update(fly_controls(input), frame_dt);
         }
 
         let elapsed = now.duration_since(self.start).as_secs_f32();
@@ -226,7 +232,14 @@ impl AppHandler for App {
         }
         gpu.scene.camera = camera;
 
-        meridian_sdk::render_frame(&mut gpu.base, &gpu.scene, [0.03, 0.03, 0.05, 1.0], window);
+        let hud = gpu.hud.overlay([window.width(), window.height()], elapsed);
+        meridian_sdk::compose_frame(
+            &mut gpu.base,
+            &gpu.scene,
+            &[hud],
+            [0.03, 0.03, 0.05, 1.0],
+            window,
+        );
     }
 
     fn on_resized(&mut self, width: u32, height: u32) {

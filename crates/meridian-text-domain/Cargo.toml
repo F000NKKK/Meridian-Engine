@@ -1,0 +1,21 @@
+[package]
+name = "meridian-text-domain"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Our own font stack, CPU only: a bounds-checked TrueType parser, an anti-aliasing rasterizer, a glyph atlas and a simple shaper; see ADR 023."
+
+[features]
+# An in-memory test font (`synthetic`), for this crate's tests and its users'.
+synthetic-font = []
+
+[dependencies]
+thiserror = { workspace = true }
+
+[dev-dependencies]
+meridian-text-domain = { path = ".", features = ["synthetic-font"] }
+
+[lints]
+workspace = true

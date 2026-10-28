@@ -1,7 +1,7 @@
-//! Reading a `.mel` scene file at run time into a built
+//! Reading a `.meui` scene file at run time into a built
 //! `meridian_sdk::dsl` tree (`physic_figures`), plus [`find_child`],
 //! shared by both examples. `magic_figures` instead uses the module
-//! `build.rs` generates from its `.mel` (ADR 017).
+//! `build.rs` generates from its `.meui` (ADR 017).
 
 use meridian_sdk::dsl::build_scene;
 use meridian_sdk::dsl::dsl_core::{BuiltNode, DslRegistry};
@@ -11,8 +11,8 @@ use crate::paths::asset_path;
 /// Reads `relative_path` (joined via [`asset_path`]) and builds it
 /// against `registry` in one call. A missing file or a malformed
 /// document logs via `log_error!` before panicking — every DSL error
-/// implements `meridian_foundation::EngineError` (see
-/// `meridian_sdk::dsl`'s own module doc), so `crash_reporting`'s
+/// implements `meridian_diagnostics::EngineError` (see
+/// `meridian_sdk::dsl`'s own module doc), so the crash hook's
 /// post-mortem still captures exactly what went wrong; this isn't a
 /// silent dead end, just a real one an example can't meaningfully
 /// recover from (there is no scene to fall back to).

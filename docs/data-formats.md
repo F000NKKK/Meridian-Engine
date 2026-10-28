@@ -6,17 +6,17 @@ Every format Meridian itself writes is [Substrate Data](https://github.com/F000N
 defines the model, the text syntax (JSON + comments, trailing commas,
 unquoted keys), the `SDAT` binary form and frames. This document defines
 what Meridian puts in them. Third-party asset formats (PNG, OBJ, MP3, …)
-stay `asset-core` decoders and are not covered here.
+stay `asset-domain` decoders and are not covered here.
 
 | File | Form on disk | Schema owner | What |
 |---|---|---|---|
-| `meridian.toml` | TOML | `engine-core` | project manifest |
-| `*.mscene` | text (editor) or binary (cooked) | `meridian-scene` | a scene: entities and their components |
-| `*.mprefab` | text or binary | `meridian-scene` | a reusable entity tree |
-| `*.meta` | text | `resource-core` adapter | an asset's stable id and import settings |
+| `meridian.toml` | TOML | `runtime-app` | project manifest |
+| `*.mscene` | text (editor) or binary (cooked) | `meridian-data-substrate` | a scene: entities and their components |
+| `*.mprefab` | text or binary | `meridian-data-substrate` | a reusable entity tree |
+| `*.meta` | text | `resource` adapter | an asset's stable id and import settings |
 | `*.msave` | binary | the game | a save: scene delta + game state |
 | `*.mpak` | binary | build tool | cooked content bundle |
-| editor protocol | frames over a socket | `meridian-editor-protocol` (host: `meridian-editor-host` + `meridian-editor-tcp`) | engine ↔ IDE messages |
+| editor protocol | frames over a socket | `meridian-editor-domain` (host: `meridian-editor-app` + `meridian-editor-tcp`) | engine ↔ IDE messages |
 
 Text and binary of one file kind share an extension: readers detect
 `SDAT` magic and fall back to text.
@@ -25,10 +25,10 @@ Text and binary of one file kind share an extension: readers detect
 
 | Written | Names | Resolved by |
 |---|---|---|
-| `@asset:meshes/crate.obj` | an asset, by path under the project's asset root | `resource-core` (path → `.meta` id → handle) |
-| `@asset-id:3f2a9c…` | an asset, by its stable id (cooked files) | `resource-core` |
-| `@entity:door_left` | an entity of the same document, by its `id` | `meridian-scene` while loading |
-| `@prefab:actors/hero` | a prefab, by path | `meridian-scene` |
+| `@asset:meshes/crate.obj` | an asset, by path under the project's asset root | `resource` (path → `.meta` id → handle) |
+| `@asset-id:3f2a9c…` | an asset, by its stable id (cooked files) | `resource` |
+| `@entity:door_left` | an entity of the same document, by its `id` | `meridian-data-substrate` while loading |
+| `@prefab:actors/hero` | a prefab, by path | `meridian-data-substrate` |
 
 A reference is checked while the document is read (`substrate_data::Resolve`)
 and every one is reported with its path, so a build can list what a scene
@@ -36,11 +36,11 @@ needs before loading anything.
 
 ## Math values
 
-With the `data` feature, `numeric-core` and `gac-core` implement
+With the `data` feature, `numeric` and `gac` implement
 `substrate_data::schema::NamedType` for these types (and `Schema` through
 `named_schema!`), so each describes itself as `Shape::Named` and an editor
 can show a gizmo instead of raw numbers. A motor's stored form is the
-public `meridian_gac_core::MotorForm<S>`.
+public `meridian_gac::MotorForm<S>`.
 
 | Type | Named | Stored as | Text |
 |---|---|---|---|
@@ -52,7 +52,7 @@ public `meridian_gac_core::MotorForm<S>`.
 | `Motor3` | `motor` | `{ rotor, translation }` or `{ rotor, dual }` | `{ rotor: [1, 0, 0, 0], translation: [0, 2, 0] }` |
 | `Fixed*` flavors | `fixed_vec3`, `fixed_bivector3`, `fixed_rotor`, `fixed_motor` | the same, components as raw `Fixed` bits | `[0, 98304, 0]` |
 
-Component order is `gac-core`'s own: `Bivector3::new(e23, e31, e12)` —
+Component order is `gac`'s own: `Bivector3::new(e23, e31, e12)` —
 the Hodge duals of the x, y, z axes — and a rotor is
 `cos(θ/2) − sin(θ/2)(n₁e23 + n₂e31 + n₃e12)`, so a rotation by θ about +Z
 is `[cos θ/2, 0, 0, −sin θ/2]`. (`Multivector` stores `e13`; `e31` is
@@ -73,7 +73,7 @@ reads back as the same `f64`, and the `f32` it came from is exact in it.
 `Fixed` is never converted through a float. In every form a named type
 is stored as its `of` (frames carry the component lists packed, a motor
 as a `{ rotor, translation?, dual? }` record), so a tool can read a
-frame by shape alone. The tests in `gac-core`'s `data` module pin all of
+frame by shape alone. The tests in `gac`'s `data` module pin all of
 this, including the rotor order against the axis–angle formula.
 
 ## Scene (`.mscene`)
@@ -128,13 +128,13 @@ to the prefab; the first entity is the root. Instancing renames ids as
 
 ## Component registry
 
-`meridian-scene::ComponentRegistry` is built by the application (no
+`meridian-data-substrate::ComponentRegistry` is built by the application (no
 global): it maps a component name to its type's schema and the two
 functions that move it between a document and a `World`.
 
 ```rust
 let mut registry = ComponentRegistry::new();
-registry.register_with::<Transform, TransformCodec>(ComponentName::new("transform")?)?; // ecs-core type: through a codec
+registry.register_with::<Transform, TransformCodec>(ComponentName::new("transform")?)?; // ecs type: through a codec
 registry.register::<MeshRenderer>(ComponentName::new("mesh_renderer")?)?;               // T: Component + Schema + Clone
 registry.set_unknown_components(UnknownComponents::Keep);                               // editors; games keep `Reject`
 let scene = registry.load_scene(&text, &mut world, &mut resolver)?; // SceneMap: EntityKey → Entity, or LoadError
@@ -150,9 +150,9 @@ the document hasn't — then `UnsupportedFormat`, `DuplicateEntity`,
 `OwnParent`, `UnknownComponent { name, suggestion }`, `BadComponentName`)
 with its path, line and column.
 
-`Transform` is `ecs-core`'s, and `ecs-core` stays file-blind (ADR 016,
-decision 3; no `data` feature on `ecs-core`), so it has no `Schema` impl:
-`meridian-scene::TransformForm`, a newtype implementing `Schema` and
+`Transform` is `ecs`'s, and `ecs` stays file-blind (ADR 016,
+decision 3; no `data` feature on `ecs`), so it has no `Schema` impl:
+`meridian-data-substrate::TransformForm`, a newtype implementing `Schema` and
 converting to and from `Transform`, stores it as `{ motor }`, and
 `TransformCodec` registers `Transform` through it. Any component whose
 crate can't implement `Schema` uses the same `register_with` door. The
@@ -165,9 +165,9 @@ Loading is all-or-nothing: every problem is collected first, and a
 document with any error spawns nothing. `@entity:` references (in
 `parent` or inside components) are resolved against the document's own
 keys; every other kind goes to the caller's `Resolve` (`NoResolver`
-keeps them as written). `ecs-core` has no
-hierarchy yet, so `parent` becomes `meridian-scene::Parent(Entity)` — a
-component that lives in `meridian-scene` for now and moves to `ecs-core`
+keeps them as written). `ecs` has no
+hierarchy yet, so `parent` becomes `meridian-data-substrate::Parent(Entity)` — a
+component that lives in `meridian-data-substrate` for now and moves to `ecs`
 once it has a hierarchy — and is also kept in the returned `SceneMap`
 (`parent_of`). Saving writes a `Parent` component back as the parent's
 document key. Nothing propagates transforms along it yet; instancing
@@ -175,7 +175,7 @@ document key. Nothing propagates transforms along it yet; instancing
 
 `describe()` returns a `ComponentShape { name, shape: ShapeDoc }` per
 registered component, in registration order — a `Schema` itself, so
-Meridian IDLE gets it as a frame and builds its inspector and `.mel`
+Meridian IDLE gets it as a frame and builds its inspector and `.meui`
 completion from it.
 
 ## Asset metadata (`.meta`)
@@ -184,7 +184,7 @@ completion from it.
 { format: 1, id: "3f2a9c0e8b1d4a67", importer: "obj", settings: { scale: 1.0, generate_normals: true } }
 ```
 
-The `id` is the asset's stable identity across renames (`resource-core`);
+The `id` is the asset's stable identity across renames (`resource`);
 cooked content refers to assets by `@asset-id:`.
 
 ## Saves (`.msave`)
@@ -199,20 +199,20 @@ only owns the envelope.
 Messages are Substrate Data frames over a byte stream
 (`substrate_data::io::write_frame`/`read_frame`): a little-endian `u32`
 length, then the message in the binary form. Requests, responses and
-events are tagged enums deriving `Schema`, in `meridian-editor-protocol`;
+events are tagged enums deriving `Schema`, in `meridian-editor-domain`;
 they are only ever appended to, and the two peers agree on a
 `ProtocolVersion` in the first message, because the binary form rejects
 what it doesn't know (an older reader does not skip a newer peer's field).
-Specified in [editor-protocol.md](editor-protocol.md).
+Specified in [editor-domain.md](editor-domain.md).
 
 ## Status
 
 | Piece | State |
 |---|---|
 | `substrate-data` crates | done (separate repository) |
-| `data` feature on `numeric-core`/`gac-core` | done |
-| `meridian-scene` (registry, `.mscene` load/save, `describe()`) | done (text form; hierarchy as `meridian-scene::Parent` until `ecs-core` has one) |
+| `data` feature on `numeric`/`gac` | done |
+| `meridian-data-substrate` (registry, `.mscene` load/save, `describe()`) | done (text form; hierarchy as `meridian-data-substrate::Parent` until `ecs` has one) |
 | `.mscene` binary form, patching an existing file on save | not implemented |
 | `.mprefab`, `.meta`, `.msave`, `.mpak` | designed, not implemented |
-| `meridian-editor-protocol` (messages, framing, golden-pinned wire) | done |
-| `meridian-editor-host` (session, ports), `meridian-editor-tcp` (loopback TCP) | done; not yet wired into `engine-core`'s frame loop |
+| `meridian-editor-domain` (messages, framing, golden-pinned wire) | done |
+| `meridian-editor-app` (session, ports), `meridian-editor-tcp` (loopback TCP) | done; not yet wired into `runtime-app`'s frame loop |

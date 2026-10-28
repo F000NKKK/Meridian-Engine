@@ -5,20 +5,24 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Example programs (magic_figures, physic_figures) and the shared plumbing they use; not published."
+description = "Example programs (magic_figures, physic_figures, gltf_viewer) and the shared plumbing they use; not published."
 readme = "README.md"
 publish = false
 
 [dependencies]
-meridian-sdk = { workspace = true, features = ["file-logging"] }
+meridian-sdk = { workspace = true }
 tokio = { workspace = true }
 
 [build-dependencies]
-meridian-mel-build = { workspace = true }
+meridian-ui-mel = { workspace = true }
 
 [[example]]
 name = "magic_figures"
 path = "examples/magic_figures/magic_figures.rs"
+
+[[example]]
+name = "gltf_viewer"
+path = "examples/gltf_viewer/gltf_viewer.rs"
 
 [[example]]
 name = "physic_figures"

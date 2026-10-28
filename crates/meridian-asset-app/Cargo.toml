@@ -1,0 +1,15 @@
+[package]
+name = "meridian-asset-app"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Asset loading ports: where bytes come from, where background work runs, and the loader that decodes off the frame thread."
+readme = "README.md"
+
+[dependencies]
+meridian-asset-domain = { workspace = true }
+
+[lints]
+workspace = true

@@ -1,0 +1,24 @@
+[package]
+name = "meridian-asset-fs"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "File-system adapter for asset-app: reads asset bytes from a directory."
+readme = "README.md"
+
+[dependencies]
+meridian-asset-app = { workspace = true }
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+meridian-asset-domain = { workspace = true }
+meridian-runtime-threads = { workspace = true }
+criterion = { version = "0.8", default-features = false }
+
+[[bench]]
+name = "background_load"
+harness = false

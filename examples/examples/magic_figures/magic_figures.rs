@@ -3,12 +3,12 @@
 //! each playing its own music track from a *different* container/codec
 //! format (`demo-music.mp3`/`.opus`/`.ogg` — real files under
 //! `examples/assets/audio/`, identified by signature via
-//! `asset-core::AnyAudioDecoder`, never by extension — see ADR 013),
+//! `asset-symphonia::AnyAudioDecoder`, never by extension — see ADR 013),
 //! and each textured from a different real image file/format
 //! (`examples/assets/textures/*.{png,bmp}` — signature-sniffed the same
-//! way via `asset-core::AnyImageDecoder`).
+//! way via `sdk::AnyImageDecoder`).
 //!
-//! **Scene composition lives in `assets/scenes/magic_figures.mel`**,
+//! **Scene composition lives in `assets/scenes/magic_figures.meui`**,
 //! compiled by this crate's `build.rs` into a generated module (typed
 //! `x:Name` ids, markup checked at build time; ADR 017) and built
 //! through `meridian_sdk::dsl` — unlike `physic_figures`, which still
@@ -23,10 +23,12 @@
 //! Design notes: docs/notes/meridian-examples.md (`examples/magic_figures`).
 
 mod app;
+mod glass;
 mod glow;
+mod hud;
 mod music_rig;
 mod orbit;
-/// The code generated from `assets/scenes/magic_figures.mel` by this
+/// The code generated from `assets/scenes/magic_figures.meui` by this
 /// crate's `build.rs` (ADR 017): `Name` has one variant per `x:Name`.
 #[expect(
     clippy::allow_attributes,
@@ -39,7 +41,9 @@ mod shape_spec;
 mod sun;
 
 use app::App;
+pub(crate) use glass::scene_extras;
 pub(crate) use glow::Glow;
+pub(crate) use hud::Hud;
 use meridian_sdk::run_windowed_app;
 pub(crate) use music_rig::MusicRig;
 pub(crate) use orbit::{ORBIT_RADIUS, OrbitTag, orbit_position};

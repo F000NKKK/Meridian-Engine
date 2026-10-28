@@ -42,55 +42,60 @@ Meridian-Engine — небольшой устойчивый набор крей�
 
 | Crate | Context | Что даёт |
 |---|---|---|
-| [`meridian-foundation`](crates/meridian-foundation) | diagnostics | Соглашения об ошибках, журнал, отчёты о падениях, флаги возможностей CPU |
-| [`meridian-numeric-core`](crates/meridian-numeric-core) | geometry | Скалярные типы, детерминированный `Fixed`, числовые трейты |
-| [`meridian-gac-core`](crates/meridian-gac-core) | geometry | Геометрическая алгебра: векторы, роторы, моторы, фигуры (float и `Fixed`) |
-| [`meridian-memory-core`](crates/meridian-memory-core) | identity | Арены, пулы ресурсов, поколенческие дескрипторы |
-| [`meridian-resource-core`](crates/meridian-resource-core) | identity | Типизированные id ресурсов, версии, граф зависимостей |
-| [`meridian-ecs-core`](crates/meridian-ecs-core) | entity | Архетипный ECS с хранением SoA |
-| [`meridian-dsl-core`](crates/meridian-dsl-core) | scene-markup | Парсер разметки `.mel` без знания домена и реестр тегов |
+| [`meridian-diagnostics`](crates/meridian-diagnostics) | diagnostics | Соглашения об ошибках, ядро журнала и порт `LogSink`, флаги возможностей CPU |
+| [`meridian-diagnostics-fs`](crates/meridian-diagnostics-fs) | diagnostics | Файловый журнал и отчёты о падениях (адаптер) |
+| [`meridian-numeric`](crates/meridian-numeric) | geometry | Скалярные типы, детерминированный `Fixed`, числовые трейты |
+| [`meridian-gac`](crates/meridian-gac) | geometry | Геометрическая алгебра: векторы, роторы, моторы, фигуры (float и `Fixed`) |
+| [`meridian-memory`](crates/meridian-memory) | identity | Арены, пулы ресурсов, поколенческие дескрипторы |
+| [`meridian-resource`](crates/meridian-resource) | identity | Типизированные id ресурсов, версии, граф зависимостей |
+| [`meridian-ecs`](crates/meridian-ecs) | entity | Архетипный ECS с хранением SoA |
+| [`meridian-markup`](crates/meridian-markup) | scene-markup | Парсер разметки `.meui` без знания домена и реестр тегов |
 
 **Домен**
 
 | Crate | Context | Что даёт |
 |---|---|---|
-| [`meridian-graphics-core`](crates/meridian-graphics-core) | rendering | Граф рендера, сцены, отсечение, освещение, материалы, камера, bloom |
-| [`meridian-physics-core`](crates/meridian-physics-core) | physics | Твёрдые тела, коллизии, решатель, интегратор, мягкие тела |
-| [`meridian-audio-core`](crates/meridian-audio-core) | audio | Пространственный микшер, DSP-граф, слушатель и источники |
-| [`meridian-asset-core`](crates/meridian-asset-core) | assets | Декодеры изображений, мешей, звука и шейдеров |
-| [`meridian-ui-core`](crates/meridian-ui-core) | ui | Удерживаемое дерево UI в стиле WPF, раскладка, hit-testing |
+| [`meridian-rendering-domain`](crates/meridian-rendering-domain) | rendering | Граф рендера, сцены, отсечение, освещение, материалы, камера, bloom |
+| [`meridian-physics-domain`](crates/meridian-physics-domain) | physics | Твёрдые тела, коллизии, решатель, интегратор, мягкие тела |
+| [`meridian-audio-domain`](crates/meridian-audio-domain) | audio | Пространственный микшер, DSP-граф, слушатель и источники |
+| [`meridian-asset-domain`](crates/meridian-asset-domain) | assets | Порт `Decoder`, CPU-типы ассетов и чистые парсеры BMP, WAV, OBJ и шейдеров |
+| [`meridian-ui-domain`](crates/meridian-ui-domain) | ui | Удерживаемое дерево UI в стиле WPF, раскладка, hit-testing |
 
 **Приложение**
 
 | Crate | Context | Что даёт |
 |---|---|---|
-| [`meridian-compute-runtime`](crates/meridian-compute-runtime) | compute | Контекст вычислений, интерфейсы ядер, размер диспетчеризации и разделение |
-| [`meridian-engine-core`](crates/meridian-engine-core) | runtime | `Runtime`: планировщик кадра, события, подсистемы физики и звука, стадии |
+| [`meridian-compute-app`](crates/meridian-compute-app) | compute | Контекст вычислений, интерфейсы ядер, размер диспетчеризации и разделение |
+| [`meridian-audio-app`](crates/meridian-audio-app) | audio | Порт `AudioSink` с фейком и контрактным набором тестов |
+| [`meridian-physics-app`](crates/meridian-physics-app) | physics | `PhysicsSubsystem`, порт `PhysicsStepper` и `SequentialStepper` |
+| [`meridian-rendering-app`](crates/meridian-rendering-app) | rendering | Порты `FrameRecorder`, `MeshStore`, `TextureStore` с фейками и контрактными наборами |
+| [`meridian-runtime-app`](crates/meridian-runtime-app) | runtime | `Runtime`: стадии в порядке зависимостей, порт `JobExecutor`, события (состоянием не владеет) |
 
 **Инфраструктура (адаптеры)**
 
 | Crate | Context | Что даёт |
 |---|---|---|
-| [`meridian-task-core`](crates/meridian-task-core) | runtime | Планировщик графа задач с рабочими потоками |
-| [`meridian-platform-core`](crates/meridian-platform-core) | platform | Окно, ввод, часы, возможности платформы, динамические библиотеки |
-| [`meridian-gpu-driver`](crates/meridian-gpu-driver) | compute | Общее устройство `wgpu`, буферы, шейдеры, вычислительные конвейеры |
-| [`meridian-compute-driver`](crates/meridian-compute-driver) | compute | Диспетчеризация вычислений на CPU-SIMD и GPU |
-| [`meridian-graphics-driver`](crates/meridian-graphics-driver) | rendering | Графическое устройство, поверхности, конвейеры рендера |
-| [`meridian-audio-driver`](crates/meridian-audio-driver) | audio | Устройство вывода звука через `cpal` |
-| [`meridian-physics-driver`](crates/meridian-physics-driver) | physics | Отчёт о бэкенде выполнения физики (будет удалён, ADR 019) |
-| [`meridian-gac-compute`](crates/meridian-gac-compute) | geometry | Пакетные ядра `Motor3` на CPU-SIMD и GPU |
-| [`meridian-physics-compute`](crates/meridian-physics-compute) | physics | Пакетные ядра твёрдых и мягких тел |
-| [`meridian-scene`](crates/meridian-scene) | data | Документы `.mscene` на Substrate Data, загрузка и сохранение `World` |
-| [`meridian-editor-protocol`](crates/meridian-editor-protocol) | editor | Типизированные сообщения игра/редактор в кадрах Substrate Data |
-| [`meridian-editor-host`](crates/meridian-editor-host) | editor | Сторона игры в протоколе без ввода-вывода: `Session`, `SimulationControl`, `RequestHandler` |
+| [`meridian-runtime-threads`](crates/meridian-runtime-threads) | runtime | Планировщик графа задач с рабочими потоками |
+| [`meridian-platform-winit`](crates/meridian-platform-winit) | platform | Окно, ввод, часы, возможности платформы, динамические библиотеки |
+| [`meridian-gpu-wgpu`](crates/meridian-gpu-wgpu) | compute | Общее устройство `wgpu`, буферы, шейдеры, вычислительные конвейеры |
+| [`meridian-compute-wgpu`](crates/meridian-compute-wgpu) | compute | Диспетчеризация вычислений на CPU-SIMD и GPU |
+| [`meridian-rendering-wgpu`](crates/meridian-rendering-wgpu) | rendering | Графическое устройство, поверхности, конвейеры рендера |
+| [`meridian-asset-png`](crates/meridian-asset-png) | assets | Адаптер-декодер PNG на крейте `png` |
+| [`meridian-asset-symphonia`](crates/meridian-asset-symphonia) | assets | Адаптер-декодер MP3, OGG/Vorbis, FLAC, OGG/Opus и потокового звука |
+| [`meridian-audio-cpal`](crates/meridian-audio-cpal) | audio | Устройство вывода звука через `cpal` |
+| [`meridian-gac-wgpu`](crates/meridian-gac-wgpu) | geometry | Пакетные ядра `Motor3` на CPU-SIMD и GPU |
+| [`meridian-physics-wgpu`](crates/meridian-physics-wgpu) | physics | Пакетные ядра твёрдых и мягких тел |
+| [`meridian-data-substrate`](crates/meridian-data-substrate) | data | Документы `.mscene` на Substrate Data, загрузка и сохранение `World` |
+| [`meridian-editor-domain`](crates/meridian-editor-domain) | editor | Типизированные сообщения игра/редактор в кадрах Substrate Data |
+| [`meridian-editor-app`](crates/meridian-editor-app) | editor | Сторона игры в протоколе без ввода-вывода: `Session`, `SimulationControl`, `RequestHandler` |
 | [`meridian-editor-tcp`](crates/meridian-editor-tcp) | editor | Обслуживает один редактор по loopback TCP (единственный crate редактора с `tokio`) |
-| [`meridian-mel-build`](crates/meridian-mel-build) | ui | Генератор для `build.rs`: `.mel` в типизированный Rust |
+| [`meridian-ui-mel`](crates/meridian-ui-mel) | ui | Генератор для `build.rs`: `.meui` в типизированный Rust |
 
 **Интерфейс**
 
 | Crate | Context | Что даёт |
 |---|---|---|
-| [`meridian-dsl-macros`](crates/meridian-dsl-macros) | scene-markup | Атрибутный макрос `#[dsl_tag]` |
+| [`meridian-markup-macros`](crates/meridian-markup-macros) | scene-markup | Атрибутный макрос `#[dsl_tag]` |
 | [`meridian-sdk`](crates/meridian-sdk) | runtime | Единая точка входа приложения: реэкспорты, DSL сцен, каркас оконного приложения |
 
 ## 🚀 Начало работы
@@ -102,11 +107,11 @@ Meridian-Engine — небольшой устойчивый набор крей�
 
 ```toml
 [dependencies]
-meridian-gac-core = { git = "https://github.com/F000NKKK/Meridian-Engine" }
+meridian-gac = { git = "https://github.com/F000NKKK/Meridian-Engine" }
 ```
 
 ```rust
-use meridian_gac_core::{Rotor, Vec3};
+use meridian_gac::{Rotor, Vec3};
 
 fn main() {
     // Rotating X about Z by a quarter turn gives Y.
@@ -124,7 +129,7 @@ fn main() {
 ./build.sh run physic_figures    # те же фигуры как твёрдые тела, падающие на пол
 ```
 
-Оба примера собирают сцену из файла `.mel` в
+Оба примера собирают сцену из файла `.meui` в
 [`examples/assets/scenes/`](examples/assets/scenes) и импортируют всё через
 `meridian_sdk`.
 
@@ -135,10 +140,10 @@ fn main() {
 
 ```mermaid
 flowchart LR
-    I[interface<br/>sdk, dsl-macros, examples] --> A[application<br/>engine-core, compute-runtime]
+    I[interface<br/>sdk, markup-macros, examples] --> A[application<br/>runtime-app, compute-app, audio-app, physics-app, rendering-app]
     A --> D[domain<br/>graphics, physics, audio, assets, ui]
-    X[infrastructure<br/>drivers, adapters, scene, editor-protocol, editor-host, editor-tcp] --> D
-    K[shared kernel<br/>foundation, numeric, gac, memory, resource, ecs, dsl-core]
+    X[infrastructure<br/>drivers, adapters, scene, editor-domain, editor-app, editor-tcp] --> D
+    K[shared kernel<br/>diagnostics, numeric, gac, memory, resource, ecs, markup]
     I -.-> K
     A -.-> K
     D -.-> K
@@ -184,7 +189,7 @@ cargo test --workspace --doc
 | Геометрическая алгебра, ECS, память, ресурсы, граф задач | Реализовано и протестировано |
 | Окна (`winit`), GPU-рендер и вычисления (`wgpu`) | Реализовано |
 | Физика, пространственный звук, ассеты, DSL сцен | Реализовано, используется примерами |
-| UI-рантайм (`ui-core`) | Раскладка и hit-testing; отрисовка и маршрутизация ввода не готовы |
+| UI-рантайм (`ui-domain`) | Раскладка и hit-testing; отрисовка и маршрутизация ввода не готовы |
 | Протокол редактора, документы сцен | Реализовано; хоста редактора пока нет |
 | Миграция на Craftbook | В процессе: часть файлов и функций выше лимитов, учтена базовыми файлами |
 

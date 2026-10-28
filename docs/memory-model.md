@@ -1,4 +1,4 @@
-# Memory model — `meridian-memory-core`
+# Memory model — `meridian-memory`
 
 Goal: minimize dynamic allocation in the hot path. Three allocation
 strategies cover essentially everything the engine needs.
@@ -40,12 +40,12 @@ count to know when a resource's slot may be reused. See
 
 The generic `Handle` above lives here; typed resource identity built on top
 of it (`TextureHandle`, `MeshHandle`, versioning, cross-resource dependency
-tracking) lives one layer up, in `meridian-resource-core` — see
+tracking) lives one layer up, in `meridian-resource` — see
 [ADR 006](adr/006-resource-core-separation.md).
 
 ## Who owns lifetime decisions
 
-`memory-core` provides the arenas, pools, and handle machinery — it does not
+`memory` provides the arenas, pools, and handle machinery — it does not
 decide *when* something is freed. That decision belongs to whichever
 higher-level crate holds the resource pool (consistent with
 [ADR 003](adr/003-no-global-managers.md): there is no global

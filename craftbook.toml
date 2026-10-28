@@ -7,121 +7,171 @@
 # scripts/check_dependency_rules.py reads the layers below (one source).
 
 [[crate]]
-name = "meridian-foundation"
+name = "meridian-diagnostics"
 layer = "shared-kernel"
 context = "diagnostics"
 
 [[crate]]
-name = "meridian-numeric-core"
+name = "meridian-diagnostics-fs"
+layer = "infra"
+context = "diagnostics"
+
+[[crate]]
+name = "meridian-numeric"
 layer = "shared-kernel"
 context = "geometry"
 
 [[crate]]
-name = "meridian-gac-core"
+name = "meridian-gac"
 layer = "shared-kernel"
 context = "geometry"
 profile = "perf"
 
 [[crate]]
-name = "meridian-memory-core"
+name = "meridian-memory"
 layer = "shared-kernel"
 context = "identity"
 profile = "perf"
 
 [[crate]]
-name = "meridian-resource-core"
+name = "meridian-resource"
 layer = "shared-kernel"
 context = "identity"
 
 [[crate]]
-name = "meridian-ecs-core"
+name = "meridian-ecs"
 layer = "shared-kernel"
 context = "entity"
 profile = "perf"
 
 [[crate]]
-name = "meridian-task-core"
+name = "meridian-runtime-threads"
 layer = "infra"
 context = "runtime"
 
 [[crate]]
-name = "meridian-platform-core"
+name = "meridian-platform-winit"
 layer = "infra"
 context = "platform"
 
 [[crate]]
-name = "meridian-gpu-driver"
+name = "meridian-gpu-wgpu"
 layer = "infra"
 context = "compute"
 
 [[crate]]
-name = "meridian-compute-driver"
+name = "meridian-compute-wgpu"
 layer = "infra"
 context = "compute"
 
 [[crate]]
-name = "meridian-compute-runtime"
+name = "meridian-compute-app"
 layer = "app"
 context = "compute"
 
 [[crate]]
-name = "meridian-gac-compute"
+name = "meridian-gac-wgpu"
 layer = "infra"
 context = "geometry"
 
 [[crate]]
-name = "meridian-asset-core"
+name = "meridian-asset-domain"
 layer = "domain"
 context = "assets"
 
 [[crate]]
-name = "meridian-graphics-core"
+name = "meridian-asset-app"
+layer = "app"
+context = "assets"
+
+[[crate]]
+name = "meridian-asset-fs"
+layer = "infra"
+context = "assets"
+
+[[crate]]
+name = "meridian-asset-http"
+layer = "infra"
+context = "assets"
+
+[[crate]]
+name = "meridian-asset-gltf"
+layer = "infra"
+context = "assets"
+
+[[crate]]
+name = "meridian-asset-jpeg"
+layer = "infra"
+context = "assets"
+
+[[crate]]
+name = "meridian-asset-png"
+layer = "infra"
+context = "assets"
+
+[[crate]]
+name = "meridian-asset-symphonia"
+layer = "infra"
+context = "assets"
+
+[[crate]]
+name = "meridian-rendering-domain"
 layer = "domain"
 context = "rendering"
 
 [[crate]]
-name = "meridian-graphics-driver"
+name = "meridian-rendering-app"
+layer = "app"
+context = "rendering"
+
+[[crate]]
+name = "meridian-rendering-wgpu"
 layer = "infra"
 context = "rendering"
 
 [[crate]]
-name = "meridian-physics-core"
+name = "meridian-physics-domain"
 layer = "domain"
 context = "physics"
 profile = "perf"
 
 [[crate]]
-name = "meridian-physics-driver"
+name = "meridian-physics-app"
+layer = "app"
+context = "physics"
+
+[[crate]]
+name = "meridian-physics-wgpu"
 layer = "infra"
 context = "physics"
 
 [[crate]]
-name = "meridian-physics-compute"
-layer = "infra"
-context = "physics"
-
-[[crate]]
-name = "meridian-audio-core"
+name = "meridian-audio-domain"
 layer = "domain"
 context = "audio"
 
 [[crate]]
-name = "meridian-audio-driver"
+name = "meridian-audio-app"
+layer = "app"
+context = "audio"
+
+[[crate]]
+name = "meridian-audio-cpal"
 layer = "infra"
 context = "audio"
 
 [[crate]]
-name = "meridian-engine-core"
+name = "meridian-runtime-app"
 layer = "app"
 context = "runtime"
 
 [[crate]]
-name = "meridian-dsl-core"
+name = "meridian-markup"
 layer = "shared-kernel"
 context = "scene-markup"
 
 [[crate]]
-name = "meridian-dsl-macros"
+name = "meridian-markup-macros"
 layer = "interface"
 context = "scene-markup"
 
@@ -146,29 +196,39 @@ layer = "interface"
 context = "runtime"
 
 [[crate]]
-name = "meridian-ui-core"
+name = "meridian-text-domain"
+layer = "domain"
+context = "text"
+
+[[crate]]
+name = "meridian-ui-domain"
 layer = "domain"
 context = "ui"
 
 [[crate]]
-name = "meridian-mel-build"
+name = "meridian-ui-mel"
 layer = "infra"
 context = "ui"
 
 [[crate]]
-name = "meridian-scene"
+name = "meridian-ui-scene2d"
+layer = "infra"
+context = "ui"
+
+[[crate]]
+name = "meridian-data-substrate"
 layer = "infra"
 context = "data"
 
 [[crate]]
-name = "meridian-editor-protocol"
+name = "meridian-editor-domain"
 layer = "infra"
 context = "editor"
 
 # Infra, not app: the host answers in the protocol's terms, and an app crate may
 # not depend on infra (the protocol crate is infra, ADR 019). It is pure (no I/O).
 [[crate]]
-name = "meridian-editor-host"
+name = "meridian-editor-app"
 layer = "infra"
 context = "editor"
 
@@ -275,12 +335,26 @@ to = "platform"
 relation = "customer-supplier"
 
 [[exempt]]
-path = "crates/meridian-foundation/src/logging.rs"
-reason = "process logger: the one allowed global (ch. 4 §4.7); its tokio file I/O still moves to an adapter (D7)"
+path = "crates/meridian-diagnostics/src/logging.rs"
+reason = "process logger: the one allowed global (ch. 4 §4.7); file output is the LogSink adapter meridian-diagnostics-fs (ADR 020 D7)"
 
 [[context_edge]]
 from = "editor"
 to = "data"
+relation = "customer-supplier"
+
+# ui-scene2d reads the UI tree and writes rendering-domain's Scene2d: ui is the
+# customer, rendering publishes the vocabulary (ADR 021).
+[[context_edge]]
+from = "ui"
+to = "rendering"
+relation = "customer-supplier"
+
+# ui-scene2d lays out and draws text through text-domain's faces and glyph
+# atlas (ADR 023).
+[[context_edge]]
+from = "ui"
+to = "text"
 relation = "customer-supplier"
 
 [[context_edge]]
@@ -291,4 +365,9 @@ relation = "customer-supplier"
 [[context_edge]]
 from = "runtime"
 to = "scene-markup"
+relation = "customer-supplier"
+
+[[context_edge]]
+from = "runtime"
+to = "diagnostics"
 relation = "customer-supplier"
