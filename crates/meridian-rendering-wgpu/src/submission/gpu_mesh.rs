@@ -2,7 +2,7 @@
 
 use meridian_rendering_domain::MeshSource;
 
-use super::skinning::GpuSkin;
+use super::skinning::{GpuMorph, GpuSkin};
 use crate::{Buffer, BufferUsage, Device};
 
 /// A mesh's vertex and index buffers: local-space data, shared by every
@@ -14,6 +14,9 @@ pub(crate) struct GpuMesh {
     pub index_count: u32,
     /// The joints and weights of a skinned mesh (ADR 047).
     pub skin: Option<GpuSkin>,
+    /// The blend shapes of a morphed mesh (ADR 047).
+    pub morph: Option<GpuMorph>,
+    pub vertex_count: u32,
 }
 
 impl GpuMesh {
@@ -33,8 +36,8 @@ impl GpuMesh {
             .iter()
             .flat_map(|index| index.to_le_bytes())
             .collect::<Vec<u8>>();
-        // A skinned mesh's bind pose is also read by the skinning kernel.
-        let usage = if source.skin.is_some() {
+        // A skinned or morphed mesh's base is also read by the pose kernel.
+        let usage = if source.skin.is_some() || source.morph.is_some() {
             BufferUsage::VertexStorage
         } else {
             BufferUsage::Vertex
@@ -51,6 +54,11 @@ impl GpuMesh {
                 .skin
                 .as_ref()
                 .map(|skin| GpuSkin::upload(device, skin)),
+            morph: source
+                .morph
+                .as_ref()
+                .map(|morph| GpuMorph::upload(device, morph, source.positions.len())),
+            vertex_count: u32::try_from(source.positions.len()).unwrap_or(u32::MAX),
         }
     }
 }

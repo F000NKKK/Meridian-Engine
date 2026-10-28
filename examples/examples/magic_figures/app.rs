@@ -110,6 +110,7 @@ fn floor_renderable(base: &mut GraphicsSession) -> Renderable3d {
         billboard: false,
         casts_shadow: true,
         palette: None,
+        morph_weights: Vec::new(),
     }
 }
 
@@ -143,6 +144,7 @@ fn shape_renderable(base: &mut GraphicsSession, shape: &ShapeSpec) -> Renderable
         billboard: false,
         casts_shadow: true,
         palette: None,
+        morph_weights: Vec::new(),
     }
 }
 

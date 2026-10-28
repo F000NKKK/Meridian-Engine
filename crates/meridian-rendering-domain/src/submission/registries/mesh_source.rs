@@ -2,7 +2,7 @@
 
 use meridian_gac::{Aabb, Vec3};
 
-use crate::VertexSkin;
+use crate::{MeshMorph, VertexSkin};
 
 /// The CPU-side source a [`MeshHandle`](crate::MeshHandle) resolves to: local-space
 /// positions, per-vertex normals and UVs, and triangle indices, decoded
@@ -21,6 +21,9 @@ pub struct MeshSource {
     /// The joints and weights that move each vertex, for a skinned mesh
     /// (ADR 047); its positions and normals are the bind pose.
     pub skin: Option<VertexSkin>,
+    /// The blend shapes of the mesh, if it has any (ADR 047); a renderable
+    /// weights them. They apply before the skin does.
+    pub morph: Option<MeshMorph>,
 }
 
 impl MeshSource {
@@ -50,6 +53,7 @@ mod tests {
             uvs: Vec::new(),
             indices: Vec::new(),
             skin: None,
+            morph: None,
         }
     }
 

@@ -11,7 +11,6 @@ pub(crate) struct GpuSkin {
     pub(crate) joints: Buffer,
     /// Four `f32` weights per vertex.
     pub(crate) weights: Buffer,
-    pub(crate) vertex_count: u32,
 }
 
 impl GpuSkin {
@@ -35,7 +34,6 @@ impl GpuSkin {
         Self {
             joints: joint_buffer,
             weights: weight_buffer,
-            vertex_count: u32::try_from(skin.weights.len()).unwrap_or(u32::MAX),
         }
     }
 }

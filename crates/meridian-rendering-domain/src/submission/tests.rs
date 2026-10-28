@@ -3,8 +3,8 @@
 use meridian_gac::Vec3;
 
 use super::*;
-use crate::VertexSkin;
 use crate::scene::Material;
+use crate::{MeshMorph, MorphTarget, VertexSkin};
 
 fn triangle() -> MeshSource {
     MeshSource {
@@ -13,6 +13,7 @@ fn triangle() -> MeshSource {
         uvs: vec![[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]],
         indices: vec![0, 1, 2],
         skin: None,
+        morph: None,
     }
 }
 
@@ -90,6 +91,7 @@ fn mesh_registry_takes_meshes_beyond_the_u16_vertex_range() {
         uvs: vec![[0.0, 0.0]; count],
         indices: vec![0, 1, u32::try_from(count - 1).unwrap()],
         skin: None,
+        morph: None,
     };
     assert!(registry.register(source).is_ok());
 }
@@ -347,6 +349,31 @@ fn a_skin_must_give_every_vertex_joints_and_weights() {
         assert!(matches!(
             registry.register(skin(joints, weights)),
             Err(MeshRegistryError::SkinCountMismatch { positions: 3, .. })
+        ));
+    }
+}
+
+#[test]
+fn a_morph_target_must_give_every_vertex_an_offset() {
+    let morph = |positions: usize, normals: usize| MeshSource {
+        morph: Some(MeshMorph {
+            targets: vec![MorphTarget {
+                positions: vec![[0.0; 3]; positions],
+                normals: vec![[0.0; 3]; normals],
+            }],
+        }),
+        ..triangle()
+    };
+    let mut registry = MeshRegistry::new();
+    assert!(
+        registry.register(morph(3, 0)).is_ok(),
+        "normals are optional"
+    );
+    assert!(registry.register(morph(3, 3)).is_ok());
+    for (positions, normals) in [(2, 0), (3, 2), (4, 3)] {
+        assert!(matches!(
+            registry.register(morph(positions, normals)),
+            Err(MeshRegistryError::MorphCountMismatch { positions: 3, .. })
         ));
     }
 }

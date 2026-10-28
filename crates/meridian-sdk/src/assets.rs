@@ -305,6 +305,7 @@ impl AssetCache {
             uvs,
             indices: mesh_data.indices,
             skin: None,
+            morph: None,
         };
         let handle = meshes
             .add(source)

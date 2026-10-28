@@ -2,7 +2,7 @@
 
 use meridian_asset_domain::ModelAsset;
 use meridian_rendering_app::{MeshStore, TextureStore};
-use meridian_rendering_domain::{MeshSource, VertexSkin, smooth_normals};
+use meridian_rendering_domain::{MeshMorph, MeshSource, MorphTarget, VertexSkin, smooth_normals};
 
 use super::image_uploads::ImageUploads;
 use super::loaded_model::LoadedModel;
@@ -44,6 +44,16 @@ pub(crate) fn register(
                 skin: part.skin.map(|skin| VertexSkin {
                     joints: skin.joints,
                     weights: skin.weights,
+                }),
+                morph: part.morph.map(|morph| MeshMorph {
+                    targets: morph
+                        .targets
+                        .into_iter()
+                        .map(|target| MorphTarget {
+                            positions: target.positions,
+                            normals: target.normals,
+                        })
+                        .collect(),
                 }),
             })
             .map_err(|err| err.to_string())?;

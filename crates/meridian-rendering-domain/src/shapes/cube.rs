@@ -83,5 +83,6 @@ pub fn cube_mesh_source(half_extent: f32) -> MeshSource {
         uvs,
         indices,
         skin: None,
+        morph: None,
     }
 }
