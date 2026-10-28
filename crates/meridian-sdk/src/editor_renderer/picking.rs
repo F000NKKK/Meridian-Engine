@@ -98,7 +98,9 @@ fn hit_distance(source: &MeshSource, placed: Placed, ray: Ray) -> Option<f32> {
     };
     source
         .indices
-        .chunks_exact(3)
+        .as_chunks::<3>()
+        .0
+        .iter()
         .filter_map(|tri| triangle_hit(local, point(tri[0])?, point(tri[1])?, point(tri[2])?))
         .min_by(f32::total_cmp)
 }
