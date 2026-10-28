@@ -5,8 +5,8 @@ use core::f32::consts::{PI, TAU};
 
 use meridian_rendering_domain::{EnvironmentMap, uv_to_direction};
 
-const WIDTH: u32 = 256;
-const HEIGHT: u32 = 128;
+const WIDTH: u16 = 256;
+const HEIGHT: u16 = 128;
 
 /// One rectangular light in the room: where it hangs (azimuth and elevation
 /// of its centre, radians), its half sizes, and its radiance.
@@ -59,15 +59,16 @@ const BOXES: [SoftBox; 4] = [
 ///
 /// Never: the image has a fixed valid size.
 pub(super) fn studio_environment() -> EnvironmentMap {
-    let mut texels = Vec::with_capacity((WIDTH * HEIGHT) as usize);
+    let mut texels = Vec::with_capacity(usize::from(WIDTH) * usize::from(HEIGHT));
     for row in 0..HEIGHT {
         for column in 0..WIDTH {
-            let u = (column as f32 + 0.5) / WIDTH as f32;
-            let v = (row as f32 + 0.5) / HEIGHT as f32;
+            let u = (f32::from(column) + 0.5) / f32::from(WIDTH);
+            let v = (f32::from(row) + 0.5) / f32::from(HEIGHT);
             texels.push(radiance(uv_to_direction(u, v)));
         }
     }
-    EnvironmentMap::from_equirect(WIDTH, HEIGHT, &texels).expect("the studio image is well formed")
+    EnvironmentMap::from_equirect(u32::from(WIDTH), u32::from(HEIGHT), &texels)
+        .expect("the studio image is well formed")
 }
 
 fn radiance(direction: [f32; 3]) -> [f32; 3] {

@@ -55,8 +55,8 @@ fn one() -> f32 {
     1.0
 }
 
-fn reference(key: &Option<AssetKey>) -> Option<Id<AssetPathKind>> {
-    key.clone().map(Id::new)
+fn reference(key: Option<&AssetKey>) -> Option<Id<AssetPathKind>> {
+    key.cloned().map(Id::new)
 }
 
 impl MaterialDocument {
@@ -72,11 +72,11 @@ impl MaterialDocument {
             occlusion_strength: asset.occlusion_strength,
             blend: asset.blend,
             unlit: asset.unlit,
-            albedo: reference(&asset.albedo),
-            metallic_roughness: reference(&asset.metallic_roughness),
-            normal: reference(&asset.normal),
-            occlusion: reference(&asset.occlusion),
-            emissive_map: reference(&asset.emissive_map),
+            albedo: reference(asset.albedo.as_ref()),
+            metallic_roughness: reference(asset.metallic_roughness.as_ref()),
+            normal: reference(asset.normal.as_ref()),
+            occlusion: reference(asset.occlusion.as_ref()),
+            emissive_map: reference(asset.emissive_map.as_ref()),
         }
     }
 
