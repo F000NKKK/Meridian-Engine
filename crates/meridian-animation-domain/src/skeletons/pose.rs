@@ -24,6 +24,15 @@ impl Pose {
         &self.transforms
     }
 
+    /// Moves every joint `t` of the way towards the same joint of `other`
+    /// (`t = 0` leaves the pose as it is, `t = 1` makes it `other`). Joints
+    /// `other` lacks keep their transform.
+    pub fn blend(&mut self, other: &Pose, t: f32) {
+        for (own, theirs) in self.transforms.iter_mut().zip(&other.transforms) {
+            *own = own.blend(*theirs, t);
+        }
+    }
+
     /// The transform of `joint`, `None` when the pose has no such joint.
     pub fn joint_mut(&mut self, joint: JointId) -> Option<&mut JointTransform> {
         self.transforms.get_mut(joint.index())

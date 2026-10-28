@@ -29,6 +29,18 @@ impl Default for JointTransform {
 }
 
 impl JointTransform {
+    /// The transform `t` of the way from `self` to `other`: translation and
+    /// scale blend linearly, rotation along the shorter arc.
+    #[must_use]
+    pub fn blend(self, other: JointTransform, t: f32) -> JointTransform {
+        let lerp = |a: Vec3, b: Vec3| a + (b - a) * t;
+        JointTransform {
+            translation: lerp(self.translation, other.translation),
+            rotation: self.rotation.slerp(other.rotation, t),
+            scale: lerp(self.scale, other.scale),
+        }
+    }
+
     /// The transform as a matrix, `translation * rotation * scale`.
     #[must_use]
     pub fn to_matrix(self) -> JointMatrix {

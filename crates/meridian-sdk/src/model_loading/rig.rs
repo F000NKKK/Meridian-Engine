@@ -1,7 +1,7 @@
 //! The skeletons and animations of a loaded model (ADR 047).
 
 use meridian_animation_domain::{
-    Channel, Clip, Interpolation, JointId, JointTransform, Keys, Pose, Skeleton, Track, WeightKeys,
+    Channel, Clip, Interpolation, JointId, JointTransform, Keys, Skeleton, Track, WeightKeys,
     WeightsChannel,
 };
 pub use meridian_animation_domain::{Playback, Repeat as AnimationRepeat};
@@ -11,6 +11,8 @@ use meridian_asset_domain::{
 };
 use meridian_gac::{Rotor, Vec3};
 use meridian_rendering_domain::JointPalette;
+
+use super::mixing::AnimationLayer;
 
 /// One animation of a skeleton.
 #[derive(Debug, Clone, PartialEq)]
@@ -106,21 +108,11 @@ impl ModelRig {
     /// at `time`.
     #[must_use]
     pub fn palettes(&self, animation: Option<usize>, time: f32) -> Vec<JointPalette> {
-        let clips = animation
-            .and_then(|index| self.animations.get(index))
-            .map(|animation| animation.clips.as_slice())
-            .unwrap_or_default();
-        self.skeletons
-            .iter()
-            .enumerate()
-            .map(|(index, skeleton)| {
-                let mut pose = Pose::rest(skeleton);
-                for entry in clips.iter().filter(|entry| entry.skeleton == index) {
-                    entry.clip.sample(time, &mut pose);
-                }
-                JointPalette::new(skeleton.joint_matrices(&pose))
-            })
-            .collect()
+        self.palettes_mixed(&[AnimationLayer {
+            animation,
+            time,
+            weight: 1.0,
+        }])
     }
 }
 

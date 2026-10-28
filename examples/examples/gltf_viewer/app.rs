@@ -1,7 +1,7 @@
 //! The viewer's window, GPU state and frame loop.
 
 use meridian_sdk::assets::{
-    JointPalette, ModelAnimation, ModelPiece, ModelRig, Playback, VertexSkin,
+    AnimationPlayer, AnimationRepeat, JointPalette, ModelPiece, ModelRig, VertexSkin,
 };
 use meridian_sdk::{
     AppHandler, Background, Camera, Device, EnvironmentMap, FrameRecorder, GraphicsSession,
@@ -29,9 +29,11 @@ struct GpuState {
     radius: f32,
     pieces: Vec<ModelPiece>,
     rig: ModelRig,
-    /// The animation playing, an index into the rig's animations.
-    animation: Option<usize>,
-    playback: Playback,
+    player: AnimationPlayer,
+    /// Seconds an animation plays before the viewer crossfades to the next
+    /// one (`MERIDIAN_CYCLE`), when the file has several.
+    cycle: Option<f32>,
+    since_switch: f32,
     last_frame: std::time::Instant,
 }
 
@@ -94,8 +96,11 @@ impl GpuState {
             radius,
             pieces,
             rig,
-            animation,
-            playback: Playback::default(),
+            player: AnimationPlayer::new(animation),
+            cycle: std::env::var("MERIDIAN_CYCLE")
+                .ok()
+                .and_then(|value| value.parse().ok()),
+            since_switch: 0.0,
             last_frame: std::time::Instant::now(),
         }
     }
@@ -106,19 +111,37 @@ impl GpuState {
         let now = std::time::Instant::now();
         let delta = now.duration_since(self.last_frame).as_secs_f32();
         self.last_frame = now;
-        let duration = self
-            .animation
-            .and_then(|index| self.rig.animations.get(index))
-            .map_or(0.0, ModelAnimation::duration);
-        self.playback.advance(delta, duration);
-        let palettes = self.rig.palettes(self.animation, self.playback.time);
-        let morphs = self.rig.weights(self.animation, self.playback.time);
+        self.cycle_animations(delta);
+        self.player.advance(&self.rig, delta);
+        let layers = self.player.layers();
+        let palettes = self.rig.palettes_mixed(&layers);
+        let morphs = self.rig.weights_mixed(&layers);
         let pieces = self.pieces.iter().zip(morphs);
         for (renderable, (piece, weights)) in self.scene.renderables.iter_mut().zip(pieces) {
             renderable.palette = piece
                 .skeleton
                 .and_then(|skeleton| palettes.get(skeleton).cloned());
             renderable.morph_weights = weights;
+        }
+    }
+}
+
+impl GpuState {
+    /// Crossfades to the file's next animation every `cycle` seconds.
+    fn cycle_animations(&mut self, delta: f32) {
+        let count = self.rig.animations.len();
+        self.since_switch += delta;
+        let due = self
+            .cycle
+            .is_some_and(|period| count > 1 && self.since_switch >= period);
+        if due {
+            self.since_switch = 0.0;
+            let next = self
+                .player
+                .animation()
+                .map_or(0, |index| (index + 1) % count);
+            self.player
+                .crossfade_to(Some(next), 0.5, AnimationRepeat::Loop);
         }
     }
 }
