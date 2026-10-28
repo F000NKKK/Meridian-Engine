@@ -91,6 +91,11 @@ fn a_glb_triangle_keeps_its_attributes_and_default_material() {
     assert_eq!(part.indices, [0, 1, 2]);
     assert_eq!(part.material.base_color, [1.0; 4]);
     assert_eq!(part.material.base_color_image, None);
+    // glTF's defaults: a fully metallic, fully rough surface.
+    assert_eq!(
+        (part.material.metallic, part.material.roughness),
+        (1.0, 1.0)
+    );
     assert!(model.images.is_empty());
 }
 
@@ -121,11 +126,12 @@ fn normals_follow_the_inverse_transpose_under_nonuniform_scale() {
 }
 
 #[test]
-fn a_material_gives_its_base_colour_and_texture() {
+fn a_material_gives_its_base_colour_factors_and_texture() {
     let primitive_material = r#","material": 0"#;
     let extra = r#",
   "materials": [{"pbrMetallicRoughness": {
     "baseColorFactor": [0.5, 0.25, 1, 0.75],
+    "metallicFactor": 0.25, "roughnessFactor": 0.75,
     "baseColorTexture": {"index": 0}}}],
   "textures": [{"source": 0}],
   "images": [{"bufferView": 4, "mimeType": "image/png"}]"#;
@@ -138,6 +144,7 @@ fn a_material_gives_its_base_colour_and_texture() {
     let material = model.parts[0].material;
     assert_eq!(material.base_color, [0.5, 0.25, 1.0, 0.75]);
     assert_eq!(material.base_color_image, Some(0));
+    assert_eq!((material.metallic, material.roughness), (0.25, 0.75));
     assert_eq!(model.images[0].bytes.len(), 4);
 }
 

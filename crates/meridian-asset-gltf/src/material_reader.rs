@@ -3,8 +3,9 @@
 use gltf::Material;
 use meridian_asset_domain::ModelMaterial;
 
-/// The base colour factor and base colour texture of `material`. Other
-/// slots (metallic-roughness, normal, occlusion, emissive) are ignored.
+/// The base colour, metalness and roughness factors and the base colour
+/// texture of `material`. Other slots (metallic-roughness texture, normal,
+/// occlusion, emissive) are ignored.
 pub(crate) fn read(material: &Material<'_>) -> ModelMaterial {
     let pbr = material.pbr_metallic_roughness();
     ModelMaterial {
@@ -12,5 +13,7 @@ pub(crate) fn read(material: &Material<'_>) -> ModelMaterial {
         base_color_image: pbr
             .base_color_texture()
             .map(|info| info.texture().source().index()),
+        metallic: pbr.metallic_factor(),
+        roughness: pbr.roughness_factor(),
     }
 }

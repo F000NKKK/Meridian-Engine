@@ -13,7 +13,7 @@ use crate::{BindGroup, Buffer, Device, RenderPipeline, Sampler, ShaderStages, Su
 pub(crate) struct PipelineKey {
     /// A textured vertex layout (UVs, a bound albedo) rather than flat colour.
     pub textured: bool,
-    /// Blinn-Phong shading, rather than `Material::unlit`.
+    /// Metallic-roughness shading, rather than `Material::unlit`.
     pub lit: bool,
     /// How the draw composites: blend and depth behaviour.
     pub state: DrawState,
