@@ -11,6 +11,7 @@ mod environment;
 mod fly;
 mod frustum;
 mod graph_resource_id;
+mod light;
 mod mesh_handle;
 mod morph;
 mod render_graph;
@@ -29,7 +30,7 @@ mod tonemap_config;
 mod tonemap_operator;
 
 pub use bloom_config::BloomConfig;
-pub use camera::{Camera, look_at_rotor};
+pub use camera::{Camera, look_at_rotor, look_at_upright};
 pub use environment::{
     Background, CubeFaces, EnvironmentError, EnvironmentLevel, EnvironmentMap, Sky,
     direction_to_uv, uv_to_direction,
@@ -37,6 +38,7 @@ pub use environment::{
 pub use fly::{FlyCamera, FlyControls};
 pub use frustum::Frustum;
 pub use graph_resource_id::GraphResourceId;
+pub use light::{LightKind, LightSource, extract_lights};
 pub use mesh_handle::{MeshHandle, MeshMarker};
 pub use morph::{MeshMorph, MorphTarget, MorphWeights};
 pub use render_graph::{AllocationPlan, RenderGraph, ResourceLifetime};

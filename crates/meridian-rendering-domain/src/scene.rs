@@ -345,8 +345,7 @@ impl FrameScene {
 /// An entity that also has a [`JointPalette`] or [`MorphWeights`] component
 /// is drawn posed by them (ADR 047).
 ///
-/// Lights aren't extracted yet (no light component exists); callers add
-/// them to the returned scene directly until one does.
+/// Entities with a [`LightSource`](crate::LightSource) become the scene's lights.
 pub fn extract_scene3d(world: &World, camera: crate::Camera) -> Scene3d {
     let renderables = world
         .query::<MeshRenderer>()
@@ -372,6 +371,7 @@ pub fn extract_scene3d(world: &World, camera: crate::Camera) -> Scene3d {
     Scene3d {
         camera,
         renderables,
+        lights: crate::extract_lights(world),
         ..Scene3d::default()
     }
 }

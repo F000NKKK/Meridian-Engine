@@ -1,6 +1,8 @@
 //! A window surface frames are acquired from.
 
-use crate::{AcquireFrameError, Device, SurfaceFrame};
+use super::offscreen::offscreen_texture;
+use super::{AcquireFrameError, SurfaceFrame};
+use crate::Device;
 
 /// A swapchain: the sequence of textures a windowed [`Device`](crate::Device) presents
 /// to the screen. Built by [`Device::new_windowed`](crate::Device::new_windowed); call
@@ -11,8 +13,16 @@ use crate::{AcquireFrameError, Device, SurfaceFrame};
 /// render into.
 #[derive(Debug)]
 pub struct Surface {
-    pub(crate) raw: wgpu::Surface<'static>,
+    pub(crate) target: SurfaceTarget,
     pub(crate) config: wgpu::SurfaceConfiguration,
+}
+
+/// Where a [`Surface`]'s frames end up: a window's swapchain, or a texture
+/// the application reads back ([`Surface::offscreen`]).
+#[derive(Debug)]
+pub(crate) enum SurfaceTarget {
+    Window(wgpu::Surface<'static>),
+    Offscreen(wgpu::Texture),
 }
 
 impl Surface {
@@ -33,7 +43,12 @@ impl Surface {
         }
         self.config.width = width;
         self.config.height = height;
-        self.raw.configure(device.0.wgpu_device(), &self.config);
+        match &mut self.target {
+            SurfaceTarget::Window(raw) => raw.configure(device.0.wgpu_device(), &self.config),
+            SurfaceTarget::Offscreen(texture) => {
+                *texture = offscreen_texture(device, width, height);
+            }
+        }
     }
 
     /// Acquires the next frame to render into. `Err` on a transient
@@ -42,13 +57,23 @@ impl Surface {
     /// currently occluded/minimized) — a caller should treat that as
     /// "skip this frame," not a fatal error.
     pub fn acquire_frame(&self) -> Result<SurfaceFrame, AcquireFrameError> {
-        match self.raw.get_current_texture() {
+        let raw = match &self.target {
+            SurfaceTarget::Window(raw) => raw,
+            SurfaceTarget::Offscreen(texture) => {
+                let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+                return Ok(SurfaceFrame { output: None, view });
+            }
+        };
+        match raw.get_current_texture() {
             wgpu::CurrentSurfaceTexture::Success(output)
             | wgpu::CurrentSurfaceTexture::Suboptimal(output) => {
                 let view = output
                     .texture
                     .create_view(&wgpu::TextureViewDescriptor::default());
-                Ok(SurfaceFrame { output, view })
+                Ok(SurfaceFrame {
+                    output: Some(output),
+                    view,
+                })
             }
             wgpu::CurrentSurfaceTexture::Timeout => Err(AcquireFrameError::Timeout),
             wgpu::CurrentSurfaceTexture::Occluded => Err(AcquireFrameError::Occluded),

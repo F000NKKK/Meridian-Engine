@@ -38,6 +38,18 @@ pub fn look_at_rotor(eye: Vec3, target: Vec3) -> Rotor {
     Rotor::from_axis_angle(axis, cos_angle.acos())
 }
 
+/// Like [`look_at_rotor`], but the camera never rolls: its local right axis
+/// stays horizontal and its local up leans toward world `+Y`, as an orbit or a
+/// fly camera needs. A straight-up or straight-down view keeps the yaw of
+/// the last horizontal heading it could have (here: facing `+X`).
+#[must_use]
+pub fn look_at_upright(eye: Vec3, target: Vec3) -> Rotor {
+    let forward = (target - eye).normalize();
+    let yaw = (-forward.z).atan2(forward.x);
+    let pitch = forward.y.clamp(-1.0, 1.0).asin();
+    Rotor::from_axis_angle(Vec3::Z, pitch).compose(Rotor::from_axis_angle(Vec3::Y, yaw))
+}
+
 /// A camera's view + projection: `frame` is the camera's world transform
 /// (local-forward `+X`, see `LOCAL_TO_VIEW_REMAP`'s doc comment below),
 /// `projection` is the view-to-clip mapping built via

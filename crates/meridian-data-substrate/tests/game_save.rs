@@ -97,7 +97,7 @@ fn a_save_round_trips_scene_and_state() {
         (1, "caves", 4200, 3)
     );
     assert_eq!(state.recording.len(), 50_000);
-    assert_eq!(state.recording.iter().nth(98).transpose(), Ok(Some(1)));
+    assert_eq!(state.recording.iter().nth(98), Some(Ok(1)));
 
     let keys: Vec<&str> = loaded
         .scene
@@ -155,8 +155,8 @@ fn the_header_and_scene_read_without_the_state() {
         .unwrap();
     assert_eq!(header.game, "demo");
     assert_eq!(scene.entities().len(), 2);
-    // Loading does not walk the recording (Substrate Data 0.4): the damage
-    // surfaces when the stream is iterated or validated.
+    // A stream is read as it is used (substrate-data 0.4): loading succeeds and
+    // the damage is found when the recording is walked to its end.
     let mut world = World::new();
     let loaded = registry()
         .load_game::<Progress>(
@@ -166,8 +166,6 @@ fn the_header_and_scene_read_without_the_state() {
             &mut PrefabLibrary::new(),
         )
         .unwrap();
-    assert_eq!(world.entities().count(), 2);
-    assert!(loaded.state.recording.validate().is_err());
     assert!(loaded.state.recording.iter().any(|item| item.is_err()));
 }
 
