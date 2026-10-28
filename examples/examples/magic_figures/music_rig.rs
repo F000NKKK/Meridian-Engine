@@ -2,8 +2,9 @@
 
 use meridian_examples::paths::asset_path;
 use meridian_sdk::{
-    AcousticMedium, AudioSink, AudioStream, AudioTrack, BinauralRenderer, Declicker, DspNode,
-    Emitter, Listener, Motor3, SpeakerLayout, Vec3, load_audio_track, open_output,
+    AcousticMedium, AudioScene, AudioStage, AudioStream, AudioTrack, BinauralRenderer, Declicker,
+    Emitter, Listener, Motor3, Runtime, Shared, SpeakerLayout, Vec3, Voice, VoiceId,
+    load_audio_track, open_output, parallel_runtime,
 };
 
 use crate::ShapeSpec;
@@ -49,23 +50,22 @@ fn load_music_tracks(shapes: &[ShapeSpec]) -> (Vec<AudioTrack>, u32) {
     (tracks, sample_rate)
 }
 
-/// All tracks, spatialized in one shared `BinauralRenderer` and pushed
-/// into one `AudioStream` — see the module doc for why one stream
-/// suffices, and for why this is a hand-assembled pipeline rather than
-/// `meridian_sdk::AudioSubsystem::mix`.
+/// All tracks as looping voices of one [`AudioScene`], spatialized by one
+/// shared `BinauralRenderer` and pushed into one `AudioStream` by an
+/// [`AudioStage`] — see the module doc for why one stream suffices. The
+/// example owns only what is its own: which voice follows which shape and
+/// where the listener is.
 pub(crate) struct MusicRig {
-    output: AudioStream,
-    renderer: BinauralRenderer,
-    declicker: Declicker,
-    tracks: Vec<AudioTrack>,
-    chunk_frames: usize,
+    /// Keeps the device stream alive; the stage feeds it through a `StreamSink`.
+    _output: AudioStream,
+    scene: Shared<AudioScene>,
+    voices: Vec<VoiceId>,
+    runtime: Runtime,
 }
 
 impl MusicRig {
     pub(crate) async fn load(shapes: &[ShapeSpec]) -> Result<Self, String> {
         let (tracks, sample_rate) = load_music_tracks(shapes);
-        let renderer =
-            BinauralRenderer::new(sample_rate).with_medium(AcousticMedium::air_sea_level());
         let ring_frames = (sample_rate as f32 * RING_SECONDS) as u32;
         let output = open_output(
             &SpeakerLayout::stereo_headphones(),
@@ -74,41 +74,48 @@ impl MusicRig {
         )
         .await
         .map_err(|e| e.to_string())?;
+
+        let mut scene = AudioScene::new(
+            BinauralRenderer::new(sample_rate).with_medium(AcousticMedium::air_sea_level()),
+        )
+        .with_post_effect(Declicker::new(2));
+        let voices = tracks
+            .into_iter()
+            .map(|track| scene.add_voice(Voice::new(track, Emitter::default())))
+            .collect();
+        let scene = Shared::new(scene);
+
+        let chunk_frames = (sample_rate as f32 * CHUNK_SECONDS) as usize;
+        let mut runtime = parallel_runtime();
+        runtime.add_stage(
+            "audio",
+            &[],
+            AudioStage::new(scene.clone(), output.sink(), chunk_frames),
+        );
         Ok(Self {
-            output,
-            renderer,
-            declicker: Declicker::new(2),
-            tracks,
-            chunk_frames: (sample_rate as f32 * CHUNK_SECONDS) as usize,
+            _output: output,
+            scene,
+            voices,
+            runtime,
         })
     }
 
-    /// Tops the output ring buffer up with blocks mixed against
-    /// `listener`'s current pose and each shape's current
-    /// `positions[i]`. Never blocks: pushes only while the stream
-    /// reports room for a whole block.
+    /// Points the listener and every voice at their current poses, then
+    /// lets the audio stage top the output ring up. Never blocks: the stage
+    /// pushes only while the stream reports room for a whole block.
     pub(crate) fn refill(&mut self, listener: &Listener, positions: &[Vec3]) {
-        while self.output.can_push(self.chunk_frames * 2) {
-            let chunks: Vec<Vec<f32>> = self
-                .tracks
-                .iter_mut()
-                .map(|track| track.next_mono_chunk(self.chunk_frames))
-                .collect();
-            let sources: Vec<(Emitter, &[f32])> = positions
-                .iter()
-                .zip(&chunks)
-                .map(|(&position, chunk)| {
-                    (
-                        Emitter {
-                            frame: Motor3::translation(position),
-                        },
-                        chunk.as_slice(),
-                    )
-                })
-                .collect();
-            let mut interleaved = self.renderer.render(listener, &sources, self.chunk_frames);
-            self.declicker.process(&mut interleaved);
-            self.output.push_interleaved(&interleaved);
+        {
+            let mut scene = self.scene.lock();
+            scene.listener = *listener;
+            for (&voice, &position) in self.voices.iter().zip(positions) {
+                scene.set_emitter(
+                    voice,
+                    Emitter {
+                        frame: Motor3::translation(position),
+                    },
+                );
+            }
         }
+        self.runtime.tick();
     }
 }

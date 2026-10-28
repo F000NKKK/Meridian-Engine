@@ -69,11 +69,17 @@ Not started; ordered by suggested priority. Items wait for an explicit task.
 3. **`docs/audio-design.md`.** Listener-local axes, VBAP edge rules,
    binaural model, latency/ring sizing exist only in module docs and the
    roadmap. Write it and link from `architecture.md`.
-4. **Emitter playback state.** `Emitter`'s doc says "frame + playback
-   state" but holds only `frame`; voices, looping, per-emitter gain and the
-   track-to-emitter link are unmodelled. Design before code, with team/core.
-5. **`magic_figures` through a `Stage`**, once item 4 gives the stage a
-   clean input shape.
+4. ~~Emitter playback state~~ — done: `Voice` (+ `SampleSource`,
+   `MemorySource`, `PlaybackState`) in `audio-domain`, `AudioScene` in
+   `audio-app`, `StreamSink` (a `Send` handle to the cpal ring) in
+   `audio-cpal`.
+5. ~~`magic_figures` through a `Stage`~~ — done: `AudioStage` in
+   `runtime-app`; the example sets the listener and voice emitters and
+   ticks.
+6. **Voice features not built:** fades/ramps on play and stop, one-shots
+   triggered by physics contacts (events), a voice cap with stealing,
+   resampling when a track's rate differs from the stream's, and
+   `AudioTrack` reads without the per-block `Vec`.
 
 Deliberately not queued: `meridian-audio-effects` (only when an effect
 needs an FFT/external crate), HRTF, height channels, a `Fixed` flavor

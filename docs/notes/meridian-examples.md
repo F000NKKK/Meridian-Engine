@@ -22,14 +22,11 @@ uses — so all three tracks pan/attenuate through
 `audio-domain::BinauralRenderer` as you fly around, mixed down to one
 output stream in a single `render` call per frame (all three source
 files happen to share a sample rate, so one `BinauralRenderer`/
-`AudioStream` pair suffices — see [`load_music_tracks`]). This
-example doesn't use `meridian_sdk::Runtime` at all — no rigid bodies
-(pure kinematic orbit motion), and [`MusicRig`]'s real per-sample
-`BinauralRenderer` synthesis doesn't reduce to a `Runtime::Stage`
-cleanly either: its actual inputs (each orbiting shape's position,
-the free-fly camera's pose) are plain application state here, not
-anything `Runtime`'s `PhysicsSubsystem`/`AudioSubsystem` own — see
-`meridian_runtime_app`'s own module doc for the same reasoning.
+`AudioStream` pair suffices — see [`load_music_tracks`]). The
+audio runs as an `AudioStage` on a `Runtime`: [`MusicRig`] builds an
+`AudioScene` (one looping `Voice` per shape, `BinauralRenderer`, `Declicker`)
+and each frame only sets the listener and voice emitters before
+`Runtime::tick`. There are no rigid bodies (pure kinematic orbit motion).
 Orbit/spin motion itself stays genuine per-frame Rust logic (the DSL
 describes composition, not behavior) — only each shape's *fixed*
 identity comes from the scene file.

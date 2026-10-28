@@ -22,6 +22,7 @@ use std::path::Path;
 use meridian_asset_domain::{Decoder, ImageAsset, ObjDecoder};
 use meridian_asset_gltf::GltfDecoder;
 use meridian_asset_symphonia::{AudioAsset, DecodeStrategy, StreamingAudioDecoder, open_audio};
+use meridian_audio_domain::SampleSource;
 use meridian_rendering_app::{MeshStore, TextureStore};
 use meridian_rendering_domain::{
     MeshHandle, MeshRegistryError, MeshSource, TextureHandle, smooth_normals,
@@ -104,6 +105,14 @@ impl AudioTrack {
             }
         }
         chunk
+    }
+}
+
+impl SampleSource for AudioTrack {
+    /// Fills `out` with the next mono samples; a track loops, so it never ends.
+    fn read(&mut self, out: &mut [f32]) -> usize {
+        out.copy_from_slice(&self.next_mono_chunk(out.len()));
+        out.len()
     }
 }
 
