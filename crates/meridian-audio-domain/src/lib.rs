@@ -52,7 +52,7 @@ pub use effects::{
 pub use emitter::Emitter;
 pub use listener::Listener;
 pub use mixer::Mixer;
-pub use playback::{MemorySource, PlaybackState, Repeat, SampleSource, Voice};
+pub use playback::{MemorySource, PlaybackState, Repeat, ResampledSource, SampleSource, Voice};
 pub use spatial_gains::{spatial_gains, spatial_gains_into};
 pub use speaker::Speaker;
 pub use speaker_layout::{SpeakerLayout, fold_to_front_hemisphere};

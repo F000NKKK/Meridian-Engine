@@ -7,6 +7,7 @@ pub enum PlaybackState {
     Playing,
     /// Silent; the source keeps its position.
     Paused,
-    /// Ended (the source ran out, or [`Voice::stop`](super::Voice::stop) was called); stays silent.
+    /// Ended (the source ran out, or [`Voice::stop`](super::Voice::stop) was called); stays silent
+    /// once any fade-out finishes.
     Finished,
 }
