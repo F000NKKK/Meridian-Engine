@@ -367,6 +367,12 @@ from = "runtime"
 to = "scene-markup"
 relation = "customer-supplier"
 
+# The sdk wires scene, prefab and save files (data) to the asset layer.
+[[context_edge]]
+from = "runtime"
+to = "data"
+relation = "customer-supplier"
+
 [[context_edge]]
 from = "runtime"
 to = "diagnostics"

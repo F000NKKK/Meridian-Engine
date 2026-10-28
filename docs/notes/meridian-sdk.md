@@ -33,6 +33,7 @@ approach).
 - [`asset_loader`] — the background loader (ADR 027): `asset_loader(root, threads)`
   builds an `AssetLoader` over `FsSource` + `BackgroundPool`, `load_image` starts
   a decode and returns a `Pending` at once.
+- [`persistence`] — scene, prefab and save files by path: `WorldFiles` (registry + directory + `AssetLoader`) over `meridian-data-substrate`, and `AssetPrefabSource`, its `PrefabSource` port implemented over the asset layer (docs/data-formats.md).
 - [`assets`] — resource loading: turning a file path into a real,
 cached, GPU-registered handle (textures, OBJ meshes) or a decoded,
 loopable audio source ([`AudioTrack`]/[`load_audio_track`]).

@@ -1566,8 +1566,10 @@ dependencies = [
  "meridian-audio-domain",
  "meridian-compute-app",
  "meridian-compute-wgpu",
+ "meridian-data-substrate",
  "meridian-diagnostics",
  "meridian-diagnostics-fs",
+ "meridian-ecs",
  "meridian-gac",
  "meridian-markup",
  "meridian-markup-macros",
@@ -1583,6 +1585,8 @@ dependencies = [
  "meridian-ui-domain",
  "meridian-ui-scene2d",
  "png",
+ "substrate-data",
+ "thiserror 2.0.21",
 ]
 
 [[package]]

@@ -6,7 +6,6 @@
 //! decoding, `runtime-app`'s own [`Runtime`]) is re-exported from here;
 //! nothing in `examples/` reaches into the composed crates, and this crate
 //! may depend on drivers `runtime-app` may not. Notes: docs/notes/meridian-sdk.md.
-
 #![forbid(unsafe_code)]
 
 mod any_image_decoder;
@@ -17,6 +16,7 @@ mod fly_controls;
 mod model_files;
 mod model_loading;
 mod overlay_builder;
+pub mod persistence;
 pub mod render;
 mod runtime;
 pub mod scene;

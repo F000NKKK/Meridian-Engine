@@ -142,6 +142,8 @@ ALLOWED = {
         "meridian-ui-domain",
     },
     "meridian-sdk": {
+        "meridian-data-substrate",
+        "meridian-ecs",
         "meridian-asset-app",
         "meridian-asset-fs",
         "meridian-asset-http",
