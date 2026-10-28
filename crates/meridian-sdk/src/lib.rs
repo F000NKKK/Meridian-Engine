@@ -17,6 +17,7 @@ mod asset_loader;
 pub mod assets;
 pub mod dsl;
 mod fly_controls;
+mod model_loading;
 mod overlay_builder;
 pub mod render;
 mod runtime;

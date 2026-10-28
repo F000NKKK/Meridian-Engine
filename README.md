@@ -81,6 +81,7 @@ crate has its own README.
 | [`meridian-gpu-wgpu`](crates/meridian-gpu-wgpu) | compute | Shared `wgpu` device, buffers, shaders, compute pipelines |
 | [`meridian-compute-wgpu`](crates/meridian-compute-wgpu) | compute | CPU-SIMD and GPU compute dispatch |
 | [`meridian-rendering-wgpu`](crates/meridian-rendering-wgpu) | rendering | Graphics device, surfaces, render pipelines |
+| [`meridian-asset-gltf`](crates/meridian-asset-gltf) | assets | glTF 2.0 static-model decoder adapter on the `gltf` crate |
 | [`meridian-asset-png`](crates/meridian-asset-png) | assets | PNG decoder adapter on the `png` crate |
 | [`meridian-asset-symphonia`](crates/meridian-asset-symphonia) | assets | MP3, OGG/Vorbis, FLAC, OGG/Opus and streaming decoder adapter |
 | [`meridian-audio-cpal`](crates/meridian-audio-cpal) | audio | Audio output device via `cpal` |
