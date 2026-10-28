@@ -1,6 +1,7 @@
 //! Tests of voice playback.
 
 use super::*;
+use crate::Emitter;
 
 fn voice(samples: &[f32], repeat: Repeat) -> Voice {
     Voice::new(

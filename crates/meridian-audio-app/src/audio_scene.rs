@@ -1,12 +1,9 @@
 //! The voices of a scene rendered through one renderer.
 
+use crate::VoiceId;
 use meridian_audio_domain::{
     BlockRenderer, DspGraph, DspNode, Emitter, Listener, PlaybackState, Voice,
 };
-
-/// Identifies a voice in an [`AudioScene`]; never reused within a scene.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct VoiceId(u64);
 
 /// A listener, the voices playing around it, the [`BlockRenderer`] that
 /// spatializes them and an optional chain of post effects. The composition
@@ -49,7 +46,7 @@ impl AudioScene {
 
     /// Starts tracking `voice` and returns its id.
     pub fn add_voice(&mut self, voice: Voice) -> VoiceId {
-        let id = VoiceId(self.next_id);
+        let id = VoiceId::new(self.next_id);
         self.next_id += 1;
         self.voices.push((id, voice));
         id

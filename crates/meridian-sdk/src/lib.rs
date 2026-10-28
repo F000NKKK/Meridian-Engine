@@ -38,15 +38,13 @@ pub use meridian_asset_png::PngDecoder;
 pub use meridian_asset_symphonia::{
     AnyAudioDecoder, AudioAsset, DecodeStrategy, StreamingAudioDecoder, open_audio,
 };
-// -- meridian-audio-app: the output port and audio state --
+// -- meridian-audio-app / -cpal: the output port, audio state and platform adapter --
 pub use meridian_audio_app::{AudioScene, AudioSink, AudioSubsystem, VoiceId};
-// -- meridian-audio-cpal: the platform audio adapter --
-pub use meridian_audio_cpal::{AudioStream, StreamSink, open_output};
+pub use meridian_audio_cpal::{AudioStream, open_output};
 // -- meridian-audio-domain: spatial audio --
 pub use meridian_audio_domain::{
-    AcousticMedium, AttenuationModel, BinauralRenderer, BlockRenderer, Channel, Declicker, DspNode,
-    Emitter, Listener, MemorySource, Mixer, PlaybackState, Repeat, SampleSource, SpeakerLayout,
-    Voice,
+    AcousticMedium, AttenuationModel, BinauralRenderer, Channel, Declicker, DspNode, Emitter,
+    Listener, MemorySource, Mixer, Repeat, SampleSource, SpeakerLayout, Voice,
 };
 // -- meridian-compute-app: dispatch ports --
 pub use meridian_compute_app::{ComputeContext, ComputeDevice, GpuBackend};

@@ -27,10 +27,6 @@ use meridian_audio_app::AudioSink;
 use meridian_audio_domain::SpeakerLayout;
 use meridian_platform_winit::{BackendCapabilities, CpuCapabilities, GpuCapabilities};
 
-mod stream_sink;
-
-pub use stream_sink::StreamSink;
-
 /// Why [`AudioDevice::new`] or [`AudioDevice::open_stream`] failed.
 #[derive(Debug, Clone)]
 pub enum AudioDeviceError {
@@ -151,6 +147,43 @@ impl AudioSink for AudioStream {
 
     fn can_push(&self, sample_count: usize) -> bool {
         AudioStream::can_push(self, sample_count)
+    }
+}
+
+/// The push side of an [`AudioStream`], movable to another thread.
+///
+/// The stream itself holds the platform's `cpal::Stream`, which is not
+/// `Send` on every platform, so it stays on the thread that opened it; this
+/// handle shares only the sample ring, so a runtime stage on a worker thread
+/// can feed it. Pushing after the stream is dropped is a silent no-op.
+#[derive(Debug, Clone)]
+pub struct StreamSink {
+    sample_tx: crossbeam_channel::Sender<f32>,
+    capacity: usize,
+}
+
+impl AudioStream {
+    /// A [`Send`] handle to this stream's sample ring.
+    #[must_use]
+    pub fn sink(&self) -> StreamSink {
+        StreamSink {
+            sample_tx: self.sample_tx.clone(),
+            capacity: self.capacity,
+        }
+    }
+}
+
+impl AudioSink for StreamSink {
+    fn push_interleaved(&self, samples: &[f32]) {
+        for &sample in samples {
+            if self.sample_tx.send(sample).is_err() {
+                break;
+            }
+        }
+    }
+
+    fn can_push(&self, sample_count: usize) -> bool {
+        self.capacity.saturating_sub(self.sample_tx.len()) >= sample_count
     }
 }
 

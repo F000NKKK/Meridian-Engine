@@ -1,15 +1,6 @@
 //! A decoded sample buffer played from memory.
 
-use crate::SampleSource;
-
-/// What a source does when it reaches the end of its samples.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Repeat {
-    /// Play once, then end.
-    Once,
-    /// Wrap to the start and keep playing.
-    Loop,
-}
+use super::{Repeat, SampleSource};
 
 /// Mono samples held in memory, read front to back.
 #[derive(Debug, Clone)]
