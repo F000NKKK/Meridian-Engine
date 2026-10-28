@@ -141,6 +141,28 @@ pub enum Light {
         intensity: f32,
         range: f32,
     },
+    /// A point light that shines only into a cone: along `direction` (the
+    /// light's X axis, as for [`Directional`](Self::Directional)), at full
+    /// strength inside `inner_angle` and fading to nothing at `outer_angle`
+    /// (both half-angles in radians). Falls off with distance like a
+    /// [`Point`](Self::Point) light, out to `range`.
+    Spot {
+        /// Where the light sits.
+        position: Motor3,
+        /// Its frame's X axis is the direction the cone points.
+        direction: Motor3,
+        /// Linear RGB.
+        color: [f32; 3],
+        /// Scales `color`.
+        intensity: f32,
+        /// Distance at which the light has faded to nothing.
+        range: f32,
+        /// Half-angle in radians inside which the light is at full strength.
+        inner_angle: f32,
+        /// Half-angle in radians at which the light has faded to nothing;
+        /// limited to `SPOT_MAX_OUTER_ANGLE`.
+        outer_angle: f32,
+    },
 }
 
 /// One 3D-scene instance: a mesh drawn with a material at a world frame.

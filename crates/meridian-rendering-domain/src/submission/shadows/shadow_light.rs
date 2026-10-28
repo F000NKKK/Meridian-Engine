@@ -2,7 +2,7 @@
 
 use meridian_gac::Vec3;
 
-use super::{MAX_POINT_SHADOWS, PointShadow, ShadowCascades};
+use super::{LocalShadow, MAX_LOCAL_SHADOWS, ShadowCascades};
 use crate::scene::{Light, Scene3d};
 
 /// The light that casts this view's shadows, as
@@ -19,9 +19,9 @@ pub struct ShadowLight {
     pub direction: Vec3,
     /// Index of the shadow-casting light in the scene's lights.
     pub caster: u32,
-    /// The point lights nearest the camera, which cast shadows too (ADR 041,
-    /// ADR 043).
-    pub points: [Option<PointShadow>; MAX_POINT_SHADOWS],
+    /// The point and spot lights nearest the camera, which cast shadows too
+    /// (ADR 041, ADR 043, ADR 045).
+    pub locals: [Option<LocalShadow>; MAX_LOCAL_SHADOWS],
 }
 
 impl ShadowLight {
@@ -45,7 +45,7 @@ impl ShadowLight {
             cascades: ShadowCascades::fit(&scene.camera, direction, tile_size),
             direction,
             caster,
-            points: PointShadow::nearest(scene),
+            locals: LocalShadow::nearest(scene),
         }
     }
 }

@@ -6,7 +6,10 @@ use super::tests::project;
 use super::*;
 
 fn first_point(scene: &crate::Scene3d) -> Option<PointShadow> {
-    PointShadow::nearest(scene)[0]
+    match LocalShadow::nearest(scene)[0] {
+        Some(LocalShadow::Point(point)) => Some(point),
+        _ => None,
+    }
 }
 
 fn scene_with_point_light(position: Vec3, range: f32) -> crate::Scene3d {
@@ -71,15 +74,15 @@ fn the_nearest_point_lights_come_first_and_the_rest_are_dropped() {
         lights: positions.map(point_light_at).to_vec(),
         ..crate::Scene3d::default()
     };
-    let near: Vec<f32> = PointShadow::nearest(&scene)
+    let near: Vec<f32> = LocalShadow::nearest(&scene)
         .iter()
-        .map(|point| point.expect("four of six").position.x)
+        .map(|point| point.expect("four of six").position().x)
         .collect();
     assert_eq!(near, [1.0, 5.0, 10.0, 20.0]);
-    let indices: Vec<u32> = PointShadow::nearest(&scene)
+    let indices: Vec<u32> = LocalShadow::nearest(&scene)
         .iter()
         .flatten()
-        .map(|point| point.caster)
+        .map(LocalShadow::caster)
         .collect();
     assert_eq!(indices, [5, 1, 3, 4], "each keeps its light index");
 }
@@ -90,7 +93,7 @@ fn fewer_point_lights_than_the_budget_leave_the_slots_empty() {
         lights: vec![point_light_at(2.0)],
         ..crate::Scene3d::default()
     };
-    let slots = PointShadow::nearest(&scene);
+    let slots = LocalShadow::nearest(&scene);
     assert!(slots[0].is_some());
     assert!(slots[1..].iter().all(Option::is_none));
 }

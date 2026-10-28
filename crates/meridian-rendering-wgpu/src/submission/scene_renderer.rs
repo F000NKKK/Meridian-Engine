@@ -3,7 +3,7 @@
 use core::ops::Range;
 
 use meridian_rendering_domain::scene::Scene3d;
-use meridian_rendering_domain::{EnvironmentMap, Frustum, ShadowLight, ViewUniforms};
+use meridian_rendering_domain::{EnvironmentMap, Frustum, LocalShadow, ShadowLight, ViewUniforms};
 
 use super::environment::GpuEnvironment;
 use super::main_pipelines::{MainBindings, MainPipelines};
@@ -12,7 +12,7 @@ use super::registries::NeutralTextures;
 use super::{
     ATLAS_COLUMNS, ATLAS_ROWS, CascadeCasters, DrawKind, LIT_UNIFORM_BYTES, MAX_LIGHTS,
     PreparedBatch, PreparedScene, SceneAssets, ShadowDepthPass, bake_batches, face_tile,
-    lit_uniform_bytes, mat4_to_bytes, tile_rect,
+    lit_uniform_bytes, mat4_to_bytes, spot_tile, tile_rect,
 };
 use crate::{
     Buffer, BufferUsage, ColorFormat, CommandBuffer, Device, RenderPass as DriverRenderPass,
@@ -343,8 +343,9 @@ struct ShadowTile {
 }
 
 /// The tiles of `shadow` to draw: the four cascades, then the six faces of
-/// each point light that casts one (ADR 043). A point light keeps its slot's
-/// tiles, so the shader finds them by slot whichever slots are empty.
+/// each point light that casts one (ADR 043) and the one tile of each spot
+/// light (ADR 045). A light keeps its slot's tiles, so the shader finds them
+/// by slot whichever slots are empty.
 fn shadow_tiles(shadow: &ShadowLight) -> Vec<ShadowTile> {
     let cascades = shadow
         .cascades
@@ -359,18 +360,27 @@ fn shadow_tiles(shadow: &ShadowLight) -> Vec<ShadowTile> {
             frustum,
         })
         .collect();
-    for (slot, point) in shadow.points.iter().enumerate() {
-        let Some(point) = point else { continue };
-        let faces = point.view_proj.into_iter().zip(point.frusta());
-        tiles.extend(
-            faces
-                .enumerate()
-                .map(|(face, (view_proj, frustum))| ShadowTile {
-                    index: face_tile(slot, face),
-                    view_proj,
-                    frustum,
-                }),
-        );
+    for (slot, local) in shadow.locals.iter().enumerate() {
+        match local {
+            Some(LocalShadow::Point(point)) => {
+                let faces = point.view_proj.into_iter().zip(point.frusta());
+                tiles.extend(
+                    faces
+                        .enumerate()
+                        .map(|(face, (view_proj, frustum))| ShadowTile {
+                            index: face_tile(slot, face),
+                            view_proj,
+                            frustum,
+                        }),
+                );
+            }
+            Some(LocalShadow::Spot(spot)) => tiles.push(ShadowTile {
+                index: spot_tile(slot),
+                view_proj: spot.view_proj,
+                frustum: spot.frustum(),
+            }),
+            None => {}
+        }
     }
     tiles
 }
