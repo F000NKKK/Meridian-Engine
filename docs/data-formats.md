@@ -13,9 +13,9 @@ stay `asset-domain` decoders and are not covered here.
 | `meridian.toml` | TOML | `runtime-app` | project manifest |
 | `*.mscene` | text (editor) or binary (cooked) | `meridian-data-substrate` | a scene: entities and their components |
 | `*.mprefab` | text or binary | `meridian-data-substrate` | a reusable entity tree, instanced by a scene |
-| `*.meta` | text | `resource` adapter | an asset's stable id and import settings |
+| `*.meta` | text or binary | `meridian-asset-domain` | an asset's stable id, importer, import settings and dependencies |
 | `*.msave` | binary | envelope: `meridian-data-substrate`; `state`: the game | a save: the world's scene document + game state |
-| `*.mpak` | binary | build tool | cooked content bundle |
+| `*.mpak` | binary (`MPAK` envelope; index is `SDAT`) | `meridian-asset-domain` (read: `PackSource` in `asset-app`, `FileReadAt` in `asset-fs`) | cooked content pack: payload blobs + index, random access by id or path |
 | editor protocol | frames over a socket | `meridian-editor-domain` (host: `meridian-editor-app` + `meridian-editor-tcp`) | engine ↔ IDE messages |
 
 Text and binary of one file kind share an extension: readers detect
@@ -26,7 +26,7 @@ Text and binary of one file kind share an extension: readers detect
 | Written | Names | Resolved by |
 |---|---|---|
 | `@asset:meshes/crate.obj` | an asset, by path under the project's asset root | `resource` (path → `.meta` id → handle) |
-| `@asset-id:3f2a9c…` | an asset, by its stable id (cooked files) | `resource` |
+| `@asset_id:3f2a9c0e8b1d4a67` | an asset, by its stable id (cooked files, `.meta` `dependencies`) | `resource` |
 | `@entity:door_left` | an entity of the same document, by its `id` | `meridian-data-substrate` while loading |
 | `@prefab:actors/hero` | a prefab, by path | `meridian-data-substrate` |
 
@@ -347,12 +347,142 @@ completion from it.
 
 ## Asset metadata (`.meta`)
 
+One sidecar per source asset, next to it: `meshes/crate.obj` has
+`meshes/crate.obj.meta` (`AssetPath::sidecar`). Text when an editor or a
+person writes it, `SDAT` binary when cooked; readers detect the magic.
+
 ```jsonc
-{ format: 1, id: "3f2a9c0e8b1d4a67", importer: "obj", settings: { scale: 1.0, generate_normals: true } }
+{
+  format: 1,
+  id: "3f2a9c0e8b1d4a67",            // the asset's stable identity
+  importer: "obj",                   // which importer reads the source file
+  settings: { scale: 1.0, generate_normals: true },   // the importer's own, optional
+  dependencies: ["@asset_id:0a1b2c3d4e5f6071"],        // assets this one needs, optional
+}
 ```
 
-The `id` is the asset's stable identity across renames (`resource`);
-cooked content refers to assets by `@asset-id:`.
+- `id` is an `AssetId`: 64 bits as 16 lower case hex digits. It is the
+  asset's identity across renames and moves, and what cooked content
+  (`.mpak`, `dependencies`) names it by (`@asset_id:`). It is a name on
+  disk, not a runtime handle: no generation, no lifetime. Mapping an id to
+  a `resource` handle belongs to the code that loads the asset, not to the
+  loader or this file (ADR 006). The data layer has no random source, so
+  whoever creates a `.meta` chooses the value.
+- `importer` is an `ImporterName` (lower case letters, digits, `_`, `-`,
+  starting with a letter). Which names exist is the application's registry.
+- `settings` is a map this crate does not interpret: the importer reads it
+  with its own schema. Keys keep file order. Absent means empty.
+- `dependencies` are `@asset_id:` references, each at most once and never the
+  asset itself (`DuplicateDependency`, `SelfDependency`). Being references
+  they are checked and listed by `substrate_data::Resolve` like any other,
+  so a build can walk the graph before loading anything.
+- Unknown keys are an error, so a file written by a newer version is refused
+  rather than half read.
+
+**Versioning.** `format` is the sidecar's own version (`META_FORMAT`, 1).
+Writers always write the newest. A reader accepts every version up to the
+newest it knows: an older one is migrated as a value to the newest before it
+is read (none exists yet); a newer one is `MetaError::UnsupportedFormat`,
+decided before the other fields are looked at, so it is not reported as a
+list of unknown keys. A missing or non-positive `format` is `BadFormat`.
+
+**Errors.** `MetaError`: `NotUtf8 { valid_up_to }`, `Malformed { offset }`
+(binary), `Invalid(Vec<Diagnostic>)` for syntax and field problems with
+their path, line and column (path only in binary), and the checked rules
+above. A `.meta` is read whole or not at all.
+
+```rust
+let meta = AssetMeta::read(&bytes)?;            // text or binary
+let text = meta.to_text();                      // or meta.to_bytes()
+```
+
+## Asset pack (`.mpak`)
+
+A cooked content pack: the payloads of many assets and an index, readable
+by asset id or path without reading the whole file.
+
+```text
+offset  size  field
+0       4     magic            "MPAK"
+4       2     version          envelope version, u16 (1)
+6       2     flags            u16, must be 0 in version 1
+8       8     index_offset     u64, where the index starts
+16      8     index_len        u64; index_offset + index_len == file length
+24      4     index_crc32      CRC-32 (IEEE) of the index bytes
+28      4     header_crc32     CRC-32 of bytes 0..28
+32      ...   payloads         each asset's bytes, back to back, no padding
+...     ...   index            Substrate Data binary (version 2), to the end of the file
+```
+
+All numbers are little-endian. The index is one map:
+
+```jsonc
+{ entries: [ { id: "3f2a9c0e8b1d4a67", path: "meshes/crate.obj",
+               offset: 32, len: 1204, crc32: 2387465021 }, … ] }
+```
+
+`offset` and `len` locate the asset's bytes from the start of the file and
+must lie inside the payload area (`32 .. index_offset`); `crc32` is the
+CRC-32 of those bytes. `id` is the asset's `AssetId`; `path` a `PackPath`
+(`/`-separated, relative, no empty, `.` or `..` segment, no `\` or control
+characters, at most 1024 bytes), the same shape a directory asset source
+takes. Ids and paths are unique in a pack. Every byte of a pack is covered by
+a checksum (header, index, each payload), so a flipped byte is found by
+`open` or by reading the asset it belongs to.
+
+**Reading.** `PackReader::open(source)` reads the 32-byte header and the
+index only, checks both, and checks every entry; an asset's bytes are read
+by range when asked for (`read_id`, `read_path`) and verified against
+their `crc32` before they are returned. `PackReader::verify` reads them all
+(what a build or installer runs once). The source is the `ReadAt` port
+(`size`, `read_exact_at(offset, buf)`) that `asset-domain` owns: `[u8]` and
+`Vec<u8>` implement it, `meridian_asset_fs::FileReadAt` implements it for a
+file, and a memory map or range requests would be other adapters. No read
+or allocation exceeds what the file holds: the index length must end the
+file exactly, is capped at `MAX_INDEX_LEN` (256 MiB), and an entry's size
+was checked against the payload area before its buffer is made.
+
+**Writing.** `PackWriter::add(id, path, bytes)` then `finish()`: header,
+payloads in the order added, index. It builds in memory; a streaming writer
+for packs larger than memory is the build tool's adapter, not this crate.
+
+**Versioning, and the lossless upgrade rule.** Readers accept every
+envelope version up to `PACK_VERSION` (1) and every Substrate Data binary
+version they read (the index of a pack may be SDAT version 1 or 2); writers
+always write the newest of both. A newer `version` is
+`UnsupportedVersion` (version 0 never existed and is refused too), nonzero
+`flags` are `UnknownFlags` (checked after the header checksum, so a damaged
+header is not mistaken for a newer one), and the index document is strict,
+so a newer index with extra keys is refused, not half read; a change to the
+index or layout bumps `version`. `upgrade_pack(source)` rewrites any readable
+pack as the newest: entries, their order, ids, paths and every payload
+byte are kept, so the value read is the value written; it verifies each
+payload on the way, and upgrading a current pack returns identical bytes.
+Binary tags and layout fields only grow, as in Substrate Data.
+
+**Errors.** `PackError`, every variant with the offset, entry or path it
+concerns: `Read`, `TooShort`, `BadMagic`, `UnsupportedVersion`,
+`HeaderChecksum`, `UnknownFlags`, `BadLayout`, `IndexTooLarge`,
+`IndexChecksum`, `IndexMalformed { offset }` (from the start of the file),
+`IndexInvalid` (with the index's own paths, `entries[3].path`),
+`EntryOutOfBounds`, `DuplicateId`, `DuplicatePath`, `NoSuchId`,
+`NoSuchPath`, `TooLargeForMemory`, `PayloadChecksum`. Tests truncate a pack
+at every length and flip every byte: nothing panics and every damage is an
+error.
+
+**Through the asset layer.** `meridian_asset_app::PackSource` is a
+`ByteSource` over a pack: the asset path is the path in the pack, a missing
+one is `NotFound`, a bad path `Rejected`, a damaged asset `Unreadable` with
+the pack's words. So an `AssetLoader` — and `AssetPrefabSource`, `WorldFiles`
+— works on a pack as on a directory. Reading the `.meta` sidecars from a
+pack, resolving `@asset_id:` to a `resource` handle, and choosing between a
+directory and a pack at startup are the composition root's follow-up (not in
+`meridian-sdk` yet).
+
+```rust
+let source = PackSource::open(FileReadAt::open("content.mpak")?)?;   // header + index only
+let loader = AssetLoader::new(Arc::new(source), pool);
+```
 
 ## Saves (`.msave`)
 
@@ -494,6 +624,7 @@ Specified in [editor-domain.md](editor-domain.md).
 | `.msave` envelope (`format`/`game`/`created`/`scene`/`state`, lazy header and scene) | done; scene is full, a delta is a later `format` |
 | `meridian-sdk` `WorldFiles` + `AssetPrefabSource` (scene, prefab and save by path over the asset layer) | done; not yet driven by `runtime-app`'s frame loop |
 | patching an existing `.mscene` file on save | not implemented |
-| `.meta`, `.mpak` | designed, not implemented |
+| `.meta` (`AssetMeta`: id, importer, settings, dependencies; text and binary; version rule) | done in `asset-domain`; no importer registry or `resource` id table reads it yet |
+| `.mpak` (`PackWriter`, `PackReader`, `upgrade_pack`; `PackSource`, `FileReadAt`) | done; the `sdk` does not pick a pack over a directory yet, no streaming writer or build-tool command |
 | `meridian-editor-domain` (messages, framing, golden-pinned wire) | done |
 | `meridian-editor-app` (session, ports), `meridian-editor-tcp` (loopback TCP) | done; not yet wired into `runtime-app`'s frame loop |

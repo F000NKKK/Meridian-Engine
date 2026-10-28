@@ -10,6 +10,8 @@ readme = "README.md"
 
 [dependencies]
 meridian-diagnostics = { workspace = true }
+substrate-data = { workspace = true }
+thiserror = { workspace = true }
 
 [lints]
 workspace = true

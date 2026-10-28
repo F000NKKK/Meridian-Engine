@@ -12,6 +12,9 @@ mod asset_loader;
 mod asset_path;
 mod byte_source;
 mod load_error;
+mod pack_source;
+#[cfg(test)]
+mod pack_source_tests;
 mod pending;
 mod priority;
 mod source_error;
@@ -23,6 +26,7 @@ pub use asset_loader::AssetLoader;
 pub use asset_path::AssetPath;
 pub use byte_source::ByteSource;
 pub use load_error::LoadError;
+pub use pack_source::PackSource;
 pub use pending::Pending;
 pub use priority::Priority;
 pub use source_error::SourceError;
