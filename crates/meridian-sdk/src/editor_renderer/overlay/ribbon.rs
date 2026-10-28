@@ -35,9 +35,9 @@ pub(super) fn ribbon_mesh(
 
 fn push_quad(mesh: &mut MeshSource, line: &Line, eye: Vec3, world_per_pixel: &impl Fn(f32) -> f32) {
     let middle = Vec3::new(
-        (line.from.x + line.to.x) * 0.5,
-        (line.from.y + line.to.y) * 0.5,
-        (line.from.z + line.to.z) * 0.5,
+        line.from.x.midpoint(line.to.x),
+        line.from.y.midpoint(line.to.y),
+        line.from.z.midpoint(line.to.z),
     );
     let view = middle - eye;
     let along = line.to - line.from;

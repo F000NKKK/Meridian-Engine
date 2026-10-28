@@ -270,7 +270,9 @@ fn pick_returns_the_nearest_entity_under_the_point() {
 
 fn orange_pixels(pixels: &[u8]) -> usize {
     pixels
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .filter(|p| p[0] > 200 && p[1] > 60 && p[1] < 170 && p[2] < 80)
         .count()
 }
