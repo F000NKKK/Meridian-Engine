@@ -79,9 +79,12 @@ Not started; ordered by suggested priority. Items wait for an explicit task.
 7. **`Runtime::tick` integration — done.** `meridian_sdk::RenderStage`
    presents through the `FrameRecorder` port, so `runtime-app` never names
    rendering; see [ADR 029](../adr/029-render-stage-presents-through-the-frame-recorder-port.md).
-8. **Larger, ADR-gated:** HDR (`Rgba16Float` + tone mapping), shadow
-   cascades/frustum fitting, point-light shadows, IBL, glTF meshes (with
-   team/data), animation (no vocabulary yet), concrete backend crates.
+8. **glTF static models — decided, in progress.** See
+   [ADR 030](../adr/030-gltf-static-models-through-an-asset-adapter.md);
+   decoder adapter `meridian-asset-gltf`, sdk loader.
+9. **Larger, ADR-gated:** HDR (`Rgba16Float` + tone mapping), shadow
+   cascades/frustum fitting, point-light shadows, IBL, skinned glTF and
+   animation (no vocabulary yet), concrete backend crates.
 
 ## Standards gaps
 
