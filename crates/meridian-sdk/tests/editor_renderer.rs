@@ -79,3 +79,20 @@ fn an_empty_scene_has_no_thumbnail() {
             .is_none()
     );
 }
+
+#[test]
+fn a_thumbnail_subject_is_drawn_or_refused_with_a_reason() {
+    use meridian_sdk::{ThumbnailError, ThumbnailSubject};
+
+    let Some(mut renderer) = renderer() else {
+        return;
+    };
+    let pixels = renderer
+        .thumbnail(ThumbnailSubject::Color([0.1, 0.5, 0.9, 1.0]), 24)
+        .expect("a colour sphere draws");
+    assert_eq!(pixels.len(), 24 * 24 * 4);
+    let missing = renderer.thumbnail(ThumbnailSubject::Model("no/such/model.glb".into()), 24);
+    assert!(matches!(missing, Err(ThumbnailError::Load(_))));
+    let empty = renderer.thumbnail(ThumbnailSubject::Scene(Box::default()), 24);
+    assert!(matches!(empty, Err(ThumbnailError::Empty)));
+}

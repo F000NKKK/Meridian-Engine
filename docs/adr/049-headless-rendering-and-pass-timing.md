@@ -52,7 +52,10 @@ session and one sky: `render(&World, &EditorCamera)` returns RGBA8 for every
 entity with a transform and a `MeshRenderer`, lit by its `LightSource`s (a default
 sun when there are none); `resize` follows the viewport. `thumbnail_material`
 (a sphere), `thumbnail_mesh`, `thumbnail_model` (glTF at rest) and
-`thumbnail_scene` render a fixed-angle, auto-framed square image of one asset;
+`thumbnail_scene` render a fixed-angle, auto-framed square image of one asset, and
+`thumbnail(ThumbnailSubject, size)` is the one entry point (a model path, a material,
+a colour or a ready scene; prefab and scene files wait for their binding of meshes
+and materials by name);
 `THUMBNAIL_RENDERER_VERSION` is bumped whenever the same asset would look
 different, so a cache keyed with it stays valid. `EditorCamera` orbits a target
 (`yaw`, `pitch`, `distance`, `fov_y`) and never rolls (D4). `LightSource` (kind

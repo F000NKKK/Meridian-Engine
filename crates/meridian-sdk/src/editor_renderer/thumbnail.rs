@@ -5,7 +5,7 @@ use meridian_rendering_domain::{
 };
 
 use super::framing::bounding_sphere;
-use super::{EditorCamera, EditorRenderer};
+use super::{EditorCamera, EditorRenderer, ThumbnailError, ThumbnailSubject};
 use meridian_gac::Motor3;
 
 /// Bumped whenever a thumbnail would look different for the same asset, so a
@@ -13,6 +13,35 @@ use meridian_gac::Motor3;
 pub const THUMBNAIL_RENDERER_VERSION: u32 = 1;
 
 impl EditorRenderer {
+    /// A `size` x `size` RGBA8 preview of `subject` under the neutral sky, from
+    /// a fixed angle backed off to fit, so equal assets give equal images.
+    ///
+    /// # Errors
+    ///
+    /// [`ThumbnailError`] when a model cannot be loaded, the subject draws
+    /// nothing, or the frame cannot be drawn.
+    pub fn thumbnail(
+        &mut self,
+        subject: ThumbnailSubject,
+        size: u32,
+    ) -> Result<Vec<u8>, ThumbnailError> {
+        let pixels = match subject {
+            ThumbnailSubject::Model(path) => self
+                .thumbnail_model(&path, size)
+                .map_err(ThumbnailError::Load)?,
+            ThumbnailSubject::Material(material) => self.thumbnail_material(material, size),
+            ThumbnailSubject::Color(color) => self.thumbnail_material(
+                Material {
+                    base_color_factor: color,
+                    ..Material::default()
+                },
+                size,
+            ),
+            ThumbnailSubject::Scene(scene) => self.thumbnail_scene(*scene, size),
+        };
+        pixels.ok_or(ThumbnailError::Empty)
+    }
+
     /// `material` on a sphere under the neutral sky, `size` x `size` RGBA8.
     pub fn thumbnail_material(&mut self, material: Material, size: u32) -> Option<Vec<u8>> {
         let mesh = self
