@@ -192,7 +192,7 @@ fn model_scene(
         .iter()
         .map(|piece| base.render.materials.register(piece.material))
         .collect();
-    let animation = (!rig.animations.is_empty()).then_some(animation.min(rig.animations.len() - 1));
+    let animation = (!rig.animations.is_empty()).then(|| animation.min(rig.animations.len() - 1));
     let mut members = Vec::new();
     for index in 0..copies * copies {
         let (column, row) = (index % copies, index / copies);
