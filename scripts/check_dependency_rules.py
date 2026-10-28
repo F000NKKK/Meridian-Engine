@@ -115,6 +115,7 @@ ALLOWED = {
         "meridian-gac",
     },
     "meridian-runtime-app": {
+        "meridian-audio-app",
         "meridian-diagnostics",
         "meridian-physics-app",
         "meridian-compute-app",

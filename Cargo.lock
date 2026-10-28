@@ -1529,6 +1529,8 @@ dependencies = [
 name = "meridian-runtime-app"
 version = "0.31.0"
 dependencies = [
+ "meridian-audio-app",
+ "meridian-audio-domain",
  "meridian-compute-app",
  "meridian-diagnostics",
  "meridian-gac",

@@ -272,7 +272,7 @@ bottom-up.
 - `meridian-audio-domain` -> `meridian-gac`
 - `meridian-physics-domain` -> `meridian-gac`, `meridian-numeric`, `meridian-resource`
 - `meridian-physics-wgpu` -> `meridian-compute-wgpu`, `meridian-compute-app`, `meridian-diagnostics`, `meridian-gac-wgpu`, `meridian-gac`, `meridian-gpu-wgpu`, `meridian-numeric`, `meridian-physics-app`, `meridian-physics-domain`
-- `meridian-runtime-app` -> `meridian-compute-app`, `meridian-diagnostics`, `meridian-physics-app`
+- `meridian-runtime-app` -> `meridian-audio-app`, `meridian-compute-app`, `meridian-diagnostics`, `meridian-physics-app`
 - `meridian-physics-app` -> `meridian-gac`, `meridian-physics-domain`
 - `meridian-data-substrate` -> `meridian-ecs`, `meridian-gac`
 - `meridian-editor-domain` -> `meridian-ecs`, `meridian-data-substrate`

@@ -27,6 +27,10 @@ use meridian_audio_app::AudioSink;
 use meridian_audio_domain::SpeakerLayout;
 use meridian_platform_winit::{BackendCapabilities, CpuCapabilities, GpuCapabilities};
 
+mod stream_sink;
+
+pub use stream_sink::StreamSink;
+
 /// Why [`AudioDevice::new`] or [`AudioDevice::open_stream`] failed.
 #[derive(Debug, Clone)]
 pub enum AudioDeviceError {
