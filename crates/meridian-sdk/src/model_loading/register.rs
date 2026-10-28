@@ -1,5 +1,7 @@
 //! Registering a decoded model with the GPU ports.
 
+use std::sync::Arc;
+
 use meridian_asset_domain::ModelAsset;
 use meridian_rendering_app::{MeshStore, TextureStore};
 use meridian_rendering_domain::{MeshMorph, MeshSource, MorphTarget, VertexSkin, smooth_normals};
@@ -19,7 +21,7 @@ pub(crate) fn register(
     meshes: &mut impl MeshStore,
     textures: &mut impl TextureStore,
 ) -> Result<LoadedModel, String> {
-    let rig = rig_of(&model)?;
+    let rig = Arc::new(rig_of(&model)?);
     let mut uploads = ImageUploads::new(&model.images, textures);
     let mut pieces = Vec::with_capacity(model.parts.len());
     for part in model.parts {

@@ -59,5 +59,10 @@ manager.
 - State machines (choosing the next animation from game state) and root
   motion are not here; a gameplay stage that calls `play`/`crossfade_to` on
   the animator is the extension point.
-- Spawning a loaded model into a world (one animator entity, one target per
-  piece) is the composition root's job for now.
+- `GraphicsSession::spawn_model` puts a loaded model into a world: a root
+  entity (its `Transform` places the model, it holds the `Animator`) and one
+  child per piece with a `MeshRenderer` and an `AnimationTarget`. Pieces
+  follow the root through `Parent`, so `extract_scene3d` draws an entity at
+  its `GlobalTransform` when it has one (the transform stage resolves it)
+  and at its `Transform` otherwise. `LoadedModel::rig` is an `Arc`, shared by
+  every instance.

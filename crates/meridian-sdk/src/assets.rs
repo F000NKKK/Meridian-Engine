@@ -35,7 +35,7 @@ use meridian_rendering_domain::{
 
 use crate::any_image_decoder::AnyImageDecoder;
 pub use crate::model_loading::rig::ModelRig;
-pub use crate::model_loading::{LoadedModel, ModelPiece};
+pub use crate::model_loading::{LoadedModel, ModelInstance, ModelPiece};
 use crate::{model_files, model_loading};
 
 /// Reads and decodes a real image asset file, identified by its magic

@@ -28,7 +28,7 @@ struct GpuState {
     center: Vec3,
     radius: f32,
     pieces: Vec<ModelPiece>,
-    rig: ModelRig,
+    rig: std::sync::Arc<ModelRig>,
     player: AnimationPlayer,
     /// Seconds an animation plays before the viewer crossfades to the next
     /// one (`MERIDIAN_CYCLE`), when the file has several.

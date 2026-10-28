@@ -805,7 +805,8 @@ the rest are not started.
    meshes (and morphs them) with a compute kernel, nodes that animation moves
    play through a node skeleton, clips crossfade, and `gltf_viewer` plays a
    model's animations. Animators run in the runtime as ECS components and an
-   `AnimationStage` ([ADR 048](adr/048-animation-in-the-runtime.md)). Still
+   `AnimationStage` ([ADR 048](adr/048-animation-in-the-runtime.md)), and
+   `GraphicsSession::spawn_model` puts a loaded model into a world. Still
    open: state machines and root motion.
 
 **Rough sequencing, if picking one order**: (4) (batched physics
