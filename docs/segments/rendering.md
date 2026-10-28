@@ -98,8 +98,9 @@ Not started; ordered by suggested priority. Items wait for an explicit task.
 12. Radiance `.hdr` environment loader: [ADR 036](../adr/036-radiance-hdr-environment-loader.md).
 13. Cascaded shadow maps: [ADR 037](../adr/037-cascaded-shadow-maps.md).
 14. Cube-map environment source: [ADR 038](../adr/038-cube-map-environment-source.md).
-15. **Larger, ADR-gated:** point-light
-   shadows, a visible skybox, skinned glTF and
+15. Visible environment backdrop: [ADR 039](../adr/039-visible-environment-backdrop.md).
+16. **Larger, ADR-gated:** point-light
+   shadows, skinned glTF and
    animation (no vocabulary yet), concrete backend crates.
 
 ## Standards gaps

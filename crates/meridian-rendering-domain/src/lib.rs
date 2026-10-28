@@ -5,6 +5,7 @@
 
 #![forbid(unsafe_code)]
 
+mod background;
 mod bloom_config;
 mod camera;
 mod environment;
@@ -26,6 +27,7 @@ mod texture_handle;
 mod tonemap_config;
 mod tonemap_operator;
 
+pub use background::Background;
 pub use bloom_config::BloomConfig;
 pub use camera::{Camera, look_at_rotor};
 pub use environment::{

@@ -7,8 +7,8 @@ use meridian_rendering_domain::{EnvironmentMap, TextureHandle, TonemapConfig};
 use crate::overlay_pass::OverlayPass;
 use crate::{
     BloomInput, BloomPass, ColorFormat, CommandBuffer, DEFAULT_SHADOW_MAP_SIZE, DepthTexture,
-    Device, GpuTextureStore, PreparedScene, SceneAssets, SceneRenderer, Surface, SurfaceFrame,
-    Texture, TonemapPass, submit_scene3d,
+    Device, GpuTextureStore, PreparedScene, SceneAssets, SceneRenderer, SkyPass, Surface,
+    SurfaceFrame, Texture, TonemapPass, submit_scene3d,
 };
 
 /// The format of the scene target the 3D passes draw into (ADR 034).
@@ -30,6 +30,7 @@ pub struct GpuFrameRecorder {
     depth: DepthTexture,
     renderer: SceneRenderer,
     bloom: BloomPass,
+    sky: SkyPass,
     tonemap: TonemapPass,
     overlays: OverlayPass,
     textures: GpuTextureStore,
@@ -58,6 +59,7 @@ impl GpuFrameRecorder {
         let scene = device.create_offscreen_color_texture(width, height, SCENE_FORMAT);
         let renderer = SceneRenderer::with_shadow_map_size(&device, SCENE_FORMAT, shadow_map_size);
         let bloom = BloomPass::new(&device, width, height);
+        let sky = SkyPass::new(&device, SCENE_FORMAT);
         let tonemap = TonemapPass::new(&device, &surface);
         let overlays = OverlayPass::new(&device, &surface);
         let textures = GpuTextureStore::new(device.clone());
@@ -68,6 +70,7 @@ impl GpuFrameRecorder {
             depth,
             renderer,
             bloom,
+            sky,
             tonemap,
             overlays,
             textures,
@@ -77,7 +80,7 @@ impl GpuFrameRecorder {
 }
 
 impl GpuFrameRecorder {
-    /// Draws the 3D scene into the HDR target, blooms it there and tone maps
+    /// Draws the 3D scene (its backdrop first) into the HDR target, blooms it there and tone maps
     /// the result into `frame`.
     fn draw_scene(
         &self,
@@ -91,6 +94,12 @@ impl GpuFrameRecorder {
                 self.scene.view(),
                 request.clear_color,
                 Some(&self.depth),
+            );
+            self.sky.draw(
+                &self.device,
+                &mut pass,
+                request.scene,
+                &self.renderer.environment,
             );
             submit_scene3d(
                 &self.device,

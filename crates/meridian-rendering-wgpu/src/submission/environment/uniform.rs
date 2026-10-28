@@ -34,6 +34,16 @@ impl EnvironmentUniform {
         }
     }
 
+    /// Whether an environment is set.
+    pub(crate) fn enabled(self) -> bool {
+        self.enabled
+    }
+
+    /// The highest mip level of the environment texture.
+    pub(crate) fn max_lod(self) -> f32 {
+        self.max_lod
+    }
+
     /// The `env_sh` array then the `env_params` vector, as the shader lays them out.
     pub(crate) fn to_bytes(self) -> [u8; Self::BYTES] {
         let mut bytes = [0u8; Self::BYTES];

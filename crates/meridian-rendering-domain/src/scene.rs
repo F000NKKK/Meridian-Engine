@@ -247,6 +247,8 @@ pub struct Scene3d {
     /// Ambient color an upward-facing surface (`normal.y = 1`)
     /// receives — the color of the sky/open air.
     pub ambient_sky: [f32; 3],
+    /// What shows behind the geometry.
+    pub background: crate::Background,
 }
 
 impl Default for Scene3d {
@@ -260,6 +262,7 @@ impl Default for Scene3d {
             // per-scene via the fields directly.
             ambient_ground: [0.025, 0.025, 0.03],
             ambient_sky: [0.035, 0.035, 0.045],
+            background: crate::Background::Clear,
         }
     }
 }
