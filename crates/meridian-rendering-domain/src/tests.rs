@@ -233,3 +233,23 @@ fn render_graph_rejects_a_read_write_cycle() {
         RenderGraphError::Cycle
     );
 }
+
+#[test]
+fn the_default_tonemap_is_aces_at_unit_exposure() {
+    let config = TonemapConfig::default();
+    assert_eq!(config.exposure, 1.0);
+    assert_eq!(config.operator, TonemapOperator::Aces);
+}
+
+#[test]
+fn tonemap_operators_have_distinct_shader_indices() {
+    use crate::TonemapOperator::{Aces, Clamp, Reinhard};
+    assert_eq!(
+        [
+            Clamp.shader_index(),
+            Reinhard.shader_index(),
+            Aces.shader_index()
+        ],
+        [0.0, 1.0, 2.0]
+    );
+}

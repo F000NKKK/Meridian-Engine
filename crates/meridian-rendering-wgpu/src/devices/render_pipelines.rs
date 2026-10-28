@@ -135,23 +135,25 @@ impl Device {
         )
     }
 
-    /// A main-pass pipeline for `state`: alpha blending for the blended
+    /// A main-pass pipeline for `state`, targeting `format` (the scene target's
+    /// [`ColorFormat`]): alpha blending for the blended
     /// states, and a depth stage matching
     /// [`Device::create_depth_texture`](crate::Device::create_depth_texture)'s
     /// format whose test and write follow [`DrawState`]. The on-top states
     /// keep the depth stage (the pass has a depth attachment, so every
     /// pipeline in it must declare one) but always pass and never write.
+    #[must_use]
     pub fn create_scene_pipeline(
         &self,
         stages: &ShaderStages<'_>,
         vertex_layouts: &[VertexLayout],
-        surface: &Surface,
+        format: ColorFormat,
         state: DrawState,
     ) -> RenderPipeline {
         self.build_pipeline(
             stages,
             vertex_layouts,
-            surface.config.format,
+            format.to_wgpu(),
             FixedFunction {
                 blend: state.blends(),
                 depth_stencil: Some(depth_stencil(state)),

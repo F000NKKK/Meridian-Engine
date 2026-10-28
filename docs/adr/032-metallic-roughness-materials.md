@@ -79,5 +79,6 @@ and a draw with a map but no albedo binds a 1x1 white albedo.
   bind group layout and one more pipeline family, which is the cost of D2.
 - Roughness 0 with a point light gives a one-pixel highlight; the shader clamps
   `alpha` from below so a mirror-smooth surface stays finite.
-- The output is still not HDR: a bright specular lobe clips. An HDR target is
-  parked with bloom's.
+- The output was not HDR when this was written and a bright specular lobe
+  clipped; [ADR 034](034-hdr-scene-target-and-tone-mapping.md) added the HDR
+  target.

@@ -483,8 +483,7 @@ isolation (`cargo test -p meridian-rendering-domain`), the same
 convention this crate's own test module already documents for
 `SceneRenderer` itself. **Not yet done:** a real convolved-environment-map
 IBL pipeline, shadow cascades/frustum-fitting, soft point-light
-shadows, and HDR values above `1.0` feeding bloom's bright-pass beyond
-what it already does (see `bloom`'s own module doc) — not a blanket
+shadows (HDR and tone mapping are done, ADR 034), not a blanket
 "every other crate is a scaffold." Audio is wired end-to-end:
 `audio-domain::AudioOutput` + `Mixer::render_interleaved` bridge mixed
 samples into `audio-cpal`'s real stream (the declared

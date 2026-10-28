@@ -32,16 +32,11 @@ view the main pass (step 1) already drew into — via
 `CommandBuffer::begin_render_pass_loaded`, which preserves existing
 contents instead of clearing them.
 
-**Deliberately not HDR.** Every offscreen texture here (bright/ping/
-pong) is [`ColorFormat::SrgbRgba8`], the same format `TextureRegistry`
-uses for uploaded textures — an emissive value is whatever a
-`Material` sets (no bloom-specific tone mapping or exposure control),
-clamped to `[0,1]` like every other color in this bridge. A true HDR
-pipeline (`Rgba16Float` intermediate targets, exposure/tone-mapping)
-is real future work if a scene ever needs emissive values above `1.0`
-to look right — it would only mean adding a variant to
-`rendering-wgpu::ColorFormat` and passing it through, not a redesign
-here; the visible glow this produces today does not depend on it.
+**HDR.** Every offscreen texture here (bright/ping/pong) is
+[`ColorFormat::HdrRgba16F`], like the scene target it composites onto
+([ADR 034](../adr/034-hdr-scene-target-and-tone-mapping.md)), so an emissive
+value above `1.0` glows in proportion. Exposure and the tone curve are the
+tone mapping pass's, not bloom's.
 
 **Fixed at construction size**, matching the swapchain/target it was
 built for — resize by constructing a new [`BloomPass`] (cheap: a

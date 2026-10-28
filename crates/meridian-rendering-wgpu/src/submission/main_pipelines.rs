@@ -6,7 +6,9 @@ use super::{
     TEXTURED_SHADER_WGSL, UNLIT_SHADER_WGSL, instance_vertex_layout, lit_shader_wgsl,
     lit_textured_shader_wgsl, mesh_vertex_layout,
 };
-use crate::{BindGroup, Buffer, Device, RenderPipeline, Sampler, ShaderStages, Surface, Texture};
+use crate::{
+    BindGroup, Buffer, ColorFormat, Device, RenderPipeline, Sampler, ShaderStages, Texture,
+};
 
 /// Which pipeline a draw needs.
 #[derive(Debug, Clone, Copy)]
@@ -52,7 +54,7 @@ const STATES: [DrawState; 4] = [
 
 impl MainPipelines {
     /// Compiles each shader once and builds every state's pipeline from it.
-    pub(crate) fn new(device: &Device, surface: &Surface, bindings: MainBindings<'_>) -> Self {
+    pub(crate) fn new(device: &Device, format: ColorFormat, bindings: MainBindings<'_>) -> Self {
         let shaders = [
             ("meridian-unlit-colored", UNLIT_SHADER_WGSL.to_owned()),
             ("meridian-lit-colored", lit_shader_wgsl()),
@@ -74,7 +76,7 @@ impl MainPipelines {
                     vertex_entry: "vs_main",
                     fragment_entry: "fs_main",
                 };
-                let pipeline = device.create_scene_pipeline(&stages, &layouts, surface, state);
+                let pipeline = device.create_scene_pipeline(&stages, &layouts, format, state);
                 slots.push(with_shared_bind_group(device, pipeline, key, bindings));
             }
         }

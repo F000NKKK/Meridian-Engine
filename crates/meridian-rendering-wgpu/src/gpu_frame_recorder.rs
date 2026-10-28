@@ -2,16 +2,21 @@
 
 use meridian_asset_domain::ImageAsset;
 use meridian_rendering_app::{FrameOutcome, FrameRecorder, FrameRequest, TextureStore};
-use meridian_rendering_domain::TextureHandle;
+use meridian_rendering_domain::{TextureHandle, TonemapConfig};
 
 use crate::overlay_pass::OverlayPass;
 use crate::{
-    BloomInput, BloomPass, DEFAULT_SHADOW_MAP_SIZE, DepthTexture, Device, GpuTextureStore,
-    SceneAssets, SceneRenderer, Surface, submit_scene3d,
+    BloomInput, BloomPass, ColorFormat, CommandBuffer, DEFAULT_SHADOW_MAP_SIZE, DepthTexture,
+    Device, GpuTextureStore, PreparedScene, SceneAssets, SceneRenderer, Surface, SurfaceFrame,
+    Texture, TonemapPass, submit_scene3d,
 };
 
-/// Everything one windowed view draws with: the device, the swapchain and its
-/// depth target, the scene renderer, the bloom pass and the GPU textures.
+/// The format of the scene target the 3D passes draw into (ADR 034).
+const SCENE_FORMAT: ColorFormat = ColorFormat::HdrRgba16F;
+
+/// Everything one windowed view draws with: the device, the swapchain, the HDR
+/// scene target and its depth target, the scene renderer, the bloom and tone
+/// mapping passes and the GPU textures.
 ///
 /// Built once from an already-open [`Device`] and [`Surface`] (the windowed
 /// handshake stays in the application's own `on_ready`). It is the
@@ -21,9 +26,11 @@ use crate::{
 pub struct GpuFrameRecorder {
     device: Device,
     surface: Surface,
+    scene: Texture,
     depth: DepthTexture,
     renderer: SceneRenderer,
     bloom: BloomPass,
+    tonemap: TonemapPass,
     overlays: OverlayPass,
     textures: GpuTextureStore,
     size: [u32; 2],
@@ -48,20 +55,67 @@ impl GpuFrameRecorder {
         shadow_map_size: u32,
     ) -> Self {
         let depth = device.create_depth_texture(width, height);
-        let renderer = SceneRenderer::with_shadow_map_size(&device, &surface, shadow_map_size);
-        let bloom = BloomPass::new(&device, width, height, &surface);
+        let scene = device.create_offscreen_color_texture(width, height, SCENE_FORMAT);
+        let renderer = SceneRenderer::with_shadow_map_size(&device, SCENE_FORMAT, shadow_map_size);
+        let bloom = BloomPass::new(&device, width, height);
+        let tonemap = TonemapPass::new(&device, &surface);
         let overlays = OverlayPass::new(&device, &surface);
         let textures = GpuTextureStore::new(device.clone());
         Self {
             device,
             surface,
+            scene,
             depth,
             renderer,
             bloom,
+            tonemap,
             overlays,
             textures,
             size: [width, height],
         }
+    }
+}
+
+impl GpuFrameRecorder {
+    /// Draws the 3D scene into the HDR target, blooms it there and tone maps
+    /// the result into `frame`.
+    fn draw_scene(
+        &self,
+        commands: &mut CommandBuffer<'_>,
+        request: &FrameRequest<'_>,
+        prepared: &PreparedScene,
+        frame: &SurfaceFrame,
+    ) {
+        {
+            let mut pass = commands.begin_render_pass(
+                self.scene.view(),
+                request.clear_color,
+                Some(&self.depth),
+            );
+            submit_scene3d(
+                &self.device,
+                &self.renderer,
+                &mut pass,
+                request.scene,
+                prepared,
+            );
+        }
+        self.bloom.apply(
+            &self.device,
+            commands,
+            &BloomInput {
+                renderer: &self.renderer,
+                prepared,
+                target: &self.scene,
+            },
+        );
+        self.tonemap
+            .apply(&self.device, commands, &self.scene, frame);
+    }
+
+    /// Replaces the exposure and tone curve applied to the next frames.
+    pub fn set_tonemap(&mut self, config: TonemapConfig) {
+        self.tonemap.config = config;
     }
 }
 
@@ -99,26 +153,7 @@ impl FrameRecorder for GpuFrameRecorder {
             }
         };
 
-        {
-            let mut pass =
-                commands.begin_render_pass(frame.view(), request.clear_color, Some(&self.depth));
-            submit_scene3d(
-                &self.device,
-                &self.renderer,
-                &mut pass,
-                request.scene,
-                &prepared,
-            );
-        }
-        self.bloom.apply(
-            &self.device,
-            &mut commands,
-            &BloomInput {
-                renderer: &self.renderer,
-                prepared: &prepared,
-                target_frame: &frame,
-            },
-        );
+        self.draw_scene(&mut commands, request, &prepared, &frame);
         self.overlays.draw(&mut commands, &frame, &overlays);
         commands.submit();
         frame.present(&self.device);
@@ -131,7 +166,10 @@ impl FrameRecorder for GpuFrameRecorder {
     fn resize(&mut self, width: u32, height: u32) {
         self.surface.resize(&self.device, width, height);
         self.depth = self.device.create_depth_texture(width, height);
-        self.bloom = BloomPass::new(&self.device, width, height, &self.surface);
+        self.scene = self
+            .device
+            .create_offscreen_color_texture(width, height, SCENE_FORMAT);
+        self.bloom = BloomPass::new(&self.device, width, height);
         self.size = [width, height];
     }
 }

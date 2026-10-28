@@ -44,6 +44,7 @@ mod surface;
 mod surface_frame;
 #[cfg(test)]
 mod tests;
+mod tonemap;
 mod vertex;
 
 pub use acquire_frame_error::AcquireFrameError;
@@ -75,4 +76,5 @@ pub use submission::{
 };
 pub use surface::Surface;
 pub use surface_frame::SurfaceFrame;
+pub use tonemap::TonemapPass;
 pub use vertex::*;
