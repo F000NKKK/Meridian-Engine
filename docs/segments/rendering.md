@@ -44,7 +44,7 @@ Real and tested on CPU: `Camera`, `Frustum` (Gribb/Hartmann vs any
 `directional_shadow_camera`. Real on GPU, proven by the windowed examples
 `magic_figures`/`physic_figures`: textured/unlit/lit pipelines (metallic-roughness,
 directional + point, `MAX_LIGHTS = 4`), hemisphere ambient, one directional
-shadow map with PCF, HDR bloom and tone mapping (ADR 034). `rendering-wgpu` has headless and
+shadow map with PCF in four fitted cascades (ADR 037), HDR bloom and tone mapping (ADR 034). `rendering-wgpu` has headless and
 windowed (`Surface`) devices. 30 `#[test]`s across the three crates.
 
 ## Backlog
@@ -96,7 +96,8 @@ Not started; ordered by suggested priority. Items wait for an explicit task.
 11. Image-based lighting from a prefiltered environment (procedural sky for
    now): [ADR 035](../adr/035-image-based-lighting.md).
 12. Radiance `.hdr` environment loader: [ADR 036](../adr/036-radiance-hdr-environment-loader.md).
-13. **Larger, ADR-gated:** shadow cascades/frustum fitting, point-light
+13. Cascaded shadow maps: [ADR 037](../adr/037-cascaded-shadow-maps.md).
+14. **Larger, ADR-gated:** point-light
    shadows, a cube-map environment, skinned glTF and
    animation (no vocabulary yet), concrete backend crates.
 

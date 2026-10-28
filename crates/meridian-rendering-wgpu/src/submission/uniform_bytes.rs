@@ -2,13 +2,16 @@
 
 use meridian_gac::Vec3;
 use meridian_rendering_domain::scene::Light;
-use meridian_rendering_domain::{ShadowLight, ViewUniforms};
+use meridian_rendering_domain::{SHADOW_CASCADES, ShadowCascades, ShadowLight, ViewUniforms};
 
 use super::MAX_LIGHTS;
 use super::environment::EnvironmentUniform;
 
-/// Bytes of the lit uniform: the view, the lights, then the environment.
-pub(crate) const LIT_UNIFORM_BYTES: usize = 416 + EnvironmentUniform::BYTES;
+/// Bytes of the lit uniform: the view, the cascades, the lights, then the environment.
+pub(crate) const LIT_UNIFORM_BYTES: usize = 640 + EnvironmentUniform::BYTES;
+
+// The WGSL `Uniforms` holds the cascades as an `array<mat4x4, 4>` and two `vec4`s.
+const _: () = assert!(SHADOW_CASCADES == 4);
 
 pub(crate) fn mat4_to_bytes(m: [[f32; 4]; 4]) -> [u8; 64] {
     let mut bytes = [0u8; 64];
@@ -32,11 +35,12 @@ fn vec3_to_padded_bytes(v: [f32; 3]) -> [u8; 16] {
 
 /// Serializes a view's camera, shadow light, ambient colors and lights into the lit shaders'
 /// shared `Uniforms` layout (see [`LIT_UNIFORMS_AND_SHADING_WGSL`](super::LIT_UNIFORMS_AND_SHADING_WGSL)):
-/// `view_proj` (64 bytes), `light_view_proj` (64), `camera_pos` (16),
+/// `view_proj` (64 bytes), the four cascades' `light_view_proj` (4 x 64),
+/// `cascade_far` and `cascade_bias` (16 each), `camera_pos` (16),
 /// `ambient_ground` (16), `ambient_sky` (16), `light_direction` (16),
 /// `light_count` (16), `shadow_caster` (16), then [`MAX_LIGHTS`](super::MAX_LIGHTS)
 /// `LightData` entries (48 bytes each), then the environment's `env_sh` (9 x 16)
-/// and `env_params` (16) — 576 bytes total. Lights beyond
+/// and `env_params` (16) — 800 bytes total. Lights beyond
 /// the cap are dropped (logged once by the caller, not here — see
 /// `bake_batches`). `shadow_caster` is the index into
 /// `lights` of the shadow-casting light (see
@@ -52,7 +56,7 @@ pub(crate) fn lit_uniform_bytes(
     environment: EnvironmentUniform,
 ) -> Vec<u8> {
     let ShadowLight {
-        view_proj,
+        cascades,
         direction,
         caster,
     } = view.shadow;
@@ -60,7 +64,7 @@ pub(crate) fn lit_uniform_bytes(
     let count = view.lights.len().min(MAX_LIGHTS) as u32;
     let mut bytes = Vec::with_capacity(LIT_UNIFORM_BYTES);
     bytes.extend_from_slice(&mat4_to_bytes(view.camera.view_projection_matrix()));
-    bytes.extend_from_slice(&mat4_to_bytes(view_proj));
+    bytes.extend_from_slice(&cascades_to_bytes(&cascades));
     bytes.extend_from_slice(&vec3_to_padded_bytes([
         camera_pos.x,
         camera_pos.y,
@@ -79,6 +83,22 @@ pub(crate) fn lit_uniform_bytes(
         bytes.extend_from_slice(&light_to_bytes(view.lights.get(index)));
     }
     bytes.extend_from_slice(&environment.to_bytes());
+    bytes
+}
+
+/// The cascades' matrices, then their far edges and depth biases as two `vec4`s.
+fn cascades_to_bytes(cascades: &ShadowCascades) -> Vec<u8> {
+    let mut bytes = Vec::with_capacity(SHADOW_CASCADES * 64 + 32);
+    for view_proj in cascades.view_proj {
+        bytes.extend_from_slice(&mat4_to_bytes(view_proj));
+    }
+    for value in cascades
+        .far_edges
+        .into_iter()
+        .chain(cascades.bias_per_texel)
+    {
+        bytes.extend_from_slice(&value.to_le_bytes());
+    }
     bytes
 }
 

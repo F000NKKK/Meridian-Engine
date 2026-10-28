@@ -33,7 +33,7 @@ Post Processing      -- real (HDR scene target, bloom, tone mapping; ADR 034)
 `Camera`, frustum culling, render graph pass ordering, scene extraction,
 lighting and the submission bridge are all real and tested (`cargo test
 -p meridian-rendering-domain`) — see "Implementation order" below for the
-step-by-step history and exactly what's still open (shadow cascades, skinning). `rendering-wgpu` is real too, both headless (`Device::new`) and
+step-by-step history and exactly what's still open (skinning, point-light shadows). `rendering-wgpu` is real too, both headless (`Device::new`) and
 windowed (`Device::new_windowed`, a real swapchain `Surface` —
 `Buffer`/`Texture`/`Shader`/compute `Pipeline`/`CommandBuffer` either
 way). `Animation` is the one row above with no work started yet — no

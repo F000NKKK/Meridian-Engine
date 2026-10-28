@@ -6,7 +6,7 @@ use super::environment_shader::ENVIRONMENT_WGSL;
 pub const MAX_LIGHTS: usize = 4;
 
 /// Shared by every lit shader: the `Uniforms` struct layout (view-proj,
-/// the shadow-casting light's own view-proj, camera position, hemisphere
+/// the shadow cascades' light-space view-projections, camera position, hemisphere
 /// ambient, light count/array, which light index casts the shadow) plus
 /// the metallic-roughness `shade` helper and the light-space projection helper
 /// every shadow lookup shares. WGSL has no `#include`, so this text is
@@ -32,7 +32,12 @@ struct LightData {
 
 struct Uniforms {
     view_proj: mat4x4<f32>,
-    light_view_proj: mat4x4<f32>,
+    // The shadow cascades (ADR 037): one light-space matrix each, the view
+    // distance at which each ends, and the normalised depth one shadow texel
+    // of each spans.
+    light_view_proj: array<mat4x4<f32>, 4>,
+    cascade_far: vec4<f32>,
+    cascade_texel_depth: vec4<f32>,
     camera_pos: vec4<f32>,
     ambient_ground: vec4<f32>,
     ambient_sky: vec4<f32>,
@@ -64,18 +69,35 @@ fn hemisphere_ambient(world_normal: vec3<f32>) -> vec3<f32> {
     return mix(u.ambient_ground.rgb, u.ambient_sky.rgb, t);
 }
 
-/// `world_pos` remapped into the shadow map's `[0,1]` UV space plus its
-/// light-space depth in `z` — shared by every shader flavor's own
-/// `compute_shadow_factor` (declared per-flavor below, since each names
-/// its own `shadow_map`/`shadow_sampler` bindings). Orthographic
-/// projection: `clip.w` is always `1.0`, so the divide is a no-op in
-/// practice — kept for clarity, and so this still works unmodified if a
-/// perspective shadow projection (e.g. for a point-light shadow) is ever
-/// spliced in against the same `light_view_proj` slot.
-fn light_space_uv_and_depth(world_pos: vec3<f32>) -> vec3<f32> {
-    let clip = u.light_view_proj * vec4<f32>(world_pos, 1.0);
+/// Where `world_pos` lands in the shadow atlas (ADR 037): `xy` is the atlas
+/// UV inside the cascade chosen by its view distance, `z` the biased
+/// light-space depth to compare, `w` 1 when the point is inside that
+/// cascade's map and 0 when it needs no shadow lookup. The atlas is a 2 x 2
+/// grid of tiles, `tile` texels per side; the lookup stays one texel inside
+/// its tile so the filter never reads a neighbour. Shared by every shader
+/// flavor's own `compute_shadow_factor` (declared per-flavor below, since
+/// each names its own `shadow_map`/`shadow_sampler` bindings).
+fn shadow_atlas_lookup(world_pos: vec3<f32>, n_dot_l: f32, tile: f32) -> vec4<f32> {
+    let view_depth = (u.view_proj * vec4<f32>(world_pos, 1.0)).w;
+    var cascade = 0u;
+    if (view_depth > u.cascade_far.x) { cascade = 1u; }
+    if (view_depth > u.cascade_far.y) { cascade = 2u; }
+    if (view_depth > u.cascade_far.z) { cascade = 3u; }
+    let clip = u.light_view_proj[cascade] * vec4<f32>(world_pos, 1.0);
     let ndc = clip.xyz / clip.w;
-    return vec3<f32>(ndc.x * 0.5 + 0.5, 1.0 - (ndc.y * 0.5 + 0.5), ndc.z);
+    let uv = vec2<f32>(ndc.x * 0.5 + 0.5, 1.0 - (ndc.y * 0.5 + 0.5));
+    // Slope-scaled bias, counted in shadow texels: a surface nearly edge-on
+    // to the light (small `n_dot_l`) needs a much bigger depth push than one
+    // facing it, or it reads as "acne" (false self-shadow stripes from the
+    // map's own texel quantization). The base term alone still matters for
+    // a face exactly perpendicular to the light, where the slope term is 0.
+    let bias = max(3.3, 24.6 * (1.0 - n_dot_l)) * u.cascade_texel_depth[cascade];
+    let inside = uv.x >= 0.0 && uv.x <= 1.0 && uv.y >= 0.0 && uv.y <= 1.0
+        && ndc.z >= 0.0 && ndc.z <= 1.0 && view_depth <= u.cascade_far.w;
+    let margin = 1.0 / tile;
+    let in_tile = clamp(uv, vec2<f32>(margin), vec2<f32>(1.0 - margin));
+    let origin = vec2<f32>(f32(cascade & 1u), f32(cascade >> 1u));
+    return vec4<f32>((origin + in_tile) * 0.5, ndc.z - bias, select(0.0, 1.0, inside));
 }
 
 const PI: f32 = 3.14159265;
@@ -165,7 +187,7 @@ fn shade(world_pos: vec3<f32>, world_normal: vec3<f32>, base_color: vec3<f32>, s
 
 /// The lit fragment/vertex stage text spliced after the shared
 /// uniforms and shading helpers.
-const LIT_COLORED_BODY_WGSL: &str = r#"
+const LIT_COLORED_BODY_WGSL: &str = r"
 
 @group(0) @binding(1)
 var shadow_map: texture_depth_2d;
@@ -176,24 +198,13 @@ var env_map: texture_2d<f32>;
 @group(0) @binding(4)
 var env_sampler: sampler;
 
-// Slope-scaled bias: a surface nearly edge-on to the light (small
-// `n_dot_l`) needs a much bigger depth push than one facing the light
-// head-on, or it reads as "acne" — regularly-spaced false self-shadow
-// stripes from the shadow map's own texel quantization (a pyramid's
-// steep triangular faces were the concrete case that went essentially
-// solid-black from this before the slope term existed: at a grazing
-// angle, a constant bias big enough to fix the steepest face was still
-// far too small there, and the acne covered the whole face). The base
-// term alone still matters for a face that's *exactly* perpendicular to
-// the light (n_dot_l = 1), where the slope term contributes nothing.
+// The bias is slope-scaled, see `shadow_atlas_lookup`.
 fn compute_shadow_factor(world_pos: vec3<f32>, world_normal: vec3<f32>) -> f32 {
-    let lsuv = light_space_uv_and_depth(world_pos);
-    if (lsuv.x < 0.0 || lsuv.x > 1.0 || lsuv.y < 0.0 || lsuv.y > 1.0) {
-        return 1.0;
-    }
     let n_dot_l = max(dot(normalize(world_normal), normalize(-u.light_direction.xyz)), 0.0);
-    let bias = max(0.0008, 0.006 * (1.0 - n_dot_l));
-    return textureSampleCompare(shadow_map, shadow_sampler, lsuv.xy, lsuv.z - bias);
+    let tile = f32(textureDimensions(shadow_map).x / 2u);
+    let lookup = shadow_atlas_lookup(world_pos, n_dot_l, tile);
+    let lit = textureSampleCompare(shadow_map, shadow_sampler, lookup.xy, lookup.z);
+    return mix(1.0, lit, lookup.w);
 }
 
 struct VertexInput {
@@ -239,7 +250,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let shaded = shade(in.world_position, in.world_normal, in.color.rgb, in.surface, 1.0, shadow_factor) + in.emissive;
     return vec4<f32>(shaded, in.color.a);
 }
-"#;
+";
 
 /// [`UNLIT_SHADER_WGSL`](crate::submission::UNLIT_SHADER_WGSL)'s lit counterpart: metallic-roughness-shaded flat
 /// color. Used for lit materials with no resolvable albedo texture.
@@ -297,16 +308,12 @@ fn perturb_normal(n: vec3<f32>, world_pos: vec3<f32>, uv: vec2<f32>, map_normal:
     return normalize(t * map_normal.x + b * map_normal.y + n * map_normal.z);
 }
 
-// See the colored-lit shader's identical `compute_shadow_factor` for
-// why the bias is slope-scaled, not a flat constant.
 fn compute_shadow_factor(world_pos: vec3<f32>, world_normal: vec3<f32>) -> f32 {
-    let lsuv = light_space_uv_and_depth(world_pos);
-    if (lsuv.x < 0.0 || lsuv.x > 1.0 || lsuv.y < 0.0 || lsuv.y > 1.0) {
-        return 1.0;
-    }
     let n_dot_l = max(dot(normalize(world_normal), normalize(-u.light_direction.xyz)), 0.0);
-    let bias = max(0.0008, 0.006 * (1.0 - n_dot_l));
-    return textureSampleCompare(shadow_map, shadow_sampler, lsuv.xy, lsuv.z - bias);
+    let tile = f32(textureDimensions(shadow_map).x / 2u);
+    let lookup = shadow_atlas_lookup(world_pos, n_dot_l, tile);
+    let lit = textureSampleCompare(shadow_map, shadow_sampler, lookup.xy, lookup.z);
+    return mix(1.0, lit, lookup.w);
 }
 
 struct VertexInput {
