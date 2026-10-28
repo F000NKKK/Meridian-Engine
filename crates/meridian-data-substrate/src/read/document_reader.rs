@@ -1,28 +1,26 @@
 //! [`DocumentReader`]: reads an `.mscene` document against a registry.
 
 use std::collections::HashMap;
+use std::rc::Rc;
 
-use substrate_data::schema::is_metadata_key;
 use substrate_data::{Expected, Id, MapRef, Path, Reader, Resolve, Seg, ValueRef};
 
 use super::DocumentRole;
-use super::document_resolver::DocumentResolver;
 use super::finding::Finding;
+use super::names::{DocumentNames, DocumentResolver};
 use super::reading::Reading;
-use crate::document_keys::{COMPONENTS, ENTITIES, ENTITY, FORMAT_KEY, ID, NAME, PARENT, PREFAB};
-use crate::draft::{ComponentsDraft, DocumentDraft, PendingEntity};
+use crate::document_keys::{ENTITIES, ENTITY, FORMAT_KEY, ID, NAME, PARENT, PREFAB};
+use crate::draft::{DocumentDraft, PendingEntity};
 use crate::load::SceneProblem;
-use crate::{
-    ComponentName, ComponentRegistry, DisplayName, EntityKey, EntityKind, FORMAT, KeptComponent,
-    PrefabKind, UnknownComponents,
-};
+use crate::{ComponentRegistry, DisplayName, EntityKey, EntityKind, FORMAT, PrefabKind};
 
 /// Reads an `.mscene` document against a registry, collecting every
 /// problem Substrate Data doesn't see (unknown components, duplicate keys)
 /// next to those it does.
 pub(crate) struct DocumentReader<'r> {
-    registry: &'r ComponentRegistry,
+    pub(super) registry: &'r ComponentRegistry,
     role: &'r DocumentRole,
+    pub(super) names: Rc<DocumentNames>,
     findings: Vec<Finding>,
     first_at: HashMap<EntityKey, usize>,
 }
@@ -37,11 +35,13 @@ impl<'r> DocumentReader<'r> {
         root: &ValueRef<'_>,
         resolver: &mut dyn Resolve,
     ) -> Reading {
-        let mut resolver = DocumentResolver::new(root, resolver, role);
+        let names = Rc::new(DocumentNames::new(root, role));
+        let mut resolver = DocumentResolver::new(Rc::clone(&names), resolver);
         let mut cx = Reader::with_resolver(&mut resolver);
         let mut reader = DocumentReader {
             registry,
             role,
+            names,
             findings: Vec::new(),
             first_at: HashMap::new(),
         };
@@ -52,10 +52,11 @@ impl<'r> DocumentReader<'r> {
             draft: draft.filter(|_| clean),
             problems,
             findings: reader.findings,
+            pending: resolver.pending,
         }
     }
 
-    fn find(&mut self, problem: SceneProblem, path: Path, on_key: bool) {
+    pub(super) fn find(&mut self, problem: SceneProblem, path: Path, on_key: bool) {
         self.findings.push(Finding {
             problem,
             path,
@@ -113,12 +114,15 @@ impl<'r> DocumentReader<'r> {
     ) -> Option<PendingEntity> {
         let map = cx.map(v)?;
         cx.unknown_keys(map, &ENTITY);
-        let key = self.read_key(index, map, cx);
+        let ids = self.read_key(index, map, cx);
         let name: Option<Option<DisplayName>> = cx.field(map, NAME);
         let prefab: Option<Option<Id<PrefabKind>>> = cx.field(map, PREFAB);
         let parent: Option<Option<Id<EntityKind>>> = cx.field(map, PARENT);
         let components = self.read_components(map, cx);
-        let (key, parent) = (key?, parent?.map(|p| p.id));
+        let (local, key) = ids?;
+        let overrides =
+            self.read_overrides(map, (&local, &key), matches!(prefab, Some(Some(_))), cx);
+        let parent = parent?.map(|p| p.id);
         if parent.as_ref() == Some(&key) {
             self.find(
                 SceneProblem::OwnParent { key },
@@ -139,6 +143,7 @@ impl<'r> DocumentReader<'r> {
             prefab,
             parent,
             components: components?,
+            overrides: overrides?,
         })
     }
 
@@ -166,13 +171,14 @@ impl<'r> DocumentReader<'r> {
         false
     }
 
-    /// The entity's key, refused when an earlier entity has it.
+    /// The entity's key as written and as keyed, refused when an earlier
+    /// entity has it.
     fn read_key(
         &mut self,
         index: usize,
         map: MapRef<'_>,
         cx: &mut Reader<'_>,
-    ) -> Option<EntityKey> {
+    ) -> Option<(EntityKey, EntityKey)> {
         let key: EntityKey = cx.field(map, ID)?;
         if let Some(&first) = self.first_at.get(&key) {
             self.find(
@@ -183,63 +189,7 @@ impl<'r> DocumentReader<'r> {
             return None;
         }
         self.first_at.insert(key.clone(), index);
-        Some(self.role.key_of(key, index == 0))
-    }
-
-    fn read_components(
-        &mut self,
-        entity: MapRef<'_>,
-        cx: &mut Reader<'_>,
-    ) -> Option<ComponentsDraft> {
-        let Some(v) = entity.get(COMPONENTS) else {
-            return Some(ComponentsDraft::default());
-        };
-        cx.at(Seg::Key(COMPONENTS.into()), |cx| {
-            let map = cx.map(v)?;
-            let mut draft = ComponentsDraft::default();
-            let mut ok = true;
-            for (key, value) in map.iter().filter(|(k, _)| !is_metadata_key(k)) {
-                ok &= self.read_component(key, value, cx, &mut draft);
-            }
-            ok.then_some(draft)
-        })
-    }
-
-    /// Component `key` of an entity into `draft`; whether it read.
-    fn read_component(
-        &mut self,
-        key: &str,
-        value: &ValueRef<'_>,
-        cx: &mut Reader<'_>,
-        draft: &mut ComponentsDraft,
-    ) -> bool {
-        let path = cx.path().key(key);
-        let name = match ComponentName::new(key) {
-            Ok(name) => name,
-            Err(e) => {
-                self.find(SceneProblem::BadComponentName(e), path, true);
-                return false;
-            }
-        };
-        if let Some(entry) = self.registry.entry(&name) {
-            let read = cx.at(Seg::Key(key.into()), |cx| (entry.read)(value, cx));
-            return read
-                .map(|insert| draft.inserts.push((name, insert)))
-                .is_some();
-        }
-        if self.registry.unknown_components() == UnknownComponents::Keep {
-            draft.kept.push(KeptComponent {
-                name,
-                value: value.to_value(),
-            });
-            return true;
-        }
-        let suggestion = name.closest(self.registry.names()).cloned();
-        self.find(
-            SceneProblem::UnknownComponent { name, suggestion },
-            path,
-            true,
-        );
-        false
+        let keyed = self.role.key_of(key.clone(), index == 0);
+        Some((key, keyed))
     }
 }

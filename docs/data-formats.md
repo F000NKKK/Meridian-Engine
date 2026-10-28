@@ -117,8 +117,9 @@ this, including the rotor order against the axis–angle formula.
   a "did you mean" suggestion, unless the registry allows unknown
   components to pass through untouched (editors do, so a scene written by
   a newer game still opens).
-- `prefab` instantiates the prefab, then applies the listed components as
-  whole-component overrides. Field-level overrides are a later format bump.
+- `prefab` instantiates the prefab, then applies the listed `components`
+  as whole-component replacements and the entity's `overrides` field by
+  field (see [Prefab](#prefab-mprefab)).
 
 ### Binary form
 
@@ -164,8 +165,8 @@ root**: the prefab is read, and
 - the scene entity takes the prefab root's place: its `name` if it has
   none of its own, and the root's components, under its own
   `components` — a component the entity lists **replaces the prefab's
-  whole** (field-level overrides are a later format bump); `parent` is the
-  entity's;
+  whole**; `parent` is the entity's; its `overrides` then change single
+  fields (below);
 - every other prefab entity is spawned as `<instance id>/<prefab id>`
   (`hero/gun`), with `generated_by` set to the instance root in its
   `SceneEntity`; the `@entity:` references inside the prefab (`parent`, or
@@ -195,12 +196,100 @@ let text = registry.save_prefab(&world, &tree);                                 
 ```
 
 `load_scene` and `load_scene_binary` (no source) leave a `prefab` field
-as written. **Saving** a scene writes an instance as its root with the
-prefab path and its *current* components as the overrides, and leaves the
-generated `<id>/…` entities out: the prefab makes them again on load, so
-edits to a generated entity are not saved (they need the field-level
-override bump), and a `parent` that names a generated entity is not
-expressible in a scene yet.
+as written.
+
+### Overrides
+
+An entity that says `prefab` may also have `overrides`: a map from the key
+of an entity of the instance to what changes in it. The target is the
+instance itself (`hero`) or an entity its prefab made, by the key it has
+once instanced (`hero/gun`; in a nested instance `squad/leader/gun`). It is
+a key in the document the override is written in, so inside a prefab it is
+that prefab's local id (`leader/gun`) and is renamed with the instance. Each
+target holds any of three keys:
+
+```text
+overrides: {
+  "hero/gun": {
+    fields:     { rigid_body: { mass: 2 } },        // merged into the component
+    components: { follow: { target: "@entity:hero" } },   // the component, whole
+    remove:     ["mesh_renderer"],                  // taken away
+  },
+}
+```
+
+- `fields` is a map from component name to a **patch**, merged into the
+  component's document value: maps merge key by key, recursively; a list,
+  a scalar, `null`, or a map over a value that is not a map **replaces**
+  what is there (`null` is a value, not a deletion). A component the
+  target does not have gets the patch as its whole value. The merged value
+  is read by the component's own schema, so a field it doesn't know or a
+  value of the wrong type is a `Data` problem at that field.
+- `components` replaces the component whole (the same as the entity's own
+  `components`, which stays and means the same for the instance root) or
+  adds it.
+- `remove` takes components away; naming one the target lacks is
+  `OverrideRemovesMissing`.
+- Order: the entity's `components`, then per target in the order written
+  `components`, `fields`, `remove`. `@entity:` names inside an override
+  mean what they mean elsewhere in the document, and may name generated
+  entities (`@entity:hero/gun`).
+- Problems, each at its path (`entities[0].overrides["h/gunn"]`):
+  `BadOverrideTarget` (not an entity key), `OverrideOutsideInstance`
+  (neither the instance nor below it), `NoSuchGeneratedEntity` (the prefab
+  makes no such entity; with a suggestion), `OverridesWithoutPrefab`
+  (`overrides` on an entity without `prefab`), `OverridesNeedPrefabs`
+  (loaded without a `PrefabSource`, which can't know what they override),
+  `UnknownComponent`, `BadComponentName`, and unknown keys in a target.
+  All are reported together; nothing is spawned.
+
+The key is additive: `format` stays 1, every document that read before
+reads the same, and an older reader refuses a document that has
+`overrides` with an unknown-key problem rather than ignoring it.
+
+### Entities below an instance
+
+`parent`, and any `@entity:` reference in a component, may name an entity
+a prefab makes: `parent: "@entity:hero/gun"` puts a scene entity under the
+gun. The name is checked after the prefabs are instanced:
+`NoSuchGeneratedEntity` if it isn't made (also in a document read without
+a source, where nothing is), and `ParentInsideInstance` for an instance
+parented to one of its own entities. Only a name below an entity that
+says `prefab` is taken for such an entity; any other unknown name is the
+usual unresolved reference.
+
+### Saving instances
+
+`save_scene`, `save_scene_binary` and `save_game` write a prefab instance as
+its root with the prefab path and its *current* components, and leave the
+generated `<id>/…` entities out; they need no prefabs but cannot keep an
+edit to a generated entity. The `_with_prefabs` forms do:
+
+```rust
+let text  = registry.save_scene_with_prefabs(SceneView::new(&world, &scene), &mut source)?;
+let bytes = registry.save_scene_binary_with_prefabs(SceneView::new(&world, &scene), &mut source)?;
+let save  = registry.save_game_with_prefabs(&header, SceneView::new(&world, &scene), &state, &mut source)?;
+```
+
+Each instance's prefab is read again (the same `PrefabSource`) and every
+entity of the instance — the root and the generated ones, nested
+instances included — is compared with what the prefab makes. What the
+instance writes is `overrides` only, keyed by the entity's key:
+
+- a component whose document value differs: the **changed fields only**
+  (`fields`, recursive for maps), a changed list or scalar whole;
+- a component the prefab entity lacks, and a component that can't be
+  patched (a map lost a key, so a patch cannot say so), as `components`;
+- a component the prefab entity has and the world lacks, as `remove`;
+- the `name` only when it differs from the prefab root's; no
+  `components` on the instance, and no `overrides` when nothing changed.
+
+Loading what is written with the same prefabs gives the same world
+(round-trip tested in both forms, nested instances too). `SceneSaveError`
+names the instance and prefab when a prefab can't be read. What is not
+saved: a generated entity despawned (the prefab makes it again), a
+generated entity's `name`, `parent` or `prefab`, and entities added to
+the world under an instance. `save_prefab` writes a prefab as before.
 
 ## Component registry
 
@@ -284,7 +373,8 @@ Binary only, always a map in this key order:
   a delta against the level file. A state-level delta is a later format
   bump (that is what `format` is for). Prefab instances are saved as their
   root (see above) and made again on load, so loading a save needs the
-  same `PrefabSource`.
+  same `PrefabSource`; `save_game_with_prefabs` writes them as the changes
+  from their prefab, edits to generated entities included.
 - `state` is the game's: `save_game::<T: Schema>` writes any type through
   its own schema, straight, so a `substrate_data::Stream` in it (voxel
   chunks, a recorded input log) stays a stream in the file and is read one
@@ -367,8 +457,10 @@ port: `PrefabSource` stays the data crate's port).
 - `WorldFiles` (registry + directory + loader, built by the application)
   is the entry point: `load_scene(path, &mut world, &mut resolver)`,
   `spawn_prefab`, `save_scene(path, SceneView, SceneForm::{Text, Binary})`,
-  `load_game::<T>`, `save_game`, `read_save_header`. Errors are one
-  `WorldFilesError` (`Read`, `Interrupted`, `Scene`, `Save`,
+  `load_game::<T>`, `save_game`, `read_save_header`. Saving writes prefab
+  instances as overrides ([Saving instances](#saving-instances)), reading
+  each instance's prefab from the directory again. Errors are one
+  `WorldFilesError` (`Read`, `Interrupted`, `Scene`, `Save`, `Instance`,
   `PathRejected`, `Write`) that wraps the data crate's typed errors.
 - Call them from a loading thread, never from a frame, and not from a job
   of the loader's own pool (it waits on that pool). Loads are all or
@@ -398,7 +490,7 @@ Specified in [editor-domain.md](editor-domain.md).
 | `substrate-data` crates | done (separate repository; 0.3.x on crates.io) |
 | `data` feature on `numeric`/`gac` | done |
 | `meridian-data-substrate` (registry, `.mscene` text and binary load/save, `describe()`) | done (hierarchy as `meridian-data-substrate::Parent` until `ecs` has one) |
-| `.mprefab` (load, instancing with whole-component overrides, nesting, cycle and depth checks, `PrefabSource` port, text and binary save) | done; field-level overrides, patching an instance's edits back, and a scene `parent` naming a generated entity are later |
+| `.mprefab` (load, instancing with whole-component and field-level overrides, overrides on generated entities by path, `parent`/references naming generated entities, nesting, cycle and depth checks, `PrefabSource` port, text and binary save; instances saved as the changes from their prefab) | done; removing or reparenting a generated entity is not saved |
 | `.msave` envelope (`format`/`game`/`created`/`scene`/`state`, lazy header and scene) | done; scene is full, a delta is a later `format` |
 | `meridian-sdk` `WorldFiles` + `AssetPrefabSource` (scene, prefab and save by path over the asset layer) | done; not yet driven by `runtime-app`'s frame loop |
 | patching an existing `.mscene` file on save | not implemented |

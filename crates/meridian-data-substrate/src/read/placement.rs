@@ -26,6 +26,7 @@ impl Placement<'_> {
             draft,
             problems,
             findings,
+            ..
         } = reading;
         if let Some(draft) = draft {
             return Ok(draft);
