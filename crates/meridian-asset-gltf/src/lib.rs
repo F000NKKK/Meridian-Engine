@@ -11,6 +11,8 @@ mod data_uri;
 mod gltf_decoder;
 mod gltf_error;
 mod limits;
+#[cfg(test)]
+mod motion_tests;
 mod read;
 mod resources;
 mod scene_walk;

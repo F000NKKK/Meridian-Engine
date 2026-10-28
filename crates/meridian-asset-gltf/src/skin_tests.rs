@@ -7,7 +7,7 @@ use crate::{GltfDecoder, GltfError};
 
 /// Three positions, `u8` joints, `f32` weights, `u16` indices, two inverse
 /// bind matrices (the skin's joint order: node 1 first), animation times and translation values.
-fn bin(joint_index: u8) -> Vec<u8> {
+pub(crate) fn bin(joint_index: u8) -> Vec<u8> {
     let positions: [f32; 9] = [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0];
     let mut bin: Vec<u8> = positions.iter().flat_map(|f| f.to_le_bytes()).collect();
     for _ in 0..3 {
@@ -39,7 +39,7 @@ fn bin(joint_index: u8) -> Vec<u8> {
 /// A skinned triangle on node 0 (moved by 100 on x, which a skin ignores)
 /// bound to joints `[node 1, node 2]`, where node 1 is a child of node 2:
 /// listed child first, so the decoder has to reorder.
-fn document(mesh_attributes: &str) -> String {
+pub(crate) fn document(mesh_attributes: &str) -> String {
     format!(
         r#"{{
   "asset": {{"version": "2.0"}},

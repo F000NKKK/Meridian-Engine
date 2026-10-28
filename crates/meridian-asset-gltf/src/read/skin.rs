@@ -31,6 +31,8 @@ pub(crate) struct Skins {
     maps: Vec<SkinMap>,
     /// Per node, the `(skeleton, joint)` pairs it is a joint of.
     node_joints: Vec<Vec<(usize, usize)>>,
+    /// The parent node of every node.
+    parents: Vec<Option<usize>>,
 }
 
 impl Skins {
@@ -45,6 +47,7 @@ impl Skins {
         let parents = parents(document);
         let mut skins = Skins {
             node_joints: vec![Vec::new(); document.nodes().len()],
+            parents: parents.clone(),
             ..Skins::default()
         };
         for skin in document.skins() {
@@ -65,6 +68,22 @@ impl Skins {
     /// The map for `skin`, by the skin's index in the document.
     pub(crate) fn map(&self, skin: &Skin<'_>) -> Option<&SkinMap> {
         self.maps.get(skin.index())
+    }
+
+    /// The parent of `node`.
+    pub(crate) fn parent_of(&self, node: usize) -> Option<usize> {
+        self.parents.get(node).copied().flatten()
+    }
+
+    /// Appends `skeleton` and returns its index.
+    pub(crate) fn push_skeleton(&mut self, skeleton: ModelSkeleton) -> usize {
+        self.skeletons.push(skeleton);
+        self.skeletons.len() - 1
+    }
+
+    /// Records that `node` is joint `joint` of skeleton `skeleton`.
+    pub(crate) fn add_node_joint(&mut self, node: usize, skeleton: usize, joint: usize) {
+        self.node_joints[node].push((skeleton, joint));
     }
 
     /// The `(skeleton, joint)` pairs that `node` is a joint of.
