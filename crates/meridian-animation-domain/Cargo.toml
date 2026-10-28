@@ -1,0 +1,16 @@
+[package]
+name = "meridian-animation-domain"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Skeletal animation vocabulary and math, CPU only: skeletons and joints, keyframed clips, playback, and the joint matrices a skinned mesh is drawn with; see ADR 047."
+readme = "README.md"
+
+[dependencies]
+meridian-gac = { workspace = true }
+thiserror = { workspace = true }
+
+[lints]
+workspace = true

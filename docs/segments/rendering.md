@@ -106,8 +106,8 @@ Not started; ordered by suggested priority. Items wait for an explicit task.
 20. Specular and horizon occlusion: [ADR 044](../adr/044-specular-and-horizon-occlusion.md).
 21. Spot lights and their shadows: [ADR 045](../adr/045-spot-lights-and-their-shadows.md).
 22. Main-pass frustum culling and bind-group reuse: [ADR 046](../adr/046-main-pass-culling-and-bind-group-reuse.md).
-23. **Larger, ADR-gated:** skinned glTF and
-   animation (no vocabulary yet), concrete backend crates.
+23. Skeletal animation vocabulary ([ADR 047](../adr/047-skeletal-animation-vocabulary.md)): `animation-domain`, then glTF skins, then GPU skinning.
+24. **Larger, ADR-gated:** concrete backend crates.
 
 ## Standards gaps
 

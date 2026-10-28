@@ -41,6 +41,54 @@ impl Rotor {
         Rotor(Multivector(m))
     }
 
+    /// The rotation of the unit quaternion `[x, y, z, w]` (the order glTF
+    /// stores them in; `w` is the scalar part). The input is normalised; a
+    /// zero quaternion has no direction and gives the identity.
+    #[must_use]
+    pub fn from_quaternion(quaternion: [Scalar; 4]) -> Self {
+        let length = quaternion.iter().map(|c| c * c).sum::<Scalar>().sqrt();
+        if length <= Scalar::EPSILON {
+            return Rotor::identity();
+        }
+        let mut m = [0.0; 16];
+        m[blade::S] = quaternion[3] / length;
+        m[blade::E23] = -quaternion[0] / length;
+        m[blade::E13] = quaternion[1] / length;
+        m[blade::E12] = -quaternion[2] / length;
+        Rotor(Multivector(m))
+    }
+
+    /// The unit quaternion `[x, y, z, w]` of this rotation, the inverse of
+    /// [`from_quaternion`](Self::from_quaternion).
+    #[must_use]
+    pub fn to_quaternion(self) -> [Scalar; 4] {
+        let m = self.0.0;
+        [-m[blade::E23], m[blade::E13], -m[blade::E12], m[blade::S]]
+    }
+
+    /// The rotation `t` of the way from `self` to `other` (`t = 0` is `self`,
+    /// `t = 1` is `other`) along the shorter arc at constant angular speed.
+    /// Nearly parallel rotations are blended linearly, which is accurate
+    /// there and avoids dividing by a vanishing sine.
+    #[must_use]
+    pub fn slerp(self, other: Rotor, t: Scalar) -> Rotor {
+        let a = self.to_quaternion();
+        let mut b = other.to_quaternion();
+        let mut cosine: Scalar = a.iter().zip(&b).map(|(p, q)| p * q).sum();
+        if cosine < 0.0 {
+            b = b.map(|v| -v);
+            cosine = -cosine;
+        }
+        let (from, to) = if cosine > 0.9995 {
+            (1.0 - t, t)
+        } else {
+            let angle = cosine.acos();
+            let sine = angle.sin();
+            (((1.0 - t) * angle).sin() / sine, (t * angle).sin() / sine)
+        };
+        Rotor::from_quaternion(std::array::from_fn(|i| a[i] * from + b[i] * to))
+    }
+
     /// Composes two rotations: `self` applied first, then `rhs` — i.e.
     /// `rhs.compose(self)` in row-vector convention, `self` in column-
     /// vector/geometric-product convention. Matches [`Motor3::compose`](crate::Motor3::compose).
