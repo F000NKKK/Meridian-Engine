@@ -1,9 +1,10 @@
-# ADR 028: HTTP asset source without TLS
+# ADR 028: HTTP asset source
 
 ## Status
 
 Accepted. Follows [ADR 027](027-background-asset-loading.md) D4, which expected
 an HTTP source to use `tokio` inside the adapter; it does not need to.
+Amended 2026-10-28: `https` is supported (D2), after the licence allow-list grew.
 
 ## Context
 
@@ -13,23 +14,29 @@ runs on a `BackgroundPool` thread, so the adapter is a blocking HTTP client.
 nothing, and `async` stays reserved for the frame-side I/O it was adopted for
 (ADR 009).
 
-TLS is the hard part. `ureq`'s `rustls` feature pulls in `ring`, whose licence
-(`ISC AND MIT AND OpenSSL`) is not in `deny.toml`'s allow list, and `deny.toml`
-says a licence is added by a Craftbook PR, not locally. `cargo deny` runs with
-`all-features = true`, so an optional `tls` feature would fail the gate as well.
+TLS was the hard part. `ureq`'s `rustls` feature pulls in `ring` and the
+Mozilla root bundle (`webpki-roots`). The first version shipped without TLS
+because `deny.toml` did not allow the licences involved (OpenSSL on older `ring`
+releases, `CDLA-Permissive-2.0` for the roots) and a licence is added by a
+Craftbook PR, not locally. The owner then allowed every attribution-only
+permissive licence (Craftbook `templates/deny.toml`, 2026-10-28), and the latest
+`ring` (0.17.14) is `Apache-2.0 AND ISC` anyway. `cargo deny` runs with
+`all-features = true`, so the feature set cannot hide a dependency from the gate.
 
 ## Decision
 
 **D1 — `meridian-asset-http`.** An infrastructure crate in the assets context,
-depending only on `meridian-asset-app` (plus `ureq` without TLS,
+depending only on `meridian-asset-app` (plus `ureq` with `rustls`,
 `percent-encoding`, `thiserror`). `HttpSource` implements `ByteSource` for
-`http://host[:port][/prefix]`.
+`http[s]://host[:port][/prefix]`.
 
-**D2 — plain `http` only, and loud about it.** `HttpSource::new` returns
-`HttpSourceError::UnsupportedScheme` for `https://` instead of downgrading. It
-is for a LAN, a loopback dev server or an asset proxy that terminates TLS. Real
-`https` waits for a decision on the `ring` licence (or a crypto provider with an
-allowed one); then only `Cargo.toml` and the scheme check change.
+**D2 — `http` and `https`; nothing else.** `HttpSource::new` accepts both
+schemes and returns `HttpSourceError::UnsupportedScheme` for any other. Over
+`https` the server certificate is checked against the Mozilla roots; a server
+with a private or self-signed certificate is trusted explicitly with
+`with_root_certificate(der)`, which replaces the public roots for that source.
+There is no switch that disables verification, and no downgrade from `https` to
+`http`.
 
 **D3 — a hostile server cannot hold a thread or fill memory.** Redirects are
 not followed, a request has a global timeout (30 s), a body over a cap (64 MiB)
@@ -42,8 +49,11 @@ outside RFC 3986's unreserved set is percent-encoded.
 
 ## Consequences
 
-- No asset served over `https` yet; the error says so at construction.
-- The crate is tested against a one-thread local server in its own tests
-  (no external network).
+- The TLS stack (`rustls`, `ring`, `webpki-roots`) is now in the build of every
+  binary that depends on `sdk`. The roots are compiled in, so they age with the
+  release: a long-lived game updates them by rebuilding.
+- The crate is tested against one-thread loopback servers in its own tests
+  (no external network): plain, and TLS with a 100-year self-signed fixture
+  certificate in `testdata/` (a public test key on purpose).
 - `sdk` re-exports `HttpSource`; a game builds
   `AssetLoader::new(Arc::new(HttpSource::new(url)?), Arc::new(BackgroundPool::new(n)))`.

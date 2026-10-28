@@ -4,8 +4,9 @@ HTTP adapter for `meridian-asset-app`: reads asset bytes from a web server.
 
 **Layer and context:** infrastructure · assets
 
-- **For:** `HttpSource`, a `ByteSource` rooted at a base URL (`http://host:port/assets`). Blocking, so it runs on the loader's background threads. Redirects are not followed, the body is capped (64 MiB unless raised) and a request times out (30 s unless changed); a path that is empty, `.`/`..` or has an empty segment is rejected, other bytes are percent-encoded.
-- **Not for:** `https://` (needs a TLS library whose licence the workspace does not allow yet, ADR 028; `HttpSource::new` refuses it), decoding, or threads.
+- **For:** `HttpSource`, a `ByteSource` rooted at a base URL (`http[s]://host:port/assets`). Blocking, so it runs on the loader's background threads. Redirects are not followed, the body is capped (64 MiB unless raised) and a request times out (30 s unless changed); a path that is empty, `.`/`..` or has an empty segment is rejected, other bytes are percent-encoded.
+- **Also:** `https://` through rustls, checked against the Mozilla roots; `with_root_certificate` trusts a private or self-signed server instead (ADR 028).
+- **Not for:** decoding, or threads.
 
 ## Usage
 
