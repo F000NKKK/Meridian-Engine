@@ -12,7 +12,7 @@ use super::AssetBinder;
 use crate::GraphicsSession;
 
 /// Meshes `builtin/cube`, `builtin/sphere` and `builtin/ground`, and the
-/// material `builtin/default`: what `@asset:builtin/...` names. Each is
+/// material `builtin/default` (a light grey, since `Material::default()` is black): what `@asset:builtin/...` names. Each is
 /// registered once, on first use.
 #[derive(Debug, Default)]
 pub struct BuiltinAssets {
@@ -48,7 +48,17 @@ impl AssetBinder for BuiltinAssets {
         Some(
             *self
                 .default_material
-                .get_or_insert_with(|| session.render.materials.register(Material::default())),
+                .get_or_insert_with(|| session.render.materials.register(light_grey())),
         )
+    }
+}
+
+/// `Material::default()` is black, which draws a primitive as a dark blob.
+fn light_grey() -> Material {
+    Material {
+        base_color_factor: [0.75, 0.75, 0.75, 1.0],
+        roughness: 0.6,
+        metallic: 0.0,
+        ..Material::default()
     }
 }

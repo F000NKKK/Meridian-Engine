@@ -128,9 +128,31 @@ fn a_scene_file_with_asset_references_is_bound_and_drawn() {
         .expect("the scene loads");
     let unbound = renderer.bind_references(&mut world, &mut BuiltinAssets::default());
     assert_eq!(unbound.len(), 1);
+    let ball = world
+        .get::<MeshRenderer>(ball_entity(&world))
+        .expect("bound");
+    let colour = renderer
+        .session_mut()
+        .render
+        .materials
+        .get(ball.material)
+        .expect("registered")
+        .base_color_factor;
+    assert!(
+        colour[0] > 0.5,
+        "the default material is a light grey, not black"
+    );
     assert_eq!(unbound[0].missing.as_str(), "meshes/nowhere.obj");
     let pixels = renderer
         .render(&world, &EditorCamera::default())
         .expect("a frame");
     assert!(varied(pixels), "the bound sphere shows up");
+}
+
+fn ball_entity(world: &World) -> meridian_ecs::Entity {
+    world
+        .query::<MeshRenderer>()
+        .map(|(entity, _)| entity)
+        .next()
+        .expect("one entity is bound")
 }
