@@ -1,14 +1,14 @@
 //! Walking the tree into sprites.
 
 use meridian_gac::{Motor3, Vec3};
-use meridian_rendering_domain::{Camera2d, Scene2d, Sprite};
+use meridian_rendering_domain::{Camera2d, ClipRect, ClipSpan, Scene2d, Sprite};
 use meridian_text_domain::FontError;
 use meridian_ui_domain::layout::value::Visibility;
 use meridian_ui_domain::properties::element::{BACKGROUND, VISIBILITY};
 use meridian_ui_domain::{ElementKind, NodeId, Point, Rect, Size, UiError, UiTree};
 
 use crate::text::{TextPaint, push_text};
-use crate::{RenderError, UiPaint};
+use crate::{ExtractedScene, RenderError, UiPaint};
 
 /// Extracts the visible subtree under `root` into a screen-space
 /// [`Scene2d`] whose camera is `surface` logical pixels, origin top-left,
@@ -29,6 +29,22 @@ pub fn extract_scene(
     surface: Size,
     paint: UiPaint,
 ) -> Result<Scene2d, UiError> {
+    Ok(extract_clipped(tree, root, surface, paint)?.scene)
+}
+
+/// [`extract_scene`] that also reports the clip spans of the tree's
+/// `ScrollViewer`s: draw it with `batch_scene2d_clipped(&out.scene,
+/// &out.clips)`. Without the spans a viewer's content spills out of it.
+///
+/// # Errors
+///
+/// [`UiError::StaleNode`] when `root` is not in `tree`.
+pub fn extract_clipped(
+    tree: &UiTree,
+    root: NodeId,
+    surface: Size,
+    paint: UiPaint,
+) -> Result<ExtractedScene, UiError> {
     tree.kind(root)?;
     Ok(Extraction::new(tree, paint, None).run(root, surface).0)
 }
@@ -53,15 +69,32 @@ pub fn extract_scene_with_text(
     paint: UiPaint,
     text: &mut TextPaint<'_>,
 ) -> Result<Scene2d, RenderError> {
+    Ok(extract_clipped_with_text(tree, root, surface, paint, text)?.scene)
+}
+
+/// [`extract_scene_with_text`] that also reports the clip spans, as
+/// [`extract_clipped`] does.
+///
+/// # Errors
+///
+/// As [`extract_scene_with_text`].
+pub fn extract_clipped_with_text(
+    tree: &UiTree,
+    root: NodeId,
+    surface: Size,
+    paint: UiPaint,
+    text: &mut TextPaint<'_>,
+) -> Result<ExtractedScene, RenderError> {
     tree.kind(root)?;
     for _ in 0..2 {
         let resets = text.cache.resets();
-        let (scene, failure) = Extraction::new(tree, paint, Some(&mut *text)).run(root, surface);
+        let (extracted, failure) =
+            Extraction::new(tree, paint, Some(&mut *text)).run(root, surface);
         if let Some(error) = failure {
             return Err(error);
         }
         if text.cache.resets() == resets {
-            return Ok(scene);
+            return Ok(extracted);
         }
     }
     Err(RenderError::Font(FontError::BitmapTooLarge))
@@ -73,6 +106,7 @@ struct Extraction<'t, 'p> {
     paint: UiPaint,
     text: Option<&'t mut TextPaint<'p>>,
     sprites: Vec<Sprite>,
+    clips: Vec<ClipSpan>,
     failure: Option<RenderError>,
 }
 
@@ -83,18 +117,23 @@ impl<'t, 'p> Extraction<'t, 'p> {
             paint,
             text,
             sprites: Vec::new(),
+            clips: Vec::new(),
             failure: None,
         }
     }
 
     /// Walks from `root`; the scene plus the first failure, if any.
-    fn run(mut self, root: NodeId, surface: Size) -> (Scene2d, Option<RenderError>) {
+    fn run(mut self, root: NodeId, surface: Size) -> (ExtractedScene, Option<RenderError>) {
         self.visit(root, Point::new(0.0, 0.0));
         let scene = Scene2d {
             camera: Camera2d::from_surface_size(surface.width, surface.height),
             sprites: self.sprites,
         };
-        (scene, self.failure)
+        let extracted = ExtractedScene {
+            scene,
+            clips: self.clips,
+        };
+        (extracted, self.failure)
     }
 
     /// Emits `node` and its children; `origin` is the parent's top-left in
@@ -113,9 +152,33 @@ impl<'t, 'p> Extraction<'t, 'p> {
         };
         self.fill_background(node, area);
         self.draw_text(node, area);
+        let first_layer = self.sprites.len();
         for child in self.tree.children(node).unwrap_or_default() {
             self.visit(*child, area.origin);
         }
+        if self.tree.kind(node) == Ok(ElementKind::ScrollViewer) {
+            self.clip_since(first_layer, area);
+        }
+    }
+
+    /// Clips every sprite emitted since `first_layer` to `area`.
+    fn clip_since(&mut self, first_layer: usize, area: Rect) {
+        let (Ok(first), Ok(last)) = (
+            i32::try_from(first_layer),
+            i32::try_from(self.sprites.len().saturating_sub(1)),
+        ) else {
+            return;
+        };
+        if first > last {
+            return;
+        }
+        self.clips.push(ClipSpan {
+            layers: first..=last,
+            rect: ClipRect {
+                origin: [area.origin.x, area.origin.y],
+                size: [area.size.width, area.size.height],
+            },
+        });
     }
 
     fn draw_text(&mut self, node: NodeId, area: Rect) {

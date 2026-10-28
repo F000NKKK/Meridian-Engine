@@ -8,11 +8,15 @@
 //! Text is drawn from `meridian-text-domain`'s glyph atlas (ADR 023).
 
 mod extract;
+mod extracted_scene;
 mod paint;
 mod render_error;
 mod text;
 
-pub use extract::{extract_scene, extract_scene_with_text};
+pub use extract::{
+    extract_clipped, extract_clipped_with_text, extract_scene, extract_scene_with_text,
+};
+pub use extracted_scene::ExtractedScene;
 pub use paint::UiPaint;
 pub use render_error::RenderError;
 pub use text::{FaceMeasurer, TextPaint};

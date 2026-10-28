@@ -20,6 +20,12 @@ pub enum InputEvent {
         key: Key,
         modifiers: Modifiers,
     },
+    /// The wheel or touchpad turned over `at`; positive `delta` scrolls
+    /// towards the end of the content (down, right), in pixels.
+    Scrolled {
+        at: Point,
+        delta: Point,
+    },
     /// Typed text, after the platform's layout and IME processing.
     Text(String),
 }

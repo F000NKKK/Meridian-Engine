@@ -7,6 +7,7 @@ pub mod dock_panel;
 pub mod element;
 pub mod grid;
 pub mod interaction;
+pub mod scroll_viewer;
 pub mod stack_panel;
 pub mod text_block;
 
@@ -34,6 +35,8 @@ pub const ALL: &[PropertyMeta] = &[
     interaction::IS_HIT_TEST_VISIBLE.meta(),
     element::BACKGROUND.meta(),
     text_block::FOREGROUND.meta(),
+    scroll_viewer::HORIZONTAL_OFFSET.meta(),
+    scroll_viewer::VERTICAL_OFFSET.meta(),
 ];
 
 /// Looks a property up by id.

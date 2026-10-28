@@ -34,16 +34,20 @@ pub enum ElementKind {
     Grid,
     /// A run of text, sized by a [`crate::TextMeasurer`].
     TextBlock,
+    /// One child shown through a window moved by `HorizontalOffset` and
+    /// `VerticalOffset`; the child is laid out at its full size.
+    ScrollViewer,
 }
 
 impl ElementKind {
     /// Every kind, for tooling that lists or round-trips tags.
-    pub const ALL: [Self; 5] = [
+    pub const ALL: [Self; 6] = [
         Self::Border,
         Self::StackPanel,
         Self::DockPanel,
         Self::Grid,
         Self::TextBlock,
+        Self::ScrollViewer,
     ];
 
     /// The markup tag of this kind (`<StackPanel>`).
@@ -54,6 +58,7 @@ impl ElementKind {
             Self::DockPanel => "DockPanel",
             Self::Grid => "Grid",
             Self::TextBlock => "TextBlock",
+            Self::ScrollViewer => "ScrollViewer",
         }
     }
 

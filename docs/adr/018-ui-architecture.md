@@ -122,6 +122,13 @@ walks the laid-out tree into `Scene2D` sprites and quads and feeds it
 structure, and nothing in the ECS knows about UI. `ui-core` stays
 domain-neutral; game widgets are defined by the game.
 
+**7a. `ScrollViewer`.** An element with one child laid out at its full
+(unbounded) size, shown through a window moved by `HorizontalOffset` and
+`VerticalOffset` (clamped to the content at arrange time). The wheel
+(`InputEvent::Scrolled`) scrolls the nearest viewer under the pointer that can
+still move that way, passing to an outer viewer at the limit. Clipping is
+extraction's job: it reports one clip span per viewer (ADR 021).
+
 **8. Tool, not shackles.** The UI follows the extensibility rule of
 [ADR 021](021-ui-extraction-and-extensibility.md) §6: markup is optional,
 custom elements/draw/input go through public traits, and nothing sealed
@@ -134,7 +141,7 @@ may block a game from replacing layout, visuals or input handling.
 - Tunnelling events, pointer capture and drag, directional (gamepad)
   focus navigation, `TabIndex`, IME composition (only finished text
   arrives as `Text`), `Enter`/`Space` activation (a control's job).
-- Controls (`Button`, `TextBox`, `ScrollViewer`) and content model
+- Controls (`Button`, `TextBox`) and content model
   (`ContentControl`); more panels (`Canvas`, `WrapPanel`); `Min`/`Max`
   sizes; `Grid` row/column spans.
 - Extraction of text and images, `Scene3D` output, custom paint hooks
