@@ -29,7 +29,7 @@ pub use fly::{FlyCamera, FlyControls};
 pub use frustum::Frustum;
 pub use graph_resource_id::GraphResourceId;
 pub use mesh_handle::{MeshHandle, MeshMarker};
-pub use render_graph::RenderGraph;
+pub use render_graph::{AllocationPlan, RenderGraph, ResourceLifetime};
 pub use render_graph_error::RenderGraphError;
 pub use render_pass::RenderPass;
 pub use scene::{
