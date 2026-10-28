@@ -32,7 +32,6 @@ mod color_format;
 mod command_buffer;
 mod depth_texture;
 mod devices;
-mod fullscreen_vertex;
 mod gpu_frame_recorder;
 mod gpu_texture_store;
 mod overlay_pass;

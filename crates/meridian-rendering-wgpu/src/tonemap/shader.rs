@@ -1,6 +1,6 @@
 //! WGSL for the tone mapping pass.
 
-use crate::fullscreen_vertex::FULLSCREEN_VERTEX_WGSL;
+use crate::FULLSCREEN_VERTEX_WGSL;
 
 /// Reads the HDR scene, scales it by the exposure and compresses it with the
 /// curve `u.params.y` names (`TonemapOperator::index`). The swapchain view is

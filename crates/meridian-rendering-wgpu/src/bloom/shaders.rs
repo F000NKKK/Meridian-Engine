@@ -1,6 +1,6 @@
 //! WGSL for the bloom blur and composite passes.
 
-use crate::fullscreen_vertex::FULLSCREEN_VERTEX_WGSL;
+use crate::FULLSCREEN_VERTEX_WGSL;
 
 /// A 5-tap separable Gaussian blur (the classic `LearnOpenGL` weights),
 /// applied along `u.direction` — call once with a horizontal direction,
