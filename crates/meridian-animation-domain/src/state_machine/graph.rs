@@ -1,6 +1,9 @@
 //! The states of a model and the ways between them.
 
-use super::{AnimationState, Condition, GraphError, ParamId, ParamKind, StateId, Transition};
+use super::{
+    AnimationState, Condition, GraphError, Motion, ParamId, ParamKind, StateId, Transition,
+};
+use crate::Repeat;
 
 /// A state machine: states that each play an animation, and transitions
 /// that move between them when their conditions hold. Plain data, built once
@@ -14,9 +17,14 @@ pub struct AnimationGraph {
 }
 
 impl AnimationGraph {
-    /// A graph whose first state is `start`, where a controller begins.
+    /// A graph whose first state plays one animation (none is the rest pose),
+    /// where a controller begins.
     #[must_use]
-    pub fn new(start: AnimationState) -> Self {
+    pub fn new(animation: Option<usize>, repeat: Repeat) -> Self {
+        let start = AnimationState {
+            motion: Motion::Clip(animation),
+            repeat,
+        };
         Self {
             states: vec![start],
             transitions: Vec::new(),
@@ -31,10 +39,31 @@ impl AnimationGraph {
         self.start
     }
 
+    /// Makes `state` the one a controller begins in instead.
+    ///
+    /// # Errors
+    ///
+    /// A state that is not this graph's.
+    pub fn set_start(&mut self, state: StateId) -> Result<(), GraphError> {
+        if state.0 >= self.states.len() {
+            return Err(GraphError::UnknownState(state.0));
+        }
+        self.start = state;
+        Ok(())
+    }
+
     /// Adds a state and returns its id.
-    pub fn add_state(&mut self, state: AnimationState) -> StateId {
+    ///
+    /// # Errors
+    ///
+    /// A blend that reads a parameter this graph does not have, or one that
+    /// is not a float.
+    pub fn add_state(&mut self, state: AnimationState) -> Result<StateId, GraphError> {
+        for id in state.motion.params() {
+            self.check(Condition::Above(id, 0.0))?;
+        }
         self.states.push(state);
-        StateId(self.states.len() - 1)
+        Ok(StateId(self.states.len() - 1))
     }
 
     /// Adds a parameter of `kind` and returns its id.

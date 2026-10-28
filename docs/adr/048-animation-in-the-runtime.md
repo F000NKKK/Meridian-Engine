@@ -67,9 +67,33 @@ pose the model with that joint's x and z held at rest
 (`Rig::matrices_pinned`) and add the travel to the entity's `Transform`,
 in the entity's own frame. The travel is the difference between the joint's
 position now and before, plus a whole stride for each loop, mixed by the same
-weights as the pose, so crossfades blend the walks. Rotation and height stay
-in the pose. This is the one case where the stage writes a `Transform`: it
-runs before the transform stage, and physics must not also drive the entity.
+weights as the pose, so crossfades and blends average the walks. Height stays
+in the pose. With `follow_yaw` the joint's turn about the vertical axis goes
+to the entity too (the pose keeps the rest heading, tilt and roll stay), and
+the travel is rotated into the heading the animation had, relative to rest,
+before it is applied in the entity's frame: the entity steps along its old
+heading, then turns by the step's yaw.
+
+This is the one case where the stage writes a `Transform`. The order is
+therefore part of the contract: `add_world_stages` registers the animation
+stage after the stages that move or steer entities and the transform stage
+after it, so children and renderers see this frame's motion. Physics is not
+an ECS system (the subsystem keeps its own bodies), so the runtime cannot tell
+which entities it drives; whoever copies a body's pose into the `Transform`
+of an entity with `RootMotion` fights the stage, and the composition root must
+not do both.
+
+**D8 — blend trees mix animations by a shared phase.** A state's `Motion` is
+one clip or a `Blend1d` (animations at thresholds of one float parameter, the
+two around the value mixed) or a `Blend2d` (animations at points of the plane,
+the three nearest mixed by inverse square distance). The controller turns the
+parameters into a `Mix` of at most four animations whose shares add up to
+one and hands it to the player, `reweigh`ing it each frame without losing the
+place in the pass. The animations of a mix are positioned by a common phase of
+one pass, whose length is their lengths averaged by the shares, so feet land
+together whatever the speeds; root motion averages the same way. Crossfades
+between mixes weigh every animation of both by its share of the fade. A graph
+can start in a blend with `set_start`.
 
 ## Consequences
 

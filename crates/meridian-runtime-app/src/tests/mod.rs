@@ -7,3 +7,4 @@ mod events;
 mod physics_step_stage;
 mod stage_ordering;
 mod transform_stage;
+mod world_stages;

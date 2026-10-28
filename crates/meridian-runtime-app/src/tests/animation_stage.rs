@@ -5,8 +5,8 @@ use std::sync::Arc;
 use meridian_animation_domain::{
     Animation, AnimationController, AnimationGraph, AnimationPlayer, AnimationState,
     AnimationTarget, Animator, Channel, Clip, Condition, Interpolation, Joint, JointId,
-    JointTransform, Keys, ParamKind, Repeat, Rig, RootMotion, Skeleton, SkeletonClip, Track,
-    Transition, WeightKeys, WeightsChannel,
+    JointTransform, Keys, Motion, ParamKind, Repeat, Rig, RootMotion, Skeleton, SkeletonClip,
+    Track, Transition, WeightKeys, WeightsChannel,
 };
 use meridian_ecs::{Entity, Transform, World};
 use meridian_gac::{Motor3, Rotor, Vec3};
@@ -161,15 +161,14 @@ fn animators_over_one_rig_play_independently() {
 fn a_controller_switches_the_animation_when_gameplay_sets_a_parameter() {
     let rig = rig();
     let world = Shared::new(World::new());
-    let mut graph = AnimationGraph::new(AnimationState {
-        animation: None,
-        repeat: Repeat::Loop,
-    });
+    let mut graph = AnimationGraph::new(None, Repeat::Loop);
     let idle = graph.start();
-    let moving = graph.add_state(AnimationState {
-        animation: Some(0),
-        repeat: Repeat::Loop,
-    });
+    let moving = graph
+        .add_state(AnimationState {
+            motion: Motion::Clip(Some(0)),
+            repeat: Repeat::Loop,
+        })
+        .expect("a valid state");
     let walking = graph.add_param(ParamKind::Bool);
     graph
         .add_transition(Transition {
@@ -211,6 +210,7 @@ fn root_motion_moves_the_entity_in_its_own_frame_and_pins_the_pose() {
             RootMotion {
                 skeleton: 0,
                 joint: JointId::from_index(0).expect("joint 0"),
+                follow_yaw: false,
             },
         );
         world.insert(

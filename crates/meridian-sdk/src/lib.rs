@@ -86,8 +86,8 @@ pub use meridian_rendering_wgpu::{
 };
 // -- meridian-runtime-app / -threads: Runtime, the frame-work entry point, the job executor --
 pub use meridian_runtime_app::{
-    AudioStage, ComputeStage, EventSystem, Job, JobExecutor, PhysicsStepStage, Runtime, Shared,
-    Stage, StageId,
+    AnimationStage, AudioStage, ComputeStage, EventSystem, FrameDelta, Job, JobExecutor,
+    PhysicsStepStage, Runtime, Shared, Stage, StageId, TransformStage, add_world_stages,
 };
 pub use meridian_runtime_threads::{BackgroundPool, TaskExecutor};
 /// The retained UI runtime (ADR 018), named by generated `.meui` glue; and

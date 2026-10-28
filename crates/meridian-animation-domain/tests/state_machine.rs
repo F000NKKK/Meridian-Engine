@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use meridian_animation_domain::{
     Animation, AnimationController, AnimationGraph, AnimationPlayer, AnimationState, Condition,
-    GraphError, Interpolation, ParamKind, Repeat, Rig, StateId, Transition, WeightKeys,
+    GraphError, Interpolation, Motion, ParamKind, Repeat, Rig, StateId, Transition, WeightKeys,
     WeightsChannel,
 };
 
@@ -27,7 +27,7 @@ fn rig() -> Rig {
 
 fn state(animation: usize, repeat: Repeat) -> AnimationState {
     AnimationState {
-        animation: Some(animation),
+        motion: Motion::Clip(Some(animation)),
         repeat,
     }
 }
@@ -43,7 +43,7 @@ fn go(from: StateId, to: StateId, conditions: Vec<Condition>, fade: f32) -> Tran
 
 #[test]
 fn the_first_update_plays_the_start_state() {
-    let graph = Arc::new(AnimationGraph::new(state(2, Repeat::Loop)));
+    let graph = Arc::new(AnimationGraph::new(Some(2), Repeat::Loop));
     let mut controller = AnimationController::new(graph);
     let mut player = AnimationPlayer::new(None);
     controller.update(&mut player, &rig());
@@ -52,9 +52,9 @@ fn the_first_update_plays_the_start_state() {
 
 #[test]
 fn a_float_condition_crossfades_into_the_next_state() {
-    let mut graph = AnimationGraph::new(state(0, Repeat::Loop));
+    let mut graph = AnimationGraph::new(Some(0), Repeat::Loop);
     let start = graph.start();
-    let run = graph.add_state(state(1, Repeat::Loop));
+    let run = graph.add_state(state(1, Repeat::Loop)).unwrap();
     let speed = graph.add_param(ParamKind::Float);
     graph
         .add_transition(go(start, run, vec![Condition::Above(speed, 0.5)], 0.25))
@@ -73,9 +73,9 @@ fn a_float_condition_crossfades_into_the_next_state() {
 
 #[test]
 fn a_trigger_fires_once_and_a_zero_fade_cuts() {
-    let mut graph = AnimationGraph::new(state(0, Repeat::Loop));
+    let mut graph = AnimationGraph::new(Some(0), Repeat::Loop);
     let start = graph.start();
-    let jump = graph.add_state(state(1, Repeat::Loop));
+    let jump = graph.add_state(state(1, Repeat::Loop)).unwrap();
     let press = graph.add_param(ParamKind::Trigger);
     graph
         .add_transition(go(start, jump, vec![Condition::Triggered(press)], 0.0))
@@ -96,9 +96,9 @@ fn a_trigger_fires_once_and_a_zero_fade_cuts() {
 
 #[test]
 fn finished_leaves_a_once_state_after_its_animation_ends() {
-    let mut graph = AnimationGraph::new(state(0, Repeat::Once));
+    let mut graph = AnimationGraph::new(Some(0), Repeat::Once);
     let start = graph.start();
-    let idle = graph.add_state(state(1, Repeat::Loop));
+    let idle = graph.add_state(state(1, Repeat::Loop)).unwrap();
     graph
         .add_transition(go(start, idle, vec![Condition::Finished], 0.0))
         .unwrap();
@@ -116,9 +116,9 @@ fn finished_leaves_a_once_state_after_its_animation_ends() {
 
 #[test]
 fn a_transition_from_any_state_and_the_first_match_wins() {
-    let mut graph = AnimationGraph::new(state(0, Repeat::Loop));
-    let a = graph.add_state(state(1, Repeat::Loop));
-    let b = graph.add_state(state(2, Repeat::Loop));
+    let mut graph = AnimationGraph::new(Some(0), Repeat::Loop);
+    let a = graph.add_state(state(1, Repeat::Loop)).unwrap();
+    let b = graph.add_state(state(2, Repeat::Loop)).unwrap();
     for to in [a, b] {
         graph
             .add_transition(Transition {
@@ -137,10 +137,10 @@ fn a_transition_from_any_state_and_the_first_match_wins() {
 
 #[test]
 fn a_graph_refuses_foreign_ids_and_wrong_kinds() {
-    let mut other = AnimationGraph::new(state(0, Repeat::Loop));
-    let foreign_state = other.add_state(state(0, Repeat::Loop));
+    let mut other = AnimationGraph::new(Some(0), Repeat::Loop);
+    let foreign_state = other.add_state(state(0, Repeat::Loop)).unwrap();
     let foreign_param = other.add_param(ParamKind::Float);
-    let mut graph = AnimationGraph::new(state(0, Repeat::Loop));
+    let mut graph = AnimationGraph::new(Some(0), Repeat::Loop);
     let start = graph.start();
     assert_eq!(
         graph.add_transition(go(start, foreign_state, Vec::new(), 0.0)),
@@ -155,6 +155,10 @@ fn a_graph_refuses_foreign_ids_and_wrong_kinds() {
         )),
         Err(GraphError::UnknownParam(0))
     );
+    assert_eq!(
+        graph.set_start(foreign_state),
+        Err(GraphError::UnknownState(1))
+    );
     let flag = graph.add_param(ParamKind::Bool);
     assert_eq!(
         graph.add_transition(go(start, start, vec![Condition::Above(flag, 1.0)], 0.0)),
@@ -164,7 +168,7 @@ fn a_graph_refuses_foreign_ids_and_wrong_kinds() {
 
 #[test]
 fn setting_a_parameter_of_the_wrong_kind_is_refused() {
-    let mut graph = AnimationGraph::new(state(0, Repeat::Loop));
+    let mut graph = AnimationGraph::new(Some(0), Repeat::Loop);
     let flag = graph.add_param(ParamKind::Bool);
     let mut controller = AnimationController::new(Arc::new(graph));
     assert!(!controller.set_float(flag, 1.0));
