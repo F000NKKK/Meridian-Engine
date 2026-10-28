@@ -151,3 +151,13 @@ fn transform_form_converts_both_ways() {
     let back: TransformForm = substrate_data::from_text(&text).unwrap().value;
     assert_eq!(Transform::from(back).motor, t.motor);
 }
+
+#[test]
+fn an_entry_of_the_scene_map_can_be_moved_under_another() {
+    let (_world, mut scene) = built_world();
+    let root = scene.get(&key("root")).unwrap().entity;
+    scene.get_mut(&key("child")).unwrap().parent = Some(key("root"));
+    let child = scene.get(&key("child")).unwrap().entity;
+    assert_eq!(scene.parent_of(child), Some(root));
+    assert!(scene.get_mut(&key("absent")).is_none());
+}
