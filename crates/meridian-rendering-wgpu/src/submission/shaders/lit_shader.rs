@@ -240,6 +240,9 @@ var albedo_sampler: sampler;
 var shadow_map: texture_depth_2d;
 @group(0) @binding(4)
 var shadow_sampler: sampler_comparison;
+// Roughness in green, metalness in blue (glTF layout); linear data.
+@group(0) @binding(5)
+var surface_tex: texture_2d<f32>;
 
 // See the colored-lit shader's identical `compute_shadow_factor` for
 // why the bias is slope-scaled, not a flat constant.
@@ -297,7 +300,9 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let sampled = textureSample(albedo_tex, albedo_sampler, in.uv);
     let base_color = sampled.rgb * in.tint.rgb;
     let shadow_factor = compute_shadow_factor(in.world_position, in.world_normal);
-    let shaded = shade(in.world_position, in.world_normal, base_color, in.surface, shadow_factor) + in.emissive;
+    let mapped = textureSample(surface_tex, albedo_sampler, in.uv);
+    let surface = vec2<f32>(in.surface.x * mapped.g, in.surface.y * mapped.b);
+    let shaded = shade(in.world_position, in.world_normal, base_color, surface, shadow_factor) + in.emissive;
     return vec4<f32>(shaded, sampled.a * in.tint.a);
 }
 "#;

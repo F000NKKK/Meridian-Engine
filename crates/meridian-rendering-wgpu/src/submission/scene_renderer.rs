@@ -39,6 +39,12 @@ pub struct SceneRenderer {
     /// render-target-only `DepthTexture`.
     pub(crate) shadow_map: Texture,
     pub(crate) shadow_sampler: Sampler,
+    /// A 1x1 white colour texture: the albedo of a draw that has only a
+    /// metallic-roughness map.
+    pub(crate) white_albedo: Texture,
+    /// A 1x1 white linear texture: the metallic-roughness map of a draw that
+    /// has none, leaving the material's factors as they are.
+    pub(crate) white_surface: Texture,
     shadow_depth: ShadowDepthPass,
 }
 
@@ -48,6 +54,12 @@ pub struct SceneRenderer {
 /// caller that wants sharper (or cheaper, blockier) shadows picks their
 /// own value via [`SceneRenderer::with_shadow_map_size`] instead.
 pub const DEFAULT_SHADOW_MAP_SIZE: u32 = 2048;
+
+/// `texture` (1x1) filled with opaque white.
+fn white(device: &Device, texture: Texture) -> Texture {
+    device.write_texture(&texture, &[255; 4]);
+    texture
+}
 
 impl SceneRenderer {
     /// Builds a renderer with [`DEFAULT_SHADOW_MAP_SIZE`] — see
@@ -90,6 +102,8 @@ impl SceneRenderer {
             sampler,
             shadow_map,
             shadow_sampler,
+            white_albedo: white(device, device.create_texture_2d(1, 1)),
+            white_surface: white(device, device.create_linear_texture_2d(1, 1)),
             shadow_depth,
         };
 

@@ -84,8 +84,12 @@ Not started; ordered by suggested priority. Items wait for an explicit task.
    decoder adapter `meridian-asset-gltf`, `AssetCache::load_model_gltf`.
    JPEG textures (`meridian-asset-jpeg`), external-file `.gltf` and `u32`
    mesh indices are done; checked on Khronos DamagedHelmet, Duck and Sponza
-   with the `gltf_viewer` example. Follow-ups: skins and animation, PBR maps.
-9. **Larger, ADR-gated:** HDR (`Rgba16Float` + tone mapping), shadow
+   with the `gltf_viewer` example. Follow-ups: skins and animation.
+9. **Metallic-roughness materials — done (2026-10-28).**
+   [ADR 032](../adr/032-metallic-roughness-materials.md): `roughness`/`metallic`
+   factors, the glTF metallic-roughness map (linear upload), GGX shading.
+   Normal, occlusion and emissive maps are next if a model needs them.
+10. **Larger, ADR-gated:** HDR (`Rgba16Float` + tone mapping), shadow
    cascades/frustum fitting, point-light shadows, IBL, skinned glTF and
    animation (no vocabulary yet), concrete backend crates.
 

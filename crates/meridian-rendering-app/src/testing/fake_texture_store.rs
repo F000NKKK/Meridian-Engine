@@ -31,6 +31,10 @@ impl TextureStore for FakeTextureStore {
         TextureHandle::new(self.sizes.insert([image.width, image.height]))
     }
 
+    fn upload_linear(&mut self, image: &ImageAsset) -> TextureHandle {
+        self.upload(image)
+    }
+
     fn upload_solid(&mut self, _rgba: [u8; 4]) -> TextureHandle {
         TextureHandle::new(self.sizes.insert([1, 1]))
     }

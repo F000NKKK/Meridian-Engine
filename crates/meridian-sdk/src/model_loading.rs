@@ -1,7 +1,7 @@
 //! A decoded glTF model registered with the GPU ports: one mesh and one
 //! material per part (ADR 030).
 
-use meridian_asset_domain::{Decoder, ModelAsset};
+use meridian_asset_domain::{Decoder, ImageAsset, ModelAsset};
 use meridian_rendering_app::{MeshStore, TextureStore};
 use meridian_rendering_domain::{Material, MeshHandle, MeshSource, TextureHandle, smooth_normals};
 
@@ -20,7 +20,7 @@ pub struct ModelPiece {
 
 /// Registers every part of `model`: meshes with `meshes` (missing normals
 /// are derived from the triangles, missing UVs are zero), images with
-/// `textures` once each, however many parts use them. An image the engine
+/// `textures` once each per use (colour or linear), however many parts use them. An image the engine
 /// cannot decode (an unknown format, or a corrupt file) is logged and its parts keep their base
 /// colour only.
 pub(crate) fn register(
@@ -28,12 +28,23 @@ pub(crate) fn register(
     meshes: &mut impl MeshStore,
     textures: &mut impl TextureStore,
 ) -> Result<Vec<ModelPiece>, String> {
-    let mut uploaded: Vec<Option<Option<TextureHandle>>> = vec![None; model.images.len()];
+    let mut colour: Vec<Option<Option<TextureHandle>>> = vec![None; model.images.len()];
+    let mut linear = colour.clone();
     let mut pieces = Vec::with_capacity(model.parts.len());
     for part in model.parts {
         let albedo = part.material.base_color_image.and_then(|index| {
-            *uploaded[index]
-                .get_or_insert_with(|| upload(&model.images[index].bytes, index, textures))
+            *colour[index].get_or_insert_with(|| {
+                upload(&model.images[index].bytes, index, |image| {
+                    textures.upload(image)
+                })
+            })
+        });
+        let metallic_roughness = part.material.metallic_roughness_image.and_then(|index| {
+            *linear[index].get_or_insert_with(|| {
+                upload(&model.images[index].bytes, index, |image| {
+                    textures.upload_linear(image)
+                })
+            })
         });
         let normals = if part.normals.is_empty() {
             smooth_normals(&part.positions, &part.indices)
@@ -55,6 +66,7 @@ pub(crate) fn register(
             .map_err(|err| err.to_string())?;
         let material = Material {
             albedo,
+            metallic_roughness,
             base_color_factor: part.material.base_color,
             metallic: part.material.metallic,
             roughness: part.material.roughness,
@@ -65,9 +77,15 @@ pub(crate) fn register(
     Ok(pieces)
 }
 
-fn upload(bytes: &[u8], index: usize, textures: &mut impl TextureStore) -> Option<TextureHandle> {
+/// Decodes `bytes` and hands the image to `put`; a failure is logged and
+/// leaves the part without that texture.
+fn upload(
+    bytes: &[u8],
+    index: usize,
+    put: impl FnOnce(&ImageAsset) -> TextureHandle,
+) -> Option<TextureHandle> {
     match AnyImageDecoder.decode(bytes) {
-        Ok(image) => Some(textures.upload(&image)),
+        Ok(image) => Some(put(&image)),
         Err(err) => {
             meridian_diagnostics::log_warn!("model image {index} not used: {err}");
             None
@@ -109,6 +127,7 @@ mod tests {
             base_color_image: Some(index),
             metallic: 0.25,
             roughness: 0.75,
+            metallic_roughness_image: None,
         }
     }
 
@@ -145,6 +164,31 @@ mod tests {
             (pieces[0].material.metallic, pieces[0].material.roughness),
             (0.25, 0.75)
         );
+    }
+
+    #[test]
+    fn a_metallic_roughness_map_is_its_own_linear_texture() {
+        let material = ModelMaterial {
+            metallic_roughness_image: Some(0),
+            ..textured(0)
+        };
+        let model = ModelAsset {
+            parts: vec![triangle(material), triangle(material)],
+            images: vec![EncodedImage { bytes: png_1x1() }],
+        };
+        let pieces = register(
+            model,
+            &mut MeshRegistry::new(),
+            &mut FakeTextureStore::new(),
+        )
+        .unwrap();
+        let (first, second) = (pieces[0].material, pieces[1].material);
+        assert!(first.metallic_roughness.is_some());
+        assert_ne!(
+            first.albedo, first.metallic_roughness,
+            "one image, read as colour and as linear data, is two textures"
+        );
+        assert_eq!(first.metallic_roughness, second.metallic_roughness);
     }
 
     #[test]

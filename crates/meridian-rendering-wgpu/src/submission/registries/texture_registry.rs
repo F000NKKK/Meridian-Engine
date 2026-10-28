@@ -33,6 +33,18 @@ impl TextureRegistry {
         TextureHandle::new(self.textures.insert(texture))
     }
 
+    /// Like [`upload`](Self::upload) but as linear data: sampling does no
+    /// sRGB decode, for maps that hold numbers rather than colours.
+    pub fn upload_linear(
+        &mut self,
+        device: &Device,
+        image: &meridian_asset_domain::ImageAsset,
+    ) -> TextureHandle {
+        let texture = device.create_linear_texture_2d(image.width, image.height);
+        device.write_texture(&texture, &image.pixels);
+        TextureHandle::new(self.textures.insert(texture))
+    }
+
     /// Uploads a 1×1 texture of one `rgba` color and returns its handle.
     /// Sprites that are plain colored rectangles (UI backgrounds) point at
     /// a white one and carry their color in `Sprite::tint`.

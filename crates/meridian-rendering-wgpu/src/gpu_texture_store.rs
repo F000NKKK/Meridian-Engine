@@ -36,6 +36,10 @@ impl TextureStore for GpuTextureStore {
         self.registry.upload(&self.device, image)
     }
 
+    fn upload_linear(&mut self, image: &ImageAsset) -> TextureHandle {
+        self.registry.upload_linear(&self.device, image)
+    }
+
     fn upload_solid(&mut self, rgba: [u8; 4]) -> TextureHandle {
         self.registry.upload_solid(&self.device, rgba)
     }
