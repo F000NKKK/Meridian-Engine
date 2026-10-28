@@ -13,6 +13,7 @@
 //! Design notes: docs/notes/meridian-rendering-domain.md (`submission`).
 
 mod bake_batches;
+mod batching;
 mod environment;
 mod gpu_mesh;
 mod instance_data;

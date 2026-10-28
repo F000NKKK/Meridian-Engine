@@ -12,7 +12,7 @@ use crate::{
 };
 
 /// Which pipeline a draw needs.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct PipelineKey {
     /// A textured vertex layout (UVs, a bound albedo) rather than flat colour.
     pub textured: bool,
