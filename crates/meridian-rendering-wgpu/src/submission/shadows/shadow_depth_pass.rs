@@ -1,9 +1,7 @@
 //! The depth-only pipeline and bind group of the shadow pass.
 
-use meridian_rendering_domain::{POINT_SHADOW_FACES, SHADOW_CASCADES};
-
 use crate::submission::{
-    SHADOW_DEPTH_SHADER_WGSL, position_only_mesh_layout, shadow_instance_layout,
+    SHADOW_DEPTH_SHADER_WGSL, SHADOW_TILES, position_only_mesh_layout, shadow_instance_layout,
 };
 use crate::{BindGroup, Buffer, BufferUsage, Device, RenderPipeline};
 
@@ -16,9 +14,6 @@ pub(crate) struct ShadowDepthPass {
     pub(crate) tiles: [TileUniform; SHADOW_TILES],
     pub(crate) pipeline: RenderPipeline,
 }
-
-/// Tiles of the shadow atlas: the cascades, then a point light's cube faces.
-pub(crate) const SHADOW_TILES: usize = SHADOW_CASCADES + POINT_SHADOW_FACES;
 
 /// One tile's `light_view_proj` uniform and its bind group.
 #[derive(Debug)]

@@ -5,6 +5,8 @@ use meridian_gac::{Motor3, Projection, Vec3};
 use crate::scene::{Light, Scene3d};
 use crate::{Camera, Frustum, look_at_rotor};
 
+/// How many point lights cast shadows in one view: the nearest to the camera.
+pub const MAX_POINT_SHADOWS: usize = 4;
 /// How many faces surround a point light.
 pub const POINT_SHADOW_FACES: usize = 6;
 /// The near plane of every face, in world units.
@@ -20,7 +22,7 @@ const FACE_DIRECTIONS: [Vec3; POINT_SHADOW_FACES] = [
     Vec3::new(0.0, 0.0, -1.0),
 ];
 
-/// The point light that casts a shadow in a view: where it is, how far it
+/// A point light that casts a shadow in a view: where it is, how far it
 /// reaches and the six perspective views of its shadow cube.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PointShadow {
@@ -35,15 +37,33 @@ pub struct PointShadow {
 }
 
 impl PointShadow {
-    /// The scene's first point light, `None` when it has none or its range
-    /// leaves no room between the near plane and the far one.
+    /// The point lights of `scene` nearest to its camera, up to
+    /// [`MAX_POINT_SHADOWS`], nearest first, then `None`s. A light whose range
+    /// leaves no room between the near plane and the far one is not
+    /// considered.
     #[must_use]
-    pub fn for_scene(scene: &Scene3d) -> Option<Self> {
-        let (index, light) = scene
+    pub fn nearest(scene: &Scene3d) -> [Option<Self>; MAX_POINT_SHADOWS] {
+        let eye = scene.camera.frame.transform_point(Vec3::ZERO);
+        let mut lights: Vec<Self> = scene
             .lights
             .iter()
             .enumerate()
-            .find(|(_, light)| matches!(light, Light::Point { .. }))?;
+            .filter_map(|(index, light)| Self::of_light(index, light))
+            .collect();
+        lights.sort_by(|a, b| {
+            let (da, db) = (
+                (a.position - eye).length_squared(),
+                (b.position - eye).length_squared(),
+            );
+            da.total_cmp(&db)
+        });
+        let mut nearest = lights.into_iter();
+        core::array::from_fn(|_| nearest.next())
+    }
+
+    /// The shadow cube of `light`, the `index`th of the scene's lights, when
+    /// it is a point light with room for one.
+    fn of_light(index: usize, light: &Light) -> Option<Self> {
         let Light::Point {
             position, range, ..
         } = light

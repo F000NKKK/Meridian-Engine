@@ -101,7 +101,9 @@ Not started; ordered by suggested priority. Items wait for an explicit task.
 15. Visible environment backdrop: [ADR 039](../adr/039-visible-environment-backdrop.md).
 16. Per-cascade caster culling and cascade blending: [ADR 040](../adr/040-per-cascade-casters-and-blending.md).
 17. Shadows from one point light (a six-face cube in the atlas): [ADR 041](../adr/041-point-light-shadows.md).
-18. **Larger, ADR-gated:** skinned glTF and
+18. Bloom for emissive-mapped materials: [ADR 042](../adr/042-bloom-for-emissive-maps.md).
+19. Shadows from the nearest four point lights: [ADR 043](../adr/043-nearest-point-light-shadows.md).
+20. **Larger, ADR-gated:** skinned glTF and
    animation (no vocabulary yet), concrete backend crates.
 
 ## Standards gaps

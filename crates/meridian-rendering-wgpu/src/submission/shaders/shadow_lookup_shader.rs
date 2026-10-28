@@ -66,15 +66,18 @@ fn compute_shadow_factor(world_pos: vec3<f32>, world_normal: vec3<f32>) -> f32 {
     return visibility;
 }
 
-/// Visibility of `world_pos` from the point light, 1 when lit and 0 in
-/// shadow (ADR 041). The face is the one whose axis the light-to-surface
-/// vector is most aligned with; the surface is pushed along its normal by
-/// a couple of texels, which grows with the slope, and compared with a depth
-/// bias of the same size, converted to the perspective depth the face stores.
-fn point_shadow_factor(world_pos: vec3<f32>, world_normal: vec3<f32>) -> f32 {
-    let to_surface = world_pos - u.point_position.xyz;
+/// Visibility of `world_pos` from the point light in `slot`, 1 when lit and 0
+/// in shadow (ADR 041, ADR 043). The face is the one whose axis the
+/// light-to-surface vector is most aligned with; the surface is pushed along
+/// its normal by a couple of texels, which grows with the slope, and compared
+/// with a depth bias of the same size, converted to the perspective depth the
+/// face stores. A slot's six faces are half-size tiles of a 2 x 3 block, the
+/// blocks two across below the cascades.
+fn point_shadow_factor(slot: u32, world_pos: vec3<f32>, world_normal: vec3<f32>) -> f32 {
+    let position = u.point_position[slot];
+    let to_surface = world_pos - position.xyz;
     let distance = length(to_surface);
-    if (distance >= u.point_position.w) {
+    if (distance >= position.w) {
         return 1.0;
     }
     let a = abs(to_surface);
@@ -91,23 +94,27 @@ fn point_shadow_factor(world_pos: vec3<f32>, world_normal: vec3<f32>) -> f32 {
     face = face + select(0u, 1u, negative);
 
     let tile = f32(textureDimensions(shadow_map).x / 2u);
-    let texel = 2.0 * depth / tile;
+    let size = floor(tile / 2.0);
+    let texel = 2.0 * depth / size;
     let n = normalize(world_normal);
     let slope = 1.0 - clamp(dot(n, -to_surface / max(distance, 0.0001)), 0.0, 1.0);
     let shifted = world_pos + n * texel * (1.5 + 2.0 * slope);
-    let clip = u.point_view_proj[face] * vec4<f32>(shifted, 1.0);
+    let clip = u.point_view_proj[slot * 6u + face] * vec4<f32>(shifted, 1.0);
     let ndc = clip.xyz / clip.w;
     let uv = vec2<f32>(ndc.x * 0.5 + 0.5, 1.0 - (ndc.y * 0.5 + 0.5));
     let inside = uv.x >= 0.0 && uv.x <= 1.0 && uv.y >= 0.0 && uv.y <= 1.0 && ndc.z >= 0.0 && ndc.z <= 1.0;
     let near = u.point_params.x;
-    let far = u.point_position.w;
+    let far = position.w;
     // d(ndc z) / d(depth) of a perspective projection, times two texels.
     let bias = near * far / (far - near) * (2.0 * texel) / (depth * depth);
-    let margin = 1.0 / tile;
-    let in_tile = clamp(uv, vec2<f32>(margin), vec2<f32>(1.0 - margin));
-    let tile_index = 4u + face;
-    let origin = vec2<f32>(f32(tile_index & 1u), f32(tile_index >> 1u));
-    let lit = textureSampleCompareLevel(shadow_map, shadow_sampler, (origin + in_tile) / ATLAS_TILES, ndc.z - bias);
+    let margin = 1.0 / size;
+    let in_face = clamp(uv, vec2<f32>(margin), vec2<f32>(1.0 - margin));
+    let origin = vec2<f32>(
+        f32(slot & 1u) * tile + f32(face & 1u) * size,
+        2.0 * tile + f32(slot >> 1u) * 3.0 * size + f32(face >> 1u) * size,
+    );
+    let atlas_uv = (origin + in_face * size) / (ATLAS_TILES * tile);
+    let lit = textureSampleCompareLevel(shadow_map, shadow_sampler, atlas_uv, ndc.z - bias);
     return select(1.0, lit, inside);
 }
 ";

@@ -10,8 +10,9 @@ use super::main_pipelines::{MainBindings, MainPipelines};
 use super::mesh_cache::MeshCache;
 use super::registries::NeutralTextures;
 use super::{
-    CascadeCasters, DrawKind, LIT_UNIFORM_BYTES, MAX_LIGHTS, PreparedBatch, PreparedScene,
-    SceneAssets, ShadowDepthPass, bake_batches, lit_uniform_bytes, mat4_to_bytes,
+    ATLAS_COLUMNS, ATLAS_ROWS, CascadeCasters, DrawKind, LIT_UNIFORM_BYTES, MAX_LIGHTS,
+    PreparedBatch, PreparedScene, SceneAssets, ShadowDepthPass, bake_batches, face_tile,
+    lit_uniform_bytes, mat4_to_bytes, tile_rect,
 };
 use crate::{
     Buffer, BufferUsage, ColorFormat, CommandBuffer, Device, RenderPass as DriverRenderPass,
@@ -59,13 +60,6 @@ pub struct SceneRenderer {
 /// sharper (or cheaper, blockier) shadows picks their own value via
 /// [`SceneRenderer::with_shadow_map_size`] instead.
 pub const DEFAULT_SHADOW_MAP_SIZE: u32 = 1024;
-
-/// Tiles across the shadow atlas. Tile `t` sits at column `t % 2`, row
-/// `t / 2`: the four cascades are tiles 0 to 3, the six faces of a point
-/// light's cube 4 to 9 (ADR 041).
-const ATLAS_COLUMNS: u32 = 2;
-/// Tile rows of the shadow atlas: five rows of two for the ten tiles.
-const ATLAS_ROWS: u32 = 5;
 
 impl SceneRenderer {
     /// Builds a renderer drawing into targets of `format`, with
@@ -229,13 +223,22 @@ impl SceneRenderer {
         assets: &SceneAssets<'_>,
     ) -> PreparedScene {
         let shadow = ShadowLight::for_scene(scene, self.tile_size);
-        let (matrices, frusta) = shadow_tiles(&shadow);
-        for (tile, view_proj) in self.shadow_depth.tiles.iter().zip(matrices) {
-            device.write_buffer(&tile.buffer, &mat4_to_bytes(view_proj));
+        let tiles = shadow_tiles(&shadow);
+        for tile in &tiles {
+            device.write_buffer(
+                &self.shadow_depth.tiles[tile.index].buffer,
+                &mat4_to_bytes(tile.view_proj),
+            );
         }
+        let frusta: Vec<Frustum> = tiles.iter().map(|tile| tile.frustum.clone()).collect();
         let baked = bake_batches(device, self, scene, assets);
         let casters = CascadeCasters::cull(&baked.batches, &baked.records, &baked.bounds, &frusta);
-        self.record_shadow_casters(commands, &baked.batches, &casters, casters.upload(device));
+        let indices: Vec<usize> = tiles.iter().map(|tile| tile.index).collect();
+        let draws = TileDraws {
+            tiles: &indices,
+            casters: &casters,
+        };
+        self.record_shadow_casters(commands, &baked.batches, &draws, casters.upload(device));
         PreparedScene {
             batches: baked.batches,
             instances: baked.instances,
@@ -249,7 +252,7 @@ impl SceneRenderer {
         &self,
         commands: &mut CommandBuffer<'_>,
         batches: &[PreparedBatch],
-        casters: &CascadeCasters,
+        draws: &TileDraws<'_>,
         records: Option<Buffer>,
     ) {
         let mut pass = commands.begin_shadow_pass(&self.shadow_map);
@@ -257,12 +260,10 @@ impl SceneRenderer {
             return;
         };
         pass.set_pipeline(&self.shadow_depth.pipeline);
-        for (index, (tile, runs)) in (0u32..).zip(self.shadow_depth.tiles.iter().zip(&casters.runs))
-        {
-            let (column, row) = (index % ATLAS_COLUMNS, index / ATLAS_COLUMNS);
-            let size = self.tile_size;
-            pass.set_viewport(column * size, row * size, size, size);
-            pass.set_bind_group(0, &tile.bind_group);
+        for (&index, runs) in draws.tiles.iter().zip(&draws.casters.runs) {
+            let rect = tile_rect(index, self.tile_size);
+            pass.set_viewport(rect.x, rect.y, rect.size, rect.size);
+            pass.set_bind_group(0, &self.shadow_depth.tiles[index].bind_group);
             for run in runs {
                 self.draw_instances(
                     &mut pass,
@@ -327,15 +328,49 @@ impl SceneRenderer {
     }
 }
 
-/// The view-projection and culling volume of every shadow tile to draw: the
-/// four cascades, then the six faces of the point light's cube when there is
-/// one (ADR 041).
-fn shadow_tiles(shadow: &ShadowLight) -> (Vec<[[f32; 4]; 4]>, Vec<Frustum>) {
-    let mut matrices = shadow.cascades.view_proj.to_vec();
-    let mut frusta = shadow.cascades.frusta().to_vec();
-    if let Some(point) = &shadow.point {
-        matrices.extend(point.view_proj);
-        frusta.extend(point.frusta());
+/// The atlas tile of each list of runs in `casters`, in the same order.
+struct TileDraws<'a> {
+    tiles: &'a [usize],
+    casters: &'a CascadeCasters,
+}
+
+/// One shadow tile to draw: its place in the atlas, the light's view of it
+/// and the volume casters are culled against.
+struct ShadowTile {
+    index: usize,
+    view_proj: [[f32; 4]; 4],
+    frustum: Frustum,
+}
+
+/// The tiles of `shadow` to draw: the four cascades, then the six faces of
+/// each point light that casts one (ADR 043). A point light keeps its slot's
+/// tiles, so the shader finds them by slot whichever slots are empty.
+fn shadow_tiles(shadow: &ShadowLight) -> Vec<ShadowTile> {
+    let cascades = shadow
+        .cascades
+        .view_proj
+        .into_iter()
+        .zip(shadow.cascades.frusta());
+    let mut tiles: Vec<ShadowTile> = cascades
+        .enumerate()
+        .map(|(index, (view_proj, frustum))| ShadowTile {
+            index,
+            view_proj,
+            frustum,
+        })
+        .collect();
+    for (slot, point) in shadow.points.iter().enumerate() {
+        let Some(point) = point else { continue };
+        let faces = point.view_proj.into_iter().zip(point.frusta());
+        tiles.extend(
+            faces
+                .enumerate()
+                .map(|(face, (view_proj, frustum))| ShadowTile {
+                    index: face_tile(slot, face),
+                    view_proj,
+                    frustum,
+                }),
+        );
     }
-    (matrices, frusta)
+    tiles
 }

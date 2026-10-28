@@ -3,8 +3,8 @@
 use meridian_gac::Vec3;
 use meridian_rendering_domain::scene::Light;
 use meridian_rendering_domain::{
-    POINT_SHADOW_FACES, POINT_SHADOW_NEAR, PointShadow, SHADOW_CASCADES, ShadowCascades,
-    ShadowLight, ViewUniforms,
+    MAX_POINT_SHADOWS, POINT_SHADOW_FACES, POINT_SHADOW_NEAR, PointShadow, SHADOW_CASCADES,
+    ShadowCascades, ShadowLight, ViewUniforms,
 };
 
 use super::MAX_LIGHTS;
@@ -14,9 +14,10 @@ use super::environment::EnvironmentUniform;
 pub(crate) const LIT_UNIFORM_BYTES: usize =
     640 + EnvironmentUniform::BYTES + POINT_SHADOW_UNIFORM_BYTES;
 
-/// The point light's shadow cube: six matrices, then its position and range,
-/// its near plane, and its light index.
-const POINT_SHADOW_UNIFORM_BYTES: usize = POINT_SHADOW_FACES * 64 + 48;
+/// The point lights' shadow cubes: six matrices per slot, then each slot's
+/// position and range, the near plane, and each slot's light index.
+const POINT_SHADOW_UNIFORM_BYTES: usize =
+    MAX_POINT_SHADOWS * (POINT_SHADOW_FACES * 64 + 16 + 4) + 16;
 
 // The WGSL `Uniforms` holds the cascades as an `array<mat4x4, 4>` and two `vec4`s.
 const _: () = assert!(SHADOW_CASCADES == 4);
@@ -48,8 +49,8 @@ fn vec3_to_padded_bytes(v: [f32; 3]) -> [u8; 16] {
 /// `ambient_ground` (16), `ambient_sky` (16), `light_direction` (16),
 /// `light_count` (16), `shadow_caster` (16), then [`MAX_LIGHTS`](super::MAX_LIGHTS)
 /// `LightData` entries (48 bytes each), then the environment's `env_sh` (9 x 16)
-/// and `env_params` (16), then the point light's shadow cube (see
-/// `point_shadow_to_bytes`) — 1232 bytes total. Lights beyond
+/// and `env_params` (16), then the point lights' shadow cubes (see
+/// `point_shadows_to_bytes`) — 1632 bytes more. Lights beyond
 /// the cap are dropped (logged once by the caller, not here — see
 /// `bake_batches`). `shadow_caster` is the index into
 /// `lights` of the shadow-casting light (see
@@ -68,7 +69,7 @@ pub(crate) fn lit_uniform_bytes(
         cascades,
         direction,
         caster,
-        point,
+        points,
     } = view.shadow;
     let camera_pos = view.camera.frame.transform_point(Vec3::ZERO);
     let count = view.lights.len().min(MAX_LIGHTS) as u32;
@@ -93,32 +94,35 @@ pub(crate) fn lit_uniform_bytes(
         bytes.extend_from_slice(&light_to_bytes(view.lights.get(index)));
     }
     bytes.extend_from_slice(&environment.to_bytes());
-    bytes.extend_from_slice(&point_shadow_to_bytes(point.as_ref()));
+    bytes.extend_from_slice(&point_shadows_to_bytes(&points));
     bytes
 }
 
-/// The point light's shadow cube as the shader's `point_view_proj`,
-/// `point_position`, `point_params` and `point_caster`; a light index of
-/// `u32::MAX` when there is none, which no light matches.
-fn point_shadow_to_bytes(point: Option<&PointShadow>) -> Vec<u8> {
+/// The point lights' shadow cubes as the shader's `point_view_proj` (six
+/// matrices per slot), `point_position` (position and range per slot),
+/// `point_params` (the near plane) and `point_casters` (each slot's light
+/// index, `u32::MAX` for an empty slot, which no light matches).
+fn point_shadows_to_bytes(points: &[Option<PointShadow>; MAX_POINT_SHADOWS]) -> Vec<u8> {
     let mut bytes = Vec::with_capacity(POINT_SHADOW_UNIFORM_BYTES);
-    for view_proj in point.map_or([[[0.0; 4]; 4]; POINT_SHADOW_FACES], |p| p.view_proj) {
-        bytes.extend_from_slice(&mat4_to_bytes(view_proj));
+    for point in points {
+        let faces = point.map_or([[[0.0; 4]; 4]; POINT_SHADOW_FACES], |p| p.view_proj);
+        for view_proj in faces {
+            bytes.extend_from_slice(&mat4_to_bytes(view_proj));
+        }
     }
-    let (position, far) = point.map_or((Vec3::ZERO, 0.0), |p| (p.position, p.far));
-    for value in [
-        position.x,
-        position.y,
-        position.z,
-        far,
-        POINT_SHADOW_NEAR,
-        0.0,
-        0.0,
-        0.0,
-    ] {
+    for point in points {
+        let (position, far) = point.map_or((Vec3::ZERO, 0.0), |p| (p.position, p.far));
+        for value in [position.x, position.y, position.z, far] {
+            bytes.extend_from_slice(&value.to_le_bytes());
+        }
+    }
+    for value in [POINT_SHADOW_NEAR, 0.0, 0.0, 0.0] {
         bytes.extend_from_slice(&value.to_le_bytes());
     }
-    bytes.extend_from_slice(&u32_to_padded_bytes(point.map_or(u32::MAX, |p| p.caster)));
+    for point in points {
+        let caster = point.map_or(u32::MAX, |p| p.caster);
+        bytes.extend_from_slice(&caster.to_le_bytes());
+    }
     bytes
 }
 
@@ -186,14 +190,12 @@ fn light_to_bytes(light: Option<&Light>) -> [u8; 48] {
 mod point_shadow_tests {
     use meridian_gac::{Motor3, Vec3};
     use meridian_rendering_domain::scene::{Light, Scene3d};
-    use meridian_rendering_domain::{
-        Camera, POINT_SHADOW_NEAR, PointShadow, ShadowLight, ViewUniforms,
-    };
+    use meridian_rendering_domain::{Camera, POINT_SHADOW_NEAR, ShadowLight, ViewUniforms};
 
     use super::*;
 
     /// Bytes of the point light's shadow cube at the end of the lit uniform.
-    const POINT_BYTES: usize = 6 * 64 + 48;
+    const POINT_BYTES: usize = POINT_SHADOW_UNIFORM_BYTES;
 
     fn u32_at(bytes: &[u8], offset: usize) -> u32 {
         u32::from_le_bytes(bytes[offset..offset + 4].try_into().unwrap())
@@ -213,45 +215,48 @@ mod point_shadow_tests {
     }
 
     fn point_scene() -> Scene3d {
+        let point = |x: f32, range: f32| Light::Point {
+            position: Motor3::translation(Vec3::new(x, 2.0, 3.0)),
+            color: [1.0; 3],
+            intensity: 1.0,
+            range,
+        };
         Scene3d {
-            lights: vec![Light::Point {
-                position: Motor3::translation(Vec3::new(1.0, 2.0, 3.0)),
-                color: [1.0; 3],
-                intensity: 1.0,
-                range: 12.0,
-            }],
+            lights: vec![point(9.0, 8.0), point(1.0, 12.0)],
             ..Default::default()
         }
     }
 
     #[test]
-    fn a_point_shadow_ends_the_uniform_with_its_cube() {
+    fn point_shadows_end_the_uniform_slot_by_slot_nearest_first() {
         let scene = point_scene();
-        let point = PointShadow::for_scene(&scene).unwrap();
-        let shadow = ShadowLight {
-            point: Some(point),
-            ..ShadowLight::for_scene(&scene, 1024)
-        };
+        let shadow = ShadowLight::for_scene(&scene, 1024);
+        let near = shadow.points[0].unwrap();
         let bytes = uniform_for(&scene, &shadow);
         let block = &bytes[bytes.len() - POINT_BYTES..];
         let float = |at: usize| f32::from_le_bytes(block[at..at + 4].try_into().unwrap());
-        assert_eq!(&block[..64], &mat4_to_bytes(point.view_proj[0])[..]);
+        assert_eq!(&block[..64], &mat4_to_bytes(near.view_proj[0])[..]);
         assert_eq!(
-            [float(384), float(388), float(392), float(396)],
-            [1.0, 2.0, 3.0, 12.0]
+            [float(1536), float(1540), float(1544), float(1548)],
+            [1.0, 2.0, 3.0, 12.0],
+            "slot 0 is the light nearest the camera"
         );
-        assert_eq!(float(400), POINT_SHADOW_NEAR);
-        assert_eq!(u32_at(&bytes, bytes.len() - 16), 0);
+        assert_eq!(float(1552), 9.0, "slot 1 follows");
+        assert_eq!(float(1600), POINT_SHADOW_NEAR);
+        let casters: Vec<u32> = (0..4)
+            .map(|slot| u32_at(&bytes, bytes.len() - 16 + slot * 4))
+            .collect();
+        assert_eq!(casters, [1, 0, u32::MAX, u32::MAX]);
     }
 
     #[test]
-    fn without_a_point_shadow_no_light_index_is_named() {
+    fn without_point_shadows_no_light_index_is_named() {
         let scene = Scene3d::default();
-        let shadow = ShadowLight {
-            point: None,
-            ..ShadowLight::for_scene(&scene, 1024)
-        };
+        let shadow = ShadowLight::for_scene(&scene, 1024);
         let bytes = uniform_for(&scene, &shadow);
-        assert_eq!(u32_at(&bytes, bytes.len() - 16), u32::MAX);
+        let casters: Vec<u32> = (0..4)
+            .map(|slot| u32_at(&bytes, bytes.len() - 16 + slot * 4))
+            .collect();
+        assert_eq!(casters, [u32::MAX; 4]);
     }
 }
