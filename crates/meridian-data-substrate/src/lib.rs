@@ -48,11 +48,12 @@ mod transform_form;
 
 pub use document_keys::{FORMAT, SAVE_FORMAT};
 pub use identity::{
-    AssetKey, AssetKeyError, AssetPathKind, ComponentName, ComponentNameError, DisplayName,
-    EntityKey, EntityKeyError, EntityKind, PrefabKind, PrefabPath, PrefabPathError,
+    ComponentName, ComponentNameError, DisplayName, EntityKey, EntityKeyError, EntityKind,
+    PrefabKind, PrefabPath, PrefabPathError,
 };
 pub use load::{LoadError, SceneIssue, SceneProblem};
 pub use mapping::{DuplicateKey, KeptComponent, Parent, SceneEntity, SceneMap};
+pub use meridian_asset_domain::{AssetKey, AssetKeyError, AssetPathKind};
 pub use no_resolver::NoResolver;
 pub use overrides::SceneSaveError;
 pub use prefab::{

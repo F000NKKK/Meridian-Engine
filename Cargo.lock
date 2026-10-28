@@ -1328,6 +1328,7 @@ dependencies = [
 name = "meridian-data-substrate"
 version = "0.1.0"
 dependencies = [
+ "meridian-asset-domain",
  "meridian-ecs",
  "meridian-gac",
  "meridian-rendering-domain",

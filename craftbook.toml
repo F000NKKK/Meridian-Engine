@@ -263,6 +263,11 @@ to = "rendering"
 relation = "customer-supplier"
 
 [[context_edge]]
+from = "data"
+to = "assets"
+relation = "published-language"
+
+[[context_edge]]
 from = "rendering"
 to = "assets"
 relation = "published-language"

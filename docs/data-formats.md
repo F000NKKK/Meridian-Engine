@@ -42,6 +42,35 @@ the sdk binds after loading: `EditorRenderer::bind_references` asks an
 `ground` and the material `builtin/default`) for each handle and reports
 every reference it could not resolve. Saving writes `MeshReference` back.
 
+## Materials
+
+A `.mmat` file is one material: PBR factors and the textures they multiply.
+`MaterialAsset` in `meridian-asset-domain` reads it (text, or binary when the
+bytes start with `SDAT`; `format` first, a newer one is `UnsupportedFormat`,
+an unknown key is an error with its path).
+
+```
+{
+  format: 1,
+  base_color: [1, 0.77, 0.34, 1],   // LINEAR rgba, not sRGB; default [0.8, 0.8, 0.8, 1]
+  metallic: 1,                      // default 0
+  roughness: 0.3,                   // default 0.5
+  emissive: [0, 0, 0],              // linear rgb
+  normal_scale: 1, occlusion_strength: 1,
+  blend: "opaque",                  // or "alpha_blend"
+  unlit: false,
+  albedo: "@asset:textures/gold.png",          // sRGB data
+  metallic_roughness: "@asset:textures/gold_mr.png", // roughness g, metalness b
+  normal: "@asset:textures/gold_n.png",
+  occlusion: "@asset:textures/gold_ao.png",
+  emissive_map: "@asset:textures/gold_e.png",
+}
+```
+
+Every field but `format` is optional; a file that says nothing is a grey
+dielectric. Added fields are optional with defaults; `format` changes only for
+a breaking change.
+
 ## Math values
 
 With the `data` feature, `numeric` and `gac` implement
