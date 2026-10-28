@@ -3,7 +3,7 @@
 use meridian_ecs::{Entity, World};
 use meridian_gac::{Motor3, Scale3};
 use meridian_rendering_domain::{
-    Material, MaterialHandle, MeshHandle, Renderable3d, Scene3d, extract_scene3d,
+    BlendMode, Material, MaterialHandle, MeshHandle, Renderable3d, Scene3d, extract_scene3d,
 };
 
 use super::grid::{LineStyle, grid_lines};
@@ -88,7 +88,12 @@ impl EditorRenderer {
 
 fn line_material(style: LineStyle) -> Material {
     Material {
-        base_color_factor: [style.color[0], style.color[1], style.color[2], 1.0],
+        base_color_factor: [style.color[0], style.color[1], style.color[2], style.alpha],
+        blend: if style.alpha < 1.0 {
+            BlendMode::AlphaBlend
+        } else {
+            BlendMode::Opaque
+        },
         unlit: true,
         always_on_top: style.on_top,
         ..Material::default()

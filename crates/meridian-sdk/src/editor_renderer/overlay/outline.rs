@@ -11,6 +11,7 @@ use crate::editor_renderer::picking::{frame_of, scale_of};
 
 const SELECTED: LineStyle = LineStyle {
     color: [1.0, 0.25, 0.0],
+    alpha: 1.0,
     on_top: true,
 };
 
