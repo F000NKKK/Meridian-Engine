@@ -1,6 +1,6 @@
 //! How a light spreads.
 
-/// How a [`LightSource`] spreads its light.
+/// How a [`LightSource`](crate::LightSource) spreads its light.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum LightKind {
     /// Parallel light along the entity's local X axis (the sun).
