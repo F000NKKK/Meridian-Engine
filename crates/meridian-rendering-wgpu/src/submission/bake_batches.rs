@@ -7,10 +7,11 @@ use meridian_rendering_domain::{
     plan_batches, world_space_bounds,
 };
 
+use super::batching::BindGroupCache;
 use super::instance_data::push_instance;
 use super::main_pipelines::PipelineKey;
 use super::{DrawKind, PreparedBatch, SceneAssets, SceneRenderer};
-use crate::{Buffer, BufferUsage, Device, LitTextures, SampledTexture, SurfaceTextures, Texture};
+use crate::{Device, LitTextures, SampledTexture, SurfaceTextures, Texture};
 
 /// A renderable whose mesh and material resolved.
 struct Resolved<'a> {
@@ -63,19 +64,20 @@ impl<'a> Resolved<'a> {
     }
 }
 
-/// The batches of one scene and the instance buffer they index.
+/// The batches of one scene and the instance records they index.
 pub(crate) struct BakedBatches {
     pub batches: Vec<PreparedBatch>,
-    pub instances: Option<Buffer>,
-    /// The instance records as uploaded, `INSTANCE_STRIDE` bytes each.
+    /// Every instance's record, `INSTANCE_STRIDE` bytes each, which the
+    /// batches' ranges index. Not uploaded as it is: each pass uploads the
+    /// instances it draws (ADR 040, ADR 046).
     pub records: Vec<u8>,
     /// Each instance's world-space box, `None` where its mesh has no vertices.
     pub bounds: Vec<Option<Aabb>>,
 }
 
 /// Resolves `scene`'s renderables, uploads any mesh not yet on the GPU,
-/// groups the renderables into batches in drawing order and uploads their
-/// instance records in one buffer.
+/// and groups the renderables into batches in drawing order with their
+/// instance records.
 pub(crate) fn bake_batches(
     device: &Device,
     renderer: &mut SceneRenderer,
@@ -95,6 +97,7 @@ pub(crate) fn bake_batches(
     let mut bounds = Vec::new();
     let mut batches = Vec::new();
     let mut first = 0u32;
+    let mut groups = BindGroupCache::default();
     for planned in plan_batches(&items) {
         let lead = &resolved[planned.members[0]];
         renderer.meshes.ensure(device, lead.mesh, lead.source);
@@ -107,7 +110,7 @@ pub(crate) fn bake_batches(
         let count = u32::try_from(planned.members.len()).unwrap_or(u32::MAX);
         batches.push(PreparedBatch {
             mesh: lead.mesh,
-            kind: draw_kind(device, renderer, assets, lead),
+            kind: draw_kind(device, renderer, assets, lead, &mut groups),
             lit: planned.key.lit,
             state: planned.key.state,
             casts_shadow: planned.key.casts_shadow,
@@ -118,7 +121,6 @@ pub(crate) fn bake_batches(
     }
     BakedBatches {
         batches,
-        instances: upload_instances(device, &bytes),
         records: bytes,
         bounds,
     }
@@ -129,6 +131,7 @@ fn draw_kind(
     renderer: &SceneRenderer,
     assets: &SceneAssets<'_>,
     lead: &Resolved<'_>,
+    groups: &mut BindGroupCache,
 ) -> DrawKind {
     if !lead.maps.any() {
         return DrawKind::Colored;
@@ -145,8 +148,8 @@ fn draw_kind(
     };
     let neutral = &renderer.neutral;
     let maps = lead.maps;
-    DrawKind::Textured {
-        bind_group: textured_bind_group(
+    let bind_group = groups.group_for(key, maps, || {
+        textured_bind_group(
             device,
             renderer,
             [
@@ -157,17 +160,9 @@ fn draw_kind(
                 find(maps.emissive, &neutral.white_albedo),
             ],
             key,
-        ),
-    }
-}
-
-fn upload_instances(device: &Device, bytes: &[u8]) -> Option<Buffer> {
-    if bytes.is_empty() {
-        return None;
-    }
-    let buffer = device.create_buffer(bytes.len(), BufferUsage::Vertex);
-    device.write_buffer(&buffer, bytes);
-    Some(buffer)
+        )
+    });
+    DrawKind::Textured { bind_group }
 }
 
 /// A fresh bind group naming the `[albedo, metallic_roughness, normal,

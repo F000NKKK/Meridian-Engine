@@ -5,6 +5,7 @@ use core::ops::Range;
 use meridian_rendering_domain::scene::Scene3d;
 use meridian_rendering_domain::{EnvironmentMap, Frustum, LocalShadow, ShadowLight, ViewUniforms};
 
+use super::batching::VisibleBatches;
 use super::environment::GpuEnvironment;
 use super::main_pipelines::{MainBindings, MainPipelines};
 use super::mesh_cache::MeshCache;
@@ -239,9 +240,11 @@ impl SceneRenderer {
             casters: &casters,
         };
         self.record_shadow_casters(commands, &baked.batches, &draws, casters.upload(device));
+        let view = Frustum::from_view_projection(scene.camera.view_projection_matrix());
+        let visible = VisibleBatches::cull(&baked.batches, &baked.records, &baked.bounds, &view);
         PreparedScene {
-            batches: baked.batches,
-            instances: baked.instances,
+            instances: visible.upload(device),
+            batches: visible.batches,
             shadow,
         }
     }
@@ -285,14 +288,17 @@ impl SceneRenderer {
         let Some(instances) = &prepared.instances else {
             return;
         };
+        let mut bound: Option<&PreparedBatch> = None;
         for batch in &prepared.batches {
-            let main = self.pipelines.get(batch.pipeline_key());
-            pass.set_pipeline(&main.pipeline);
-            match (&batch.kind, &main.shared_bind_group) {
-                (DrawKind::Textured { bind_group }, _) | (DrawKind::Colored, Some(bind_group)) => {
-                    pass.set_bind_group(0, bind_group);
+            if bound.is_none_or(|previous| !previous.binds_like(batch)) {
+                let main = self.pipelines.get(batch.pipeline_key());
+                pass.set_pipeline(&main.pipeline);
+                match (&batch.kind, &main.shared_bind_group) {
+                    (DrawKind::Textured { bind_group }, _) => pass.set_bind_group(0, bind_group),
+                    (DrawKind::Colored, Some(bind_group)) => pass.set_bind_group(0, bind_group),
+                    (DrawKind::Colored, None) => continue,
                 }
-                (DrawKind::Colored, None) => continue,
+                bound = Some(batch);
             }
             self.draw_batch(pass, batch, instances);
         }
