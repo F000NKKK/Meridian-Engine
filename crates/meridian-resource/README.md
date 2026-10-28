@@ -4,7 +4,7 @@ Resource identity: typed handles, versioning, lifetime and dependency tracking f
 
 **Layer and context:** shared kernel · identity
 
-- **For:** Typed `ResourceId<T>`, `Version`, and a `DependencyGraph` with cycle checks.
+- **For:** Typed `ResourceId<T>`, `Version`, a `DependencyGraph` with cycle checks, and `ResourceIdTable<K, T>` (a stable key such as an asset id to its runtime `ResourceId`, bound by the code that loads and unbound by the code that releases).
 - **Not for:** lifetime policy or loading: it is not a manager. Decoding is `meridian-asset-domain`; storage is `meridian-memory`.
 
 ## Usage

@@ -104,9 +104,14 @@ the optional external `substrate-data` dependency.
 `meridian-asset-domain` also holds Meridian's own asset formats, `.meta` and
 `.mpak` ([data-formats.md](data-formats.md)). They take the external
 `substrate-data` and `thiserror` and add no internal edge; the `ReadAt` port
-the pack is read through is owned here, implemented by `asset-fs`
-(`FileReadAt`, hence its edge to this crate) and served to the loader by
-`asset-app`'s `PackSource`.
+the pack is read through (and the `WriteAt` port it is streamed out through)
+is owned here, implemented by `asset-fs` (`FileReadAt`, `FileWriteAt`, hence
+its edge to this crate) and served to the loader by
+`asset-app`'s `PackSource`. `asset-app` owns the importer registry and the
+asset catalog (application wiring over the domain's `Decoder` and `AssetMeta`;
+`thiserror` is its only external dependency), and `meridian-resource` owns
+the generic `ResourceIdTable`, which knows no asset type: the `sdk` composes
+them (rules 4 and 8: no loader owns identity, no identity table loads).
 
 `meridian-editor-domain` is the wire protocol between a running game and
 its editor (Meridian IDLE): typed `Request`/`Response`/`Event` messages as
@@ -295,7 +300,7 @@ bottom-up.
 - `meridian-animation-domain` -> `meridian-ecs`, `meridian-gac`
 - `meridian-text-domain` -> (no workspace crates)
 - `meridian-ui-scene2d` -> `meridian-gac`, `meridian-rendering-domain`, `meridian-text-domain`, `meridian-ui-domain`
-- `meridian-sdk` -> `meridian-animation-domain`, `meridian-data-substrate`, `meridian-ecs`, `meridian-asset-app`, `meridian-asset-fs`, `meridian-asset-http`, `meridian-asset-domain`, `meridian-asset-gltf`, `meridian-asset-jpeg`, `meridian-asset-png`, `meridian-asset-symphonia`, `meridian-audio-app`, `meridian-audio-domain`, `meridian-audio-cpal`, `meridian-compute-wgpu`, `meridian-compute-app`, `meridian-diagnostics-fs`, `meridian-markup`, `meridian-markup-macros`, `meridian-runtime-app`, `meridian-diagnostics`, `meridian-gac`, `meridian-rendering-domain`, `meridian-rendering-wgpu`, `meridian-physics-app`, `meridian-physics-wgpu`, `meridian-physics-domain`, `meridian-platform-winit`, `meridian-rendering-app`, `meridian-runtime-threads`, `meridian-ui-domain`, `meridian-ui-scene2d`
+- `meridian-sdk` -> `meridian-animation-domain`, `meridian-memory`, `meridian-resource`, `meridian-data-substrate`, `meridian-ecs`, `meridian-asset-app`, `meridian-asset-fs`, `meridian-asset-http`, `meridian-asset-domain`, `meridian-asset-gltf`, `meridian-asset-jpeg`, `meridian-asset-png`, `meridian-asset-symphonia`, `meridian-audio-app`, `meridian-audio-domain`, `meridian-audio-cpal`, `meridian-compute-wgpu`, `meridian-compute-app`, `meridian-diagnostics-fs`, `meridian-markup`, `meridian-markup-macros`, `meridian-runtime-app`, `meridian-diagnostics`, `meridian-gac`, `meridian-rendering-domain`, `meridian-rendering-wgpu`, `meridian-physics-app`, `meridian-physics-wgpu`, `meridian-physics-domain`, `meridian-platform-winit`, `meridian-rendering-app`, `meridian-runtime-threads`, `meridian-ui-domain`, `meridian-ui-scene2d`
 
 `meridian-runtime-app` has no edge to `meridian-rendering-domain` or
 `meridian-asset-domain`: `Runtime::tick` doesn't render a frame or load an

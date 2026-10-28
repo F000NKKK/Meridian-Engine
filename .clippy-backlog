@@ -1,4 +1,5 @@
 # clippy warnings per lint; may only shrink (scripts/clippy_backlog.py)
+clippy::assert_is_empty	1
 clippy::assigning_clones	1
 clippy::case_sensitive_file_extension_comparisons	1
 clippy::cast_lossless	32
@@ -13,17 +14,17 @@ clippy::items_after_statements	4
 clippy::let_underscore_untyped	1
 clippy::manual_midpoint	1
 clippy::many_single_char_names	3
-clippy::map_unwrap_or	6
+clippy::map_unwrap_or	5
 clippy::missing_errors_doc	29
 clippy::missing_panics_doc	10
 clippy::module_name_repetitions	25
-clippy::must_use_candidate	245
+clippy::must_use_candidate	239
 clippy::needless_raw_string_hashes	15
 clippy::panic	25
 clippy::print_stderr	3
 clippy::print_stdout	1
 clippy::redundant_closure_for_method_calls	4
-clippy::return_self_not_must_use	47
+clippy::return_self_not_must_use	46
 clippy::shadow_unrelated	9
 clippy::similar_names	5
 clippy::single_match_else	3
@@ -33,6 +34,6 @@ clippy::unreachable	2
 clippy::unused_async	1
 clippy::unused_self	4
 elided_lifetimes_in_paths	1
-missing_docs	653
+missing_docs	647
 unreachable_pub	6
 unused_variables	1

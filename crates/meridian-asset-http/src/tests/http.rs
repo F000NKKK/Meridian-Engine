@@ -1,4 +1,4 @@
-//! The source against a local server.
+//! The source over plain `http`, against a local server.
 
 use std::time::Duration;
 
@@ -105,11 +105,8 @@ fn an_unreachable_server_is_unreadable_not_a_panic() {
 }
 
 #[test]
-fn only_plain_http_base_urls_are_accepted() {
-    assert_eq!(
-        HttpSource::new("https://example.com").unwrap_err(),
-        HttpSourceError::UnsupportedScheme("https://example.com".to_owned())
-    );
+fn only_http_and_https_base_urls_are_accepted() {
+    assert!(HttpSource::new("https://example.com").is_ok());
     assert!(matches!(
         HttpSource::new("ftp://x").unwrap_err(),
         HttpSourceError::UnsupportedScheme(_)
@@ -119,7 +116,7 @@ fn only_plain_http_base_urls_are_accepted() {
         HttpSourceError::MissingHost(_)
     ));
     assert!(matches!(
-        HttpSource::new("http:///assets").unwrap_err(),
+        HttpSource::new("https:///assets").unwrap_err(),
         HttpSourceError::MissingHost(_)
     ));
 }

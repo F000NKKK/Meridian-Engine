@@ -6,10 +6,19 @@
 #![doc = include_str!("../README.md")]
 #![forbid(unsafe_code)]
 
+mod add_file;
 mod file_read_at;
+mod file_write_at;
 mod fs_source;
 #[cfg(test)]
+mod pack_write_tests;
+#[cfg(test)]
+mod scratch;
+#[cfg(test)]
 mod tests;
+mod walk;
 
+pub use add_file::{AddFileError, add_file};
 pub use file_read_at::FileReadAt;
+pub use file_write_at::FileWriteAt;
 pub use fs_source::FsSource;

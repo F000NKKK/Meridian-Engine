@@ -148,6 +148,8 @@ ALLOWED = {
     },
     "meridian-sdk": {
         "meridian-animation-domain",
+        "meridian-memory",
+        "meridian-resource",
         "meridian-data-substrate",
         "meridian-ecs",
         "meridian-asset-app",
