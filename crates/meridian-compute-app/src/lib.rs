@@ -3,7 +3,7 @@
 //! Layer: application; bounded context: compute (`craftbook.toml`,
 //! docs/context-map.md).
 //!
-//! [`ComputeContext::parallel_for`] is the one place the CPU backend gets
+//! [`ComputeContext::parallel_for`] and [`ComputeContext::parallel_ranges`] are the one place the CPU backend gets
 //! reached (rule 5): below `parallel_threshold` it runs sequentially on
 //! the calling thread, at or above it delegates to the
 //! [`ComputeDevice`] port (implemented by `compute-wgpu`). That threshold is

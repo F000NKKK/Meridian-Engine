@@ -207,3 +207,26 @@ async fn run_hybrid_of_nothing_calls_nothing() {
         .await;
     assert!(kernel.cpu_visited.lock().unwrap().is_empty());
 }
+
+#[test]
+fn parallel_ranges_cover_every_index_exactly_once() {
+    for threshold in [1, usize::MAX] {
+        let ctx = cpu_context().with_parallel_threshold(threshold);
+        let seen = std::sync::Mutex::new(vec![0u8; 5_000]);
+        ctx.parallel_ranges(5_000, |range| {
+            let mut seen = seen.lock().unwrap();
+            for i in range {
+                seen[i] += 1;
+            }
+        });
+        assert!(
+            seen.lock().unwrap().iter().all(|&n| n == 1),
+            "threshold {threshold}"
+        );
+    }
+}
+
+#[test]
+fn parallel_ranges_with_no_items_never_calls_work() {
+    cpu_context().parallel_ranges(0, |_| panic!("no work expected"));
+}

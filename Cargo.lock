@@ -1387,6 +1387,7 @@ dependencies = [
 name = "meridian-gac-wgpu"
 version = "0.23.0"
 dependencies = [
+ "criterion",
  "meridian-compute-app",
  "meridian-compute-wgpu",
  "meridian-gac",

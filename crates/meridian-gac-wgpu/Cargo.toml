@@ -17,10 +17,15 @@ meridian-gpu-wgpu = { workspace = true }
 
 [dev-dependencies]
 tokio = { workspace = true }
+criterion = { version = "0.8", default-features = false }
 
 [features]
 # Tests that need a real GPU or audio device; CI has neither (docs/adr/020).
 hw-tests = []
+
+[[bench]]
+name = "batch_kernels"
+harness = false
 
 [lints]
 workspace = true
