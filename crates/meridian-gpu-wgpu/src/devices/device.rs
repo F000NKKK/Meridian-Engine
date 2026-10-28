@@ -12,7 +12,7 @@ use crate::{CommandBuffer, DeviceError};
 /// alongside its CPU backend).
 #[derive(Debug, Clone)]
 pub struct Device {
-    pub(crate) device: wgpu::Device,
+    pub(crate) raw: wgpu::Device,
     pub(crate) queue: wgpu::Queue,
     adapter_info: wgpu::AdapterInfo,
 }
@@ -22,13 +22,18 @@ impl Device {
     /// every backend `wgpu` supports on this platform enabled, the
     /// adapter it picks (`compatible_surface: None`), then the logical
     /// device off that adapter. A real `async fn` — see the module doc.
+    ///
+    /// # Errors
+    ///
+    /// [`DeviceError::NoAdapter`] when no adapter is available, or
+    /// [`DeviceError::RequestDevice`] when the adapter cannot open a device.
     pub async fn new() -> Result<Self, DeviceError> {
         let instance =
             wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle_from_env());
         let (device, queue, adapter_info, _adapter) =
             Self::request_from_instance(&instance, None).await?;
         Ok(Self {
-            device,
+            raw: device,
             queue,
             adapter_info,
         })
@@ -43,6 +48,11 @@ impl Device {
     /// for `Surface::get_capabilities`, and this is the only place that
     /// adapter is ever available; see the module doc for why surface
     /// *configuration*/lifecycle isn't otherwise this crate's job.
+    ///
+    /// # Errors
+    ///
+    /// [`DeviceError::CreateSurface`] when `target` cannot become a surface,
+    /// plus the errors of [`Device::new`].
     pub async fn new_windowed(
         target: impl Into<wgpu::SurfaceTarget<'static>>,
     ) -> Result<(Self, wgpu::Surface<'static>, wgpu::Adapter), DeviceError> {
@@ -55,7 +65,7 @@ impl Device {
             Self::request_from_instance(&instance, Some(&surface)).await?;
         Ok((
             Self {
-                device,
+                raw: device,
                 queue,
                 adapter_info,
             },
@@ -100,6 +110,7 @@ impl Device {
 
     /// The adapter's reported name (e.g. `"NVIDIA GeForce RTX 4050
     /// Max-Q"`) — for logging/diagnostics, not parsed for behavior.
+    #[must_use]
     pub fn adapter_name(&self) -> &str {
         &self.adapter_info.name
     }
@@ -108,7 +119,7 @@ impl Device {
     /// which is requested whenever the adapter offers them.
     #[must_use]
     pub fn supports_timestamps(&self) -> bool {
-        self.device
+        self.raw
             .features()
             .contains(wgpu::Features::TIMESTAMP_QUERY)
     }
@@ -118,22 +129,25 @@ impl Device {
     /// configuration, render pipeline creation). Prefer this crate's own
     /// methods (`create_buffer`, `create_shader`, ...) where they cover
     /// the need; reach for this only when they don't.
+    #[must_use]
     pub fn wgpu_device(&self) -> &wgpu::Device {
-        &self.device
+        &self.raw
     }
 
     /// The raw `wgpu::Queue` — see [`Device::wgpu_device`]'s doc comment
     /// for why this is exposed (`rendering-wgpu` needs it for
     /// `Queue::present`, which isn't a concept this crate knows about).
+    #[must_use]
     pub fn wgpu_queue(&self) -> &wgpu::Queue {
         &self.queue
     }
 
     /// Opens a new [`CommandBuffer`](crate::CommandBuffer) for recording. Nothing reaches the
     /// GPU until [`CommandBuffer::submit`](crate::CommandBuffer::submit) is called.
+    #[must_use]
     pub fn create_command_buffer(&self) -> CommandBuffer<'_> {
         let encoder = self
-            .device
+            .raw
             .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
         CommandBuffer {
             device: self,

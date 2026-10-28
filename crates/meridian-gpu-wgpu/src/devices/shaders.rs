@@ -5,9 +5,10 @@ use crate::{ComputePipeline, Device, Shader};
 impl Device {
     /// Compiles a WGSL shader module. `label` is for GPU-debugger/error
     /// message purposes only.
+    #[must_use]
     pub fn create_shader(&self, label: &str, wgsl_source: &str) -> Shader {
         let raw = self
-            .device
+            .raw
             .create_shader_module(wgpu::ShaderModuleDescriptor {
                 label: Some(label),
                 source: wgpu::ShaderSource::Wgsl(wgsl_source.into()),
@@ -22,9 +23,10 @@ impl Device {
     /// binding-per-dispatch shape [`CommandBuffer::dispatch_compute`](crate::CommandBuffer::dispatch_compute)
     /// supports today; an explicit layout becomes worth building once a
     /// pipeline needs more than one bound resource.
+    #[must_use]
     pub fn create_compute_pipeline(&self, shader: &Shader, entry_point: &str) -> ComputePipeline {
         let raw = self
-            .device
+            .raw
             .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
                 label: None,
                 layout: None,

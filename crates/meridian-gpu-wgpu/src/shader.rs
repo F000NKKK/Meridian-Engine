@@ -11,6 +11,7 @@ impl Shader {
     /// render pipeline creation (vertex + fragment stages from the same
     /// module), which this crate's own [`Device::create_compute_pipeline`](crate::Device::create_compute_pipeline)
     /// doesn't cover.
+    #[must_use]
     pub fn wgpu_shader(&self) -> &wgpu::ShaderModule {
         &self.raw
     }

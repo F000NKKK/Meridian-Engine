@@ -8,6 +8,9 @@ pub struct BindGroup {
 }
 
 impl BindGroup {
+    /// The raw `wgpu::BindGroup`, for callers that set it on a render or
+    /// compute pass this crate does not record itself.
+    #[must_use]
     pub fn wgpu_bind_group(&self) -> &wgpu::BindGroup {
         &self.raw
     }

@@ -9,6 +9,8 @@ pub enum DeviceError {
     /// No adapter matched the request (no GPU, no compatible driver, or
     /// `wgpu` has no backend for this platform).
     NoAdapter,
+    /// The adapter was found but refused to open a logical device
+    /// (unsupported limits or features, or the device was lost).
     RequestDevice(wgpu::RequestDeviceError),
     /// [`Device::new_windowed`](crate::Device::new_windowed) only: the window/display handle couldn't
     /// be turned into a `wgpu::Surface` (e.g. an unsupported platform
