@@ -1,11 +1,11 @@
 # meridian-data-substrate
 
-Scene serialization on Substrate Data: an application-built component registry, the .mscene document schema, and World load/save with line/column/path diagnostics.
+Scene serialization on Substrate Data: an application-built component registry, the .mscene (text and binary), .mprefab and .msave formats, and World load/save with path and line/column or byte-offset diagnostics.
 
 **Layer and context:** infrastructure (adapter) · data
 
-- **For:** The `.mscene` document schema on Substrate Data, an application-built `ComponentRegistry`, and `World` load/save with line/column/path diagnostics.
-- **Not for:** the editor wire protocol: that is `meridian-editor-domain`. The `meridian-sdk` does not re-export it yet.
+- **For:** The `.mscene` (text and binary), `.mprefab` and `.msave` formats on Substrate Data, an application-built `ComponentRegistry`, and `World` load/save with path and line/column or byte-offset diagnostics. A world's disk form is its scene document; `World::snapshot` in `meridian-ecs` is the in-memory copy and is never written.
+- **Not for:** the editor wire protocol (that is `meridian-editor-domain`), reading files (prefab bytes come through the `PrefabSource` port the application implements), or the game's own save `state` schema (the game owns it). The `meridian-sdk` does not re-export it yet.
 
 ## Usage
 

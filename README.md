@@ -88,7 +88,7 @@ crate has its own README.
 | [`meridian-audio-cpal`](crates/meridian-audio-cpal) | audio | Audio output device via `cpal` |
 | [`meridian-gac-wgpu`](crates/meridian-gac-wgpu) | geometry | Batch `Motor3` kernels on CPU-SIMD and GPU |
 | [`meridian-physics-wgpu`](crates/meridian-physics-wgpu) | physics | Batched rigid-body and soft-body kernels |
-| [`meridian-data-substrate`](crates/meridian-data-substrate) | data | `.mscene` documents on Substrate Data, `World` load/save |
+| [`meridian-data-substrate`](crates/meridian-data-substrate) | data | `.mscene`/`.mprefab`/`.msave` on Substrate Data, `World` load/save |
 | [`meridian-editor-domain`](crates/meridian-editor-domain) | editor | Typed game/editor messages as Substrate Data frames |
 | [`meridian-editor-app`](crates/meridian-editor-app) | editor | The game's side of the protocol, without I/O: `Session`, `SimulationControl`, `RequestHandler` |
 | [`meridian-editor-tcp`](crates/meridian-editor-tcp) | editor | Serves one editor over loopback TCP (the only editor crate with `tokio`) |

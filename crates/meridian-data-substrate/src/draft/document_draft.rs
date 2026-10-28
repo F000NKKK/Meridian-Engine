@@ -2,7 +2,7 @@
 
 use meridian_ecs::World;
 
-use super::pending_entity::PendingEntity;
+use super::PendingEntity;
 use crate::{DisplayName, Parent, SceneMap};
 
 /// A document read without a problem, not spawned yet.

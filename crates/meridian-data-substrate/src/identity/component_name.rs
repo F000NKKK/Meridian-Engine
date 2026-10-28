@@ -6,8 +6,7 @@ use std::str::FromStr;
 use substrate_data::KindName;
 use substrate_data::schema::NamedType;
 
-/// The largest edit distance a typo is suggested for, per three letters.
-const TYPO_LETTERS: usize = 3;
+use super::closest_spelling;
 
 /// The name a document gives a component type (`transform`, `rigid_body`):
 /// lower case letters, digits and `_`, starting with a letter.
@@ -42,12 +41,7 @@ impl ComponentName {
         &self,
         known: impl Iterator<Item = &'k ComponentName>,
     ) -> Option<&'k ComponentName> {
-        let limit = self.0.len().div_ceil(TYPO_LETTERS).max(1);
-        known
-            .map(|k| (edit_distance(&self.0, &k.0), k))
-            .filter(|(d, _)| *d <= limit)
-            .min_by_key(|(d, _)| *d)
-            .map(|(_, k)| k)
+        closest_spelling(&self.0, known, |k| k.as_str())
     }
 }
 
@@ -95,21 +89,6 @@ impl fmt::Display for ComponentNameError {
 }
 
 impl std::error::Error for ComponentNameError {}
-
-/// Levenshtein distance of two names.
-fn edit_distance(a: &str, b: &str) -> usize {
-    let b: Vec<char> = b.chars().collect();
-    let mut prev: Vec<usize> = (0..=b.len()).collect();
-    for (i, ca) in a.chars().enumerate() {
-        let mut cur = vec![i + 1; b.len() + 1];
-        for (j, cb) in b.iter().enumerate() {
-            let swap = prev[j] + usize::from(ca != *cb);
-            cur[j + 1] = swap.min(prev[j + 1] + 1).min(cur[j] + 1);
-        }
-        prev = cur;
-    }
-    prev[b.len()]
-}
 
 #[cfg(test)]
 mod tests {

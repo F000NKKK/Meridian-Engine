@@ -85,7 +85,7 @@ Meridian-Engine — небольшой устойчивый набор крей�
 | [`meridian-audio-cpal`](crates/meridian-audio-cpal) | audio | Устройство вывода звука через `cpal` |
 | [`meridian-gac-wgpu`](crates/meridian-gac-wgpu) | geometry | Пакетные ядра `Motor3` на CPU-SIMD и GPU |
 | [`meridian-physics-wgpu`](crates/meridian-physics-wgpu) | physics | Пакетные ядра твёрдых и мягких тел |
-| [`meridian-data-substrate`](crates/meridian-data-substrate) | data | Документы `.mscene` на Substrate Data, загрузка и сохранение `World` |
+| [`meridian-data-substrate`](crates/meridian-data-substrate) | data | Документы `.mscene`/`.mprefab`/`.msave` на Substrate Data, загрузка и сохранение `World` |
 | [`meridian-editor-domain`](crates/meridian-editor-domain) | editor | Типизированные сообщения игра/редактор в кадрах Substrate Data |
 | [`meridian-editor-app`](crates/meridian-editor-app) | editor | Сторона игры в протоколе без ввода-вывода: `Session`, `SimulationControl`, `RequestHandler` |
 | [`meridian-editor-tcp`](crates/meridian-editor-tcp) | editor | Обслуживает один редактор по loopback TCP (единственный crate редактора с `tokio`) |

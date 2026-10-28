@@ -1,9 +1,10 @@
 //! [`SceneWriter`]: a scene's entities as `.mscene` text.
 
 use meridian_ecs::World;
-use substrate_data::{Id, Map, Schema, Value, text};
+use substrate_data::{Id, Map, Schema, Value, binary, text};
 
 use crate::document_keys::{COMPONENTS, ENTITIES, FORMAT_KEY, ID, NAME, PARENT, PREFAB};
+use crate::document_kind::DocumentKind;
 use crate::{
     ComponentRegistry, EntityKey, EntityKind, FORMAT, Parent, PrefabKind, SceneEntity, SceneMap,
 };
@@ -31,22 +32,33 @@ impl<'a> SceneWriter<'a> {
     }
 
     /// The document, as text.
-    pub(crate) fn text(&self) -> String {
+    pub(crate) fn text(&self, kind: DocumentKind) -> String {
+        text::to_string_pretty(&self.document(kind))
+    }
+
+    /// The document, in the `SDAT` binary form: the canonical encoding of
+    /// its value, so lists of numbers are packed and entities (maps of one
+    /// shape) share their keys.
+    pub(crate) fn bytes(&self, kind: DocumentKind) -> Vec<u8> {
+        binary::encode(&self.document(kind))
+    }
+
+    /// The document, as a value.
+    pub(crate) fn document(&self, kind: DocumentKind) -> Value {
         let mut doc = Map::new();
         doc.insert(FORMAT_KEY, Value::Int(i64::from(FORMAT)));
-        if let Some(name) = self.scene.name() {
-            doc.insert(NAME, name.write());
-        }
-        let alive = self
-            .scene
-            .entities()
-            .iter()
-            .filter(|e| self.world.is_alive(e.entity));
+        match (kind, self.scene.name()) {
+            (DocumentKind::Scene, Some(name)) => doc.insert(NAME, name.write()),
+            _ => None,
+        };
+        // An instance's generated entities are made again by its prefab.
+        let alive = (self.scene.entities().iter())
+            .filter(|e| self.world.is_alive(e.entity) && e.generated_by.is_none());
         doc.insert(
             ENTITIES,
             Value::List(alive.map(|e| self.entity(e)).collect()),
         );
-        text::to_string_pretty(&Value::Map(doc))
+        Value::Map(doc)
     }
 
     fn entity(&self, e: &SceneEntity) -> Value {

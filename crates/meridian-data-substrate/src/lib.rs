@@ -1,23 +1,44 @@
 //! Scene serialization on Substrate Data: an application-built
-//! [`ComponentRegistry`], the `.mscene` document, and `World` load/save
-//! with every problem typed and placed (line, column, path).
+//! [`ComponentRegistry`] and three formats over a `World`, every problem
+//! typed and placed. Format and status: docs/data-formats.md.
 //!
-//! Tier: above `ecs` and `gac` (whose `data` feature gives
-//! `Motor3` its schema), below `runtime-app`. It knows no subsystem's
-//! components; an application registers the ones its scenes hold. Format,
-//! decisions and status: docs/data-formats.md and
+//! - **`.mscene`**: text ([`ComponentRegistry::load_scene`]; problems with
+//!   path, line and column) or the `SDAT` binary form
+//!   ([`load_scene_binary`](ComponentRegistry::load_scene_binary); path, and
+//!   a byte offset for bytes that do not decode);
+//!   [`load_scene_bytes`](ComponentRegistry::load_scene_bytes) tells them
+//!   apart by magic. All or nothing, into a [`SceneMap`].
+//! - **`.mprefab`**: a scene entity that says `prefab` becomes the
+//!   instance root, the prefab's others are `<instance>/<prefab id>`
+//!   ([`load_scene_with_prefabs`](ComponentRegistry::load_scene_with_prefabs)).
+//!   Bytes come from the application's [`PrefabSource`]; no files are read.
+//! - **`.msave`**: `{ format, game, created, scene, state }`: the full
+//!   scene document and the game's own `state`
+//!   ([`save_game`](ComponentRegistry::save_game),
+//!   [`load_game`](ComponentRegistry::load_game)); [`SaveHeader::read`]
+//!   does not decode the scene or the state.
+//!
+//! A world's disk form is its scene document; `World::snapshot` in `ecs`
+//! is the in-memory copy and is never written, and no runtime `Entity`
+//! reaches a file. Tier: above `ecs` and `gac`, below `runtime-app`; it
+//! knows no subsystem's components. See
 //! [ADR 016](../../../docs/adr/016-data-formats-on-substrate-data.md).
 
 mod document_keys;
+mod document_kind;
+mod draft;
 mod identity;
 mod load;
 mod mapping;
 mod no_resolver;
+mod prefab;
+mod read;
 mod registry;
+mod save;
 mod scene_writer;
 mod transform_form;
 
-pub use document_keys::FORMAT;
+pub use document_keys::{FORMAT, SAVE_FORMAT};
 pub use identity::{
     ComponentName, ComponentNameError, DisplayName, EntityKey, EntityKeyError, EntityKind,
     PrefabKind, PrefabPath, PrefabPathError,
@@ -25,7 +46,11 @@ pub use identity::{
 pub use load::{LoadError, SceneIssue, SceneProblem};
 pub use mapping::{DuplicateKey, KeptComponent, Parent, SceneEntity, SceneMap};
 pub use no_resolver::NoResolver;
+pub use prefab::{
+    MAX_PREFAB_DEPTH, PrefabInstance, PrefabLibrary, PrefabSource, PrefabUnavailable,
+};
 pub use registry::{
     ComponentEditError, ComponentRegistry, ComponentShape, RegisterError, UnknownComponents,
 };
+pub use save::{LoadedSave, SaveError, SaveHeader};
 pub use transform_form::{TransformCodec, TransformForm};

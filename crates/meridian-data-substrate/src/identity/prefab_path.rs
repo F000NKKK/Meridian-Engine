@@ -36,6 +36,14 @@ impl PrefabPath {
     pub fn as_str(&self) -> &str {
         &self.0
     }
+
+    /// The one of `known` closest to `self`, when close enough to be a typo.
+    pub(crate) fn closest<'k>(
+        &self,
+        known: impl Iterator<Item = &'k PrefabPath>,
+    ) -> Option<&'k PrefabPath> {
+        super::closest_spelling(&self.0, known, |k| k.as_str())
+    }
 }
 
 impl fmt::Display for PrefabPath {

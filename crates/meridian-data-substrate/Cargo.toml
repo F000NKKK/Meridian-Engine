@@ -5,7 +5,7 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Scene serialization on Substrate Data: an application-built component registry, the .mscene document schema, and World load/save with line/column/path diagnostics."
+description = "Scene serialization on Substrate Data: an application-built component registry, the .mscene (text and binary), .mprefab and .msave formats, and World load/save with path and line/column or byte-offset diagnostics."
 readme = "README.md"
 
 [dependencies]
