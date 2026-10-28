@@ -1,6 +1,6 @@
 //! [`DocumentSource`]: a document's text or bytes, parsed and read.
 
-use substrate_data::{Bump, binary, text};
+use substrate_data::{Bump, Value, binary, text};
 
 use super::placement::Placement;
 use super::{DocumentRole, ReadContext};
@@ -14,6 +14,8 @@ pub(crate) enum DocumentSource<'a> {
     Text(&'a str),
     /// The binary form.
     Binary(&'a [u8]),
+    /// A document already decoded (a save's `scene`): problems have paths.
+    Document(&'a Value),
 }
 
 impl<'a> DocumentSource<'a> {
@@ -50,6 +52,10 @@ impl<'a> DocumentSource<'a> {
             }
             DocumentSource::Binary(bytes) => {
                 let root = binary::decode_ref(bytes, &arena).map_err(LoadError::decode)?;
+                Placement::Binary.draft(cx.read(role, &root))
+            }
+            DocumentSource::Document(value) => {
+                let root = value.borrow(&arena);
                 Placement::Binary.draft(cx.read(role, &root))
             }
         }

@@ -6,6 +6,7 @@ mod component_edit_error;
 mod component_registry;
 mod component_shape;
 mod entry;
+mod game_saving;
 mod prefab_loading;
 mod register_error;
 mod scene_loading;
