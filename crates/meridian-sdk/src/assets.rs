@@ -53,8 +53,7 @@ pub fn load_image_asset(path: &str) -> ImageAsset {
 /// One looping mono audio source's decoded samples, however
 /// [`load_audio_track`] chose to get them — the two arms of
 /// `asset-symphonia::AudioAsset`, exposed behind one
-/// [`next_mono_chunk`](Self::next_mono_chunk) face so a caller never
-/// needs to know which one it got. Downmixed to mono here (spatializers
+/// [`SampleSource`] face so a caller never needs to know which one it got. Downmixed to mono here (spatializers
 /// like `audio-domain::BinauralRenderer` take one channel per source and
 /// pan it themselves) — not cached by [`AssetCache`] like textures/
 /// meshes, since a track carries its own playback cursor and two
@@ -74,17 +73,21 @@ pub enum AudioTrack {
 }
 
 impl AudioTrack {
-    /// Pulls the next `frames` mono samples, looping seamlessly when the
+    /// Fills `out` with the next mono samples, looping seamlessly when the
     /// source ends (rewinding a streamed decoder, wrapping a decoded
     /// buffer's cursor) — every track this loads is meant to loop
     /// indefinitely, e.g. background music, not a one-shot sound effect.
-    pub fn next_mono_chunk(&mut self, frames: usize) -> Vec<f32> {
-        let mut chunk = Vec::with_capacity(frames);
+    /// A failed stream pads the rest of `out` with silence.
+    fn fill_looping(&mut self, out: &mut [f32]) {
         match self {
+            AudioTrack::Memory { mono, .. } if mono.is_empty() => out.fill(0.0),
             AudioTrack::Memory { mono, cursor } => {
-                for _ in 0..frames {
-                    chunk.push(mono[*cursor]);
-                    *cursor = (*cursor + 1) % mono.len();
+                let mut filled = 0;
+                while filled < out.len() {
+                    let run = (out.len() - filled).min(mono.len() - *cursor);
+                    out[filled..filled + run].copy_from_slice(&mono[*cursor..*cursor + run]);
+                    filled += run;
+                    *cursor = (*cursor + run) % mono.len();
                 }
             }
             AudioTrack::Streamed {
@@ -92,27 +95,34 @@ impl AudioTrack {
                 channels,
                 queue,
             } => {
-                while chunk.len() < frames {
-                    if let Some(sample) = queue.pop_front() {
-                        chunk.push(sample);
-                        continue;
-                    }
-                    if !refill_queue(decoder, *channels, queue) {
-                        chunk.resize(frames, 0.0);
-                        break;
-                    }
-                }
+                fill_from_stream(decoder, *channels, queue, out);
             }
         }
-        chunk
     }
 }
 
 impl SampleSource for AudioTrack {
     /// Fills `out` with the next mono samples; a track loops, so it never ends.
     fn read(&mut self, out: &mut [f32]) -> usize {
-        out.copy_from_slice(&self.next_mono_chunk(out.len()));
+        self.fill_looping(out);
         out.len()
+    }
+}
+
+/// Fills `out` from `queue`, decoding more blocks as it drains; a failed
+/// stream leaves silence in the rest of `out`.
+fn fill_from_stream(
+    decoder: &mut StreamingAudioDecoder,
+    channels: usize,
+    queue: &mut VecDeque<f32>,
+    out: &mut [f32],
+) {
+    for slot in out {
+        if queue.is_empty() && !refill_queue(decoder, channels, queue) {
+            *slot = 0.0;
+            continue;
+        }
+        *slot = queue.pop_front().unwrap_or(0.0);
     }
 }
 
