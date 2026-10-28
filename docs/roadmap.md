@@ -761,8 +761,11 @@ the rest are not started.
    **Not yet done:** field-level
    prefab overrides and a state-level `.msave` delta (a later `format`),
    `.meta`, `.mpak`, wiring the editor host into `runtime-app`'s frame
-   loop, and wiring scene, prefab and save loading into `runtime-app`/`sdk`
-   (the application implements `PrefabSource` over its asset layer).
+   loop. **Wired into the sdk:** `meridian_sdk::persistence::WorldFiles` loads and
+   saves `.mscene`/`.mprefab`/`.msave` by path, with `AssetPrefabSource`
+   implementing `PrefabSource` over `asset-app`'s `AssetLoader` (reads on the
+   background pool, ADR 027); a write port (`ByteSink`) and field-level
+   overrides are later.
    `substrate-data` is a crates.io dependency (0.3.x).
 6. **No networking.** Multiplayer (both games have it) is a subsystem
    that doesn't exist in any form — no netcode, no client/server

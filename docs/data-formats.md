@@ -350,6 +350,36 @@ back (every entity would be a new one, and handles held elsewhere would
 dangle). To persist a running game: save the registry's scene document of
 the world (`.msave`); to resume, load it into a fresh world.
 
+## Loading and saving from an application (`meridian-sdk`)
+
+`meridian-data-substrate` has no filesystem; the composition root wires it
+to the asset layer (`meridian_sdk::persistence`, no new crate and no new
+port: `PrefabSource` stays the data crate's port).
+
+- `AssetPrefabSource` implements `PrefabSource` over an `AssetLoader`
+  (`asset-app`): the prefab `actors/hero` is the asset
+  `actors/hero.mprefab` (a path already ending in `.mprefab` is used as
+  written). The read runs on the loader's background threads
+  ([ADR 027](adr/027-background-asset-loading.md)) and the caller waits,
+  so there is no `async` and no `tokio`. A missing file is
+  `PrefabUnavailable` (`no such prefab`) at the entity that asked; other
+  failures carry the source's text.
+- `WorldFiles` (registry + directory + loader, built by the application)
+  is the entry point: `load_scene(path, &mut world, &mut resolver)`,
+  `spawn_prefab`, `save_scene(path, SceneView, SceneForm::{Text, Binary})`,
+  `load_game::<T>`, `save_game`, `read_save_header`. Errors are one
+  `WorldFilesError` (`Read`, `Interrupted`, `Scene`, `Save`,
+  `PathRejected`, `Write`) that wraps the data crate's typed errors.
+- Call them from a loading thread, never from a frame, and not from a job
+  of the loader's own pool (it waits on that pool). Loads are all or
+  nothing, as always.
+- Writes go under the same root (a path that is absolute or leaves it is
+  `PathRejected`), through a temporary sibling renamed into place, so a
+  crash leaves the old save or the new one. `ByteSource` is read-only; a
+  `ByteSink` port is a later step when a non-directory target is needed.
+- The persisted form is the scene document (`save_scene`/`save_game`);
+  `World::snapshot` stays in-memory only and is not used here.
+
 ## Editor protocol
 
 Messages are Substrate Data frames over a byte stream
@@ -370,6 +400,7 @@ Specified in [editor-domain.md](editor-domain.md).
 | `meridian-data-substrate` (registry, `.mscene` text and binary load/save, `describe()`) | done (hierarchy as `meridian-data-substrate::Parent` until `ecs` has one) |
 | `.mprefab` (load, instancing with whole-component overrides, nesting, cycle and depth checks, `PrefabSource` port, text and binary save) | done; field-level overrides, patching an instance's edits back, and a scene `parent` naming a generated entity are later |
 | `.msave` envelope (`format`/`game`/`created`/`scene`/`state`, lazy header and scene) | done; scene is full, a delta is a later `format` |
+| `meridian-sdk` `WorldFiles` + `AssetPrefabSource` (scene, prefab and save by path over the asset layer) | done; not yet driven by `runtime-app`'s frame loop |
 | patching an existing `.mscene` file on save | not implemented |
 | `.meta`, `.mpak` | designed, not implemented |
 | `meridian-editor-domain` (messages, framing, golden-pinned wire) | done |
