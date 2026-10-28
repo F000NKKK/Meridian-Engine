@@ -9,12 +9,14 @@ description = "Runtime use cases: stages run in dependency order through a job-e
 readme = "README.md"
 
 [dependencies]
+meridian-animation-domain = { workspace = true }
 meridian-audio-app = { workspace = true }
 meridian-audio-domain = { workspace = true }
 meridian-diagnostics = { workspace = true }
 meridian-ecs = { workspace = true }
 meridian-physics-app = { workspace = true }
 meridian-compute-app = { workspace = true }
+meridian-rendering-domain = { workspace = true }
 
 [dev-dependencies]
 meridian-audio-app = { workspace = true, features = ["testing"] }

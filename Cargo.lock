@@ -1190,6 +1190,7 @@ dependencies = [
 name = "meridian-animation-domain"
 version = "0.1.0"
 dependencies = [
+ "meridian-ecs",
  "meridian-gac",
  "thiserror 2.0.21",
 ]
@@ -1541,6 +1542,7 @@ dependencies = [
 name = "meridian-runtime-app"
 version = "0.31.0"
 dependencies = [
+ "meridian-animation-domain",
  "meridian-audio-app",
  "meridian-audio-domain",
  "meridian-compute-app",
@@ -1549,6 +1551,7 @@ dependencies = [
  "meridian-gac",
  "meridian-physics-app",
  "meridian-physics-domain",
+ "meridian-rendering-domain",
 ]
 
 [[package]]

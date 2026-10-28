@@ -17,10 +17,12 @@
 #![doc = include_str!("../README.md")]
 #![forbid(unsafe_code)]
 
+mod animation_stage;
 mod audio_stage;
 mod compute_stage;
 mod contact_sound_stage;
 mod event_system;
+mod frame_delta;
 mod job;
 mod job_executor;
 mod physics_step_stage;
@@ -33,10 +35,12 @@ pub mod testing;
 mod tests;
 mod transform_stage;
 
+pub use animation_stage::AnimationStage;
 pub use audio_stage::AudioStage;
 pub use compute_stage::ComputeStage;
 pub use contact_sound_stage::ContactSoundStage;
 pub use event_system::EventSystem;
+pub use frame_delta::FrameDelta;
 pub use job::Job;
 pub use job_executor::JobExecutor;
 pub use physics_step_stage::PhysicsStepStage;

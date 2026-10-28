@@ -9,6 +9,7 @@ description = "Skeletal animation vocabulary and math, CPU only: skeletons and j
 readme = "README.md"
 
 [dependencies]
+meridian-ecs = { workspace = true }
 meridian-gac = { workspace = true }
 thiserror = { workspace = true }
 

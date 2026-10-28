@@ -2,12 +2,17 @@
 
 use std::sync::Arc;
 
+use meridian_ecs::Component;
+
 /// One matrix per joint of a skeleton for one frame, each taking a bind-pose
 /// vertex to where the pose puts it (column-major, as `Skeleton::joint_matrices`
 /// of the animation domain returns them). Shared cheaply between the scene
-/// and the renderer.
+/// and the renderer. As a component it poses the mesh of the entity's
+/// `MeshRenderer` (see [`extract_scene3d`](crate::extract_scene3d)).
 #[derive(Debug, Clone, PartialEq)]
 pub struct JointPalette(Arc<[[[f32; 4]; 4]]>);
+
+impl Component for JointPalette {}
 
 impl JointPalette {
     /// A palette of `matrices`.

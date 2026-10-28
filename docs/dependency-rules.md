@@ -55,8 +55,8 @@ depend on crates in tiers `0..N`, never a same-tier or higher-tier one
 tier 0  compute-app, diagnostics, markup-macros, memory, text-domain
 tier 1  asset-domain, diagnostics-fs, markup, numeric, platform-winit, resource, ui-domain
 tier 2  asset-app, asset-gltf, asset-jpeg, asset-png, asset-symphonia, gac, gpu-wgpu, ui-mel
-tier 3  animation-domain, asset-fs, asset-http, audio-domain, compute-wgpu, ecs, physics-domain
-tier 4  audio-app, gac-wgpu, rendering-domain, physics-app, data-substrate
+tier 3  asset-fs, asset-http, audio-domain, compute-wgpu, ecs, physics-domain
+tier 4  animation-domain, audio-app, gac-wgpu, rendering-domain, physics-app, data-substrate
 tier 5  audio-cpal, editor-domain, runtime-app, physics-wgpu, rendering-app, ui-scene2d
 tier 6  editor-app, rendering-wgpu, runtime-threads
 tier 7  editor-tcp, sdk
@@ -282,7 +282,7 @@ bottom-up.
 - `meridian-audio-domain` -> `meridian-gac`
 - `meridian-physics-domain` -> `meridian-gac`, `meridian-numeric`, `meridian-resource`
 - `meridian-physics-wgpu` -> `meridian-compute-wgpu`, `meridian-compute-app`, `meridian-diagnostics`, `meridian-gac-wgpu`, `meridian-gac`, `meridian-gpu-wgpu`, `meridian-numeric`, `meridian-physics-app`, `meridian-physics-domain`
-- `meridian-runtime-app` -> `meridian-audio-app`, `meridian-audio-domain`, `meridian-compute-app`, `meridian-diagnostics`, `meridian-ecs`, `meridian-physics-app`
+- `meridian-runtime-app` -> `meridian-animation-domain`, `meridian-audio-app`, `meridian-audio-domain`, `meridian-compute-app`, `meridian-diagnostics`, `meridian-ecs`, `meridian-physics-app`, `meridian-rendering-domain`
 - `meridian-physics-app` -> `meridian-gac`, `meridian-physics-domain`
 - `meridian-data-substrate` -> `meridian-ecs`, `meridian-gac`
 - `meridian-editor-domain` -> `meridian-ecs`, `meridian-data-substrate`
@@ -292,7 +292,7 @@ bottom-up.
 - `meridian-markup-macros` -> (nothing; external `syn`/`quote`/`proc-macro-crate` only)
 - `meridian-ui-mel` -> `meridian-markup`, `meridian-ui-domain`
 - `meridian-ui-domain` -> `meridian-diagnostics`, `meridian-memory`
-- `meridian-animation-domain` -> `meridian-gac`
+- `meridian-animation-domain` -> `meridian-ecs`, `meridian-gac`
 - `meridian-text-domain` -> (no workspace crates)
 - `meridian-ui-scene2d` -> `meridian-gac`, `meridian-rendering-domain`, `meridian-text-domain`, `meridian-ui-domain`
 - `meridian-sdk` -> `meridian-animation-domain`, `meridian-data-substrate`, `meridian-ecs`, `meridian-asset-app`, `meridian-asset-fs`, `meridian-asset-http`, `meridian-asset-domain`, `meridian-asset-gltf`, `meridian-asset-jpeg`, `meridian-asset-png`, `meridian-asset-symphonia`, `meridian-audio-app`, `meridian-audio-domain`, `meridian-audio-cpal`, `meridian-compute-wgpu`, `meridian-compute-app`, `meridian-diagnostics-fs`, `meridian-markup`, `meridian-markup-macros`, `meridian-runtime-app`, `meridian-diagnostics`, `meridian-gac`, `meridian-rendering-domain`, `meridian-rendering-wgpu`, `meridian-physics-app`, `meridian-physics-wgpu`, `meridian-physics-domain`, `meridian-platform-winit`, `meridian-rendering-app`, `meridian-runtime-threads`, `meridian-ui-domain`, `meridian-ui-scene2d`
