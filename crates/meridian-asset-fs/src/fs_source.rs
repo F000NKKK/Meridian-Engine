@@ -3,7 +3,9 @@
 use std::io::ErrorKind;
 use std::path::{Component, Path, PathBuf};
 
-use meridian_asset_app::{AssetPath, ByteSource, SourceError};
+use meridian_asset_app::{AssetListing, AssetPath, ByteSource, SourceError};
+
+use crate::walk::walk;
 
 /// A [`ByteSource`] that reads `root/<asset path>`.
 #[derive(Debug, Clone)]
@@ -40,5 +42,20 @@ impl ByteSource for FsSource {
                 reason: error.to_string(),
             },
         })
+    }
+}
+
+impl AssetListing for FsSource {
+    /// Every regular file under the root, `/`-separated and sorted. Symbolic
+    /// links are not followed (so a loop cannot trap the walk), and a name
+    /// that is not UTF-8 is skipped: it cannot be an [`AssetPath`].
+    fn paths(&self) -> Result<Vec<AssetPath>, SourceError> {
+        let mut found = Vec::new();
+        walk(&self.root, "", &mut found).map_err(|error| SourceError::Unreadable {
+            path: AssetPath::new(""),
+            reason: error.to_string(),
+        })?;
+        found.sort();
+        Ok(found.into_iter().map(AssetPath::new).collect())
     }
 }

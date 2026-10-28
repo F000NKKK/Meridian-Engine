@@ -15,7 +15,7 @@ stay `asset-domain` decoders and are not covered here.
 | `*.mprefab` | text or binary | `meridian-data-substrate` | a reusable entity tree, instanced by a scene |
 | `*.meta` | text or binary | `meridian-asset-domain` | an asset's stable id, importer, import settings and dependencies |
 | `*.msave` | binary | envelope: `meridian-data-substrate`; `state`: the game | a save: the world's scene document + game state |
-| `*.mpak` | binary (`MPAK` envelope; index is `SDAT`) | `meridian-asset-domain` (read: `PackSource` in `asset-app`, `FileReadAt` in `asset-fs`) | cooked content pack: payload blobs + index, random access by id or path |
+| `*.mpak` | binary (`MPAK` envelope; index is `SDAT`) | `meridian-asset-domain` (read: `PackSource` in `asset-app`, `FileReadAt` in `asset-fs`; streamed write: `FileWriteAt`, `add_file` in `asset-fs`) | cooked content pack: payload blobs + index, random access by id or path |
 | editor protocol | frames over a socket | `meridian-editor-domain` (host: `meridian-editor-app` + `meridian-editor-tcp`) | engine ↔ IDE messages |
 
 Text and binary of one file kind share an extension: readers detect
@@ -365,11 +365,12 @@ person writes it, `SDAT` binary when cooked; readers detect the magic.
   asset's identity across renames and moves, and what cooked content
   (`.mpak`, `dependencies`) names it by (`@asset_id:`). It is a name on
   disk, not a runtime handle: no generation, no lifetime. Mapping an id to
-  a `resource` handle belongs to the code that loads the asset, not to the
-  loader or this file (ADR 006). The data layer has no random source, so
+  a `resource` handle is the `ResourceIdTable` (below), filled by the code
+  that loads the asset, not by the loader or this file (ADR 006). The data layer has no random source, so
   whoever creates a `.meta` chooses the value.
 - `importer` is an `ImporterName` (lower case letters, digits, `_`, `-`,
-  starting with a letter). Which names exist is the application's registry.
+  starting with a letter). Which names exist is the application's
+  `ImporterRegistry` (below).
 - `settings` is a map this crate does not interpret: the importer reads it
   with its own schema. Keys keep file order. Absent means empty.
 - `dependencies` are `@asset_id:` references, each at most once and never the
@@ -394,6 +395,56 @@ above. A `.meta` is read whole or not at all.
 ```rust
 let meta = AssetMeta::read(&bytes)?;            // text or binary
 let text = meta.to_text();                      // or meta.to_bytes()
+```
+
+### From a `.meta` to content: importers, catalog, identity
+
+Four pieces, each in the layer that owns it, none global:
+
+- **`ImporterRegistry<T>`** (`meridian-asset-app`): the table from an
+  `importer` name to an `Importer<T>`, one registry per content type
+  (`ImageAsset`, `MeshAsset`, ...), so a name cannot return the wrong type.
+  `Importer::import(bytes, &AssetMeta)` is pure: it reads the asset's
+  `settings` from the meta and nothing from disk. A plain `Decoder` is an
+  importer through `FromDecoder` (`register_decoder`); an importer with
+  settings implements `Importer` itself. `register` twice under one name is
+  `RegisterError::NameTaken` (the first stays); a name the registry does not
+  have is `ImportError::UnknownImporter`; the importer's own rejection is
+  `ImportError::Failed { importer, source }`. The domain's `Decoder` stays the
+  decoding port; the registry is application wiring, built by the
+  composition root (`meridian_sdk::content::Importers::standard()` registers
+  `image`/`bmp`/`png`/`jpeg`, `obj`, `gltf`, `wgsl`, `audio`/`wav`).
+- **`AssetLoader::load_imported(path, registry)`**: one background job reads
+  `<path>.meta`, picks the importer it names, reads the asset and imports it.
+  A missing sidecar is `LoadError::Source(NotFound(<path>.meta))`, a damaged
+  one `LoadError::Decode(ImportError::InvalidMeta)`. `read_meta(source, path)`
+  is the blocking read of one sidecar.
+- **`AssetCatalog`** (`meridian-asset-app`): `AssetCatalog::scan(&dyn
+  AssetListing)` walks a source, reads every `*.meta` and keeps
+  `AssetId` to `CatalogEntry { id, path, importer, dependencies }` and path to
+  id. `AssetListing` (a `ByteSource` that can name its paths) is a separate
+  port because not every source can list: `FsSource` walks the directory
+  (no symbolic links followed), `PackSource` lists its entries. The scan
+  is all or nothing: a bad sidecar (`CatalogError::Meta`, naming the file),
+  two assets with one id (`DuplicateId`), a dependency no `.meta` declares
+  (`MissingDependency`) or a loop (`DependencyCycle`) is an error, so a
+  build can walk the graph before loading anything. A `.meta` whose source
+  file is absent is not checked. It is blocking: run it off the frame thread.
+- **`ResourceIdTable<K, T>`** (`meridian-resource`): the map from a stable key
+  (here the `AssetId`) to the `ResourceId<T>` of the resource loaded for it,
+  and back (`key_of`). Two facts only: which keys exist (`declare`, filled
+  from the catalog) and which are loaded as what (`bind` / `unbind`). It
+  loads nothing, holds no content and decides no lifetime: the loading code
+  binds after it inserted the content in its pool, the code that releases
+  unbinds, and a reloaded resource has a new generation so the old id is not
+  found. `bind` refuses an unknown key, a key already bound and a resource
+  that is another key's (`BindError`).
+
+```rust
+let catalog = AssetCatalog::scan(&source)?;                  // .meta -> ids
+let mut table = ResourceIdTable::<AssetId, ImageAsset>::declaring(catalog.iter().map(|e| e.id));
+let image = loader.load_imported(entry.path.clone(), images.clone()).wait()?;
+table.bind(entry.id, ResourceId::new(pool.insert(image)))?;  // identity, after loading
 ```
 
 ## Asset pack (`.mpak`)
@@ -443,8 +494,33 @@ file exactly, is capped at `MAX_INDEX_LEN` (256 MiB), and an entry's size
 was checked against the payload area before its buffer is made.
 
 **Writing.** `PackWriter::add(id, path, bytes)` then `finish()`: header,
-payloads in the order added, index. It builds in memory; a streaming writer
-for packs larger than memory is the build tool's adapter, not this crate.
+payloads in the order added, index. It builds in memory.
+`StreamingPackWriter` writes the same bytes for packs larger than memory,
+through the `WriteAt` port (`write_at(offset, bytes)`, the write twin of
+`ReadAt`; `Vec<u8>` implements it, `meridian_asset_fs::FileWriteAt` does for a
+file). The header comes first in the file but holds the index's place and
+CRC-32, known only at the end, so the writer reserves 32 zero bytes (not a
+valid header), streams the payloads after them with each asset's CRC-32
+computed as its chunks pass, writes the index after the last payload and
+then the header over the reserved bytes. That is why the sink is positioned
+rather than forward-only, and why a file abandoned or failed halfway never
+opens as a pack (`BadMagic`). An asset is written whole (`add`) or in
+chunks (`begin`, `write`, `end`); memory held is the entry list and one
+chunk. For the same assets in the same order the bytes are identical to
+`PackWriter`'s (tested for any chunking). Errors are `PackWriteError`:
+`Build` (duplicate id or path, refused at `begin` before anything is
+written), `Sink(WriteAtError)`, `AssetOpen`, `NoAssetOpen`, `TooLarge`; after
+any error the writer is dropped and the output discarded.
+`meridian_asset_fs::add_file(writer, id, path, file)` copies a file in 64 KiB
+chunks.
+
+**Build tool.** There is no command-line crate in the workspace yet, so no
+`mpak` command ships: a build tool is a loop over `AssetCatalog::scan` of the
+source directory (ids and paths from the `.meta` files) that calls `add_file`
+for each asset and its `.meta`, then `finish()` and `FileWriteAt::sync`. The
+pieces are re-exported by `meridian_sdk::content`; a CLI crate (layer
+interface, depending on `asset-fs`) is a later addition, not part of this
+change.
 
 **Versioning, and the lossless upgrade rule.** Readers accept every
 envelope version up to `PACK_VERSION` (1) and every Substrate Data binary
@@ -474,10 +550,33 @@ error.
 `ByteSource` over a pack: the asset path is the path in the pack, a missing
 one is `NotFound`, a bad path `Rejected`, a damaged asset `Unreadable` with
 the pack's words. So an `AssetLoader` — and `AssetPrefabSource`, `WorldFiles`
-— works on a pack as on a directory. Reading the `.meta` sidecars from a
-pack, resolving `@asset_id:` to a `resource` handle, and choosing between a
-directory and a pack at startup are the composition root's follow-up (not in
-`meridian-sdk` yet).
+— works on a pack as on a directory. A pack carries its `.meta`
+sidecars as entries like any other file, so `AssetCatalog::scan` and
+`load_imported` work on it unchanged.
+
+**Choosing at startup.** The composition root decides where assets come
+from once, with a typed value (`meridian_sdk::content`), never by looking at
+a file name:
+
+```rust
+let layers = Layers::pack("base.mpak")                       // lowest priority
+    .over(Layer::Pack("patch-1.mpak".into()))                 // replaces assets it holds
+    .over(Layer::Directory("dev-assets".into()));             // loose files win
+let content = Mounted::mount(layers)?;                        // headers + indexes only
+let loader = content.default_loader();                        // AssetLoader, ADR 027
+let files = WorldFiles::new(save_dir, loader, registry);      // unchanged
+```
+
+`Layer` is `Directory` or `Pack`; `Layers` is one or more, lowest priority
+first, never empty (`Layers::directory(p)` and `Layers::pack(p)` are the
+single-layer cases). `Mounted::mount` opens them all or none (`OpenError`:
+`NotADirectory`, `File`, `Pack`, each naming the path). Reads go through
+`OverlaySource` in `asset-app`: the top layer that has the path answers, and
+only *not found* falls through, so a damaged asset in a patch is reported
+(`Unreadable`), not replaced by the older copy under it. The listing the
+catalog scans is the union of the layers. `WorldFiles` and `AssetLoader`
+take the same `ByteSource` either way; saves are not a layer: `WorldFiles`
+still writes to the directory it is given.
 
 ```rust
 let source = PackSource::open(FileReadAt::open("content.mpak")?)?;   // header + index only
@@ -624,7 +723,7 @@ Specified in [editor-domain.md](editor-domain.md).
 | `.msave` envelope (`format`/`game`/`created`/`scene`/`state`, lazy header and scene) | done; scene is full, a delta is a later `format` |
 | `meridian-sdk` `WorldFiles` + `AssetPrefabSource` (scene, prefab and save by path over the asset layer) | done; not yet driven by `runtime-app`'s frame loop |
 | patching an existing `.mscene` file on save | not implemented |
-| `.meta` (`AssetMeta`: id, importer, settings, dependencies; text and binary; version rule) | done in `asset-domain`; no importer registry or `resource` id table reads it yet |
-| `.mpak` (`PackWriter`, `PackReader`, `upgrade_pack`; `PackSource`, `FileReadAt`) | done; the `sdk` does not pick a pack over a directory yet, no streaming writer or build-tool command |
+| `.meta` (`AssetMeta`: id, importer, settings, dependencies; text and binary; version rule) | done in `asset-domain`; read by `ImporterRegistry`/`load_imported`, `AssetCatalog` (`asset-app`) and `ResourceIdTable` (`resource`); the sdk registers the shipped importers |
+| `.mpak` (`PackWriter`, `PackReader`, `upgrade_pack`; `PackSource`, `FileReadAt`) | done; the `sdk` picks a directory, packs or a stack of them at startup (`content::Layers`, `Mounted`); `StreamingPackWriter` (+ `WriteAt`, `FileWriteAt`, `add_file`) writes a pack without holding it; no build-tool CLI crate exists yet (recipe above) |
 | `meridian-editor-domain` (messages, framing, golden-pinned wire) | done |
 | `meridian-editor-app` (session, ports), `meridian-editor-tcp` (loopback TCP) | done; not yet wired into `runtime-app`'s frame loop |

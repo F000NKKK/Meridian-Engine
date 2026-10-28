@@ -26,8 +26,12 @@ pub fn asset_loader(root: impl Into<PathBuf>, threads: usize) -> AssetLoader {
 /// threads (at least one): asset reads wait on the disk, so they need few.
 #[must_use]
 pub fn default_asset_loader(root: impl Into<PathBuf>) -> AssetLoader {
-    let threads = (CpuCapabilities::detect().threads / 4).max(1);
-    asset_loader(root, threads)
+    asset_loader(root, default_threads())
+}
+
+/// A quarter of the detected CPU threads, at least one.
+pub(crate) fn default_threads() -> usize {
+    (CpuCapabilities::detect().threads / 4).max(1)
 }
 
 /// Starts loading the image at `path` (BMP or PNG, found by magic bytes)

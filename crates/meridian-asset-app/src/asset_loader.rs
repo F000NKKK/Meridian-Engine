@@ -52,29 +52,41 @@ impl AssetLoader {
         D: Decoder<T> + Send + 'static,
         D::Error: Send + 'static,
     {
+        self.submit(priority, move |source| {
+            let bytes = source.read(&path).map_err(LoadError::Source)?;
+            decoder.decode(&bytes).map_err(LoadError::Decode)
+        })
+    }
+
+    /// Runs `work` on a background job with the loader's source, with the
+    /// loader's guarantees: the result always arrives, a panic becomes
+    /// [`LoadError::Panicked`], a job never run becomes [`LoadError::Cancelled`].
+    pub(crate) fn submit<T, E, F>(
+        &self,
+        priority: Priority,
+        work: F,
+    ) -> Pending<Result<T, LoadError<E>>>
+    where
+        T: Send + 'static,
+        E: Send + 'static,
+        F: FnOnce(&dyn ByteSource) -> Result<T, LoadError<E>> + Send + 'static,
+    {
         let (pending, completer) = channel(|| Err(LoadError::Cancelled));
         let source = Arc::clone(&self.source);
-        self.spawner.spawn(
-            priority,
-            Box::new(move || run(&*source, &path, &decoder, completer)),
-        );
+        self.spawner
+            .spawn(priority, Box::new(move || run(&*source, work, completer)));
         pending
     }
 }
 
-fn run<T, D: Decoder<T>>(
-    source: &dyn ByteSource,
-    path: &AssetPath,
-    decoder: &D,
-    completer: Completer<Result<T, LoadError<D::Error>>>,
-) {
+fn run<T, E, F>(source: &dyn ByteSource, work: F, completer: Completer<Result<T, LoadError<E>>>)
+where
+    F: FnOnce(&dyn ByteSource) -> Result<T, LoadError<E>>,
+{
     if completer.is_cancelled() {
         return completer.complete(Err(LoadError::Cancelled));
     }
-    let outcome = catch_unwind(AssertUnwindSafe(|| {
-        let bytes = source.read(path).map_err(LoadError::Source)?;
-        decoder.decode(&bytes).map_err(LoadError::Decode)
-    }));
+    let outcome = catch_unwind(AssertUnwindSafe(|| work(source)));
     completer.complete(outcome.unwrap_or(Err(LoadError::Panicked)));
 }
 

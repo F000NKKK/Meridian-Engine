@@ -1211,6 +1211,7 @@ name = "meridian-asset-app"
 version = "0.1.0"
 dependencies = [
  "meridian-asset-domain",
+ "thiserror 2.0.21",
 ]
 
 [[package]]
@@ -1230,6 +1231,7 @@ dependencies = [
  "meridian-asset-app",
  "meridian-asset-domain",
  "meridian-runtime-threads",
+ "thiserror 2.0.21",
 ]
 
 [[package]]
@@ -1548,6 +1550,7 @@ name = "meridian-resource"
 version = "0.8.0"
 dependencies = [
  "meridian-memory",
+ "thiserror 2.0.21",
 ]
 
 [[package]]
@@ -1600,6 +1603,7 @@ dependencies = [
  "meridian-gac",
  "meridian-markup",
  "meridian-markup-macros",
+ "meridian-memory",
  "meridian-physics-app",
  "meridian-physics-domain",
  "meridian-physics-wgpu",
@@ -1607,6 +1611,7 @@ dependencies = [
  "meridian-rendering-app",
  "meridian-rendering-domain",
  "meridian-rendering-wgpu",
+ "meridian-resource",
  "meridian-runtime-app",
  "meridian-runtime-threads",
  "meridian-ui-domain",
