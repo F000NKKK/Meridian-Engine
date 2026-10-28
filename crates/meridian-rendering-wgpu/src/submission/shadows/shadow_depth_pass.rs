@@ -1,10 +1,10 @@
 //! The depth-only pipeline and bind group of the shadow pass.
 
+use meridian_rendering_domain::SHADOW_CASCADES;
+
 use crate::submission::{
     SHADOW_DEPTH_SHADER_WGSL, position_only_mesh_layout, shadow_instance_layout,
 };
-use meridian_rendering_domain::SHADOW_CASCADES;
-
 use crate::{BindGroup, Buffer, BufferUsage, Device, RenderPipeline};
 
 /// What [`SceneRenderer`](crate::submission::SceneRenderer) needs to record
