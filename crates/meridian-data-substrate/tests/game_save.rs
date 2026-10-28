@@ -155,8 +155,8 @@ fn the_header_and_scene_read_without_the_state() {
         .unwrap();
     assert_eq!(header.game, "demo");
     assert_eq!(scene.entities().len(), 2);
-    // The recording reads lazily (substrate-data 0.4): loading succeeds and
-    // the damage shows when the recording is walked.
+    // A stream is read as it is used (substrate-data 0.4): loading succeeds and
+    // the damage is found when the recording is walked to its end.
     let mut world = World::new();
     let loaded = registry()
         .load_game::<Progress>(
@@ -165,7 +165,7 @@ fn the_header_and_scene_read_without_the_state() {
             &mut NoResolver,
             &mut PrefabLibrary::new(),
         )
-        .expect("the damage is inside the lazily read recording");
+        .unwrap();
     assert!(loaded.state.recording.iter().any(|item| item.is_err()));
 }
 

@@ -41,6 +41,12 @@ impl SceneMap {
         self.entities.iter().find(|e| &e.key == key)
     }
 
+    /// The entry under `key`, to change what the document says of it (an
+    /// editor moving an entity under another).
+    pub fn get_mut(&mut self, key: &EntityKey) -> Option<&mut SceneEntity> {
+        self.entities.iter_mut().find(|e| &e.key == key)
+    }
+
     /// The entity under `key`.
     #[must_use]
     pub fn entity(&self, key: &EntityKey) -> Option<Entity> {
