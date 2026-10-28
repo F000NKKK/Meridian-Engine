@@ -6,7 +6,7 @@ use crate::Device;
 /// [`SurfaceFrame::present`] to hand it back to the OS compositor.
 #[derive(Debug)]
 pub struct SurfaceFrame {
-    pub(crate) output: wgpu::SurfaceTexture,
+    pub(crate) output: Option<wgpu::SurfaceTexture>,
     pub(crate) view: wgpu::TextureView,
 }
 
@@ -17,6 +17,8 @@ impl SurfaceFrame {
 
     /// Presents this frame via `device`'s queue.
     pub fn present(self, device: &Device) {
-        device.0.wgpu_queue().clone().present(self.output);
+        if let Some(output) = self.output {
+            device.0.wgpu_queue().clone().present(output);
+        }
     }
 }

@@ -820,6 +820,11 @@ the rest are not started.
    `GraphicsSession::spawn_model` puts a loaded model into a world. An
    `AnimationGraph` state machine (`AnimationController`) and `RootMotion`
    steer and move it, with yaw, and states can play 1D/2D blend trees.
+   Frames render headless too (`GraphicsSession::headless`, read back as
+   RGBA8) and passes report GPU time from timestamp queries; `render_bench`
+   measures four fixed scenes with them, and `EditorRenderer` draws a world
+   (with `LightSource` lights) and asset thumbnails for the editor
+   ([ADR 049](adr/049-headless-rendering-and-pass-timing.md)).
    Still open: layered state machines, IK.
 
 **Rough sequencing, if picking one order**: (4) (batched physics

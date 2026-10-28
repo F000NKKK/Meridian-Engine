@@ -67,3 +67,36 @@ async fn texture_2d_upload_and_sampler_creation_do_not_panic() {
     device.write_texture(&texture, &pixels);
     let _sampler = device.create_sampler();
 }
+
+#[cfg(feature = "hw-tests")]
+#[tokio::test]
+async fn an_offscreen_recorder_reads_back_its_frame_and_times_its_passes() {
+    use meridian_rendering_app::{FrameOutcome, FrameRecorder, FrameRequest};
+    use meridian_rendering_domain::{MaterialRegistry, MeshRegistry, Scene3d};
+
+    let Some(device) = device_or_skip().await else {
+        return;
+    };
+    let surface = Surface::offscreen(&device, 64, 48);
+    let mut recorder = GpuFrameRecorder::new(device, surface, 64, 48);
+    let timed = recorder.enable_profiling();
+    let (meshes, materials, scene) = (
+        MeshRegistry::new(),
+        MaterialRegistry::new(),
+        Scene3d::default(),
+    );
+    let outcome = recorder.record_frame(&FrameRequest {
+        scene: &scene,
+        meshes: &meshes,
+        materials: &materials,
+        overlays: &[],
+        clear_color: [1.0, 0.0, 0.0, 1.0],
+    });
+    assert_eq!(outcome, FrameOutcome::Presented);
+    let pixels = recorder
+        .read_pixels()
+        .expect("an offscreen frame reads back");
+    assert_eq!(pixels.len(), 64 * 48 * 4);
+    assert_eq!(recorder.frame_size(), (64, 48));
+    assert_eq!(!recorder.pass_timings().is_empty(), timed);
+}

@@ -18,8 +18,8 @@ pub(crate) struct App {
     shapes: Vec<ShapeSpec>,
     music: Option<MusicRig>,
     cursor_grabbed: bool,
-    start: std::time::Instant,
     last_frame: std::time::Instant,
+    sim_time: f32,
     gpu: Option<GpuState>,
 }
 
@@ -53,8 +53,8 @@ impl App {
             shapes,
             music,
             cursor_grabbed: true,
-            start: std::time::Instant::now(),
             last_frame: std::time::Instant::now(),
+            sim_time: 0.0,
             gpu: None,
         }
     }
@@ -201,13 +201,15 @@ impl AppHandler for App {
         }
 
         let now = std::time::Instant::now();
-        let frame_dt = (now - self.last_frame).as_secs_f32().min(0.1);
+        let frame_dt = meridian_examples::app_main::fixed_dt()
+            .unwrap_or_else(|| (now - self.last_frame).as_secs_f32().min(0.1));
         self.last_frame = now;
         if self.cursor_grabbed {
             self.camera.update(fly_controls(input), frame_dt);
         }
 
-        let elapsed = now.duration_since(self.start).as_secs_f32();
+        self.sim_time += frame_dt;
+        let elapsed = self.sim_time;
         let mut positions = Vec::with_capacity(self.shapes.len());
         for (i, shape) in self.shapes.iter().enumerate() {
             let position = orbit_position(shape, elapsed);

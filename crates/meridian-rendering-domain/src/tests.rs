@@ -253,3 +253,65 @@ fn tonemap_operators_have_distinct_shader_indices() {
         [0.0, 1.0, 2.0]
     );
 }
+
+#[test]
+fn an_upright_look_at_never_rolls() {
+    for (yaw, height) in [(0.0_f32, 0.5), (1.0, 0.7), (2.5, 0.2), (4.0, -0.4)] {
+        let eye = Vec3::new(10.0 * yaw.sin(), 10.0 * height, 10.0 * yaw.cos());
+        let rotor = look_at_upright(eye, Vec3::ZERO);
+        let forward = rotor.transform_vector(Vec3::X);
+        let right = rotor.transform_vector(Vec3::Z);
+        let toward_target = (Vec3::ZERO - eye).normalize();
+        assert_vec3_approx(forward, toward_target);
+        assert!(right.y.abs() < 1e-4, "right axis leans: {right:?}");
+    }
+}
+
+#[test]
+fn light_sources_are_extracted_as_lights_at_their_entity_frame() {
+    use meridian_ecs::{Transform, World};
+
+    let mut world = World::new();
+    let sun = world.spawn();
+    world.insert(
+        sun,
+        LightSource {
+            kind: LightKind::Directional,
+            color: [1.0, 0.9, 0.8],
+            intensity: 2.0,
+        },
+    );
+    let lamp = world.spawn();
+    world.insert(
+        lamp,
+        Transform {
+            motor: Motor3::translation(Vec3::new(0.0, 3.0, 0.0)),
+        },
+    );
+    world.insert(
+        lamp,
+        LightSource {
+            kind: LightKind::Point { range: 8.0 },
+            color: [1.0; 3],
+            intensity: 1.0,
+        },
+    );
+    let lights = extract_lights(&world);
+    assert_eq!(lights.len(), 2);
+    let positions: Vec<f32> = lights
+        .iter()
+        .filter_map(|light| match light {
+            Light::Point {
+                position, range, ..
+            } if (*range - 8.0).abs() < 1e-5 => Some(position.transform_point(Vec3::ZERO).y),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(positions.len(), 1);
+    assert!((positions[0] - 3.0).abs() < 1e-5);
+    assert!(
+        lights
+            .iter()
+            .any(|light| matches!(light, Light::Directional { .. }))
+    );
+}
