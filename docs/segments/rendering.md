@@ -71,8 +71,11 @@ Not started; ordered by suggested priority. Items wait for an explicit task.
    direction in graphics-design.md).
 5. **Per-material highlights — done (2026-10-27).** `Material::shininess` and
    `Material::specular`; roughness/metallic wait for a PBR shader.
-6. **Render-graph resource lifetime.** Ordering is real; transient target
-   allocation/aliasing is not.
+6. **Render-graph resource lifetime — planning done (2026-10-28).**
+   `RenderGraph::resource_lifetimes` and `plan_allocations` (CPU, tested) say
+   which transient targets can share one allocation. The real renderer
+   (`SceneRenderer`, bloom) does not build a `RenderGraph` yet, so no backend
+   consumes the plan; wiring a pool in `rendering-wgpu` waits for that.
 7. **`Runtime::tick` integration — done.** `meridian_sdk::RenderStage`
    presents through the `FrameRecorder` port, so `runtime-app` never names
    rendering; see [ADR 029](../adr/029-render-stage-presents-through-the-frame-recorder-port.md).
