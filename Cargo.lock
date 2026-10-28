@@ -1330,6 +1330,7 @@ version = "0.1.0"
 dependencies = [
  "meridian-ecs",
  "meridian-gac",
+ "meridian-rendering-domain",
  "substrate-data",
  "thiserror 2.0.21",
 ]

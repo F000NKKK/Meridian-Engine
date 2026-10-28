@@ -13,5 +13,6 @@ meridian-ecs = { workspace = true }
 # `Motor3`'s schema, for `Transform` (registered through a codec here, so
 # ecs itself never learns about files).
 meridian-gac = { workspace = true, features = ["data"] }
+meridian-rendering-domain = { workspace = true }
 substrate-data = { workspace = true }
 thiserror = { workspace = true }
