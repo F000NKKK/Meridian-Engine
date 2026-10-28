@@ -177,15 +177,13 @@ fn a_reference_to_a_model_draws_its_pieces_and_a_click_means_the_owner() {
         transform: { motor: { rotor: [1, 0, 0, 0] } },
         mesh_renderer: { mesh: "@asset:models/pair.gltf", material: "@asset:builtin/default" } } } ] }"#;
     let mut world = world_of(text);
-    assert!(
-        renderer
-            .bind_references(&mut world, &mut PairBinder)
-            .is_empty()
+    assert_eq!(
+        renderer.bind_references(&mut world, &mut PairBinder),
+        Vec::new()
     );
-    assert!(
-        renderer
-            .bind_references(&mut world, &mut PairBinder)
-            .is_empty()
+    assert_eq!(
+        renderer.bind_references(&mut world, &mut PairBinder),
+        Vec::new()
     );
     let owner = world
         .query::<meridian_sdk::ModelPieces>()

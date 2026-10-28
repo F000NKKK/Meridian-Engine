@@ -121,8 +121,8 @@ fn push_piece(
     (radius, lift): (f32, f32),
 ) {
     let middle = (
-        (start.0 + end.0) * 0.5 - target.0,
-        (start.1 + end.1) * 0.5 - target.1,
+        start.0.midpoint(end.0) - target.0,
+        start.1.midpoint(end.1) - target.1,
     );
     let fade = 1.0 - middle.0.hypot(middle.1) / radius;
     if fade < MIN_ALPHA {
