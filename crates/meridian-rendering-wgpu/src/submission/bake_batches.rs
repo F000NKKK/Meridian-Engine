@@ -97,7 +97,7 @@ pub(crate) fn bake_batches(
     scene: &Scene3d,
     assets: &SceneAssets<'_>,
 ) -> BakedBatches {
-    renderer.meshes.retain_registered(assets.meshes);
+    renderer.begin_bake(assets.meshes);
     let eye = scene.camera.frame.transform_point(Vec3::ZERO);
     let resolved: Vec<Resolved<'_>> = scene
         .renderables
@@ -142,6 +142,7 @@ pub(crate) fn bake_batches(
         skin_jobs.extend(job);
         first = first.saturating_add(count);
     }
+    renderer.skinning.end_frame();
     BakedBatches {
         batches,
         records: bytes,
@@ -151,10 +152,10 @@ pub(crate) fn bake_batches(
 }
 
 /// The dispatch that poses `lead`'s mesh, when the renderable is skinned.
-fn pose(device: &Device, renderer: &SceneRenderer, lead: &Resolved<'_>) -> Option<SkinJob> {
+fn pose(device: &Device, renderer: &mut SceneRenderer, lead: &Resolved<'_>) -> Option<SkinJob> {
     let palette = lead.palette?;
     let mesh = renderer.meshes.get(lead.mesh)?;
-    renderer.skinning.job(device, mesh, palette)
+    renderer.skinning.job(device, lead.mesh, mesh, palette)
 }
 
 fn draw_kind(

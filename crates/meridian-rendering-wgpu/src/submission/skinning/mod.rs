@@ -5,6 +5,7 @@ mod gpu_skin;
 mod skin_job;
 mod skin_pipeline;
 mod skin_shader;
+mod skin_slot;
 
 pub(crate) use gpu_skin::GpuSkin;
 pub(crate) use skin_job::SkinJob;

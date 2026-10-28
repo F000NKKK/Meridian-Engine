@@ -108,8 +108,10 @@ model: `sdk`'s `ModelRig` holds the `Skeleton`s and `Clip`s of a loaded model
 - Models with skeletons can be animated by anything that holds a `Skeleton`, a
   `Clip` and a `Playback`, not only by the renderer.
 - A skeleton over 256 joints is refused rather than truncated.
-- Every posed instance costs one compute dispatch and two buffers (palette and
-  posed vertices) per frame, allocated afresh; pooling them is future work.
+- Every posed instance costs one compute dispatch per frame. Its palette and
+  posed-vertex buffers and bind group live in a slot, found by the instance's
+  place among the frame's skinned instances and kept while the same mesh is
+  drawn with a palette of the same size; slots the frame did not use are freed.
 - A posed instance is not instanced, culled or batched with others.
 - The sdk gains the edge `sdk -> animation-domain` (context `runtime ->
   animation`).
