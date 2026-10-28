@@ -124,8 +124,10 @@ where
 
 #[cfg(test)]
 mod tests {
-    use meridian_compute_app::DispatchSize;
-    use meridian_compute_wgpu::cpu_context;
+    use std::sync::Arc;
+
+    use meridian_compute_app::{ComputeScheduler, DispatchSize};
+    use meridian_compute_wgpu::{CpuComputeDevice, cpu_context};
     use meridian_gac::{FloatFlavor, Motor3, Vec3};
     use meridian_physics_domain::collision::{BroadPhase, ColliderShape};
 
@@ -165,7 +167,7 @@ mod tests {
     }
 
     /// Exercises the CPU `parallel_for` backend's actual parallel path
-    /// (above `ComputeContext`'s default 1024-item threshold) with a
+    /// (a scheduler with a cutoff of one item) with a
     /// real, non-trivial overlap pattern (a chain of touching spheres).
     #[test]
     fn large_batch_matches_direct_find_candidate_pairs() {
@@ -177,9 +179,10 @@ mod tests {
         let mut broad_phase = BroadPhase::<FloatFlavor>::new();
         let expected = broad_phase.find_candidate_pairs(&bodies).to_vec();
 
-        let context = cpu_context();
+        let scheduler =
+            ComputeScheduler::with_parallel_threshold(Arc::new(CpuComputeDevice::new()), 1);
         let kernel = BroadPhasePairsKernel::new(bodies);
-        kernel.dispatch(&context, DispatchSize::linear(1770));
+        scheduler.run(&kernel, DispatchSize::linear(1770));
 
         assert_eq!(kernel.pairs(), expected);
     }

@@ -5,6 +5,13 @@ use std::sync::Arc;
 
 use crate::{BackendSplit, ComputeBuffer, ComputeDevice, ComputeSupport, GpuBackend, HybridKernel};
 
+/// The batch size from which [`ComputeContext::parallel_for`] goes parallel
+/// unless the context is configured otherwise. Measured on 4 threads with a
+/// ~100 ns/item kernel (`cargo bench -p meridian-gac-wgpu`): at 1 000 items a
+/// parallel dispatch took ~270 us against ~115 us sequential (the threads are
+/// spawned per dispatch), at 4 000 items ~350 us against ~515 us.
+const DEFAULT_PARALLEL_THRESHOLD: usize = 4096;
+
 /// Everything a `ComputeKernel` dispatch needs: the CPU [`ComputeDevice`], an
 /// optional [`GpuBackend`], and the sequential/parallel cutoff. The devices are
 /// ports; the composition root supplies the adapters (rule 5 of
@@ -23,7 +30,7 @@ impl ComputeContext {
         Self {
             device,
             gpu: None,
-            parallel_threshold: 1024,
+            parallel_threshold: DEFAULT_PARALLEL_THRESHOLD,
         }
     }
 

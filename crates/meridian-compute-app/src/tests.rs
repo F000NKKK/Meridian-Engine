@@ -230,3 +230,13 @@ fn parallel_ranges_cover_every_index_exactly_once() {
 fn parallel_ranges_with_no_items_never_calls_work() {
     cpu_context().parallel_ranges(0, |_| panic!("no work expected"));
 }
+
+#[test]
+fn default_threshold_keeps_a_thousand_items_in_one_sequential_range() {
+    let calls = AtomicUsize::new(0);
+    cpu_context().parallel_ranges(1_000, |range| {
+        assert_eq!(range, 0..1_000);
+        calls.fetch_add(1, Ordering::SeqCst);
+    });
+    assert_eq!(calls.load(Ordering::SeqCst), 1);
+}

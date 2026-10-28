@@ -1,6 +1,9 @@
 //! Tests of this module.
 
-use meridian_compute_wgpu::cpu_context;
+use std::sync::Arc;
+
+use meridian_compute_app::ComputeScheduler;
+use meridian_compute_wgpu::{CpuComputeDevice, cpu_context};
 use meridian_gac::{FloatFlavor, Motor3, Vec3};
 use meridian_physics_domain::collision::ColliderShape;
 
@@ -59,7 +62,7 @@ fn dispatch_matches_direct_test_pair() {
 }
 
 /// Exercises the CPU `parallel_for` backend's actual parallel path
-/// (above `ComputeContext`'s default 1024-item threshold).
+/// (a scheduler with a cutoff of one item).
 #[test]
 fn large_batch_matches_direct_test_pair() {
     // A chain of spheres 0.4 apart (radius 0.5, so every consecutive
@@ -74,9 +77,9 @@ fn large_batch_matches_direct_test_pair() {
         .map(|&(a, b)| narrow_phase.test_pair(&bodies, a, b))
         .collect();
 
-    let context = cpu_context();
+    let scheduler = ComputeScheduler::with_parallel_threshold(Arc::new(CpuComputeDevice::new()), 1);
     let kernel = NarrowPhaseTestPairKernel::new(bodies, pairs.clone());
-    kernel.dispatch(&context, DispatchSize::linear(pairs.len() as u32));
+    scheduler.run(&kernel, DispatchSize::linear(pairs.len() as u32));
 
     let got = kernel.results();
     for (g, e) in got.iter().zip(expected.iter()) {

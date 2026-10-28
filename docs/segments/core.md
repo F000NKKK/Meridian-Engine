@@ -130,10 +130,11 @@ change that closed them.
    first run showed the kernels locking their output once per item, so the
    parallel path was slower than sequential at every size. Kernels now fill a
    local buffer per range through `ComputeContext::parallel_ranges` and lock
-   once: 100k motors 13 ms sequential, 5 ms parallel. Open: the default
-   parallel cutoff of 1 024 items still loses at 1k (parallel ~270 us against
-   sequential ~115 us, a thread spawn per dispatch) and wins at 4k. Raising it
-   changes which path the physics tests exercise, so it goes through team/physics.
+   once: 100k motors 13 ms sequential, 5 ms parallel. The default
+   parallel cutoff was 1 024 items and lost at 1k (parallel ~270 us against
+   sequential ~115 us, a thread spawn per dispatch) and won at 4k; it is now
+   4 096 (`ComputeContext`), and the three `physics-wgpu` tests that relied on
+   the old default pin their own cutoff of one item.
 
 The Craftbook migration (ADR 019/020) owns the `runtime-app`/`sdk` rework,
 the driver direction and the `unwrap` cleanup; see `docs/adr/020-craftbook-adoption.md`.
