@@ -5,7 +5,7 @@
 )]
 
 use meridian_memory::Handle;
-use meridian_rendering_domain::{TextureHandle, batch_scene2d_clipped};
+use meridian_rendering_domain::{SpriteBatch, TextureHandle, batch_scene2d_clipped};
 use meridian_ui_domain::layout::value::Length;
 use meridian_ui_domain::properties::element::{BACKGROUND, HEIGHT, WIDTH};
 use meridian_ui_domain::properties::scroll_viewer::VERTICAL_OFFSET;
@@ -76,7 +76,7 @@ fn scrolled_content_outside_the_window_is_not_batched() {
     let out = extract_clipped(&tree, viewer, surface, paint()).expect("extract");
     let quads: usize = batch_scene2d_clipped(&out.scene, &out.clips)
         .iter()
-        .map(|batch| batch.quad_count())
+        .map(SpriteBatch::quad_count)
         .sum();
     // The viewer's background plus the three rows still in the window; the
     // first row, scrolled out, is dropped.
