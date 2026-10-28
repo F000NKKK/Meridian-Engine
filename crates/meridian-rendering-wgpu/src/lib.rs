@@ -32,6 +32,7 @@ mod color_format;
 mod command_buffer;
 mod depth_texture;
 mod devices;
+mod fullscreen_vertex;
 mod gpu_frame_recorder;
 mod gpu_texture_store;
 mod overlay_pass;
@@ -44,6 +45,7 @@ mod surface;
 mod surface_frame;
 #[cfg(test)]
 mod tests;
+mod tonemap;
 mod vertex;
 
 pub use acquire_frame_error::AcquireFrameError;
@@ -75,4 +77,5 @@ pub use submission::{
 };
 pub use surface::Surface;
 pub use surface_frame::SurfaceFrame;
+pub use tonemap::TonemapPass;
 pub use vertex::*;

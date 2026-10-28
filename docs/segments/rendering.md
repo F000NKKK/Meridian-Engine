@@ -44,7 +44,7 @@ Real and tested on CPU: `Camera`, `Frustum` (Gribb/Hartmann vs any
 `directional_shadow_camera`. Real on GPU, proven by the windowed examples
 `magic_figures`/`physic_figures`: textured/unlit/lit pipelines (metallic-roughness,
 directional + point, `MAX_LIGHTS = 4`), hemisphere ambient, one directional
-shadow map with PCF, non-HDR bloom. `rendering-wgpu` has headless and
+shadow map with PCF, HDR bloom and tone mapping (ADR 034). `rendering-wgpu` has headless and
 windowed (`Surface`) devices. 30 `#[test]`s across the three crates.
 
 ## Backlog
@@ -91,8 +91,10 @@ Not started; ordered by suggested priority. Items wait for an explicit task.
    Normal, occlusion and emissive maps followed in
    [ADR 033](../adr/033-normal-occlusion-and-emissive-maps.md) (derivative
    tangent frame; emissive-mapped surfaces do not bloom yet).
-10. **Larger, ADR-gated:** HDR (`Rgba16Float` + tone mapping), shadow
-   cascades/frustum fitting, point-light shadows, IBL, skinned glTF and
+10. HDR scene target, HDR bloom and tone mapping:
+   [ADR 034](../adr/034-hdr-scene-target-and-tone-mapping.md).
+11. **Larger, ADR-gated:** shadow cascades/frustum fitting, point-light
+   shadows, IBL, skinned glTF and
    animation (no vocabulary yet), concrete backend crates.
 
 ## Standards gaps

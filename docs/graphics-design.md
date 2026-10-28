@@ -27,13 +27,13 @@ Lighting             -- real (metallic-roughness forward, directional + point; A
 Materials            -- real (albedo/base color, unlit, emissive, blend mode field)
 Camera                -- real (Motor3 -> view/projection matrix bridge)
 Animation
-Post Processing      -- real (bloom); HDR/tone-mapping still open
+Post Processing      -- real (HDR scene target, bloom, tone mapping; ADR 034)
 ```
 
 `Camera`, frustum culling, render graph pass ordering, scene extraction,
 lighting and the submission bridge are all real and tested (`cargo test
 -p meridian-rendering-domain`) — see "Implementation order" below for the
-step-by-step history and exactly what's still open (HDR). `rendering-wgpu` is real too, both headless (`Device::new`) and
+step-by-step history and exactly what's still open (IBL). `rendering-wgpu` is real too, both headless (`Device::new`) and
 windowed (`Device::new_windowed`, a real swapchain `Surface` —
 `Buffer`/`Texture`/`Shader`/compute `Pipeline`/`CommandBuffer` either
 way). `Animation` is the one row above with no work started yet — no
@@ -275,9 +275,10 @@ driver.
    triangle passes, horizontal then vertical), and additively composites
    the result onto the already-rendered view via the new
    `CommandBuffer::begin_render_pass_loaded` (preserves existing content
-   instead of clearing) — deliberately non-HDR (`Rgba8UnormSrgb`
-   throughout; `Rgba16Float` + exposure is real future work if a scene
-   ever needs it). Highlights are per material:
+   instead of clearing) in `Rgba16Float` targets like the scene's
+   ([ADR 034](adr/034-hdr-scene-target-and-tone-mapping.md): the 3D passes
+   draw into an HDR target and `TonemapPass` resolves it to the swapchain
+   with exposure and an ACES, Reinhard or clamp curve). Highlights are per material:
    `Material::roughness` (default 0.5) and `Material::metallic` (default
    0.0) travel in each instance record as a `surface` pair and drive the
    lit shaders' GGX/Smith/Schlick model ([ADR 032](adr/032-metallic-roughness-materials.md));

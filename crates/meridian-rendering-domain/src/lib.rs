@@ -22,6 +22,8 @@ pub mod submission;
 #[cfg(test)]
 mod tests;
 mod texture_handle;
+mod tonemap_config;
+mod tonemap_operator;
 
 pub use bloom_config::BloomConfig;
 pub use camera::{Camera, look_at_rotor};
@@ -52,3 +54,5 @@ pub use submission::{
     ViewUniforms, directional_shadow_camera, order_draws, plan_batches,
 };
 pub use texture_handle::{TextureHandle, TextureMarker};
+pub use tonemap_config::TonemapConfig;
+pub use tonemap_operator::TonemapOperator;

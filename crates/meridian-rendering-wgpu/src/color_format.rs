@@ -13,17 +13,19 @@
 /// uses Y") is exactly what happens when they do.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ColorFormat {
-    /// 8-bit sRGB RGBA — what [`Device::create_texture_2d`](crate::Device::create_texture_2d) and every
-    /// offscreen target in this workspace uses today. An HDR variant
-    /// (`Rgba16Float`) is real future work (see `bloom.rs`'s module doc
-    /// in `rendering-domain`), additive here when something needs it.
+    /// 8-bit sRGB RGBA — what [`Device::create_texture_2d`](crate::Device::create_texture_2d) and
+    /// sprite targets use.
     SrgbRgba8,
+    /// 16-bit float RGBA, linear and unclamped: the scene and bloom targets
+    /// (ADR 034), so light brighter than 1.0 survives until tone mapping.
+    HdrRgba16F,
 }
 
 impl ColorFormat {
     pub(crate) fn to_wgpu(self) -> wgpu::TextureFormat {
         match self {
             ColorFormat::SrgbRgba8 => wgpu::TextureFormat::Rgba8UnormSrgb,
+            ColorFormat::HdrRgba16F => wgpu::TextureFormat::Rgba16Float,
         }
     }
 }

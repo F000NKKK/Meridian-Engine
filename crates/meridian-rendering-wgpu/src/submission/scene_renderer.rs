@@ -11,16 +11,16 @@ use super::{
     lit_uniform_bytes, mat4_to_bytes,
 };
 use crate::{
-    Buffer, BufferUsage, CommandBuffer, Device, RenderPass as DriverRenderPass, Sampler, Surface,
-    Texture,
+    Buffer, BufferUsage, ColorFormat, CommandBuffer, Device, RenderPass as DriverRenderPass,
+    Sampler, Texture,
 };
 
 /// Owns all four main pipelines (colored/textured × lit/unlit) plus the
 /// the shared view/lighting uniform, and the sampler for rendering a
 /// [`Scene3d`] view. One instance per view (a UI overlay's `Scene2d` is
 /// a separate, future-work sibling — see docs/graphics-design.md);
-/// building it needs a real GPU device and a surface to match color/
-/// depth formats against. The emissive-extraction pipelines
+/// building it needs a real GPU device and the colour format of the
+/// target it draws into (the HDR scene target, ADR 034). The emissive-extraction pipelines
 /// [`crate::bloom::BloomPass`] draws through are *not* owned here — they
 /// render into `BloomPass`'s own offscreen texture, whose format is
 /// `BloomPass`'s to pick, not something this type should guess at (see
@@ -53,7 +53,8 @@ pub struct SceneRenderer {
 pub const DEFAULT_SHADOW_MAP_SIZE: u32 = 2048;
 
 impl SceneRenderer {
-    /// Builds a renderer with [`DEFAULT_SHADOW_MAP_SIZE`] — see
+    /// Builds a renderer drawing into targets of `format`, with
+    /// [`DEFAULT_SHADOW_MAP_SIZE`] — see
     /// [`with_shadow_map_size`](Self::with_shadow_map_size) to pick a
     /// specific resolution (a larger map reduces blocky/aliased shadow
     /// edges at a real per-frame GPU cost; a smaller one is cheaper and
@@ -61,11 +62,17 @@ impl SceneRenderer {
     /// scale and hardware budget, so this is an explicit, disclosed
     /// application choice, not a hardcoded constant with no escape
     /// hatch).
-    pub fn new(device: &Device, surface: &Surface) -> Self {
-        Self::with_shadow_map_size(device, surface, DEFAULT_SHADOW_MAP_SIZE)
+    #[must_use]
+    pub fn new(device: &Device, format: ColorFormat) -> Self {
+        Self::with_shadow_map_size(device, format, DEFAULT_SHADOW_MAP_SIZE)
     }
 
-    pub fn with_shadow_map_size(device: &Device, surface: &Surface, shadow_map_size: u32) -> Self {
+    #[must_use]
+    pub fn with_shadow_map_size(
+        device: &Device,
+        format: ColorFormat,
+        shadow_map_size: u32,
+    ) -> Self {
         let shadow_map = device.create_shadow_map_texture(shadow_map_size);
         let shadow_sampler = device.create_comparison_sampler();
         let shadow_depth = ShadowDepthPass::new(device);
@@ -78,7 +85,7 @@ impl SceneRenderer {
 
         let pipelines = MainPipelines::new(
             device,
-            surface,
+            format,
             MainBindings {
                 uniform_buffer: &uniform_buffer,
                 shadow_map: &shadow_map,

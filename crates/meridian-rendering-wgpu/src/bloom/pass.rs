@@ -9,7 +9,7 @@ use crate::submission::{
 };
 use crate::{
     BindGroup, BufferUsage, ColorFormat, DepthTexture, Device, RenderPipeline, Sampler,
-    SceneRenderer, ShaderStages, Surface, SurfaceFrame, Texture,
+    SceneRenderer, ShaderStages, Texture,
 };
 
 /// Every offscreen texture [`BloomPass`] creates uses this format — one
@@ -17,7 +17,7 @@ use crate::{
 /// `rendering-wgpu::ColorFormat`'s own doc comment for why that
 /// matters: a mismatch between the two is a `wgpu` validation error,
 /// which one shared value makes impossible).
-const OFFSCREEN_FORMAT: ColorFormat = ColorFormat::SrgbRgba8;
+const OFFSCREEN_FORMAT: ColorFormat = ColorFormat::HdrRgba16F;
 
 /// The `BlurUniforms` bytes the blur shader reads: `texel_size` (1/width,
 /// 1/height) then `direction` (`(1,0)` horizontal, `(0,1)` vertical).
@@ -41,13 +41,14 @@ struct BlurStep<'a> {
 /// Owns bloom's offscreen textures and its three small pipelines
 /// (emissive extraction, blur, composite), sized
 /// for one `width`x`height` render target — see the module doc for the
-/// four-step pipeline and why this isn't HDR.
+/// four-step pipeline. Its targets are HDR like the scene's, so a
+/// surface brighter than 1.0 blooms in proportion.
 ///
 /// The emissive-extraction pipelines live here, not on `SceneRenderer`,
 /// deliberately: they only ever render into *this* struct's own
 /// `bright` texture, never the swapchain, so the format they're built
 /// against has to be `BloomPass`'s own `OFFSCREEN_FORMAT` — building
-/// them on `SceneRenderer` against the surface's format instead is the
+/// them on `SceneRenderer` against the scene target's format instead is the
 /// class of bug
 /// `rendering-wgpu::ColorFormat` exists to make structurally
 /// impossible: a mesh pipeline built for the wrong render pass's format.
@@ -81,11 +82,11 @@ pub struct BloomPass {
 }
 
 impl BloomPass {
-    /// `surface` supplies the composite pass's target color format (the
-    /// real swapchain format) — `width`/`height` should match it too,
-    /// so the bloom textures are the same resolution as what's actually
-    /// being rendered.
-    pub fn new(device: &Device, width: u32, height: u32, surface: &Surface) -> Self {
+    /// `width`/`height` should match the HDR scene target the bloom is
+    /// composited onto, so the bloom textures are the same resolution as
+    /// what's actually being rendered.
+    #[must_use]
+    pub fn new(device: &Device, width: u32, height: u32) -> Self {
         let bright = device.create_offscreen_color_texture(width, height, OFFSCREEN_FORMAT);
         let bright_depth = device.create_depth_texture(width, height);
         let ping = device.create_offscreen_color_texture(width, height, OFFSCREEN_FORMAT);
@@ -118,8 +119,12 @@ impl BloomPass {
 
         let composite_shader =
             device.create_shader("meridian-bloom-composite", &composite_shader_wgsl());
-        let composite_pipeline =
-            device.create_fullscreen_pipeline(&composite_shader, "fs_main", surface, true);
+        let composite_pipeline = device.create_fullscreen_pipeline_for_offscreen(
+            &composite_shader,
+            "fs_main",
+            OFFSCREEN_FORMAT,
+            true,
+        );
 
         // Clamp, not repeat: the blur kernel samples beyond `[0,1]` near
         // the screen edges (see `Device::create_clamp_sampler`'s doc
@@ -170,7 +175,7 @@ impl BloomPass {
     }
 
     /// Runs the full bloom pipeline for one view and composites the
-    /// result onto `input.target_frame` — the *same* frame `input.renderer`'s
+    /// result onto `input.target` — the *same* texture `input.renderer`'s
     /// main [`SceneRenderer::draw`] already rendered into earlier in this
     /// `command_buffer`, per the module doc's step 4.
     ///
@@ -240,7 +245,7 @@ impl BloomPass {
         );
 
         // Step 4: additive composite onto the already-drawn target.
-        self.composite(device, command_buffer, input.target_frame);
+        self.composite(device, command_buffer, input.target);
     }
 
     /// Records one fullscreen blur draw.
@@ -268,12 +273,12 @@ impl BloomPass {
         pass.draw(0..3);
     }
 
-    /// Adds the blurred bright pass onto `target_frame`.
+    /// Adds the blurred bright pass onto `target`.
     fn composite(
         &self,
         device: &Device,
         command_buffer: &mut crate::CommandBuffer<'_>,
-        target_frame: &SurfaceFrame,
+        target: &Texture,
     ) {
         let mut intensity_bytes = [0u8; 16];
         intensity_bytes[0..4].copy_from_slice(&self.config.intensity.to_le_bytes());
@@ -285,7 +290,7 @@ impl BloomPass {
             &self.pong,
             &self.sampler,
         );
-        let mut pass = command_buffer.begin_render_pass_loaded(target_frame.view());
+        let mut pass = command_buffer.begin_render_pass_loaded(target.view());
         pass.set_pipeline(&self.composite_pipeline);
         pass.set_bind_group(0, &bind_group);
         pass.draw(0..3);
