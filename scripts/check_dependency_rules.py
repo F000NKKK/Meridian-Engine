@@ -120,6 +120,7 @@ ALLOWED = {
         "meridian-audio-domain",
         "meridian-diagnostics",
         "meridian-ecs",
+        "meridian-gac",
         "meridian-physics-app",
         "meridian-compute-app",
         "meridian-rendering-domain",

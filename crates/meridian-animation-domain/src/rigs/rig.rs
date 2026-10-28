@@ -1,7 +1,7 @@
 //! The skeletons of a model and the animations that move them.
 
-use super::{Animation, AnimationLayer};
-use crate::{JointMatrix, Pose, Skeleton};
+use super::{Animation, AnimationLayer, RootMotion};
+use crate::{JointMatrix, JointTransform, Pose, Skeleton};
 
 /// The skeletons of a model and the animations that move them and its morph
 /// weights (ADR 047). Plain data, built once when a model loads and shared
@@ -36,6 +36,18 @@ impl Rig {
     /// leaving and the one arriving at the fade's weight.
     #[must_use]
     pub fn matrices_mixed(&self, layers: &[AnimationLayer]) -> Vec<Vec<JointMatrix>> {
+        self.matrices_pinned(layers, None)
+    }
+
+    /// As [`matrices_mixed`](Self::matrices_mixed), with the horizontal
+    /// travel of the joint `pin` names held at its rest position, the part of
+    /// the pose that [`RootMotion`] hands to the entity.
+    #[must_use]
+    pub fn matrices_pinned(
+        &self,
+        layers: &[AnimationLayer],
+        pin: Option<RootMotion>,
+    ) -> Vec<Vec<JointMatrix>> {
         self.skeletons
             .iter()
             .enumerate()
@@ -43,6 +55,9 @@ impl Rig {
                 let mut mixed = self.pose_of(index, layers.first().copied());
                 for layer in layers.iter().skip(1) {
                     mixed.blend(&self.pose_of(index, Some(*layer)), layer.weight);
+                }
+                if let Some(pinned) = pin.filter(|pinned| pinned.skeleton == index) {
+                    Self::hold(skeleton, &mut mixed, pinned);
                 }
                 skeleton.joint_matrices(&mixed)
             })
@@ -82,6 +97,37 @@ impl Rig {
             }
         }
         mixed
+    }
+
+    /// Puts the x and z of the joint `pin` names back to its rest values.
+    fn hold(skeleton: &Skeleton, pose: &mut Pose, pin: RootMotion) {
+        let rest = skeleton
+            .joints()
+            .get(pin.joint.index())
+            .map(|joint| joint.rest);
+        if let (Some(rest), Some(joint)) = (rest, pose.joint_mut(pin.joint)) {
+            joint.translation.x = rest.translation.x;
+            joint.translation.z = rest.translation.z;
+        }
+    }
+
+    /// Where the joint of `pin` is in `animation` at `time`, relative to its
+    /// parent.
+    #[must_use]
+    pub fn joint_at(&self, pin: RootMotion, animation: Option<usize>, time: f32) -> JointTransform {
+        let layer = AnimationLayer {
+            animation,
+            time,
+            weight: 1.0,
+        };
+        if pin.skeleton >= self.skeletons.len() {
+            return JointTransform::default();
+        }
+        let pose = self.pose_of(pin.skeleton, Some(layer));
+        pose.transforms()
+            .get(pin.joint.index())
+            .copied()
+            .unwrap_or_default()
     }
 
     /// The pose of skeleton `skeleton` under `layer` alone.

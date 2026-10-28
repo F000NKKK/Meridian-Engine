@@ -2,8 +2,11 @@
 
 use std::collections::HashMap;
 
-use meridian_animation_domain::{AnimationTarget, Animator, JointMatrix};
-use meridian_ecs::{Entity, World};
+use meridian_animation_domain::{
+    AnimationController, AnimationTarget, Animator, JointMatrix, RootMotion,
+};
+use meridian_ecs::{Entity, Transform, World};
+use meridian_gac::{Motor3, Vec3};
 use meridian_rendering_domain::{JointPalette, MorphWeights};
 
 use crate::{FrameDelta, Shared, Stage};
@@ -16,10 +19,13 @@ type Posed = (Vec<Vec<JointMatrix>>, Vec<Vec<f32>>);
 /// the frame's [`FrameDelta`] and hands the result to the entities that
 /// carry an [`AnimationTarget`] naming it: each gets a [`JointPalette`] for
 /// its skeleton and [`MorphWeights`] for its part, which
-/// `extract_scene3d` draws. It changes no `Transform`, so it needs no
-/// ordering against physics or transform propagation; register it before
-/// whatever extracts the scene and after any stage that starts or switches
-/// animations.
+/// `extract_scene3d` draws. It changes no `Transform` except the one of an
+/// animator with [`RootMotion`], which it moves by the ground the animation
+/// covered, so register it before the transform stage that resolves
+/// `GlobalTransform`s and keep physics off such an entity. An animator with an
+/// [`AnimationController`] is steered by it first, so gameplay switches
+/// animations by setting the controller's parameters. Register the stage
+/// before whatever extracts the scene and after any stage that sets them.
 #[derive(Debug)]
 pub struct AnimationStage {
     world: Shared<World>,
@@ -41,18 +47,59 @@ impl Stage for AnimationStage {
     }
 }
 
+/// Lets every controller steer its animator: transitions fire before the
+/// player moves on, so a new state starts this frame.
+fn steer(world: &mut World) {
+    let steered: Vec<Entity> = world
+        .query::<AnimationController>()
+        .map(|(entity, _)| entity)
+        .collect();
+    for entity in steered {
+        let Some(mut controller) = world.get::<AnimationController>(entity).cloned() else {
+            continue;
+        };
+        if let Some(animator) = world.get_mut::<Animator>(entity) {
+            let rig = animator.rig.clone();
+            controller.update(&mut animator.player, &rig);
+            world.insert(entity, controller);
+        }
+    }
+}
+
+/// Moves `entity` by `travel`, a displacement in its own frame.
+fn walk(world: &mut World, entity: Entity, travel: Vec3) {
+    if let Some(transform) = world.get_mut::<Transform>(entity) {
+        transform.motor = Motor3::translation(travel).compose(transform.motor);
+    }
+}
+
 /// Advances every animator by `seconds` and writes the poses to its targets.
 fn animate(world: &mut World, seconds: f32) {
-    let posed: HashMap<Entity, Posed> = world
-        .query_mut::<Animator>()
-        .map(|(entity, animator)| {
-            animator.player.advance(&animator.rig, seconds);
-            let layers = animator.player.layers();
-            let matrices = animator.rig.matrices_mixed(&layers);
-            let weights = animator.rig.weights_mixed(&layers);
-            (entity, (matrices, weights))
-        })
+    steer(world);
+    let animators: Vec<Entity> = world
+        .query::<Animator>()
+        .map(|(entity, _)| entity)
         .collect();
+    let mut posed: HashMap<Entity, Posed> = HashMap::new();
+    for entity in animators {
+        let pin = world.get::<RootMotion>(entity).copied();
+        let Some(animator) = world.get_mut::<Animator>(entity) else {
+            continue;
+        };
+        let travel = if let Some(pin) = pin {
+            animator.player.advance_travel(&animator.rig, seconds, pin)
+        } else {
+            animator.player.advance(&animator.rig, seconds);
+            Vec3::ZERO
+        };
+        let layers = animator.player.layers();
+        let matrices = animator.rig.matrices_pinned(&layers, pin);
+        let weights = animator.rig.weights_mixed(&layers);
+        posed.insert(entity, (matrices, weights));
+        if pin.is_some() {
+            walk(world, entity, travel);
+        }
+    }
     let targets: Vec<(Entity, AnimationTarget)> = world
         .query::<AnimationTarget>()
         .map(|(entity, target)| (entity, *target))
