@@ -7,12 +7,10 @@ impl Device {
     /// message purposes only.
     #[must_use]
     pub fn create_shader(&self, label: &str, wgsl_source: &str) -> Shader {
-        let raw = self
-            .raw
-            .create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some(label),
-                source: wgpu::ShaderSource::Wgsl(wgsl_source.into()),
-            });
+        let raw = self.raw.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some(label),
+            source: wgpu::ShaderSource::Wgsl(wgsl_source.into()),
+        });
         Shader { raw }
     }
 

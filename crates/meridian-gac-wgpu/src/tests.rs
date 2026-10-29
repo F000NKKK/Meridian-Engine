@@ -34,7 +34,10 @@ fn motor_transform_kernel_matches_gac_core_compose_directly() {
     // 2000 items does not reach it) so this test keeps covering the parallel
     // path whatever the default is.
     let scheduler = ComputeScheduler::with_parallel_threshold(Arc::new(CpuComputeDevice::new()), 1);
-    scheduler.run(&kernel, DispatchSize::linear(u32::try_from(locals.len()).expect("batch fits a dispatch")));
+    scheduler.run(
+        &kernel,
+        DispatchSize::linear(u32::try_from(locals.len()).expect("batch fits a dispatch")),
+    );
 
     let results = kernel.results();
     assert_eq!(results.len(), locals.len());
@@ -69,7 +72,10 @@ fn motor_compose_kernel_handles_independent_parents_per_pair() {
 
     let kernel = MotorComposeKernel::new(pairs.clone());
     let scheduler = ComputeScheduler::with_parallel_threshold(Arc::new(CpuComputeDevice::new()), 1);
-    scheduler.run(&kernel, DispatchSize::linear(u32::try_from(pairs.len()).expect("batch fits a dispatch")));
+    scheduler.run(
+        &kernel,
+        DispatchSize::linear(u32::try_from(pairs.len()).expect("batch fits a dispatch")),
+    );
 
     let results = kernel.results();
     let p = Vec3::ZERO;
@@ -120,14 +126,21 @@ fn fixed_motor_transform_kernel_matches_gac_core_compose_directly() {
                     FixedVec3::new(Fixed::ZERO, Fixed::ONE, Fixed::ZERO),
                     Fixed::from_num(f64::from(i) * 0.001),
                 ),
-                FixedVec3::new(Fixed::ZERO, Fixed::from_num(f64::from(i) * 0.01), Fixed::ZERO),
+                FixedVec3::new(
+                    Fixed::ZERO,
+                    Fixed::from_num(f64::from(i) * 0.01),
+                    Fixed::ZERO,
+                ),
             )
         })
         .collect();
 
     let kernel = FixedMotorTransformKernel::new(parent, locals.clone());
     let scheduler = ComputeScheduler::with_parallel_threshold(Arc::new(CpuComputeDevice::new()), 1);
-    scheduler.run(&kernel, DispatchSize::linear(u32::try_from(locals.len()).expect("batch fits a dispatch")));
+    scheduler.run(
+        &kernel,
+        DispatchSize::linear(u32::try_from(locals.len()).expect("batch fits a dispatch")),
+    );
 
     let results = kernel.results();
     assert_eq!(results.len(), locals.len());
@@ -161,7 +174,10 @@ fn fixed_motor_compose_kernel_handles_independent_parents_per_pair() {
 
     let kernel = FixedMotorComposeKernel::new(pairs.clone());
     let scheduler = ComputeScheduler::with_parallel_threshold(Arc::new(CpuComputeDevice::new()), 1);
-    scheduler.run(&kernel, DispatchSize::linear(u32::try_from(pairs.len()).expect("batch fits a dispatch")));
+    scheduler.run(
+        &kernel,
+        DispatchSize::linear(u32::try_from(pairs.len()).expect("batch fits a dispatch")),
+    );
 
     let results = kernel.results();
     let p = FixedVec3::ZERO;

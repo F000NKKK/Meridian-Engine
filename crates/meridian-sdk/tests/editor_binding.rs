@@ -212,24 +212,24 @@ fn a_reference_to_a_model_draws_its_pieces_and_a_click_means_the_owner() {
 
 #[test]
 fn a_gltf_file_in_a_folder_is_bound_to_its_owner() {
-    let assets = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/assets");
+    let assets = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures");
     let Some(mut renderer) = renderer() else {
         return;
     };
-    let text = r#"{ format: 1, entities: [ { id: "fox", components: {
+    let text = r#"{ format: 1, entities: [ { id: "triangle", components: {
         transform: { motor: { rotor: [1, 0, 0, 0] } },
-        mesh_renderer: { mesh: "@asset:models/Fox.glb", material: "@asset:builtin/default" } } },
+        mesh_renderer: { mesh: "@asset:triangle.gltf", material: "@asset:builtin/default" } } },
         { id: "gone", components: {
         transform: { motor: { rotor: [1, 0, 0, 0] } },
-        mesh_renderer: { mesh: "@asset:models/none.glb", material: "@asset:builtin/default" } } } ] }"#;
+        mesh_renderer: { mesh: "@asset:missing.gltf", material: "@asset:builtin/default" } } } ] }"#;
     let mut world = world_of(text);
     let mut folder = meridian_sdk::GltfFolder::new(assets);
     let unbound = renderer.bind_references(&mut world, &mut folder);
     assert_eq!(unbound.len(), 1, "only the missing file stays unbound");
-    assert_eq!(unbound[0].missing.as_str(), "models/none.glb");
+    assert_eq!(unbound[0].missing.as_str(), "missing.gltf");
     assert_eq!(world.query::<meridian_sdk::ModelPieces>().count(), 1);
     assert!(
         world.query::<MeshRenderer>().count() >= 1,
-        "the fox has pieces"
+        "the triangle has a bound mesh"
     );
 }
