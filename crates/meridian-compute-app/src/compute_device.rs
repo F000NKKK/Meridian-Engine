@@ -11,8 +11,8 @@ use crate::{ComputeBuffer, ComputeSupport};
 /// Mechanism, not policy: [`dispatch_ranges`](Self::dispatch_ranges) always runs the
 /// work as the backend sees fit; the sequential cutoff is the context's. Adapters
 /// implement it (`meridian-compute-wgpu` with OS threads);
-/// [`testing::SequentialDevice`](crate::testing::SequentialDevice) is the fake and
-/// [`testing::run_device_contract`](crate::testing::run_device_contract) the suite
+/// `testing::SequentialDevice` is the fake and
+/// `testing::run_device_contract` the suite
 /// every implementation passes.
 pub trait ComputeDevice: std::fmt::Debug + Send + Sync + 'static {
     /// What this backend reports about itself.

@@ -44,7 +44,7 @@ meridian-rendering-app = { path = "crates/meridian-rendering-app", version = "0.
 meridian-audio-domain = { path = "crates/meridian-audio-domain", version = "0.19" }
 meridian-runtime-app = { path = "crates/meridian-runtime-app", version = "0.31" }
 meridian-physics-app = { path = "crates/meridian-physics-app", version = "0.1" }
-meridian-sdk = { path = "crates/meridian-sdk", version = "0.5" }
+meridian-sdk = { path = "crates/meridian-sdk", version = "0.6" }
 meridian-markup = { path = "crates/meridian-markup", version = "0.1" }
 meridian-markup-macros = { path = "crates/meridian-markup-macros", version = "0.1" }
 meridian-data-substrate = { path = "crates/meridian-data-substrate", version = "0.1" }

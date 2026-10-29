@@ -8,7 +8,7 @@ use crate::Job;
 /// (`meridian-runtime-threads` is the real one).
 ///
 /// Every implementation must pass
-/// [`testing::run_executor_contract`](crate::testing).
+/// `testing::run_executor_contract` (available with the `testing` feature).
 pub trait JobExecutor: Send + Sync {
     /// Runs every job's action exactly once, a job only after all of its
     /// `deps` have finished, and returns once all are done.

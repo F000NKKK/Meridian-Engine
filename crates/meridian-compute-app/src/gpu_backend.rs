@@ -9,9 +9,9 @@ use std::any::Any;
 /// Kernel adapters (`meridian-gac-wgpu`, `meridian-physics-wgpu`) know the
 /// concrete adapter type and reach it with
 /// [`ComputeContext::gpu`](crate::ComputeContext::gpu). The fake is
-/// [`testing::FakeGpu`](crate::testing::FakeGpu) and the suite every
+/// `testing::FakeGpu` and the suite every
 /// implementation passes is
-/// [`testing::run_gpu_contract`](crate::testing::run_gpu_contract).
+/// `testing::run_gpu_contract`.
 pub trait GpuBackend: std::fmt::Debug + Send + Sync + 'static {
     /// The adapter's human-readable name (never empty).
     fn device_name(&self) -> String;

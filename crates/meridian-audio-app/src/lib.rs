@@ -6,7 +6,7 @@
 //!
 //! The port is declared here, by the layer that needs it (ADR 019); the platform
 //! adapter (`meridian-audio-cpal`) implements it. A fake and a contract suite
-//! are in [`testing`] behind the `testing` feature.
+//! are in `testing` behind the `testing` feature.
 
 #![doc = include_str!("../README.md")]
 #![forbid(unsafe_code)]

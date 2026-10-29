@@ -8,7 +8,7 @@
 //! The port is declared here, by the layer that needs it (ADR 019,
 //! ADR 025); `meridian-physics-wgpu` implements it with batched compute
 //! kernels. The runtime calls a stepper without knowing which one it got.
-//! A contract suite is in [`testing`] behind the `testing` feature.
+//! A contract suite is in `testing` behind the `testing` feature.
 
 #![doc = include_str!("../README.md")]
 #![forbid(unsafe_code)]

@@ -6,7 +6,7 @@
 //!
 //! The ports are declared here, by the layer that needs them (ADR 019); the
 //! `wgpu` adapter (`meridian-rendering-wgpu`) implements them. Fakes and
-//! contract suites are in [`testing`] behind the `testing` feature.
+//! contract suites are in `testing` behind the `testing` feature.
 
 #![doc = include_str!("../README.md")]
 #![forbid(unsafe_code)]

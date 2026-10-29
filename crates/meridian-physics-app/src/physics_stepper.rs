@@ -10,7 +10,7 @@ use crate::PhysicsSubsystem;
 /// [`SequentialStepper`](crate::SequentialStepper) is a plain CPU loop,
 /// and `meridian-physics-wgpu` implements the same contract with
 /// batched compute kernels. Every implementation must pass
-/// [`testing::run_stepper_contract`](crate::testing).
+/// `testing::run_stepper_contract` (available with the `testing` feature).
 pub trait PhysicsStepper: Send {
     /// Steps `physics` by `dt` seconds.
     fn step(&mut self, physics: &mut PhysicsSubsystem, dt: f32);

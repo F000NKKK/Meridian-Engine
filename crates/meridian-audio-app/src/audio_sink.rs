@@ -6,9 +6,9 @@
 /// one value per speaker per frame, in speaker order. Opening a device is the
 /// adapter's business (it is I/O and `async`), so a sink only receives samples
 /// once it exists. Adapters implement this trait (`meridian-audio-cpal` for
-/// the platform device); [`testing::RecordingSink`](crate::testing::RecordingSink)
-/// is the in-memory fake, and [`testing::run_contract`](crate::testing::run_contract)
-/// is the suite every implementation passes.
+/// the platform device); `testing::RecordingSink`
+/// is the in-memory fake, and `testing::run_contract`
+/// is the suite every implementation passes (both require the `testing` feature).
 pub trait AudioSink {
     /// Pushes interleaved samples for playback.
     ///

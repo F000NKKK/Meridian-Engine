@@ -8,8 +8,8 @@ use crate::{FrameOutcome, FrameRequest};
 ///
 /// An implementation owns the device, the swapchain and every pipeline.
 /// `rendering-wgpu` implements it over `wgpu`;
-/// [`testing::FakeFrameRecorder`](crate::testing::FakeFrameRecorder) is the fake
-/// and [`testing::run_frame_recorder_contract`](crate::testing::run_frame_recorder_contract)
+/// `testing::FakeFrameRecorder` is the fake
+/// and `testing::run_frame_recorder_contract`
 /// the suite an implementation passes. A windowed adapter needs a real window,
 /// so its contract run is a manual `hw-tests` job.
 pub trait FrameRecorder {
