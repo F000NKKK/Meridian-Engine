@@ -28,6 +28,7 @@ mod tests;
 mod texture_handle;
 mod tonemap_config;
 mod tonemap_operator;
+mod viewport3d;
 
 pub use bloom_config::BloomConfig;
 pub use camera::{Camera, look_at_rotor, look_at_upright};
@@ -69,3 +70,4 @@ pub use submission::{
 pub use texture_handle::{TextureHandle, TextureMarker};
 pub use tonemap_config::TonemapConfig;
 pub use tonemap_operator::TonemapOperator;
+pub use viewport3d::Viewport3d;
