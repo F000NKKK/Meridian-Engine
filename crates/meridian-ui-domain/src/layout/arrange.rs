@@ -64,7 +64,7 @@ fn offset(alignment: Alignment, leftover: f32) -> f32 {
 
 fn arrange_content(tree: &mut UiTree, node: NodeId, size: Size) {
     match tree.kind(node) {
-        Ok(ElementKind::Border) => border::arrange(tree, node, size),
+        Ok(ElementKind::Border | ElementKind::Slot) => border::arrange(tree, node, size),
         Ok(ElementKind::StackPanel) => stack_panel::arrange(tree, node, size),
         Ok(ElementKind::DockPanel) => dock_panel::arrange(tree, node, size),
         Ok(ElementKind::Grid) => grid::arrange(tree, node, size),

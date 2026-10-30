@@ -26,6 +26,8 @@ impl NodeId {
 pub enum ElementKind {
     /// Single child inset by `Padding`; also the plain container.
     Border,
+    /// A bordered slot whose interactive or 3D content is supplied by the host.
+    Slot,
     /// Children in a row or column (`Orientation`).
     StackPanel,
     /// Children docked to the edges of the remaining space.
@@ -41,8 +43,9 @@ pub enum ElementKind {
 
 impl ElementKind {
     /// Every kind, for tooling that lists or round-trips tags.
-    pub const ALL: [Self; 6] = [
+    pub const ALL: [Self; 7] = [
         Self::Border,
+        Self::Slot,
         Self::StackPanel,
         Self::DockPanel,
         Self::Grid,
@@ -54,6 +57,7 @@ impl ElementKind {
     pub const fn tag(self) -> &'static str {
         match self {
             Self::Border => "Border",
+            Self::Slot => "Slot",
             Self::StackPanel => "StackPanel",
             Self::DockPanel => "DockPanel",
             Self::Grid => "Grid",

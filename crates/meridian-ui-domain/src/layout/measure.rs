@@ -27,7 +27,7 @@ pub(super) fn measure(
 
 fn measure_content(tree: &mut UiTree, text: &dyn TextMeasurer, node: NodeId, room: Size) -> Size {
     match tree.kind(node) {
-        Ok(ElementKind::Border) => border::measure(tree, text, node, room),
+        Ok(ElementKind::Border | ElementKind::Slot) => border::measure(tree, text, node, room),
         Ok(ElementKind::StackPanel) => stack_panel::measure(tree, text, node, room),
         Ok(ElementKind::DockPanel) => dock_panel::measure(tree, text, node, room),
         Ok(ElementKind::Grid) => grid::measure(tree, text, node, room),

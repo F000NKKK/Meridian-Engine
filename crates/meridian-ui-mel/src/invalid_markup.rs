@@ -60,7 +60,9 @@ pub enum InvalidMarkup {
     #[error("<{element}> has no property '{property}'")]
     UnknownProperty { element: String, property: String },
     /// An element of a UI document that is not a `meridian-ui-domain` kind.
-    #[error("<{0}> is not a UI element (known: Border, StackPanel, DockPanel, Grid, TextBlock)")]
+    #[error(
+        "<{0}> is not a UI element (known: Border, Slot, StackPanel, DockPanel, Grid, TextBlock)"
+    )]
     UnknownElement(String),
     /// A markup extension other than `{x:Bind}` on a UI attribute.
     #[error("{{{0}}} is not supported on UI attributes yet")]
