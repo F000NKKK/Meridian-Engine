@@ -5,7 +5,7 @@ use winit::keyboard::KeyCode as Wk;
 use crate::input::{KeyCode, MouseButton};
 
 /// Every `winit` key this crate names.
-const KEY_TABLE: [(Wk, KeyCode); 50] = [
+const KEY_TABLE: [(Wk, KeyCode); 51] = [
     (Wk::KeyA, KeyCode::A),
     (Wk::KeyB, KeyCode::B),
     (Wk::KeyC, KeyCode::C),
@@ -56,11 +56,12 @@ const KEY_TABLE: [(Wk, KeyCode); 50] = [
     (Wk::ControlLeft, KeyCode::ControlLeft),
     (Wk::ControlRight, KeyCode::ControlRight),
     (Wk::AltLeft, KeyCode::Alt),
+    (Wk::F3, KeyCode::F3),
 ];
 
 /// Translates a `winit` physical key into this crate's own [`KeyCode`].
 /// Deliberately partial (`None` for keys [`KeyCode`] doesn't name yet,
-/// e.g. function keys, numpad, punctuation) — extending [`KeyCode`] to
+/// e.g. most function keys, numpad, punctuation) — extending [`KeyCode`] to
 /// cover more of them is additive, not a breaking change to this
 /// function's shape.
 pub(crate) fn keycode_from_winit(code: Wk) -> Option<KeyCode> {

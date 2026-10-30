@@ -59,6 +59,7 @@ pub enum KeyCode {
     ControlLeft,
     ControlRight,
     Alt,
+    F3,
 }
 
 /// A mouse button. `Left`/`Right`/`Middle` plus the common `Back`/`Forward`
