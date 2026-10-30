@@ -77,8 +77,9 @@ pub use meridian_rendering_domain::{
     Background, BlendMode, Camera, Camera2d, ClipRect, ClipSpan, EnvironmentMap, FlyCamera,
     FlyControls, Frustum, Light, LightKind, LightSource, Material, MaterialHandle,
     MaterialRegistry, MeshHandle, MeshRegistry, MeshRenderer, MeshSource, Overlay2d, Renderable3d,
-    Scene2d, Scene3d, Sky, Sprite, TextureHandle, cube_mesh_source, ground_mesh_source,
-    icosphere_mesh_source, look_at_rotor, look_at_upright, pyramid_mesh_source, smooth_normals,
+    Scene2d, Scene3d, Sky, Sprite, TextureHandle, cube_mesh_source, extract_scene3d,
+    ground_mesh_source, icosphere_mesh_source, look_at_rotor, look_at_upright, pyramid_mesh_source,
+    smooth_normals,
 };
 pub use meridian_rendering_wgpu::{
     BloomPass, CommandBuffer, DEFAULT_SHADOW_MAP_SIZE, DepthTexture, Device, DeviceError,

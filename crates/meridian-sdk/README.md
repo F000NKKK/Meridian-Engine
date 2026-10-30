@@ -9,6 +9,11 @@ Single application-facing entry point: re-exports everything an app needs (gac/p
 
 ## Usage
 
+Authored `.mscene` applications can register rendering components through
+`meridian_sdk::persistence::register_rendering`, load their world with `WorldFiles`,
+and use `meridian_sdk::extract_scene3d` to compose that world with generated UI overlays.
+These APIs keep the application on the SDK facade without direct adapter dependencies.
+
 This sketch is not compiled as a doc test (it needs a device, a window or a build script).
 
 ```rust,ignore

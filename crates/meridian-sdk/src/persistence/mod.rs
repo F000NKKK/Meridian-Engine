@@ -19,7 +19,7 @@ pub use asset_prefab_source::AssetPrefabSource;
 pub use meridian_data_substrate::{
     ComponentName, ComponentRegistry, EntityKey, LoadedSave, NoResolver, PrefabInstance,
     PrefabLibrary, PrefabPath, PrefabSource, PrefabUnavailable, SaveHeader, SceneMap,
-    SceneSaveError, SceneView, TransformCodec, UnknownComponents,
+    SceneSaveError, SceneView, TransformCodec, UnknownComponents, register_rendering,
 };
 pub use meridian_ecs::{Component, Entity, Transform, World};
 pub use scene_form::SceneForm;
