@@ -2,7 +2,7 @@
 
 use meridian_ecs::World;
 use meridian_gac::{Motor3, Vec3};
-use meridian_rendering_app::FrameRecorder as _;
+use meridian_rendering_app::{FrameOutcome, FrameRecorder as _};
 use meridian_rendering_domain::{
     Background, EnvironmentMap, Light, Scene3d, Sky, extract_scene3d, look_at_upright,
 };
@@ -20,15 +20,16 @@ const SUN: Vec3 = Vec3 {
 const STUDIO_BACKDROP: [f64; 4] = [0.05, 0.055, 0.065, 1.0];
 const CLEAR: [f64; 4] = [0.18, 0.2, 0.24, 1.0];
 
-/// Renders ECS worlds and scenes to RGBA8 pixels with no window: an editor
-/// viewport and asset thumbnails. One GPU device and one sky are made once and
-/// reused. Meshes and materials the world refers to by handle live in
+/// Renders ECS worlds and scenes to RGBA8 pixels or directly to a native
+/// surface. One GPU device and one sky are made once and reused. Meshes and
+/// materials the world refers to by handle live in
 /// [`session_mut`](Self::session_mut)'s registries.
 #[derive(Debug)]
 pub struct EditorRenderer {
     pub(super) session: GraphicsSession,
     pub(super) size: (u32, u32),
     pub(super) pixels: Vec<u8>,
+    present: bool,
     /// The sky of the viewport, kept to put back after a thumbnail.
     sky: Option<EnvironmentMap>,
     /// The studio of thumbnails, built the first time one is made.
@@ -55,7 +56,29 @@ impl EditorRenderer {
     ///
     /// When no GPU device can be opened.
     pub async fn new_async(width: u32, height: u32) -> Result<Self, EditorRendererError> {
-        let mut session = GraphicsSession::headless(width, height).await?;
+        let session = GraphicsSession::headless(width, height).await?;
+        Ok(Self::from_session(session, width, height, false))
+    }
+
+    /// A renderer presenting directly to `target`, without reading pixels back.
+    ///
+    /// # Errors
+    ///
+    /// When no GPU device or surface can be opened.
+    pub fn new_windowed(
+        target: impl Into<wgpu::SurfaceTarget<'static>>,
+        width: u32,
+        height: u32,
+    ) -> Result<Self, EditorRendererError> {
+        let runtime = tokio::runtime::Builder::new_current_thread().build()?;
+        let (device, surface) = runtime.block_on(meridian_rendering_wgpu::Device::new_windowed(
+            target, width, height,
+        ))?;
+        let session = GraphicsSession::new(device, surface, width, height);
+        Ok(Self::from_session(session, width, height, true))
+    }
+
+    fn from_session(mut session: GraphicsSession, width: u32, height: u32, present: bool) -> Self {
         let sky = Sky {
             sun_direction: [-SUN.x, -SUN.y, -SUN.z],
             sun_radiance: [30.0, 27.0, 22.0],
@@ -64,14 +87,15 @@ impl EditorRenderer {
         };
         let sky = EnvironmentMap::from_sky(&sky).ok();
         session.render.recorder.set_environment(sky.as_ref());
-        Ok(Self {
+        Self {
             session,
             size: (width.max(1), height.max(1)),
             pixels: Vec::new(),
+            present,
             sky,
             studio: None,
             studio_active: false,
-        })
+        }
     }
 
     /// The session whose registries hold the meshes and materials to draw.
@@ -114,6 +138,10 @@ impl EditorRenderer {
             scene.ambient_sky = [0.22, 0.25, 0.3];
         }
         scene.background = Background::Environment { blur: 0.0 };
+        if self.present {
+            let outcome = self.session.render.render(&scene, CLEAR, self.size);
+            return (outcome == FrameOutcome::Presented).then_some(&[]);
+        }
         self.pixels = self.session.render_to_pixels(&scene, CLEAR)?;
         Some(&self.pixels)
     }

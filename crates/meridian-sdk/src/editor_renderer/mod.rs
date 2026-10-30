@@ -1,4 +1,4 @@
-//! An offscreen renderer for tools: an editor viewport and asset thumbnails.
+//! An offscreen or native-surface renderer for editor viewports and asset thumbnails.
 
 mod binding;
 mod camera;
