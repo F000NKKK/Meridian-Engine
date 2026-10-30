@@ -112,6 +112,7 @@ mod tests {
             meshes: &meridian_rendering_domain::MeshRegistry::new(),
             materials: &meridian_rendering_domain::MaterialRegistry::new(),
             overlays: &[],
+            viewports: &[],
             clear_color: [0.0; 4],
         };
         assert_eq!(recorder.record_frame(&request), FrameOutcome::Presented);

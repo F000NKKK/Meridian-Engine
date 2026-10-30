@@ -258,6 +258,27 @@ impl SceneRenderer {
         }
     }
 
+    /// Prepares an unshadowed secondary view without replacing the main shadow atlas.
+    pub fn prepare_viewport(
+        &mut self,
+        device: &Device,
+        commands: &mut CommandBuffer<'_>,
+        scene: &Scene3d,
+        assets: &SceneAssets<'_>,
+    ) -> PreparedScene {
+        let baked = bake_batches(device, self, scene, assets);
+        for job in &baked.skin_jobs {
+            commands.dispatch_compute(self.skinning.pipeline(), &job.bind_group, job.workgroups);
+        }
+        let view = Frustum::from_view_projection(scene.camera.view_projection_matrix());
+        let visible = VisibleBatches::cull(&baked.batches, &baked.records, &baked.bounds, &view);
+        PreparedScene {
+            instances: visible.upload(device),
+            batches: visible.batches,
+            shadow: ShadowLight::for_scene(scene, self.tile_size),
+        }
+    }
+
     /// Readies the renderer to bake a scene: drops the GPU copies of meshes
     /// that are no longer registered and starts the frame's skinned
     /// instances over (ADR 047).

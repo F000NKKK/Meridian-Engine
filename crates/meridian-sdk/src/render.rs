@@ -12,7 +12,7 @@
 
 use meridian_platform_winit::Window;
 use meridian_rendering_app::FrameOutcome;
-use meridian_rendering_domain::{Overlay2d, Scene3d};
+use meridian_rendering_domain::{Overlay2d, Scene3d, Viewport3d};
 use meridian_runtime_app::Stage;
 
 use crate::overlay_builder::OverlayBuilder;
@@ -49,6 +49,24 @@ pub fn compose_frame(
     let outcome = base
         .render
         .render_with_overlays(scene, overlays, clear_color, size);
+    if outcome == FrameOutcome::Presented {
+        window.request_redraw();
+    }
+}
+
+/// [`compose_frame`] with independent 3D scenes clipped to UI rectangles.
+pub fn compose_frame_with_viewports(
+    base: &mut GraphicsSession,
+    scene: &Scene3d,
+    overlays: &[Overlay2d],
+    viewports: &[Viewport3d],
+    clear_color: [f64; 4],
+    window: &Window,
+) {
+    let size = (window.width(), window.height());
+    let outcome = base
+        .render
+        .render_with_viewports(scene, overlays, viewports, clear_color, size);
     if outcome == FrameOutcome::Presented {
         window.request_redraw();
     }

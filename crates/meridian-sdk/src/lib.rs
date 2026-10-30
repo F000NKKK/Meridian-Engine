@@ -77,7 +77,7 @@ pub use meridian_rendering_domain::{
     Background, BlendMode, Camera, Camera2d, ClipRect, ClipSpan, EnvironmentMap, FlyCamera,
     FlyControls, Frustum, Light, LightKind, LightSource, Material, MaterialHandle,
     MaterialRegistry, MeshHandle, MeshRegistry, MeshRenderer, MeshSource, Overlay2d, Renderable3d,
-    Scene2d, Scene3d, Sky, Sprite, TextureHandle, cube_mesh_source, extract_scene3d,
+    Scene2d, Scene3d, Sky, Sprite, TextureHandle, Viewport3d, cube_mesh_source, extract_scene3d,
     ground_mesh_source, icosphere_mesh_source, look_at_rotor, look_at_upright, pyramid_mesh_source,
     smooth_normals,
 };
@@ -94,6 +94,6 @@ pub use meridian_runtime_threads::{BackgroundPool, TaskExecutor};
 /// The retained UI runtime (ADR 018), named by generated `.meui` glue.
 pub use meridian_ui_domain as ui_core;
 pub use meridian_ui_scene2d as ui_scene2d;
-pub use render::{RenderStage, compose_frame, render_frame};
+pub use render::{RenderStage, compose_frame, compose_frame_with_viewports, render_frame};
 pub use runtime::parallel_runtime;
 pub use scene::GraphicsSession;

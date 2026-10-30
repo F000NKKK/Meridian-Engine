@@ -1,7 +1,7 @@
 //! What an application renders with: a recorder plus the registries its scenes resolve against.
 
 use meridian_rendering_domain::scene::Scene3d;
-use meridian_rendering_domain::{MaterialRegistry, MeshRegistry, Overlay2d};
+use meridian_rendering_domain::{MaterialRegistry, MeshRegistry, Overlay2d, Viewport3d};
 
 use crate::{FrameOutcome, FrameRecorder, FrameRequest};
 
@@ -51,11 +51,24 @@ impl<R: FrameRecorder> RenderSession<R> {
         clear_color: [f64; 4],
         target_size: (u32, u32),
     ) -> FrameOutcome {
+        self.render_with_viewports(scene, overlays, &[], clear_color, target_size)
+    }
+
+    /// Draws independent 3D views in their pixel rectangles before the 2D overlays.
+    pub fn render_with_viewports(
+        &mut self,
+        scene: &Scene3d,
+        overlays: &[Overlay2d],
+        viewports: &[Viewport3d],
+        clear_color: [f64; 4],
+        target_size: (u32, u32),
+    ) -> FrameOutcome {
         let request = FrameRequest {
             scene,
             meshes: &self.meshes,
             materials: &self.materials,
             overlays,
+            viewports,
             clear_color,
         };
         let outcome = self.recorder.record_frame(&request);

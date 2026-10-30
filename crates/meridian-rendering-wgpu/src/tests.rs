@@ -90,6 +90,7 @@ async fn an_offscreen_recorder_reads_back_its_frame_and_times_its_passes() {
         meshes: &meshes,
         materials: &materials,
         overlays: &[],
+        viewports: &[],
         clear_color: [1.0, 0.0, 0.0, 1.0],
     });
     assert_eq!(outcome, FrameOutcome::Presented);

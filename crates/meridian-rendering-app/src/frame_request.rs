@@ -15,6 +15,8 @@ pub struct FrameRequest<'a> {
     pub materials: &'a MaterialRegistry,
     /// 2D scenes drawn over the 3D frame, unblurred, in slice order.
     pub overlays: &'a [Overlay2d],
+    /// Independent 3D views drawn in their pixel rectangles before the 2D overlays.
+    pub viewports: &'a [Viewport3d],
     /// Clear colour, RGBA.
     pub clear_color: [f64; 4],
 }

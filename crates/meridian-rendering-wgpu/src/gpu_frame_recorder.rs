@@ -91,6 +91,7 @@ impl GpuFrameRecorder {
         commands: &mut CommandBuffer<'_>,
         request: &FrameRequest<'_>,
         prepared: &PreparedScene,
+        viewports: &[PreparedScene],
         frame: &SurfaceFrame,
     ) {
         {
@@ -111,6 +112,19 @@ impl GpuFrameRecorder {
                 &self.renderer,
                 &mut pass,
                 request.scene,
+                prepared,
+            );
+        }
+        for (viewport, prepared) in request.viewports.iter().zip(viewports) {
+            let [x, y, width, height] = viewport.rect;
+            let mut pass = commands.begin_viewport_pass(self.scene.view(), &self.depth);
+            pass.set_viewport(x, y, width, height);
+            pass.set_scissor_rect(x, y, width, height);
+            submit_scene3d(
+                &self.device,
+                &self.renderer,
+                &mut pass,
+                &viewport.scene,
                 prepared,
             );
         }
@@ -175,8 +189,8 @@ impl FrameRecorder for GpuFrameRecorder {
     /// it, and reports [`FrameOutcome::TargetUnavailable`] instead of leaving a
     /// gray window.
     fn record_frame(&mut self, request: &FrameRequest<'_>) -> FrameOutcome {
-        let mut commands = self
-            .device
+        let device = self.device.clone();
+        let mut commands = device
             .create_command_buffer()
             .with_profiler(self.profiler.as_ref());
         let prepared = self.renderer.render_shadow_pass(
@@ -189,6 +203,22 @@ impl FrameRecorder for GpuFrameRecorder {
                 textures: self.textures.registry(),
             },
         );
+        let viewports: Vec<_> = request
+            .viewports
+            .iter()
+            .map(|viewport| {
+                self.renderer.prepare_viewport(
+                    &self.device,
+                    &mut commands,
+                    &viewport.scene,
+                    &SceneAssets {
+                        meshes: request.meshes,
+                        materials: request.materials,
+                        textures: self.textures.registry(),
+                    },
+                )
+            })
+            .collect();
 
         let overlays = self.overlays.prepare(
             &self.device,
@@ -205,7 +235,7 @@ impl FrameRecorder for GpuFrameRecorder {
             }
         };
 
-        self.draw_scene(&mut commands, request, &prepared, &frame);
+        self.draw_scene(&mut commands, request, &prepared, &viewports, &frame);
         self.overlays.draw(&mut commands, &frame, &overlays);
         commands.submit();
         if let Some(profiler) = &self.profiler {

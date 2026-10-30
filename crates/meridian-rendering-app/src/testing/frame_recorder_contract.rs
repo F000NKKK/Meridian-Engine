@@ -27,6 +27,7 @@ pub fn run_frame_recorder_contract<R: FrameRecorder>(
         meshes: &meshes,
         materials: &materials,
         overlays: &overlays,
+        viewports: &[],
         clear_color: [0.1, 0.2, 0.3, 1.0],
     };
 

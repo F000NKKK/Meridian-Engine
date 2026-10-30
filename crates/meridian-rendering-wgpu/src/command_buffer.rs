@@ -135,6 +135,42 @@ impl<'a> CommandBuffer<'a> {
         RenderPass { raw }
     }
 
+    /// Preserves the colour target and clears depth for an independent 3D viewport.
+    pub fn begin_viewport_pass<'pass>(
+        &'pass mut self,
+        color_target: &'pass wgpu::TextureView,
+        depth: &'pass DepthTexture,
+    ) -> RenderPass<'pass> {
+        let timestamp_writes = self.timestamp_writes("3D viewport");
+        let raw = self
+            .inner
+            .encoder_mut()
+            .begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: None,
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: color_target,
+                    depth_slice: None,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: depth.texture.view(),
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(1.0),
+                        store: wgpu::StoreOp::Store,
+                    }),
+                    stencil_ops: None,
+                }),
+                timestamp_writes,
+                occlusion_query_set: None,
+                multiview_mask: None,
+            });
+        RenderPass { raw }
+    }
+
     /// Opens a depth-only pass rendering into `shadow_map` (a
     /// [`Device::create_shadow_map_texture`](crate::Device::create_shadow_map_texture) result), cleared to `1.0`
     /// first — the shadow-casting geometry pass, recorded through
