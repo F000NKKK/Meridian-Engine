@@ -6,6 +6,8 @@ Craftbook crate/layer migration. Applications use `meridian-sdk` as their entry 
 - Domain/application/backend crate boundaries and typed compute dispatch.
 - Scene/prefab persistence on Substrate Data and editor protocol support.
 - Editor rendering, asset binding, picking and scene overlays.
+- Direct presentation to native editor surfaces without per-frame CPU readback.
+- Pointer and keyboard input propagation for windowed runners.
 - Rendering, physics, audio, animation and retained UI composition through the SDK.
 
 This is a breaking 0.x minor release: crate names and subsystem APIs have changed since 0.5.0.
