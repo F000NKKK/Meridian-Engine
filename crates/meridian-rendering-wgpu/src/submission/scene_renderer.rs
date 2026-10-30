@@ -255,6 +255,11 @@ impl SceneRenderer {
             instances: visible.upload(device),
             batches: visible.batches,
             shadow,
+            has_emissive: scene
+                .renderables
+                .iter()
+                .filter_map(|renderable| assets.materials.get(renderable.material))
+                .any(|material| material.emissive.iter().any(|channel| *channel > 0.0)),
         }
     }
 

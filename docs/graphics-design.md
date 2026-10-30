@@ -379,3 +379,11 @@ via `rendering-wgpu`. It does not implement image/mesh decoders itself.
 resource identities from `meridian-resource`, not ad hoc handles
 defined in this crate — see
 [ADR 006](adr/006-resource-core-separation.md).
+
+### Empty bloom work
+
+The prepared scene records whether any referenced material has a positive emissive factor.
+When none does, the bloom driver skips extraction, blur and additive composition entirely.
+The decision is recomputed for each frame: changing materials re-enables bloom, and returning
+to non-emissive materials cannot composite a stale glow texture. Emissive maps remain
+multiplied by their material's emissive factor, as before.

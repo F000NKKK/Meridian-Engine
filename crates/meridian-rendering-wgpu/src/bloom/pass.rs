@@ -226,14 +226,15 @@ impl BloomPass {
     ///
     /// `config.intensity <= 0.0` skips every pass (nothing to add), so a
     /// caller can toggle bloom off per-frame without reconstructing this
-    /// `BloomPass`.
+    /// `BloomPass`. Scenes with no emissive material also skip all bloom work;
+    /// this is recomputed each frame so changing a material re-enables its glow.
     pub fn apply(
         &self,
         device: &Device,
         command_buffer: &mut crate::CommandBuffer<'_>,
         input: &BloomInput<'_>,
     ) {
-        if self.config.intensity <= 0.0 {
+        if self.config.intensity <= 0.0 || !input.prepared.has_emissive {
             return;
         }
 
