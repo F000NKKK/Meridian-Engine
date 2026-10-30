@@ -20,6 +20,11 @@ pub(crate) struct EventRunner<'a, A: AppHandler> {
 
 impl<A: AppHandler> EventRunner<'_, A> {
     fn handle_key(&mut self, event: &winit::event::KeyEvent) {
+        if event.state == ElementState::Pressed
+            && let Some(text) = &event.text
+        {
+            self.input.push_text(text);
+        }
         if let winit::keyboard::PhysicalKey::Code(code) = event.physical_key
             && let Some(key) = keycode_from_winit(code)
         {

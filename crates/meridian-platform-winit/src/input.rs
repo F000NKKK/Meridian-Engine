@@ -87,9 +87,11 @@ pub struct InputState {
     keys_pressed_this_frame: HashSet<KeyCode>,
     keys_released_this_frame: HashSet<KeyCode>,
     mouse_buttons_down: HashSet<MouseButton>,
+    mouse_buttons_pressed_this_frame: HashSet<MouseButton>,
     mouse_position: (f32, f32),
     mouse_delta: (f32, f32),
     raw_mouse_delta: (f32, f32),
+    text: String,
 }
 
 impl InputState {
@@ -128,7 +130,9 @@ impl InputState {
     }
 
     pub fn press_mouse_button(&mut self, button: MouseButton) {
-        self.mouse_buttons_down.insert(button);
+        if self.mouse_buttons_down.insert(button) {
+            self.mouse_buttons_pressed_this_frame.insert(button);
+        }
     }
 
     pub fn release_mouse_button(&mut self, button: MouseButton) {
@@ -137,6 +141,21 @@ impl InputState {
 
     pub fn is_mouse_button_down(&self, button: MouseButton) -> bool {
         self.mouse_buttons_down.contains(&button)
+    }
+
+    /// Pressed since the last [`advance_frame`](Self::advance_frame) call.
+    pub fn was_mouse_button_pressed(&self, button: MouseButton) -> bool {
+        self.mouse_buttons_pressed_this_frame.contains(&button)
+    }
+
+    /// Appends committed text from the OS keyboard or input method.
+    pub fn push_text(&mut self, text: &str) {
+        self.text.push_str(text);
+    }
+
+    /// Text committed since the last [`advance_frame`](Self::advance_frame) call.
+    pub fn text(&self) -> &str {
+        &self.text
     }
 
     /// Sets the absolute mouse position, accumulating the movement into
@@ -188,8 +207,10 @@ impl InputState {
     pub fn advance_frame(&mut self) {
         self.keys_pressed_this_frame.clear();
         self.keys_released_this_frame.clear();
+        self.mouse_buttons_pressed_this_frame.clear();
         self.mouse_delta = (0.0, 0.0);
         self.raw_mouse_delta = (0.0, 0.0);
+        self.text.clear();
     }
 }
 
@@ -263,6 +284,18 @@ mod tests {
         assert!(input.is_mouse_button_down(MouseButton::Left));
         input.release_mouse_button(MouseButton::Left);
         assert!(!input.is_mouse_button_down(MouseButton::Left));
+    }
+    #[test]
+    fn text_and_mouse_press_transitions_last_one_frame() {
+        let mut input = InputState::new();
+        input.push_text("Привет");
+        input.press_mouse_button(MouseButton::Right);
+        assert_eq!(input.text(), "Привет");
+        assert!(input.was_mouse_button_pressed(MouseButton::Right));
+        input.advance_frame();
+        assert_eq!(input.text(), "");
+        assert!(!input.was_mouse_button_pressed(MouseButton::Right));
+        assert!(input.is_mouse_button_down(MouseButton::Right));
     }
     #[test]
     fn extra_numbered_mouse_buttons_are_tracked_independently() {
