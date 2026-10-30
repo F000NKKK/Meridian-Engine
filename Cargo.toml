@@ -20,7 +20,7 @@ meridian-gac = { path = "crates/meridian-gac", version = "0.12" }
 meridian-memory = { path = "crates/meridian-memory", version = "0.8" }
 meridian-resource = { path = "crates/meridian-resource", version = "0.8" }
 meridian-runtime-threads = { path = "crates/meridian-runtime-threads", version = "0.7" }
-meridian-platform-winit = { path = "crates/meridian-platform-winit", version = "0.12" }
+meridian-platform-winit = { path = "crates/meridian-platform-winit", version = "0.12.1" }
 meridian-gpu-wgpu = { path = "crates/meridian-gpu-wgpu", version = "0.8" }
 meridian-compute-wgpu = { path = "crates/meridian-compute-wgpu", version = "0.18" }
 meridian-compute-app = { path = "crates/meridian-compute-app", version = "0.20" }

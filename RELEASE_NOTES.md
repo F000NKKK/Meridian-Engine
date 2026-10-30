@@ -1,16 +1,13 @@
-# Meridian SDK 0.6.0
+# Meridian SDK 0.7.0
 
-The current modular engine SDK, published together with its dependency crates after the
-Craftbook crate/layer migration. Applications use `meridian-sdk` as their entry point.
+Applications can register authored rendering components and extract a 3D scene using only
+`meridian-sdk`: `persistence::register_rendering` and `extract_scene3d` are now public facade exports.
+This supports CLI-generated games that load their startup scene from project data and compose generated MEUI.
 
-- Domain/application/backend crate boundaries and typed compute dispatch.
-- Scene/prefab persistence on Substrate Data and editor protocol support.
-- Editor rendering, asset binding, picking and scene overlays.
-- Direct presentation to native editor surfaces without per-frame CPU readback.
-- Pointer and keyboard input propagation for windowed runners.
-- Rendering, physics, audio, animation and retained UI composition through the SDK.
+- Includes `meridian-platform-winit` 0.12.1 with F3 input for diagnostics overlays.
+- Adds a downstream regression test for loading an authored scene through the SDK facade.
+- Existing subsystem crates retain their published versions when unchanged.
 
-This is a breaking 0.x minor release: crate names and subsystem APIs have changed since 0.5.0.
-The source archive is the SDK checkout. `meridian-examples.zip` and `meridian-assets.zip`
-provide the examples and sample content consumed by Meridian Installer. Rust 1.99 is required.
-The proposed `.mproj` format is not implemented in this release.
+The source archive is the SDK checkout. The examples and sample assets are attached separately.
+Project creation, `.mproj` processing and game templates are supplied by Meridian CLI 0.2.0.
+The IDLE viewport performance work is still in progress; this release makes no 120 FPS guarantee.
