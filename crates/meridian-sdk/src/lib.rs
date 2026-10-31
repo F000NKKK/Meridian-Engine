@@ -89,7 +89,8 @@ pub use meridian_rendering_wgpu::{
 };
 pub use meridian_runtime_app::{
     AnimationStage, AudioStage, ComputeStage, EventSystem, FrameDelta, Job, JobExecutor,
-    PhysicsStepStage, Runtime, Shared, Stage, StageId, TransformStage, add_world_stages,
+    PhysicsStepStage, Runtime, Shared, SpatialIssue, SpatialProblem, SpatialStage, Stage, StageId,
+    TransformStage, add_world_stages, resolve_spatial_components,
 };
 pub use meridian_runtime_threads::{BackgroundPool, TaskExecutor};
 /// The retained UI runtime (ADR 018), named by generated `.meui` glue.
@@ -98,3 +99,5 @@ pub use meridian_ui_scene2d as ui_scene2d;
 pub use render::{RenderStage, compose_frame, compose_frame_with_viewports, render_frame};
 pub use runtime::parallel_runtime;
 pub use scene::GraphicsSession;
+
+pub use meridian_ecs::Position;

@@ -66,3 +66,6 @@ pub use rendering::{LightCodec, LightForm, LightKindForm, MeshReference, registe
 pub use save::{LoadedSave, SaveError, SaveHeader};
 pub use scene_view::SceneView;
 pub use transform_form::{TransformCodec, TransformForm};
+
+mod position_codec;
+pub use position_codec::PositionCodec;

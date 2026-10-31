@@ -52,3 +52,8 @@ pub use snapshot::{Cloners, SnapshotError, WorldSnapshot};
 pub use tick::Tick;
 pub use transform::Transform;
 pub use world::World;
+
+mod motor;
+mod position;
+mod rotor;
+pub use position::Position;

@@ -133,3 +133,9 @@ can afford to be the more expensive one.
 `AssetHandle` stored in a component points to — that's the application's
 call, consistent with the "no global managers" principle
 ([ADR 003](adr/003-no-global-managers.md)).
+
+## Independent spatial authoring
+
+Position, GAC Rotor and GAC Motor3 are independently attachable components.
+Runtime resolution, authority rules and DATA codecs are described in
+[spatial components](spatial-components.md). GAC remains independent of ECS.

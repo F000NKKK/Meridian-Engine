@@ -14,3 +14,10 @@ Requested scope, in implementation order:
 
 Completed changes are committed and pushed after package tests and boundary checks.
 This list does not imply that remaining features are released.
+
+## Component composition
+
+- [x] Independently attachable Position, Rotor and Motor3; runtime resolution and typed diagnostics.
+- [x] Position DATA codec and independent component-registry round-trip.
+- [ ] ECS collision/body binding and physics pose-authority system.
+- [ ] IDLE registration, component picker and Inspector integration.
