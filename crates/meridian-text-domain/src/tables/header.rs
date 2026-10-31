@@ -39,7 +39,7 @@ impl Header {
         let ascender = hhea.i16()?;
         let descender = hhea.i16()?;
         let line_gap = hhea.i16()?;
-        hhea.skip(26)?;
+        hhea.skip(24)?;
         let metric_count = hhea.u16()?;
 
         Ok(Self {
@@ -51,5 +51,27 @@ impl Header {
             line_gap,
             metric_count,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_standard_hhea_table_exposes_its_horizontal_metric_count() {
+        let mut head = [0u8; 54];
+        head[18..20].copy_from_slice(&1000u16.to_be_bytes());
+        head[50..52].copy_from_slice(&1i16.to_be_bytes());
+        let mut maxp = [0u8; 6];
+        maxp[4..6].copy_from_slice(&12u16.to_be_bytes());
+        let mut hhea = [0u8; 36];
+        hhea[4..6].copy_from_slice(&800i16.to_be_bytes());
+        hhea[6..8].copy_from_slice(&(-200i16).to_be_bytes());
+        hhea[34..36].copy_from_slice(&12u16.to_be_bytes());
+        let header = Header::parse(&head, &maxp, &hhea).expect("a standard 36-byte hhea table");
+        assert_eq!(header.ascender, 800);
+        assert_eq!(header.descender, -200);
+        assert_eq!(header.metric_count, 12);
     }
 }

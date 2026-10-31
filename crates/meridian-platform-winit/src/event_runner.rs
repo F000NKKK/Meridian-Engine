@@ -35,6 +35,12 @@ impl<A: AppHandler> EventRunner<'_, A> {
         }
     }
 
+    fn handle_ime(&mut self, event: &winit::event::Ime) {
+        if let winit::event::Ime::Commit(text) = event {
+            self.input.push_text(text);
+        }
+    }
+
     fn handle_mouse_button(&mut self, state: ElementState, button: winit::event::MouseButton) {
         let button = mouse_button_from_winit(button);
         match state {
@@ -92,6 +98,7 @@ impl<A: AppHandler> winit::application::ApplicationHandler for EventRunner<'_, A
             WindowEvent::CloseRequested if self.app.on_close_requested() => event_loop.exit(),
             WindowEvent::Resized(size) => self.app.on_resized(size.width, size.height),
             WindowEvent::KeyboardInput { event, .. } => self.handle_key(&event),
+            WindowEvent::Ime(event) => self.handle_ime(&event),
             WindowEvent::MouseInput { state, button, .. } => {
                 self.handle_mouse_button(state, button);
             }
@@ -118,5 +125,32 @@ impl<A: AppHandler> winit::application::ApplicationHandler for EventRunner<'_, A
             self.input
                 .accumulate_mouse_motion(delta.0 as f32, delta.1 as f32);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct TestApp;
+
+    impl AppHandler for TestApp {
+        fn on_redraw(&mut self, _window: &Window, _input: &InputState) {}
+    }
+
+    #[test]
+    fn committed_ime_text_reaches_the_input_state() {
+        let mut app = TestApp;
+        let mut runner = EventRunner {
+            title: "test".into(),
+            width: 1,
+            height: 1,
+            app: &mut app,
+            window: None,
+            input: InputState::new(),
+            error: None,
+        };
+        runner.handle_ime(&winit::event::Ime::Commit("Привет 🌍".into()));
+        assert_eq!(runner.input.text(), "Привет 🌍");
     }
 }

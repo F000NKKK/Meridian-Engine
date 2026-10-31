@@ -32,6 +32,12 @@ impl Window {
         self.inner.inner_size().height
     }
 
+    /// Enables or disables operating-system input-method composition for this window.
+    /// Applications enable it only while a text field has focus.
+    pub fn set_ime_allowed(&self, allowed: bool) {
+        self.inner.set_ime_allowed(allowed);
+    }
+
     /// Requests that the OS deliver another `RedrawRequested` event soon
     /// — [`run_windowed_app`] calls this automatically after every
     /// [`AppHandler::on_redraw`], so a continuously-rendering app (a game

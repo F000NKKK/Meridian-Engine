@@ -132,7 +132,7 @@ fn hhea() -> Vec<u8> {
     be16s(&mut out, 800);
     be16s(&mut out, -200);
     be16s(&mut out, 90);
-    out.extend_from_slice(&[0; 26]);
+    out.extend_from_slice(&[0; 24]);
     be16(&mut out, 3);
     out
 }
