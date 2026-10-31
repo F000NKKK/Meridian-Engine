@@ -5,10 +5,10 @@ Requested scope, in implementation order:
 - [x] Audit existing Rotor/Motor construction, interpolation and application order.
 - [x] Checked float axis-angle and direction alignment, typed input errors, extreme-scale tests.
 - [x] Document application order and executable local/world movement recipes.
-- [ ] Explicit forward/up look rotation with parallel-up diagnostics.
-- [ ] Raw-rotor validation/normalization and checked interpolation.
-- [ ] Executable orbit camera, target aiming and parent/child recipes.
-- [ ] Compile SDK-facing documentation examples and add an AI usage entry point.
+- [x] Explicit +Z forward/+Y up look rotation with parallel-up diagnostics.
+- [x] Raw-rotor validation/normalization and checked interpolation.
+- [x] Executable orbit position, target aiming and rigid parent/child recipes.
+- [x] Compile SDK-facing documentation examples and add an AI usage checklist.
 - [ ] CLI end-to-end project validation, DATA generation into obj/, debug/release staging and execution.
 - [ ] UV orientation contract and labeled texture regression through import and rendering.
 

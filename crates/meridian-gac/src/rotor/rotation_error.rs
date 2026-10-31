@@ -7,6 +7,12 @@ pub enum RotationError {
     NonFinite,
     /// A direction or axis had zero length.
     ZeroDirection,
+    /// Forward and up are parallel within the look-rotation tolerance.
+    ParallelUp,
+    /// Raw coefficients contain non-rotation blades or have zero norm.
+    InvalidRotor,
+    /// Interpolation fraction is outside the closed interval [0, 1].
+    InvalidFraction,
 }
 
 impl core::fmt::Display for RotationError {
@@ -14,6 +20,9 @@ impl core::fmt::Display for RotationError {
         formatter.write_str(match self {
             Self::NonFinite => "rotation requires finite components and an angle in radians",
             Self::ZeroDirection => "rotation requires a nonzero axis or direction",
+            Self::ParallelUp => "look rotation requires independent forward and up directions",
+            Self::InvalidRotor => "rotation requires nonzero scalar/bivector coefficients only",
+            Self::InvalidFraction => "interpolation fraction must be between zero and one",
         })
     }
 }

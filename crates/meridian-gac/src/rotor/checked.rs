@@ -46,7 +46,7 @@ impl Rotor {
     }
 }
 
-fn unit(vector: Vec3) -> Result<Vec3, RotationError> {
+pub(super) fn unit(vector: Vec3) -> Result<Vec3, RotationError> {
     let values = [vector.x, vector.y, vector.z];
     if !values.iter().all(|value| value.is_finite()) {
         return Err(RotationError::NonFinite);
