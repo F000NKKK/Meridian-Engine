@@ -211,3 +211,9 @@ math is the same `Motor3` geometric product — `gac` and
 
 See [ADR 001](adr/001-geometric-algebra-as-spatial-model.md) for why PGA was
 chosen over quaternions + matrices.
+
+## Practical spatial recipes
+
+See [spatial recipes](sdk/spatial-recipes.md) for application-order composition,
+checked float constructors and executable examples, and the
+[SDK usability plan](sdk/development-plan.md) for remaining work.
