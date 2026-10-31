@@ -71,3 +71,5 @@ pub use vector::float::*;
 pub use volume::Shape;
 pub use volume::fixed::*;
 pub use volume::float::*;
+
+pub use rotor::RotationError;

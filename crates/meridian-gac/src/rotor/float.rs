@@ -89,9 +89,10 @@ impl Rotor {
         Rotor::from_quaternion(std::array::from_fn(|i| a[i] * from + b[i] * to))
     }
 
-    /// Composes two rotations: `self` applied first, then `rhs` — i.e.
-    /// `rhs.compose(self)` in row-vector convention, `self` in column-
-    /// vector/geometric-product convention. Matches [`Motor3::compose`](crate::Motor3::compose).
+    /// Applies `self` first, then `rhs`:
+    /// `a.compose(b).transform_vector(v) == b.transform_vector(a.transform_vector(v))`.
+    /// The stored geometric product is `b * a`; this is application order,
+    /// not the textual order of matrix multiplication.
     pub fn compose(self, rhs: Rotor) -> Rotor {
         Rotor(rhs.0 * self.0)
     }
