@@ -26,3 +26,9 @@ pub use contact_watcher::ContactWatcher;
 pub use physics_stepper::PhysicsStepper;
 pub use physics_subsystem::{PhysicsSubsystem, RELAXATION_ITERATIONS};
 pub use sequential_stepper::SequentialStepper;
+
+mod collider;
+mod physics_body;
+pub use collider::Collider;
+pub use meridian_physics_domain::{ColliderShape, RigidBody};
+pub use physics_body::PhysicsBody;

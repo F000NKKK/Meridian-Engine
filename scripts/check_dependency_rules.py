@@ -125,7 +125,7 @@ ALLOWED = {
         "meridian-compute-app",
         "meridian-rendering-domain",
     },
-    "meridian-physics-app": {"meridian-physics-domain", "meridian-gac"},
+    "meridian-physics-app": {"meridian-ecs", "meridian-physics-domain", "meridian-gac"},
     "meridian-data-substrate": {
         "meridian-asset-domain",
         "meridian-ecs",

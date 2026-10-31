@@ -10,3 +10,5 @@ mod transform_stage;
 mod world_stages;
 
 mod spatial;
+
+mod ecs_physics;

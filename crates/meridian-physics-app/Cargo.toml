@@ -9,6 +9,7 @@ description = "Physics use cases: the PhysicsSubsystem world state, the PhysicsS
 readme = "README.md"
 
 [dependencies]
+meridian-ecs = { workspace = true }
 meridian-physics-domain = { workspace = true }
 meridian-gac = { workspace = true }
 

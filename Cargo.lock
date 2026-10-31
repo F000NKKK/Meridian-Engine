@@ -1470,6 +1470,7 @@ dependencies = [
 name = "meridian-physics-app"
 version = "0.1.0"
 dependencies = [
+ "meridian-ecs",
  "meridian-gac",
  "meridian-physics-domain",
 ]

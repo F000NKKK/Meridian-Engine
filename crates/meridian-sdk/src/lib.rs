@@ -101,3 +101,6 @@ pub use runtime::parallel_runtime;
 pub use scene::GraphicsSession;
 
 pub use meridian_ecs::Position;
+
+pub use meridian_physics_app::{Collider, PhysicsBody};
+pub use meridian_runtime_app::{PhysicsIssue, PhysicsProblem, step_ecs_physics};

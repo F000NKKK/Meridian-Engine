@@ -224,3 +224,9 @@ named, deliberate precision-changing cast (see docs/gac-design.md's
 cast look free. Proven with an actual bit-exact reproducibility test (the
 same scenario run twice produces identical `Fixed` bit patterns, not just
 approximately equal floats) — `cargo test -p meridian-physics-domain`.
+
+## ECS composition
+
+The physics application layer exposes independent Collider and PhysicsBody
+components. Runtime synchronization and supported restrictions are described in
+[spatial components](spatial-components.md#collision-and-physics).

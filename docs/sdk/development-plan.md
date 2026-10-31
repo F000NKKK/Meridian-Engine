@@ -19,5 +19,5 @@ This list does not imply that remaining features are released.
 
 - [x] Independently attachable Position, Rotor and Motor3; runtime resolution and typed diagnostics.
 - [x] Position DATA codec and independent component-registry round-trip.
-- [ ] ECS collision/body binding and physics pose-authority system.
+- [x] Initial ECS Collider/PhysicsBody binding and real stepping with pose write-back (root entities, unit scale).
 - [ ] IDLE registration, component picker and Inspector integration.

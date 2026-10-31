@@ -42,11 +42,30 @@ The registry/codec works for scene, prefab and component editing rather than a
 scene-specific parser branch. IDLE must opt into registration and scheduling before
 these types become available in its component picker.
 
-## Collision and physics follow-up
+## Collision and physics
 
-Attaching another ECS component does not by itself make it participate in physics.
-The current PhysicsSubsystem owns its body list separately. A typed ECS body/collider
-binding and a system that creates/removes bodies and synchronizes poses are still
-required. Dynamic bodies need one pose authority; source components must not reset
-them each frame. This change supplies spatial authoring and resolution, not that
-physics bridge or automatic collision simulation.
+`meridian-physics-app` owns independent `Collider(ColliderShape)` and `PhysicsBody`
+components. A collider without a body is static. A body supplies mass and linear/
+angular velocities; positive mass is dynamic, zero is static. Rendering is optional.
+
+`step_ecs_physics(world, physics, stepper, dt)` resolves spatial sources, gathers
+colliders into a **dedicated** PhysicsSubsystem, steps the real PhysicsStepper and
+writes dynamic poses and velocities back to ECS. The dedicated body's vector is
+rebuilt each step, ordered by entity identity. Do not mix manually inserted bodies
+or a second PhysicsStepStage into that subsystem. Contact indices refer only to
+that step; entity contact events are not wired yet.
+
+Writing back also updates Motor3, or both Position and Rotor when split authoring
+is present. A later spatial resolution therefore preserves simulated motion.
+Legacy Transform-only bodies remain supported. Removing/despawning a collider
+removes its physics body on the next step. Run hierarchy propagation after stepping.
+
+Initial restrictions are explicit diagnostics: root entities only, unit scale,
+finite pose/motion, finite nonnegative mass, positive finite collider dimensions.
+No implicit scaling of collision shapes. Invalid dt rejects the entire step before
+mutation. Supported shapes are the physics engine's sphere and cuboid; capsule and
+mesh collision are not introduced here. IDLE component registration/Inspector and
+DATA codecs for physics components remain follow-up work.
+
+Regression tests simulate a sphere landing on a static cuboid over 240 steps,
+verify removal and Motor3/split-pose write-back, and reject invalid configurations.

@@ -57,3 +57,10 @@ mod spatial_problem;
 pub use spatial_problem::SpatialProblem;
 pub use spatial_resolution::resolve_spatial_components;
 pub use spatial_stage::SpatialStage;
+
+mod ecs_physics;
+mod physics_issue;
+pub use ecs_physics::step_ecs_physics;
+pub use physics_issue::PhysicsIssue;
+mod physics_problem;
+pub use physics_problem::PhysicsProblem;
