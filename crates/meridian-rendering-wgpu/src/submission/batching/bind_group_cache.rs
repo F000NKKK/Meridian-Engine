@@ -4,18 +4,25 @@ use std::sync::Arc;
 
 use meridian_rendering_domain::MaterialMaps;
 
-use crate::BindGroup;
 use crate::submission::main_pipelines::PipelineKey;
+use crate::{BindGroup, Buffer};
 
-/// The textured bind groups made so far in a frame. Two batches that differ
-/// only in their mesh bind the same textures against the same pipeline, so
-/// they share the group, and the draw can tell they do (ADR 046).
-#[derive(Debug, Default)]
-pub(crate) struct BindGroupCache {
+/// The textured bind groups made so far for one prepared view. Two batches
+/// that differ only in their mesh share a group, never across cameras.
+#[derive(Debug)]
+pub(crate) struct BindGroupCache<'a> {
+    pub(crate) uniform: &'a Buffer,
     entries: Vec<(PipelineKey, MaterialMaps, Arc<BindGroup>)>,
 }
 
-impl BindGroupCache {
+impl<'a> BindGroupCache<'a> {
+    pub(crate) fn new(uniform: &'a Buffer) -> Self {
+        Self {
+            uniform,
+            entries: Vec::new(),
+        }
+    }
+
     /// The group for `key` and `maps`, made by `make` the first time it is asked for.
     pub(crate) fn group_for(
         &mut self,

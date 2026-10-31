@@ -101,3 +101,98 @@ async fn an_offscreen_recorder_reads_back_its_frame_and_times_its_passes() {
     assert_eq!(recorder.frame_size(), (64, 48));
     assert_eq!(!recorder.pass_timings().is_empty(), timed);
 }
+
+#[cfg(feature = "hw-tests")]
+#[tokio::test]
+async fn a_secondary_viewport_cannot_replace_the_main_camera() {
+    use meridian_rendering_app::{FrameOutcome, FrameRecorder, FrameRequest, TextureStore};
+    use meridian_rendering_domain::{
+        Material, MaterialRegistry, MeshRegistry, Scene3d, Viewport3d,
+    };
+
+    let Some(device) = device_or_skip().await else {
+        return;
+    };
+    let surface = Surface::offscreen(&device, 64, 48);
+    let mut recorder = GpuFrameRecorder::new(device, surface, 64, 48);
+    let mut meshes = MeshRegistry::new();
+    let mesh = meshes.register(camera_test_triangle()).unwrap();
+    let white = recorder.upload_solid([255; 4]);
+    for albedo in [None, Some(white)] {
+        let mut materials = MaterialRegistry::new();
+        let material = materials.register(Material {
+            albedo,
+            base_color_factor: [1.0; 4],
+            unlit: true,
+            ..Material::default()
+        });
+        let scene = camera_test_scene(mesh, material);
+        let viewport = Viewport3d {
+            scene: Scene3d::default(),
+            rect: [0, 0, 8, 8],
+        };
+        let mut draw = |viewports: &[Viewport3d]| {
+            assert_eq!(
+                recorder.record_frame(&FrameRequest {
+                    scene: &scene,
+                    meshes: &meshes,
+                    materials: &materials,
+                    overlays: &[],
+                    viewports,
+                    clear_color: [0.0, 0.0, 0.0, 1.0],
+                }),
+                FrameOutcome::Presented
+            );
+            recorder.read_pixels().expect("real pixels")
+        };
+        let expected = draw(&[]);
+        let actual = draw(std::slice::from_ref(&viewport));
+        assert_eq!(
+            actual, expected,
+            "main camera changed with albedo {albedo:?}"
+        );
+    }
+}
+
+#[cfg(feature = "hw-tests")]
+fn camera_test_triangle() -> meridian_rendering_domain::MeshSource {
+    meridian_rendering_domain::MeshSource {
+        positions: vec![[-0.5, -0.5, -2.0], [0.5, -0.5, -2.0], [0.0, 0.5, -2.0]],
+        normals: vec![[0.0, 0.0, 1.0]; 3],
+        uvs: vec![[0.0; 2]; 3],
+        indices: vec![0, 1, 2],
+        skin: None,
+        morph: None,
+    }
+}
+
+#[cfg(feature = "hw-tests")]
+fn camera_test_scene(
+    mesh: meridian_rendering_domain::MeshHandle,
+    material: meridian_rendering_domain::MaterialHandle,
+) -> meridian_rendering_domain::Scene3d {
+    use meridian_gac::{Motor3, Projection, Scale3, Vec3};
+    use meridian_rendering_domain::{Camera, Renderable3d, Scene3d, look_at_upright};
+
+    let mut scene = Scene3d {
+        camera: Camera {
+            frame: Motor3::from_rotation_translation(
+                look_at_upright(Vec3::ZERO, Vec3::new(0.0, 0.0, -1.0)),
+                Vec3::ZERO,
+            ),
+            projection: Projection::perspective(1.0, 64.0 / 48.0, 0.1, 100.0),
+        },
+        ..Scene3d::default()
+    };
+    scene.renderables.push(Renderable3d {
+        mesh,
+        material,
+        frame: Motor3::identity(),
+        scale: Scale3::UNIT,
+        billboard: false,
+        casts_shadow: false,
+        palette: None,
+        morph_weights: Vec::new(),
+    });
+    scene
+}

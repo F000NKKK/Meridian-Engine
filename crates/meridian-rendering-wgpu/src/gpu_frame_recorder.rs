@@ -107,26 +107,14 @@ impl GpuFrameRecorder {
                 request.scene,
                 &self.renderer.environment,
             );
-            submit_scene3d(
-                &self.device,
-                &self.renderer,
-                &mut pass,
-                request.scene,
-                prepared,
-            );
+            submit_scene3d(&self.renderer, &mut pass, prepared);
         }
         for (viewport, prepared) in request.viewports.iter().zip(viewports) {
             let [x, y, width, height] = viewport.rect;
             let mut pass = commands.begin_viewport_pass(self.scene.view(), &self.depth);
             pass.set_viewport(x, y, width, height);
             pass.set_scissor_rect(x, y, width, height);
-            submit_scene3d(
-                &self.device,
-                &self.renderer,
-                &mut pass,
-                &viewport.scene,
-                prepared,
-            );
+            submit_scene3d(&self.renderer, &mut pass, prepared);
         }
         self.bloom.apply(
             &self.device,

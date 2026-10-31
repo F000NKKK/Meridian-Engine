@@ -3,6 +3,7 @@
 use meridian_rendering_domain::ShadowLight;
 
 use super::PreparedBatch;
+use super::prepared_view::PreparedView;
 use crate::Buffer;
 
 /// What [`SceneRenderer::render_shadow_pass`](super::SceneRenderer::render_shadow_pass)
@@ -18,6 +19,8 @@ pub struct PreparedScene {
     pub(crate) instances: Option<Buffer>,
     /// The shadow-casting light of this view.
     pub shadow: ShadowLight,
+    /// Camera, lighting and flat-colour bindings exclusive to this view.
+    pub(crate) view: PreparedView,
     /// Whether a referenced material can contribute emissive light this frame.
     pub(crate) has_emissive: bool,
 }

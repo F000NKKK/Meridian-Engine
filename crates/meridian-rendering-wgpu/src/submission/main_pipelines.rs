@@ -22,14 +22,10 @@ pub(crate) struct PipelineKey {
     pub state: DrawState,
 }
 
-/// A main pipeline and, for flat colour draws, the bind group it always
-/// uses. Textured draws bind a texture of their own, so theirs is built per
-/// draw against `pipeline` (a bind group only fits the pipeline it was made
-/// from).
+/// A main pipeline. View-specific bind groups live in `PreparedView`.
 #[derive(Debug)]
 pub(crate) struct MainPipeline {
     pub pipeline: RenderPipeline,
-    pub shared_bind_group: Option<BindGroup>,
 }
 
 /// The shared inputs every main pipeline binds.
@@ -56,7 +52,7 @@ const STATES: [DrawState; 4] = [
 
 impl MainPipelines {
     /// Compiles each shader once and builds every state's pipeline from it.
-    pub(crate) fn new(device: &Device, format: ColorFormat, bindings: MainBindings<'_>) -> Self {
+    pub(crate) fn new(device: &Device, format: ColorFormat) -> Self {
         let shaders = [
             ("meridian-unlit-colored", UNLIT_SHADER_WGSL.to_owned()),
             ("meridian-lit-colored", lit_shader_wgsl()),
@@ -67,33 +63,17 @@ impl MainPipelines {
         let layouts = [mesh_vertex_layout(), instance_vertex_layout()];
         let mut slots = Vec::with_capacity(STATES.len() * shaders.len());
         for state in STATES {
-            for (index, shader) in shaders.iter().enumerate() {
-                let key = PipelineKey {
-                    textured: index >= 2,
-                    lit: index % 2 == 1,
-                    state,
-                };
+            for shader in &shaders {
                 let stages = ShaderStages {
                     shader,
                     vertex_entry: "vs_main",
                     fragment_entry: "fs_main",
                 };
                 let pipeline = device.create_scene_pipeline(&stages, &layouts, format, state);
-                slots.push(with_shared_bind_group(device, pipeline, key, bindings));
+                slots.push(MainPipeline { pipeline });
             }
         }
         Self { slots }
-    }
-
-    /// Rebuilds the shared bind groups of the flat lit pipelines against
-    /// `bindings`: they hold the environment texture, which changes at runtime.
-    pub(crate) fn rebind(&mut self, device: &Device, bindings: MainBindings<'_>) {
-        for (index, slot) in self.slots.iter_mut().enumerate() {
-            let (textured, lit) = (index % 4 >= 2, index % 2 == 1);
-            if lit && !textured {
-                slot.shared_bind_group = Some(shadow_bind_group(device, &slot.pipeline, bindings));
-            }
-        }
     }
 
     /// The pipeline `key` names.
@@ -106,29 +86,9 @@ impl MainPipelines {
     }
 }
 
-/// Wraps `pipeline`, binding the shared inputs for flat colour draws.
-fn with_shared_bind_group(
-    device: &Device,
-    pipeline: RenderPipeline,
-    key: PipelineKey,
-    bindings: MainBindings<'_>,
-) -> MainPipeline {
-    let shared_bind_group = (!key.textured).then(|| {
-        if key.lit {
-            shadow_bind_group(device, &pipeline, bindings)
-        } else {
-            device.create_uniform_bind_group(&pipeline, bindings.uniform_buffer)
-        }
-    });
-    MainPipeline {
-        pipeline,
-        shared_bind_group,
-    }
-}
-
 /// The bind group of a flat lit `pipeline`: uniform, shadow map and sampler,
 /// environment and sampler.
-fn shadow_bind_group(
+pub(crate) fn shadow_bind_group(
     device: &Device,
     pipeline: &RenderPipeline,
     bindings: MainBindings<'_>,

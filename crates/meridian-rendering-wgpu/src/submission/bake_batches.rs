@@ -107,6 +107,7 @@ pub(crate) fn bake_batches(
     renderer: &mut SceneRenderer,
     scene: &Scene3d,
     assets: &SceneAssets<'_>,
+    view_uniform: &crate::Buffer,
 ) -> BakedBatches {
     renderer.begin_bake(assets.meshes);
     let eye = scene.camera.frame.transform_point(Vec3::ZERO);
@@ -126,7 +127,7 @@ pub(crate) fn bake_batches(
     let mut batches = Vec::new();
     let mut skin_jobs = Vec::new();
     let mut first = 0u32;
-    let mut groups = BindGroupCache::default();
+    let mut groups = BindGroupCache::new(view_uniform);
     for planned in plan_batches(&items) {
         let lead = &resolved[planned.members[0]];
         renderer.meshes.ensure(device, lead.mesh, lead.source);
@@ -215,10 +216,12 @@ fn draw_kind(
     };
     let neutral = &renderer.neutral;
     let maps = lead.maps;
+    let uniform = groups.uniform;
     let bind_group = groups.group_for(key, maps, || {
         textured_bind_group(
             device,
             renderer,
+            uniform,
             [
                 find(maps.albedo, &neutral.white_albedo),
                 find(maps.metallic_roughness, &neutral.white_linear),
@@ -241,6 +244,7 @@ fn draw_kind(
 fn textured_bind_group(
     device: &Device,
     renderer: &SceneRenderer,
+    uniform: &crate::Buffer,
     [albedo, metallic_roughness, normal, occlusion, emissive]: [&Texture; 5],
     key: PipelineKey,
 ) -> crate::BindGroup {
@@ -248,7 +252,7 @@ fn textured_bind_group(
     if key.lit {
         device.create_textured_shadow_bind_group(
             pipeline,
-            &renderer.uniform_buffer,
+            uniform,
             LitTextures {
                 albedo: SampledTexture {
                     texture: albedo,
@@ -271,11 +275,6 @@ fn textured_bind_group(
             },
         )
     } else {
-        device.create_textured_bind_group(
-            pipeline,
-            &renderer.uniform_buffer,
-            albedo,
-            &renderer.sampler,
-        )
+        device.create_textured_bind_group(pipeline, uniform, albedo, &renderer.sampler)
     }
 }

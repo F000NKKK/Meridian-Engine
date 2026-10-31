@@ -38,6 +38,7 @@ async fn bloom_tracks_emission_and_does_not_reuse_a_previous_glow() {
                 meshes: &meshes,
                 materials: &materials,
                 overlays: &[],
+                viewports: &[],
                 clear_color: [0.0, 0.0, 0.0, 1.0],
             }),
             FrameOutcome::Presented

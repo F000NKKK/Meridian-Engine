@@ -3,42 +3,30 @@
 use core::ops::Range;
 
 use meridian_rendering_domain::scene::Scene3d;
-use meridian_rendering_domain::{
-    EnvironmentMap, Frustum, LocalShadow, MeshRegistry, ShadowLight, ViewUniforms,
-};
+use meridian_rendering_domain::{EnvironmentMap, Frustum, LocalShadow, MeshRegistry, ShadowLight};
 
 use super::batching::VisibleBatches;
 use super::environment::GpuEnvironment;
-use super::main_pipelines::{MainBindings, MainPipelines};
+use super::main_pipelines::MainPipelines;
 use super::mesh_cache::MeshCache;
+use super::prepared_view::PreparedView;
 use super::registries::NeutralTextures;
 use super::skinning::SkinPipeline;
 use super::{
-    ATLAS_COLUMNS, ATLAS_ROWS, CascadeCasters, DrawKind, LIT_UNIFORM_BYTES, MAX_LIGHTS,
-    PreparedBatch, PreparedScene, SceneAssets, ShadowDepthPass, bake_batches, face_tile,
-    lit_uniform_bytes, mat4_to_bytes, spot_tile, tile_rect,
+    ATLAS_COLUMNS, ATLAS_ROWS, CascadeCasters, DrawKind, PreparedBatch, PreparedScene, SceneAssets,
+    ShadowDepthPass, bake_batches, face_tile, mat4_to_bytes, spot_tile, tile_rect,
 };
 use crate::{
-    Buffer, BufferUsage, ColorFormat, CommandBuffer, Device, RenderPass as DriverRenderPass,
-    SampledTexture, Sampler, Texture,
+    Buffer, ColorFormat, CommandBuffer, Device, RenderPass as DriverRenderPass, Sampler, Texture,
 };
 
-/// Owns all four main pipelines (colored/textured × lit/unlit) plus the
-/// the shared view/lighting uniform, and the sampler for rendering a
-/// [`Scene3d`] view. One instance per view (a UI overlay's `Scene2d` is
-/// a separate, future-work sibling — see docs/graphics-design.md);
-/// building it needs a real GPU device and the colour format of the
-/// target it draws into (the HDR scene target, ADR 034). The emissive-extraction pipelines
-/// [`crate::bloom::BloomPass`] draws through are *not* owned here — they
-/// render into `BloomPass`'s own offscreen texture, whose format is
-/// `BloomPass`'s to pick, not something this type should guess at (see
-/// `bloom.rs`'s module doc and `uniform_buffer`).
+/// Owns the main pipelines and shared GPU assets. Camera and lighting
+/// uniforms belong to each [`PreparedScene`], not to this renderer.
 #[derive(Debug)]
 pub struct SceneRenderer {
     pub(crate) pipelines: MainPipelines,
     /// Meshes uploaded so far; see [`MeshCache`].
     pub(crate) meshes: MeshCache,
-    pub(crate) uniform_buffer: Buffer,
     pub(crate) sampler: Sampler,
     /// The shadow atlas: a 2 x 2 grid of cascade tiles of
     /// [`tile_size`](Self::tile_size) texels, in one `Depth32Float` texture, both a render target (the shadow depth
@@ -97,31 +85,12 @@ impl SceneRenderer {
         let shadow_sampler = device.create_comparison_sampler();
         let shadow_depth = ShadowDepthPass::new(device);
 
-        // See `lit_uniform_bytes`'s doc comment for the
-        // layout. The unlit pipelines only read the first 64 (view_proj)
-        // but share this same buffer — one write serves every pipeline.
-        let uniform_buffer = device.create_buffer(LIT_UNIFORM_BYTES, BufferUsage::Uniform);
         let sampler = device.create_sampler();
-
         let environment = GpuEnvironment::none(device);
-        let pipelines = MainPipelines::new(
-            device,
-            format,
-            MainBindings {
-                uniform_buffer: &uniform_buffer,
-                shadow_map: &shadow_map,
-                shadow_sampler: &shadow_sampler,
-                environment: SampledTexture {
-                    texture: &environment.texture,
-                    sampler: &environment.sampler,
-                },
-            },
-        );
-
+        let pipelines = MainPipelines::new(device, format);
         let renderer = Self {
             pipelines,
             meshes: MeshCache::default(),
-            uniform_buffer,
             sampler,
             shadow_map,
             shadow_sampler,
@@ -150,57 +119,12 @@ impl SceneRenderer {
         init_commands.submit();
     }
 
-    /// The shared view/lighting uniform buffer — [`crate::bloom::BloomPass`]
-    /// binds its own emissive-extraction pipelines against this same
-    /// buffer (it needs `view_proj` for its vertex shader), rebuilding a
-    /// fresh bind group against it each frame, the same "correct now,
-    /// cache later" trade-off already applied to per-texture bind groups
-    /// (see the module doc).
-    pub(crate) fn uniform_buffer(&self) -> &Buffer {
-        &self.uniform_buffer
-    }
-
-    /// Writes this view's camera, the shadow-casting light's own
-    /// view-projection matrix, ambient and lights into the shared
-    /// uniform — call once per frame before [`draw`](Self::draw), after
-    /// [`render_shadow_pass`](Self::render_shadow_pass) (which computes
-    /// the [`ShadowLight`]). Lights beyond
-    /// [`MAX_LIGHTS`](super::MAX_LIGHTS) are dropped and logged.
-    pub fn set_view(&self, device: &Device, view: &ViewUniforms<'_>) {
-        if view.lights.len() > MAX_LIGHTS {
-            meridian_diagnostics::log_warn!(
-                "scene has {} lights, dropping {} beyond the cap of {MAX_LIGHTS}",
-                view.lights.len(),
-                view.lights.len() - MAX_LIGHTS
-            );
-        }
-        device.write_buffer(
-            &self.uniform_buffer,
-            &lit_uniform_bytes(view, self.environment.uniform),
-        );
-    }
-
-    /// Lights lit surfaces with `environment` from the next
-    /// [`set_view`](Self::set_view) on (ADR 035); `None` returns to the
-    /// scene's ambient colours. Uploads the map and rebuilds the bind groups
-    /// that hold it.
+    /// Lights lit surfaces with `environment` in subsequently prepared views.
     pub fn set_environment(&mut self, device: &Device, environment: Option<&EnvironmentMap>) {
         self.environment = match environment {
             Some(map) => GpuEnvironment::of(device, map),
             None => GpuEnvironment::none(device),
         };
-        self.pipelines.rebind(
-            device,
-            MainBindings {
-                uniform_buffer: &self.uniform_buffer,
-                shadow_map: &self.shadow_map,
-                shadow_sampler: &self.shadow_sampler,
-                environment: SampledTexture {
-                    texture: &self.environment.texture,
-                    sampler: &self.environment.sampler,
-                },
-            },
-        );
     }
 
     /// The shadow-casting depth pass: finds `scene`'s first
@@ -209,10 +133,9 @@ impl SceneRenderer {
     /// into the (separate) shadow uniform buffer, bakes `scene` into
     /// instanced batches (reused afterward by [`draw`](Self::draw) — never
     /// rebuilt), and records a depth-only pass into the internal shadow
-    /// map through `commands`. Returns the baked scene plus the
-    /// [`ShadowLight`] for the caller to pass
-    /// into [`set_view`](Self::set_view) before its own (separate, later)
-    /// main color pass — see this module's own doc for why the shadow
+    /// map through `commands`. Returns the baked scene with its own camera,
+    /// lighting and shadow bindings for the later main colour pass — see
+    /// this module's own doc for why the shadow
     /// pass can't be folded into [`submit_scene3d`](super::submit_scene3d) itself (it has to
     /// finish, as its own pass, before the caller's main pass opens on
     /// the same `commands`).
@@ -230,6 +153,7 @@ impl SceneRenderer {
         assets: &SceneAssets<'_>,
     ) -> PreparedScene {
         let shadow = ShadowLight::for_scene(scene, self.tile_size);
+        let prepared_view = PreparedView::new(device, self, scene, &shadow);
         let tiles = shadow_tiles(&shadow);
         for tile in &tiles {
             device.write_buffer(
@@ -238,7 +162,7 @@ impl SceneRenderer {
             );
         }
         let frusta: Vec<Frustum> = tiles.iter().map(|tile| tile.frustum.clone()).collect();
-        let baked = bake_batches(device, self, scene, assets);
+        let baked = bake_batches(device, self, scene, assets, &prepared_view.uniform);
         for job in &baked.skin_jobs {
             commands.dispatch_compute(self.skinning.pipeline(), &job.bind_group, job.workgroups);
         }
@@ -249,12 +173,13 @@ impl SceneRenderer {
             casters: &casters,
         };
         self.record_shadow_casters(commands, &baked.batches, &draws, casters.upload(device));
-        let view = Frustum::from_view_projection(scene.camera.view_projection_matrix());
-        let visible = VisibleBatches::cull(&baked.batches, &baked.records, &baked.bounds, &view);
+        let frustum = Frustum::from_view_projection(scene.camera.view_projection_matrix());
+        let visible = VisibleBatches::cull(&baked.batches, &baked.records, &baked.bounds, &frustum);
         PreparedScene {
             instances: visible.upload(device),
             batches: visible.batches,
             shadow,
+            view: prepared_view,
             has_emissive: scene
                 .renderables
                 .iter()
@@ -271,16 +196,19 @@ impl SceneRenderer {
         scene: &Scene3d,
         assets: &SceneAssets<'_>,
     ) -> PreparedScene {
-        let baked = bake_batches(device, self, scene, assets);
+        let shadow = ShadowLight::for_scene(scene, self.tile_size);
+        let prepared_view = PreparedView::new(device, self, scene, &shadow);
+        let baked = bake_batches(device, self, scene, assets, &prepared_view.uniform);
         for job in &baked.skin_jobs {
             commands.dispatch_compute(self.skinning.pipeline(), &job.bind_group, job.workgroups);
         }
-        let view = Frustum::from_view_projection(scene.camera.view_projection_matrix());
-        let visible = VisibleBatches::cull(&baked.batches, &baked.records, &baked.bounds, &view);
+        let frustum = Frustum::from_view_projection(scene.camera.view_projection_matrix());
+        let visible = VisibleBatches::cull(&baked.batches, &baked.records, &baked.bounds, &frustum);
         PreparedScene {
             instances: visible.upload(device),
             batches: visible.batches,
-            shadow: ShadowLight::for_scene(scene, self.tile_size),
+            shadow,
+            view: prepared_view,
             has_emissive: scene
                 .renderables
                 .iter()
@@ -327,11 +255,7 @@ impl SceneRenderer {
     }
 
     /// Records one draw call per batch against `pass`, in the scene's draw
-    /// order (opaque, then translucent far to near, then on top), switching
-    /// pipeline and bind group per batch's family, lighting and state —
-    /// call inside the render pass, after
-    /// [`render_shadow_pass`](Self::render_shadow_pass) built `prepared`
-    /// and [`set_view`](Self::set_view) wrote this frame's uniform.
+    /// order, using the camera and lighting bindings owned by `prepared`.
     pub fn draw(&self, pass: &mut DriverRenderPass<'_>, prepared: &PreparedScene) {
         let Some(instances) = &prepared.instances else {
             return;
@@ -341,10 +265,14 @@ impl SceneRenderer {
             if bound.is_none_or(|previous| !previous.binds_like(batch)) {
                 let main = self.pipelines.get(batch.pipeline_key());
                 pass.set_pipeline(&main.pipeline);
-                match (&batch.kind, &main.shared_bind_group) {
-                    (DrawKind::Textured { bind_group }, _) => pass.set_bind_group(0, bind_group),
-                    (DrawKind::Colored, Some(bind_group)) => pass.set_bind_group(0, bind_group),
-                    (DrawKind::Colored, None) => continue,
+                match &batch.kind {
+                    DrawKind::Textured { bind_group } => pass.set_bind_group(0, bind_group),
+                    DrawKind::Colored => {
+                        let Some(bind_group) = prepared.view.colored(batch.pipeline_key()) else {
+                            continue;
+                        };
+                        pass.set_bind_group(0, bind_group);
+                    }
                 }
                 bound = Some(batch);
             }

@@ -7,9 +7,9 @@ use crate::submission::{PreparedScene, SceneRenderer, TextureRegistry};
 /// extracts emissive light from and composites onto.
 #[derive(Debug, Clone, Copy)]
 pub struct BloomInput<'a> {
-    /// Supplies the shared view/lighting uniform buffer.
+    /// Supplies the uploaded meshes and texture sampler.
     pub renderer: &'a SceneRenderer,
-    /// The batches to redraw through the emissive-extraction pipeline.
+    /// The batches and view uniform to redraw through emissive extraction.
     pub prepared: &'a PreparedScene,
     /// Resolves the emissive maps of the batches.
     pub textures: &'a TextureRegistry,

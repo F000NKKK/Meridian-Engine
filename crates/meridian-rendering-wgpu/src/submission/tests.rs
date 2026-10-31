@@ -97,7 +97,7 @@ fn lit_uniform_bytes_has_the_documented_layout_and_size() {
 
 #[test]
 fn lit_uniform_bytes_caps_extra_lights_silently_at_the_byte_level() {
-    // The truncation warning is logged by SceneRenderer::set_view;
+    // The truncation warning is logged by PreparedView::new;
     // lit_uniform_bytes itself just caps light_count and only writes
     // MAX_LIGHTS slots regardless of how many are passed in.
     let camera = Camera::default();

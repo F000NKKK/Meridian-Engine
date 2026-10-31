@@ -21,6 +21,7 @@ mod main_pipelines;
 mod mesh_cache;
 mod prepared_batch;
 mod prepared_scene;
+mod prepared_view;
 mod registries;
 mod scene_assets;
 mod scene_renderer;

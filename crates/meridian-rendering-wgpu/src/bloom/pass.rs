@@ -172,8 +172,8 @@ impl BloomPass {
 
     /// Redraws `prepared`'s batches through this `BloomPass`'s own
     /// emissive-extraction pipeline into `self.bright` — step 2 of the
-    /// module doc's pipeline. `renderer` supplies the shared view/lighting
-    /// uniform buffer (for `view_proj`) and the uploaded meshes; the
+    /// module doc's pipeline. `prepared` supplies its own view uniform and
+    /// `renderer` supplies the uploaded meshes; the
     /// pipeline itself is this struct's, not `renderer`'s (see
     /// [`BloomPass::new`]'s doc comment for why).
     fn draw_emissive(
@@ -189,7 +189,7 @@ impl BloomPass {
         // Rebuilt every frame, the same "correct now, cache later"
         // trade-off as the per-texture bind groups of the main pass.
         let bind_group =
-            device.create_uniform_bind_group(&self.emissive_pipeline, renderer.uniform_buffer());
+            device.create_uniform_bind_group(&self.emissive_pipeline, &input.prepared.view.uniform);
         pass.set_pipeline(&self.emissive_pipeline);
         pass.set_bind_group(0, &bind_group);
         for batch in input
@@ -210,7 +210,7 @@ impl BloomPass {
             };
             let mapped_group = device.create_textured_bind_group(
                 &self.mapped_pipeline,
-                renderer.uniform_buffer(),
+                &input.prepared.view.uniform,
                 texture,
                 &renderer.sampler,
             );
