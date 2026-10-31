@@ -9,6 +9,8 @@
 //! Design notes: docs/notes/meridian-rendering-domain.md (`bloom`).
 
 mod blur_direction;
+#[cfg(all(test, feature = "hw-tests"))]
+mod gpu_tests;
 mod input;
 mod pass;
 mod shaders;

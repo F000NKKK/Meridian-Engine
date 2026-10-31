@@ -18,6 +18,8 @@ pub struct PreparedScene {
     pub(crate) instances: Option<Buffer>,
     /// The shadow-casting light of this view.
     pub shadow: ShadowLight,
+    /// Whether a referenced material can contribute emissive light this frame.
+    pub(crate) has_emissive: bool,
 }
 
 impl PreparedScene {

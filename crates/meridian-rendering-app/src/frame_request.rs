@@ -1,7 +1,6 @@
 //! Everything a recorder needs to draw one frame.
 
-use meridian_rendering_domain::scene::Scene3d;
-use meridian_rendering_domain::{MaterialRegistry, MeshRegistry, Overlay2d, Viewport3d};
+use meridian_rendering_domain::{MaterialRegistry, MeshRegistry, Overlay2d, Scene3d};
 
 /// One frame to draw: the scene, the registries its handles resolve against,
 /// the overlays drawn over it, and the colour the target is cleared to.
