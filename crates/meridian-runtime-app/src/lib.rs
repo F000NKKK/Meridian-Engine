@@ -48,3 +48,12 @@ pub use runtime::Runtime;
 pub use shared::Shared;
 pub use stages::*;
 pub use transform_stage::TransformStage;
+
+mod spatial_issue;
+mod spatial_resolution;
+mod spatial_stage;
+pub use spatial_issue::SpatialIssue;
+mod spatial_problem;
+pub use spatial_problem::SpatialProblem;
+pub use spatial_resolution::resolve_spatial_components;
+pub use spatial_stage::SpatialStage;

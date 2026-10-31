@@ -16,6 +16,8 @@ use crate::{MeshMorph, VertexSkin};
 pub struct MeshSource {
     pub positions: Vec<[f32; 3]>,
     pub normals: Vec<[f32; 3]>,
+    /// Texture coordinates: U right, V down in a top-to-bottom image.
+    /// World direction is determined by mesh mapping; values may tile beyond [0, 1].
     pub uvs: Vec<[f32; 2]>,
     pub indices: Vec<u32>,
     /// The joints and weights that move each vertex, for a skinned mesh

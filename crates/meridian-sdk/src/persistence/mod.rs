@@ -17,11 +17,11 @@ pub use asset_prefab_source::AssetPrefabSource;
 // What an application needs beside `WorldFiles`: the data layer's registry,
 // ids and prefab types, and the ecs types a scene holds.
 pub use meridian_data_substrate::{
-    ComponentName, ComponentRegistry, EntityKey, LoadedSave, NoResolver, PrefabInstance,
-    PrefabLibrary, PrefabPath, PrefabSource, PrefabUnavailable, SaveHeader, SceneMap,
-    SceneSaveError, SceneView, TransformCodec, UnknownComponents, register_rendering,
+    ComponentName, ComponentRegistry, EntityKey, LoadedSave, NoResolver, PositionCodec,
+    PrefabInstance, PrefabLibrary, PrefabPath, PrefabSource, PrefabUnavailable, SaveHeader,
+    SceneMap, SceneSaveError, SceneView, TransformCodec, UnknownComponents, register_rendering,
 };
-pub use meridian_ecs::{Component, Entity, Transform, World};
+pub use meridian_ecs::{Component, Entity, Position, Transform, World};
 pub use scene_form::SceneForm;
 pub use substrate_data::{Resolve, Schema};
 pub use world_files::WorldFiles;
