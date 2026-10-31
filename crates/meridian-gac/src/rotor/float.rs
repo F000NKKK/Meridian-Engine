@@ -22,6 +22,7 @@ impl Default for Rotor {
 }
 
 impl Rotor {
+    /// Returns the identity rotation.
     pub fn identity() -> Self {
         Rotor(Multivector::scalar(1.0))
     }
@@ -97,6 +98,7 @@ impl Rotor {
         Rotor(rhs.0 * self.0)
     }
 
+    /// Reverses this unit rotation.
     pub fn reverse(self) -> Rotor {
         Rotor(self.0.reverse())
     }

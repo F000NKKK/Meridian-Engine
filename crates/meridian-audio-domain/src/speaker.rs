@@ -11,6 +11,8 @@ use crate::Channel;
 /// simply always gets `0.0` from [`SpeakerLayout::pan`](crate::SpeakerLayout::pan).
 #[derive(Debug, Clone, Copy)]
 pub struct Speaker {
+    /// Output channel fed by this speaker.
     pub channel: Channel,
+    /// Horizontal direction, or `None` for a non-directional LFE channel.
     pub azimuth_degrees: Option<f32>,
 }

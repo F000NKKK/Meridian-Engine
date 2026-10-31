@@ -15,18 +15,22 @@ pub struct MaterialRegistry {
 }
 
 impl MaterialRegistry {
+    /// Creates an empty material registry.
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Stores a material and returns its stable handle.
     pub fn register(&mut self, material: Material) -> MaterialHandle {
         MaterialHandle::new(self.materials.insert(material))
     }
 
+    /// Removes and returns the material for `handle`, if still live.
     pub fn unregister(&mut self, handle: MaterialHandle) -> Option<Material> {
         self.materials.remove(handle.handle)
     }
 
+    /// Returns the material for a live handle.
     pub fn get(&self, handle: MaterialHandle) -> Option<&Material> {
         self.materials.get(handle.handle)
     }

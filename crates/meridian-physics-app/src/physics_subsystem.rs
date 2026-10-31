@@ -15,10 +15,15 @@ pub const RELAXATION_ITERATIONS: u32 = 4;
 /// application; no lock lives here.
 #[derive(Debug)]
 pub struct PhysicsSubsystem {
+    /// Rigid bodies in simulation order.
     pub bodies: Vec<RigidBody>,
+    /// Broad-phase candidate-pair detector.
     pub broad_phase: BroadPhase,
+    /// Narrow-phase contact generator.
     pub narrow_phase: NarrowPhase,
+    /// Contact and friction constraint solver.
     pub solver: ConstraintSolver,
+    /// Velocity and pose integrator.
     pub integrator: Integrator,
 }
 

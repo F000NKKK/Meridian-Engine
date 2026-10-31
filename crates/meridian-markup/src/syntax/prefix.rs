@@ -5,5 +5,6 @@
 /// See ADR 017.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Prefix {
+    /// The `x:` prefix used by language directives.
     Directive,
 }

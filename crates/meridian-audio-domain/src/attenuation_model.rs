@@ -30,6 +30,7 @@ impl Default for AttenuationModel {
 }
 
 impl AttenuationModel {
+    /// Returns the volume multiplier for a source at `distance`.
     pub fn gain(&self, distance: f32) -> f32 {
         let reference = self.reference_distance;
         let d = distance.clamp(reference, self.max_distance.max(reference));

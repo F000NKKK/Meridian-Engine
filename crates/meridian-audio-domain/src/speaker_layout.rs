@@ -6,6 +6,7 @@ use crate::{Channel, Speaker};
 /// between the outermost ones.
 #[derive(Debug, Clone)]
 pub struct SpeakerLayout {
+    /// Speakers in output-channel order.
     pub speakers: Vec<Speaker>,
     /// `true` for layouts with real rear speakers (5.0/5.1): panning
     /// wraps all the way around, so front and back are distinguishable.
@@ -17,6 +18,7 @@ pub struct SpeakerLayout {
 }
 
 impl SpeakerLayout {
+    /// Returns a single center-channel layout.
     pub fn mono() -> Self {
         Self {
             speakers: vec![Speaker {

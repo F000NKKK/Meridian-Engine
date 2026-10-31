@@ -20,18 +20,23 @@ use crate::vector::float::Vec3;
 /// hiding (see [`Bivector3::wedge`]).
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Bivector3 {
+    /// Coefficient of the Y-Z basis plane.
     pub e23: Scalar,
+    /// Coefficient of the Z-X basis plane.
     pub e31: Scalar,
+    /// Coefficient of the X-Y basis plane.
     pub e12: Scalar,
 }
 
 impl Bivector3 {
+    /// The zero bivector.
     pub const ZERO: Bivector3 = Bivector3 {
         e23: 0.0,
         e31: 0.0,
         e12: 0.0,
     };
 
+    /// Constructs a bivector from its basis-plane coefficients.
     pub const fn new(e23: Scalar, e31: Scalar, e12: Scalar) -> Self {
         Self { e23, e31, e12 }
     }
@@ -49,6 +54,7 @@ impl Bivector3 {
         )
     }
 
+    /// Returns the bivector's magnitude.
     pub fn length(self) -> Scalar {
         (self.e23 * self.e23 + self.e31 * self.e31 + self.e12 * self.e12).sqrt()
     }

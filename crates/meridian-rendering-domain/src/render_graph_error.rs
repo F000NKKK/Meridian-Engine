@@ -9,8 +9,11 @@ pub enum RenderGraphError {
     /// has no rule for which write a later read should see, so it refuses
     /// to guess rather than silently picking one (e.g. insertion order).
     MultipleWriters {
+        /// Resource with conflicting writes.
         resource: GraphResourceId,
+        /// Index of the first pass writing the resource.
         first_writer: usize,
+        /// Index of the conflicting pass.
         second_writer: usize,
     },
     /// The reads/writes declared form a cycle (A reads what B writes, B

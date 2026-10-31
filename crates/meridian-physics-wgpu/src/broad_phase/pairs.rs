@@ -49,6 +49,7 @@ where
     F::Rotor: Send + Sync,
     F::Motor: Send + Sync,
 {
+    /// Bodies tested for pairwise bounding-box overlap.
     pub bodies: Vec<RigidBody<F>>,
     /// Every `(i, j)`, `i < j` pair among `bodies` — precomputed once at
     /// construction (cheap: just index generation, no overlap test) so
@@ -67,6 +68,7 @@ where
     F::Rotor: Send + Sync,
     F::Motor: Send + Sync,
 {
+    /// Creates a parallel overlap kernel and precomputes all body pairs.
     pub fn new(bodies: Vec<RigidBody<F>>) -> Self {
         let n = bodies.len();
         let mut candidate_pairs = Vec::with_capacity(n.saturating_mul(n) / 2);

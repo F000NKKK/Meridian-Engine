@@ -111,6 +111,7 @@ pub struct BloomPass {
     sampler: Sampler,
     width: u32,
     height: u32,
+    /// Bright-pass, blur and composite parameters.
     pub config: BloomConfig,
 }
 

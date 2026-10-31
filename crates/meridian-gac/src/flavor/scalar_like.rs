@@ -20,7 +20,9 @@ pub trait ScalarLike:
     + Div<Output = Self>
     + Neg<Output = Self>
 {
+    /// Additive identity.
     const ZERO: Self;
+    /// Multiplicative identity.
     const ONE: Self;
     /// A small tolerance for degenerate (near-zero) guards — the same
     /// role `meridian_numeric::EPSILON` plays for `f32` and
@@ -36,12 +38,20 @@ pub trait ScalarLike:
     /// paths on the `Fixed` side (see `Fixed::from_num`'s own doc
     /// comment).
     fn from_f64(v: f64) -> Self;
+    /// Returns the nonnegative square root.
     fn sqrt(self) -> Self;
+    /// Returns the tangent of this angle in radians.
     fn tan(self) -> Self;
+    /// Returns this angle's sine and cosine.
     fn sin_cos(self) -> (Self, Self);
+    /// Returns minus one, zero, or one according to the sign.
     fn signum(self) -> Self;
+    /// Returns the absolute value.
     fn abs(self) -> Self;
+    /// Returns the smaller of this value and `other`.
     fn min(self, other: Self) -> Self;
+    /// Returns the larger of this value and `other`.
     fn max(self, other: Self) -> Self;
+    /// Restricts this value to the inclusive range `lo..=hi`.
     fn clamp(self, lo: Self, hi: Self) -> Self;
 }

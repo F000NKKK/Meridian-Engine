@@ -7,4 +7,5 @@ use meridian_resource::ResourceId;
 #[derive(Debug)]
 pub struct ColliderMeshMarker;
 
+/// Generational resource identifier for a collider mesh.
 pub type ColliderMeshHandle = ResourceId<ColliderMeshMarker>;

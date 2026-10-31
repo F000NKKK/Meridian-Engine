@@ -7,4 +7,5 @@ use meridian_resource::ResourceId;
 #[derive(Debug)]
 pub struct TextureMarker;
 
+/// Generational resource identifier for a texture.
 pub type TextureHandle = ResourceId<TextureMarker>;

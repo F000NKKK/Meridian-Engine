@@ -14,7 +14,9 @@
 /// serializable — not a smart pointer. See docs/memory-model.md.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct Handle {
+    /// Zero-based slot index in the resource pool.
     pub index: u32,
+    /// Slot lifetime used to reject stale handles.
     pub generation: u32,
 }
 
@@ -43,16 +45,19 @@ impl<T> Default for ResourcePool<T> {
 }
 
 impl<T> ResourcePool<T> {
+    /// Creates an empty resource pool.
     #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Returns the number of live resources.
     #[must_use]
     pub fn len(&self) -> usize {
         self.len
     }
 
+    /// Returns whether the pool contains no live resources.
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.len == 0
@@ -81,11 +86,13 @@ impl<T> ResourcePool<T> {
         self.generations.get(handle.index as usize) == Some(&handle.generation)
     }
 
+    /// Returns whether `handle` currently resolves to a live resource.
     #[must_use]
     pub fn contains(&self, handle: Handle) -> bool {
         self.generation_matches(handle) && self.slots[handle.index as usize].is_some()
     }
 
+    /// Returns the resource for a live handle, or `None` for a stale handle.
     #[must_use]
     pub fn get(&self, handle: Handle) -> Option<&T> {
         if !self.generation_matches(handle) {
@@ -94,6 +101,7 @@ impl<T> ResourcePool<T> {
         self.slots[handle.index as usize].as_ref()
     }
 
+    /// Returns mutable access to the resource for a live handle.
     pub fn get_mut(&mut self, handle: Handle) -> Option<&mut T> {
         if !self.generation_matches(handle) {
             return None;
@@ -137,30 +145,36 @@ impl<T> Default for FrameArena<T> {
 }
 
 impl<T> FrameArena<T> {
+    /// Creates an empty frame arena.
     #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Appends a value and returns its index for this frame.
     pub fn alloc(&mut self, value: T) -> usize {
         self.items.push(value);
         self.items.len() - 1
     }
 
+    /// Returns the value at `index`, if it has been allocated.
     #[must_use]
     pub fn get(&self, index: usize) -> Option<&T> {
         self.items.get(index)
     }
 
+    /// Returns mutable access to the value at `index`.
     pub fn get_mut(&mut self, index: usize) -> Option<&mut T> {
         self.items.get_mut(index)
     }
 
+    /// Returns the number of values allocated since the last reset.
     #[must_use]
     pub fn len(&self) -> usize {
         self.items.len()
     }
 
+    /// Returns whether no values are currently allocated.
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.items.is_empty()
@@ -190,35 +204,42 @@ impl<T> Default for PersistentArena<T> {
 }
 
 impl<T> PersistentArena<T> {
+    /// Creates an empty persistent arena.
     #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Appends a value and returns its stable index until the next reset.
     pub fn alloc(&mut self, value: T) -> usize {
         self.items.push(value);
         self.items.len() - 1
     }
 
+    /// Returns the value at `index`, if it has been allocated.
     #[must_use]
     pub fn get(&self, index: usize) -> Option<&T> {
         self.items.get(index)
     }
 
+    /// Returns mutable access to the value at `index`.
     pub fn get_mut(&mut self, index: usize) -> Option<&mut T> {
         self.items.get_mut(index)
     }
 
+    /// Returns the number of values allocated since the last reset.
     #[must_use]
     pub fn len(&self) -> usize {
         self.items.len()
     }
 
+    /// Returns whether no values are currently allocated.
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.items.is_empty()
     }
 
+    /// Removes all values while retaining the allocation for reuse.
     pub fn reset(&mut self) {
         self.items.clear();
     }

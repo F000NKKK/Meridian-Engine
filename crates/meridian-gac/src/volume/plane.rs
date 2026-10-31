@@ -11,7 +11,9 @@ use crate::flavor::{GaFlavor, ScalarLike, VectorLike};
 /// subsystem — see [`Aabb`](crate::Aabb)'s doc comment for the same reasoning.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Plane<F: GaFlavor> {
+    /// Normal pointing toward the inside half-space.
     pub normal: F::Vector,
+    /// Signed offset in `normal · point + d = 0`.
     pub d: F::Scalar,
 }
 

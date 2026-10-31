@@ -25,15 +25,18 @@ use super::DspNode;
 #[derive(Debug, Clone)]
 pub struct Declicker {
     channels: usize,
+    /// Maximum permitted change between adjacent samples in a channel.
     pub max_step: f32,
     last: Vec<f32>,
 }
 
 impl Declicker {
+    /// Creates a declicker with the default slew limit.
     pub fn new(channels: usize) -> Self {
         Self::with_max_step(channels, 0.35)
     }
 
+    /// Creates a declicker with an explicit per-sample slew limit.
     pub fn with_max_step(channels: usize, max_step: f32) -> Self {
         let channels = channels.max(1);
         Self {

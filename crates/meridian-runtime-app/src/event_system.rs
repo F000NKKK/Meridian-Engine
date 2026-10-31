@@ -27,6 +27,7 @@ impl std::fmt::Debug for EventSystem {
 }
 
 impl EventSystem {
+    /// Creates an event bus with empty queues.
     pub fn new() -> Self {
         Self::default()
     }

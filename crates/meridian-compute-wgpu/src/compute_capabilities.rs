@@ -12,7 +12,9 @@ use meridian_platform_winit::{BackendCapabilities, CpuCapabilities, GpuCapabilit
 /// `meridian_gpu_wgpu::Device`'s own `BackendCapabilities` impl).
 #[derive(Debug, Clone, Default)]
 pub struct ComputeCapabilities {
+    /// CPU execution resources available to compute work.
     pub cpu: CpuCapabilities,
+    /// GPU details when this backend has a graphics device.
     pub gpu: Option<GpuCapabilities>,
 }
 

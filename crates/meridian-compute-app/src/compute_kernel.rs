@@ -7,5 +7,6 @@ use crate::{ComputeContext, DispatchSize};
 /// for their own kernel types; `compute-app` knows nothing about what a
 /// kernel computes, only how it gets dispatched and on which backend.
 pub trait ComputeKernel {
+    /// Dispatches this kernel over `size` work items using `context`.
     fn dispatch(&self, context: &ComputeContext, size: DispatchSize);
 }

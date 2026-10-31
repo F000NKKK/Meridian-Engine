@@ -1,4 +1,5 @@
 //! Hardware tests of the GPU broad-phase kernel.
+#![cfg(feature = "hw-tests")]
 
 use meridian_compute_wgpu::gpu_context;
 use meridian_gac::{FloatFlavor, Vec3};

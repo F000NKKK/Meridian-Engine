@@ -2,8 +2,10 @@
 
 use std::fmt;
 
+/// A failure to construct a typed value from a DSL element.
 #[derive(Debug, Clone, PartialEq)]
 pub struct TagParseError {
+    /// Human-readable parsing failure.
     pub message: String,
 }
 

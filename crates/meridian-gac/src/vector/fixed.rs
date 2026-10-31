@@ -9,28 +9,36 @@ use crate::flavor::VectorLike;
 use crate::flavor::fixed::{FIXED_EPSILON, FixedFlavor};
 use crate::volume::Shape;
 
+/// A three-dimensional vector with fixed-point coordinates.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct FixedVec3 {
+    /// X coordinate.
     pub x: Fixed,
+    /// Y coordinate.
     pub y: Fixed,
+    /// Z coordinate.
     pub z: Fixed,
 }
 
 impl FixedVec3 {
+    /// The zero vector.
     pub const ZERO: FixedVec3 = FixedVec3 {
         x: Fixed::ZERO,
         y: Fixed::ZERO,
         z: Fixed::ZERO,
     };
 
+    /// Constructs a vector from its coordinates.
     pub const fn new(x: Fixed, y: Fixed, z: Fixed) -> Self {
         Self { x, y, z }
     }
 
+    /// Computes the dot product with `rhs`.
     pub fn dot(self, rhs: FixedVec3) -> Fixed {
         self.x * rhs.x + self.y * rhs.y + self.z * rhs.z
     }
 
+    /// Computes the cross product with `rhs`.
     pub fn cross(self, rhs: FixedVec3) -> FixedVec3 {
         FixedVec3::new(
             self.y * rhs.z - self.z * rhs.y,
@@ -39,14 +47,17 @@ impl FixedVec3 {
         )
     }
 
+    /// Returns the squared Euclidean length.
     pub fn length_squared(self) -> Fixed {
         self.dot(self)
     }
 
+    /// Returns the Euclidean length.
     pub fn length(self) -> Fixed {
         self.length_squared().sqrt()
     }
 
+    /// Returns a unit-length vector in the same direction.
     pub fn normalize(self) -> FixedVec3 {
         let len = self.length();
         if len <= FIXED_EPSILON {

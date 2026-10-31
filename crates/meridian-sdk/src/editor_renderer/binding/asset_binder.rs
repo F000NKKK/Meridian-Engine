@@ -87,51 +87,58 @@ impl EditorRenderer {
         world: &mut World,
         binder: &mut dyn AssetBinder,
     ) -> Vec<UnboundReference> {
-        let pending: Vec<(Entity, MeshReference)> = world
-            .query::<MeshReference>()
-            .filter(|(entity, _)| {
-                world.get::<MeshRenderer>(*entity).is_none()
-                    && world.get::<ModelPieces>(*entity).is_none()
-            })
-            .map(|(entity, reference)| (entity, reference.clone()))
-            .collect();
-        let session = self.session_mut();
-        let mut unbound = Vec::new();
-        let mut placed_models = false;
-        for (entity, reference) in pending {
-            if let Some(model) = binder.model(session, &reference.mesh.id) {
-                let pieces = attach(world, entity, &model, &mut session.render.materials);
-                world.insert(entity, ModelPieces(pieces));
-                placed_models = true;
-                continue;
-            }
-            let mesh = binder.mesh(session, &reference.mesh.id);
-            let material = binder.material(session, &reference.material.id);
-            match (mesh, material) {
-                (Some(mesh), Some(material)) => {
-                    world.insert(
-                        entity,
-                        MeshRenderer {
-                            mesh,
-                            material,
-                            billboard: reference.billboard,
-                        },
-                    );
-                }
-                (None, _) => unbound.push(UnboundReference {
-                    entity,
-                    missing: reference.mesh.id,
-                }),
-                (_, None) => unbound.push(UnboundReference {
-                    entity,
-                    missing: reference.material.id,
-                }),
-            }
-        }
-        if placed_models {
-            // The pieces sit at their owner's frame through the hierarchy.
-            propagate_transforms(world);
-        }
-        unbound
+        bind_references(self.session_mut(), world, binder)
     }
+}
+
+/// Binds scene asset references using an application's existing graphics session.
+pub fn bind_references(
+    session: &mut GraphicsSession,
+    world: &mut World,
+    binder: &mut dyn AssetBinder,
+) -> Vec<UnboundReference> {
+    let pending: Vec<(Entity, MeshReference)> = world
+        .query::<MeshReference>()
+        .filter(|(entity, _)| {
+            world.get::<MeshRenderer>(*entity).is_none()
+                && world.get::<ModelPieces>(*entity).is_none()
+        })
+        .map(|(entity, reference)| (entity, reference.clone()))
+        .collect();
+    let mut unbound = Vec::new();
+    let mut placed_models = false;
+    for (entity, reference) in pending {
+        if let Some(model) = binder.model(session, &reference.mesh.id) {
+            let pieces = attach(world, entity, &model, &mut session.render.materials);
+            world.insert(entity, ModelPieces(pieces));
+            placed_models = true;
+            continue;
+        }
+        let mesh = binder.mesh(session, &reference.mesh.id);
+        let material = binder.material(session, &reference.material.id);
+        match (mesh, material) {
+            (Some(mesh), Some(material)) => {
+                world.insert(
+                    entity,
+                    MeshRenderer {
+                        mesh,
+                        material,
+                        billboard: reference.billboard,
+                    },
+                );
+            }
+            (None, _) => unbound.push(UnboundReference {
+                entity,
+                missing: reference.mesh.id,
+            }),
+            (_, None) => unbound.push(UnboundReference {
+                entity,
+                missing: reference.material.id,
+            }),
+        }
+    }
+    if placed_models {
+        propagate_transforms(world);
+    }
+    unbound
 }

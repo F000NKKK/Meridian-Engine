@@ -5,6 +5,7 @@ use crate::flavor::{GaFlavor, MotorLike};
 /// A named reference frame: origin + basis, expressed as a motor.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Frame<F: GaFlavor> {
+    /// Rigid motion placing this frame in its parent's coordinates.
     pub motor: F::Motor,
 }
 

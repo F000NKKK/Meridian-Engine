@@ -34,6 +34,7 @@ pub struct Scene {}
 #[dsl_tag(name = "Entity")]
 #[derive(Debug, Clone, PartialEq)]
 pub struct Entity {
+    /// Name used to find this entity in the built scene tree.
     pub name: String,
 }
 
@@ -52,9 +53,13 @@ pub struct Entity {
 #[dsl_tag(name = "Mesh")]
 #[derive(Debug, Clone, PartialEq)]
 pub struct Mesh {
+    /// Optional OBJ file loaded by the application.
     pub path: Option<String>,
+    /// Optional procedural shape name.
     pub shape: Option<String>,
+    /// Primary shape size parameter.
     pub size: Option<f32>,
+    /// Secondary shape size parameter.
     pub size2: Option<f32>,
 }
 
@@ -65,7 +70,9 @@ pub struct Mesh {
 #[dsl_tag(name = "Material")]
 #[derive(Debug, Clone, PartialEq)]
 pub struct Material {
+    /// Optional albedo texture path.
     pub texture: Option<String>,
+    /// Whether to bypass scene lighting.
     pub unlit: Option<bool>,
 }
 
@@ -78,11 +85,17 @@ pub struct Material {
 #[dsl_tag(name = "RigidBody")]
 #[derive(Debug, Clone, PartialEq)]
 pub struct RigidBody {
+    /// Collider kind: `sphere` or `cuboid`.
     pub shape: String,
+    /// Mass in kilograms; zero means static.
     pub mass: f32,
+    /// Sphere radius when `shape` is `sphere`.
     pub radius: Option<f32>,
+    /// Cuboid half-extent along X.
     pub hx: Option<f32>,
+    /// Cuboid half-extent along Y.
     pub hy: Option<f32>,
+    /// Cuboid half-extent along Z.
     pub hz: Option<f32>,
 }
 
@@ -93,8 +106,11 @@ pub struct RigidBody {
 #[dsl_tag(name = "Transform")]
 #[derive(Debug, Clone, PartialEq)]
 pub struct Transform {
+    /// Translation along X.
     pub x: f32,
+    /// Translation along Y.
     pub y: f32,
+    /// Translation along Z.
     pub z: f32,
 }
 
@@ -155,7 +171,9 @@ macro_rules! meui_include {
 /// arms for what is, to it, one "the document was bad" outcome.
 #[derive(Debug)]
 pub enum DslError {
+    /// The document's markup syntax is invalid.
     Parse(dsl_core::ParseError),
+    /// A tag could not construct its typed value.
     Tag(TagParseError),
 }
 

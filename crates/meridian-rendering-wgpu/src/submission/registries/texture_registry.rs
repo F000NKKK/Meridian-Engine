@@ -17,6 +17,7 @@ pub struct TextureRegistry {
 }
 
 impl TextureRegistry {
+    /// Creates an empty GPU texture registry.
     pub fn new() -> Self {
         Self::default()
     }
@@ -54,10 +55,12 @@ impl TextureRegistry {
         TextureHandle::new(self.textures.insert(texture))
     }
 
+    /// Removes and returns the texture for `handle`, if still live.
     pub fn unregister(&mut self, handle: TextureHandle) -> Option<Texture> {
         self.textures.remove(handle.handle)
     }
 
+    /// Returns the GPU texture for a live handle.
     pub fn get(&self, handle: TextureHandle) -> Option<&Texture> {
         self.textures.get(handle.handle)
     }

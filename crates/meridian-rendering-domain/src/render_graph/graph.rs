@@ -15,10 +15,12 @@ use crate::{GraphResourceId, RenderGraphError, RenderPass};
 /// swapchain texture) constrains nothing; it's available from the start.
 #[derive(Debug, Clone, Default)]
 pub struct RenderGraph {
+    /// Passes to order according to their resource dependencies.
     pub passes: Vec<RenderPass>,
 }
 
 impl RenderGraph {
+    /// Creates an empty render graph.
     pub fn new() -> Self {
         Self::default()
     }

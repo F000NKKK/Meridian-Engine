@@ -14,22 +14,28 @@ use crate::vector::fixed::FixedVec3;
 /// for why angular quantities are bivectors, not vectors.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct FixedBivector3 {
+    /// Coefficient of the Y-Z basis plane.
     pub e23: Fixed,
+    /// Coefficient of the Z-X basis plane.
     pub e31: Fixed,
+    /// Coefficient of the X-Y basis plane.
     pub e12: Fixed,
 }
 
 impl FixedBivector3 {
+    /// The zero bivector.
     pub const ZERO: FixedBivector3 = FixedBivector3 {
         e23: Fixed::ZERO,
         e31: Fixed::ZERO,
         e12: Fixed::ZERO,
     };
 
+    /// Constructs a bivector from its basis-plane coefficients.
     pub const fn new(e23: Fixed, e31: Fixed, e12: Fixed) -> Self {
         Self { e23, e31, e12 }
     }
 
+    /// Computes the wedge product of two vectors.
     pub fn wedge(a: FixedVec3, b: FixedVec3) -> FixedBivector3 {
         FixedBivector3::new(
             a.y * b.z - a.z * b.y,
@@ -38,10 +44,12 @@ impl FixedBivector3 {
         )
     }
 
+    /// Returns the bivector's magnitude.
     pub fn length(self) -> Fixed {
         (self.e23 * self.e23 + self.e31 * self.e31 + self.e12 * self.e12).sqrt()
     }
 
+    /// Maps this rotation generator to a fixed-point rotor.
     pub fn exp(self) -> FixedRotor {
         let angle = self.length();
         if angle <= FIXED_EPSILON {

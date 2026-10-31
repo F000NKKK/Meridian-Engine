@@ -11,9 +11,14 @@ use super::{BivectorLike, MotorLike, RotorLike, ScalarLike, VectorLike};
 /// five component traits above) for a new scalar/vector/bivector/rotor/
 /// motor set.
 pub trait GaFlavor: Copy + Default + core::fmt::Debug + PartialEq + 'static {
+    /// Scalar coefficient type for this flavor.
     type Scalar: ScalarLike;
+    /// Three-dimensional vector type.
     type Vector: VectorLike<Scalar = Self::Scalar>;
+    /// Rotation-generator bivector type.
     type Bivector: BivectorLike<Scalar = Self::Scalar, Vector = Self::Vector, Rotor = Self::Rotor>;
+    /// Pure rotation type.
     type Rotor: RotorLike<Scalar = Self::Scalar, Vector = Self::Vector>;
+    /// Rigid rotation-and-translation type.
     type Motor: MotorLike<Scalar = Self::Scalar, Vector = Self::Vector, Rotor = Self::Rotor>;
 }

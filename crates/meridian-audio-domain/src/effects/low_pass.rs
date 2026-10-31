@@ -10,11 +10,13 @@ use super::DspNode;
 /// the piece is here.
 #[derive(Debug, Clone, Copy)]
 pub struct LowPassFilter {
+    /// Blend factor controlling the filter's cutoff.
     pub alpha: f32,
     state: f32,
 }
 
 impl LowPassFilter {
+    /// Creates a filter with an explicit blend factor.
     pub fn new(alpha: f32) -> Self {
         Self { alpha, state: 0.0 }
     }

@@ -26,6 +26,7 @@ impl std::fmt::Debug for DslRegistry {
 }
 
 impl DslRegistry {
+    /// Creates a registry with no tag builders.
     pub fn new() -> Self {
         Self::default()
     }

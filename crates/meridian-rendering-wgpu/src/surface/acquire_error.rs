@@ -9,10 +9,15 @@
 /// its own recovery path here yet.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AcquireFrameError {
+    /// The next frame did not arrive before the platform deadline.
     Timeout,
+    /// The surface is hidden or minimized.
     Occluded,
+    /// The surface configuration no longer matches the swapchain.
     Outdated,
+    /// The surface was lost and must be recreated.
     Lost,
+    /// The acquisition request failed validation.
     Validation,
 }
 

@@ -4,6 +4,7 @@ use meridian_numeric::Scalar;
 
 use crate::flavor::float::FloatFlavor;
 
+/// A camera projection using floating-point parameters.
 pub type Projection = super::Projection<FloatFlavor>;
 
 /// Column-major 4x4 matrix multiply (`lhs * rhs`, column-vector

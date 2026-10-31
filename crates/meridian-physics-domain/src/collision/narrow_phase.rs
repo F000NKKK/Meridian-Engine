@@ -16,6 +16,7 @@ impl<F: GaFlavor> Default for NarrowPhase<F> {
 }
 
 impl<F: GaFlavor> NarrowPhase<F> {
+    /// Creates a stateless narrow-phase collision detector.
     #[must_use]
     pub fn new() -> Self {
         Self::default()

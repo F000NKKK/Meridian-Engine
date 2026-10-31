@@ -8,7 +8,9 @@ use crate::Span;
 /// attached property (`Grid.Row`).
 #[derive(Debug, Clone, PartialEq)]
 pub struct Attribute {
+    /// Parsed attribute name, including any directive or owner.
     pub name: QualifiedName,
+    /// Plain text or parsed markup extension value.
     pub value: MarkupValue,
     /// Where the attribute's name starts.
     pub span: Span,

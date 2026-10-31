@@ -7,8 +7,11 @@ use meridian_gac::GaFlavor;
 /// `inverse_masses`.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Spring<F: GaFlavor> {
+    /// Index of the first attached particle.
     pub a: usize,
+    /// Index of the second attached particle.
     pub b: usize,
+    /// Unstretched distance between the particles.
     pub rest_length: F::Scalar,
     /// Hooke's-law spring constant: force magnitude per unit of
     /// (`current_length - rest_length`) stretch/compression.

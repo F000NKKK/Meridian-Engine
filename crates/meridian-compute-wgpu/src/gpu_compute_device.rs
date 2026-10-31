@@ -34,6 +34,7 @@ impl GpuComputeDevice {
         })
     }
 
+    /// Reports the CPU and GPU resources exposed by this backend.
     pub fn capabilities(&self) -> ComputeCapabilities {
         ComputeCapabilities {
             cpu: CpuCapabilities::detect(),
@@ -41,6 +42,7 @@ impl GpuComputeDevice {
         }
     }
 
+    /// Allocates a GPU buffer of `byte_len` bytes with `usage` flags.
     pub fn allocate_buffer(
         &self,
         byte_len: usize,
@@ -49,6 +51,7 @@ impl GpuComputeDevice {
         self.device.create_buffer(byte_len, usage)
     }
 
+    /// Uploads `data` to the start of `buffer`.
     pub fn write_buffer(&self, buffer: &meridian_gpu_wgpu::Buffer, data: &[u8]) {
         self.device.write_buffer(buffer, data);
     }
@@ -59,10 +62,12 @@ impl GpuComputeDevice {
         self.device.read_buffer(buffer).await
     }
 
+    /// Compiles WGSL source into a shader module.
     pub fn create_shader(&self, label: &str, wgsl_source: &str) -> meridian_gpu_wgpu::Shader {
         self.device.create_shader(label, wgsl_source)
     }
 
+    /// Creates a compute pipeline for `shader` and its `entry_point`.
     pub fn create_compute_pipeline(
         &self,
         shader: &meridian_gpu_wgpu::Shader,

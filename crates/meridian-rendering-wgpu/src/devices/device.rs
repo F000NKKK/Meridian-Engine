@@ -71,18 +71,22 @@ impl Device {
         self.0.adapter_name()
     }
 
+    /// Allocates a GPU buffer with the requested size and usage.
     pub fn create_buffer(&self, byte_len: usize, usage: BufferUsage) -> meridian_gpu_wgpu::Buffer {
         self.0.create_buffer(byte_len, usage)
     }
 
+    /// Uploads `data` to the start of `buffer`.
     pub fn write_buffer(&self, buffer: &meridian_gpu_wgpu::Buffer, data: &[u8]) {
         self.0.write_buffer(buffer, data);
     }
 
+    /// Reads the complete buffer back to CPU memory.
     pub async fn read_buffer(&self, buffer: &meridian_gpu_wgpu::Buffer) -> Vec<u8> {
         self.0.read_buffer(buffer).await
     }
 
+    /// Compiles WGSL source into a shader module.
     pub fn create_shader(&self, label: &str, wgsl_source: &str) -> meridian_gpu_wgpu::Shader {
         self.0.create_shader(label, wgsl_source)
     }

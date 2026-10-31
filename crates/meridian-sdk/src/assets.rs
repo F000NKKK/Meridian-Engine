@@ -70,15 +70,24 @@ pub fn load_image_asset(path: &str) -> ImageAsset {
 /// [`Repeat::Once`] track ends at the last sample (a sound effect).
 #[derive(Debug)]
 pub enum AudioTrack {
+    /// A fully decoded mono track stored in memory.
     Memory {
+        /// Mono samples in playback order.
         mono: Vec<f32>,
+        /// Index of the next sample to emit.
         cursor: usize,
+        /// Whether playback stops or wraps at the end.
         repeat: Repeat,
     },
+    /// A track decoded incrementally during playback.
     Streamed {
+        /// Decoder supplying subsequent compressed-track blocks.
         decoder: StreamingAudioDecoder,
+        /// Number of channels returned by the decoder.
         channels: usize,
+        /// Decoded samples waiting to be emitted.
         queue: VecDeque<f32>,
+        /// Whether playback stops or wraps at the end.
         repeat: Repeat,
     },
 }
@@ -258,6 +267,7 @@ pub struct AssetCache {
 }
 
 impl AssetCache {
+    /// Creates an empty asset cache.
     #[must_use]
     pub fn new() -> Self {
         Self::default()
@@ -277,17 +287,9 @@ impl AssetCache {
         handle
     }
 
-    /// Loads an OBJ model file at `path` through `asset-domain::ObjDecoder`
-    /// (positions + triangle indices only — see that decoder's own
-    /// module doc for the current "no `vt`/`vn` parsing" scope), derives
-    /// smooth per-vertex normals from the triangle topology (this
-    /// `rendering-domain`'s `smooth_normals`), and registers the
-    /// result as a real [`MeshHandle`] — cached by `path`, same as
-    /// [`load_texture`](Self::load_texture). UVs are `[0.0, 0.0]` for
-    /// every vertex until the decoder itself gains `vt` support; a
-    /// textured material still renders (uniformly sampling the
-    /// texture's corner), it just won't be UV-mapped correctly yet —
-    /// disclosed, not hidden.
+    /// Loads triangulated OBJ geometry with its UVs and normals. Missing
+    /// normals are derived from the triangle topology and missing UVs default
+    /// to zero. The registered [`MeshHandle`] is cached by `path`.
     pub fn load_mesh_obj(
         &mut self,
         meshes: &mut impl MeshStore,
@@ -300,8 +302,16 @@ impl AssetCache {
         let mesh_data = ObjDecoder
             .decode(&bytes)
             .map_err(|e| format!("failed to decode {path}: {e}"))?;
-        let normals = smooth_normals(&mesh_data.positions, &mesh_data.indices);
-        let uvs = vec![[0.0, 0.0]; mesh_data.positions.len()];
+        let normals = if mesh_data.normals.is_empty() {
+            smooth_normals(&mesh_data.positions, &mesh_data.indices)
+        } else {
+            mesh_data.normals
+        };
+        let uvs = if mesh_data.uvs.is_empty() {
+            vec![[0.0, 0.0]; mesh_data.positions.len()]
+        } else {
+            mesh_data.uvs
+        };
         let source = MeshSource {
             positions: mesh_data.positions,
             normals,

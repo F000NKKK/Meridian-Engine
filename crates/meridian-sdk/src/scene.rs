@@ -25,7 +25,9 @@ use crate::model_loading::{self, LoadedModel, ModelInstance};
 /// lives in [`crate::assets`].
 #[derive(Debug)]
 pub struct GraphicsSession {
+    /// GPU frame recorder and mesh/material registries.
     pub render: RenderSession<GpuFrameRecorder>,
+    /// Cache of decoded and uploaded assets.
     pub assets: AssetCache,
 }
 

@@ -5,5 +5,6 @@ pub trait NumericBackend {
     /// The batched representation this backend operates on.
     type Batch;
 
+    /// Returns the CPU features available to this backend.
     fn feature_flags(&self) -> meridian_diagnostics::FeatureFlags;
 }

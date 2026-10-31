@@ -12,6 +12,7 @@ use super::RigidBody;
 /// "add angle". Static bodies (`mass <= 0`) are untouched.
 #[derive(Debug, Clone, Copy)]
 pub struct Integrator<F: GaFlavor> {
+    /// Constant world-space gravitational acceleration.
     pub gravity: F::Vector,
 }
 
@@ -24,10 +25,12 @@ impl<F: GaFlavor> Default for Integrator<F> {
 }
 
 impl<F: GaFlavor> Integrator<F> {
+    /// Creates an integrator with constant `gravity`.
     pub fn new(gravity: F::Vector) -> Self {
         Self { gravity }
     }
 
+    /// Advances all dynamic bodies by `dt` seconds.
     pub fn step(&self, bodies: &mut [RigidBody<F>], dt: F::Scalar) {
         for body in bodies.iter_mut() {
             if body.inverse_mass() <= F::Scalar::ZERO {

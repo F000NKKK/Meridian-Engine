@@ -6,28 +6,42 @@ use std::fmt;
 use super::span::Span;
 use crate::MarkupValueErrorKind;
 
+/// A markup parsing failure and its source position.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ParseError {
+    /// The syntax rule that was violated.
     pub kind: ParseErrorKind,
+    /// Where the invalid input starts.
     pub span: Span,
 }
 
+/// The syntax rule violated by a markup document.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ParseErrorKind {
+    /// The parser expected the contained character.
     Expected(char),
+    /// The parser expected an identifier.
     ExpectedIdentifier,
+    /// A string literal reaches the end of input without a closing quote.
     UnterminatedString,
+    /// A string literal contains an unsupported escape sequence.
     InvalidEscape,
+    /// The input is not valid UTF-8.
     InvalidUtf8,
     /// A name with a prefix other than `x:`.
     UnknownPrefix(String),
     /// An element name with the `x:` prefix; directives are attributes.
     DirectiveElement(String),
+    /// An attribute occurs more than once on one element.
     DuplicateAttribute(String),
+    /// A closing tag does not match the open element.
     MismatchedClosingTag {
+        /// Name of the element that must be closed.
         expected: String,
+        /// Name found in the closing tag.
         found: String,
     },
+    /// An element is not closed before the end of input.
     UnterminatedElement(String),
     /// Content after the root element.
     TrailingContent,
@@ -35,15 +49,18 @@ pub enum ParseErrorKind {
     PropertyElementAtRoot(String),
     /// `<Owner.Property>` inside an element that is not `Owner`.
     PropertyElementOwner {
+        /// Full property element name.
         property: String,
+        /// Name of the enclosing element.
         parent: String,
     },
     /// A property element with attributes.
     PropertyElementAttributes(String),
-    /// An attribute value that starts like a markup extension but is
-    /// not one.
+    /// An attribute value that starts like a markup extension but is not one.
     Extension {
+        /// Attribute containing the malformed value.
         attribute: String,
+        /// Why the markup extension is invalid.
         error: MarkupValueErrorKind,
     },
 }

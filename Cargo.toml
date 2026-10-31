@@ -142,7 +142,7 @@ codegen-units = 1
 # counted in .clippy-backlog, which may only shrink. Lints raised back to
 # "deny" are the ones the tree already satisfies.
 [workspace.lints.rust]
-missing_docs = "warn" # backlog: deny in Craftbook
+missing_docs = "deny"
 missing_debug_implementations = "deny"
 unsafe_code = "deny"
 unreachable_pub = "warn"

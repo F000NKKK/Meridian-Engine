@@ -57,9 +57,9 @@ impl<'a> UiBindings<'a> {
         );
         code.line(ALLOW);
         code.line("#[derive(Debug, Clone, Copy, PartialEq, Eq)]");
-        code.line("pub struct Names {");
+        code.line("pub(crate) struct Names {");
         for named in &self.document.names {
-            code.line(format!("    pub {}: {UI}::NodeId,", named.field));
+            code.line(format!("    pub(crate) {}: {UI}::NodeId,", named.field));
         }
         code.line("}");
     }

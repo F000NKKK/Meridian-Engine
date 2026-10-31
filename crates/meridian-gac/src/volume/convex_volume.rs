@@ -10,6 +10,7 @@ use crate::flavor::GaFlavor;
 /// [`Plane::contains`], not a hardcoded shape list.
 #[derive(Debug, Clone)]
 pub struct ConvexVolume<F: GaFlavor> {
+    /// Half-spaces whose intersection forms this volume.
     pub planes: Vec<Plane<F>>,
 }
 
@@ -20,6 +21,7 @@ impl<F: GaFlavor> Default for ConvexVolume<F> {
 }
 
 impl<F: GaFlavor> ConvexVolume<F> {
+    /// Constructs the intersection of the supplied half-spaces.
     pub fn new(planes: Vec<Plane<F>>) -> Self {
         Self { planes }
     }

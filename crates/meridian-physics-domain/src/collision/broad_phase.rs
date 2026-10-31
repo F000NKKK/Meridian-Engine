@@ -62,6 +62,7 @@ impl<F: GaFlavor> Default for BroadPhase<F> {
 }
 
 impl<F: GaFlavor> BroadPhase<F> {
+    /// Creates an empty broad-phase collision detector.
     #[must_use]
     pub fn new() -> Self {
         Self::default()

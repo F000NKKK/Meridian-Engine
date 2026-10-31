@@ -23,10 +23,12 @@ impl Default for FixedMotor3 {
 }
 
 impl FixedMotor3 {
+    /// Returns the identity rigid motion.
     pub fn identity() -> Self {
         FixedMotor3(FixedMultivector::scalar(Fixed::ONE))
     }
 
+    /// Constructs a pure translation.
     pub fn translation(t: FixedVec3) -> Self {
         let mut m = [Fixed::ZERO; 16];
         m[blade::S] = Fixed::ONE;
@@ -37,10 +39,12 @@ impl FixedMotor3 {
         FixedMotor3(FixedMultivector(m))
     }
 
+    /// Constructs a rotation followed by a translation.
     pub fn from_rotation_translation(rotor: FixedRotor, t: FixedVec3) -> Self {
         FixedMotor3::translation(t).compose_raw(FixedMotor3(rotor.0))
     }
 
+    /// Applies this motion first and `rhs` second.
     pub fn compose(self, rhs: FixedMotor3) -> FixedMotor3 {
         FixedMotor3(rhs.0 * self.0)
     }
@@ -49,6 +53,7 @@ impl FixedMotor3 {
         FixedMotor3(self.0 * rhs.0)
     }
 
+    /// Returns the inverse rigid motion.
     pub fn inverse(self) -> FixedMotor3 {
         FixedMotor3(self.0.reverse())
     }

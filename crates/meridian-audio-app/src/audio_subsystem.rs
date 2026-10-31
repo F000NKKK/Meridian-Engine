@@ -9,12 +9,16 @@ use meridian_audio_domain::{Emitter, Listener, Mixer};
 /// [`AudioSubsystem::mix`]'s own doc comment.
 #[derive(Debug)]
 pub struct AudioSubsystem {
+    /// Listener used for the next spatial mix.
     pub listener: Listener,
+    /// Emitter frames paired with their source samples.
     pub emitters: Vec<(Emitter, f32)>,
+    /// Spatial gain mixer and output layout.
     pub mixer: Mixer,
 }
 
 impl AudioSubsystem {
+    /// Creates an empty audio scene around `mixer`.
     pub fn new(mixer: Mixer) -> Self {
         Self {
             listener: Listener::default(),

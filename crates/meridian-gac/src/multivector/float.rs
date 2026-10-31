@@ -12,8 +12,10 @@ use crate::blade;
 pub struct Multivector(pub [Scalar; 16]);
 
 impl Multivector {
+    /// The zero multivector.
     pub const ZERO: Multivector = Multivector([0.0; 16]);
 
+    /// Constructs a multivector containing only a scalar term.
     pub fn scalar(s: Scalar) -> Self {
         let mut m = [0.0; 16];
         m[blade::S] = s;

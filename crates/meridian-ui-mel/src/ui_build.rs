@@ -17,7 +17,7 @@ pub(crate) fn render_build_ui(code: &mut CodeWriter, path: &Path, root: &UiNode)
     );
     code.line(ALLOW);
     code.line(format!(
-        "pub fn build_ui(tree: &mut {UI}::UiTree) -> Result<({UI}::NodeId, Names), {UI}::UiError> {{"
+        "pub(crate) fn build_ui(tree: &mut {UI}::UiTree) -> Result<({UI}::NodeId, Names), {UI}::UiError> {{"
     ));
     let mut writer = NodeWriter {
         code,

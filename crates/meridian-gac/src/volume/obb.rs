@@ -12,7 +12,9 @@ use crate::flavor::{GaFlavor, MotorLike, ScalarLike, VectorLike};
 /// so a physics `RigidBody`'s own `frame` can be used here directly.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Obb<F: GaFlavor> {
+    /// Position and orientation of the box.
     pub frame: F::Motor,
+    /// Half the box's size along each local axis.
     pub half_extents: F::Vector,
 }
 

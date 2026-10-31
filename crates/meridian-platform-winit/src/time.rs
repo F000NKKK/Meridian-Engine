@@ -7,7 +7,9 @@ use std::time::Instant;
 /// previous frame took, and how long the clock has been running in total.
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct Time {
+    /// Wall-clock seconds elapsed since the previous frame.
     pub delta_seconds: f64,
+    /// Total seconds elapsed since the clock was created.
     pub total_seconds: f64,
 }
 
@@ -28,6 +30,7 @@ impl Default for Clock {
 }
 
 impl Clock {
+    /// Starts a monotonic clock at the current instant.
     pub fn new() -> Self {
         let now = Instant::now();
         Self {

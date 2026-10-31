@@ -7,10 +7,12 @@
 /// does (it holds flavor-typed vertex positions).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Face {
+    /// Ordered vertex indices around the polygon.
     pub indices: Vec<usize>,
 }
 
 impl Face {
+    /// Constructs a triangular face from three vertex indices.
     pub fn triangle(a: usize, b: usize, c: usize) -> Self {
         Self {
             indices: vec![a, b, c],

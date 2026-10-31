@@ -15,10 +15,12 @@ pub struct MeshRegistry {
 }
 
 impl MeshRegistry {
+    /// Creates an empty mesh registry.
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Validates and stores mesh geometry, returning its stable handle.
     pub fn register(&mut self, source: MeshSource) -> Result<MeshHandle, MeshRegistryError> {
         if !source.indices.len().is_multiple_of(3) {
             return Err(MeshRegistryError::NotATriangleList {
@@ -61,10 +63,12 @@ impl MeshRegistry {
         Ok(MeshHandle::new(self.sources.insert(source)))
     }
 
+    /// Removes and returns the mesh for `handle`, if still live.
     pub fn unregister(&mut self, handle: MeshHandle) -> Option<MeshSource> {
         self.sources.remove(handle.handle)
     }
 
+    /// Returns the mesh source for a live handle.
     pub fn get(&self, handle: MeshHandle) -> Option<&MeshSource> {
         self.sources.get(handle.handle)
     }

@@ -6,8 +6,11 @@
 /// concrete need shows up.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum VertexFormat {
+    /// Two 32-bit floating-point components.
     Float32x2,
+    /// Three 32-bit floating-point components.
     Float32x3,
+    /// Four 32-bit floating-point components.
     Float32x4,
 }
 

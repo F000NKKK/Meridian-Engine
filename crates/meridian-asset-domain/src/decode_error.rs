@@ -1,15 +1,23 @@
 //! Why bytes failed to decode.
 
+/// Why an asset's bytes could not be decoded.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DecodeError {
+    /// The input ended before a required structure was complete.
     TooShort {
+        /// Minimum byte count required by the decoder.
         needed: usize,
+        /// Actual input byte count.
         got: usize,
     },
+    /// The file signature does not match the expected format.
     BadMagic {
+        /// Expected file signature, shown in diagnostics.
         expected: &'static str,
     },
+    /// The input uses a feature this decoder does not implement.
     Unsupported(&'static str),
+    /// The input violates the format's structural rules.
     Malformed(&'static str),
     /// An external codec library rejected the data — the message is the
     /// library's own (dynamic) error text.

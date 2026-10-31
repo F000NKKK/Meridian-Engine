@@ -12,7 +12,7 @@ mod thumbnail;
 
 pub use binding::{
     AssetBinder, BuiltinAssets, GltfFolder, ModelPieces, TextureSlot, UnboundReference,
-    bind_material,
+    bind_material, bind_references,
 };
 pub use camera::EditorCamera;
 pub use error::EditorRendererError;

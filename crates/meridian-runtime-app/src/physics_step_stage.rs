@@ -10,6 +10,7 @@ use crate::{EventSystem, Shared, Stage};
 /// compute stepper of `meridian-physics-wgpu`. Same algorithm, a
 /// different dispatch shape; every stepper passes one contract suite.
 pub struct PhysicsStepStage {
+    /// Fixed simulation timestep in seconds.
     pub dt: f32,
     stepper: Box<dyn PhysicsStepper>,
     physics: Shared<PhysicsSubsystem>,

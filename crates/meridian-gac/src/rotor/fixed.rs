@@ -20,10 +20,12 @@ impl Default for FixedRotor {
 }
 
 impl FixedRotor {
+    /// Returns the identity rotation.
     pub fn identity() -> Self {
         FixedRotor(FixedMultivector::scalar(Fixed::ONE))
     }
 
+    /// Constructs a rotation around `axis` by `angle` radians.
     pub fn from_axis_angle(axis: FixedVec3, angle: Fixed) -> Self {
         let axis = axis.normalize();
         let half = angle * Fixed::from_num(0.5);
@@ -36,14 +38,17 @@ impl FixedRotor {
         FixedRotor(FixedMultivector(m))
     }
 
+    /// Applies this rotation first and `rhs` second.
     pub fn compose(self, rhs: FixedRotor) -> FixedRotor {
         FixedRotor(rhs.0 * self.0)
     }
 
+    /// Reverses this unit rotation.
     pub fn reverse(self) -> FixedRotor {
         FixedRotor(self.0.reverse())
     }
 
+    /// Rotates a direction vector.
     pub fn transform_vector(self, v: FixedVec3) -> FixedVec3 {
         let mut vm = [Fixed::ZERO; 16];
         vm[blade::E1] = v.x;

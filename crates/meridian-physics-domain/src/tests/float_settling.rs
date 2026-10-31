@@ -115,8 +115,6 @@ fn cuboid_settles_without_runaway_spin() {
     let solver = ConstraintSolver::new(0.0).with_friction(0.6);
     let mut broad = BroadPhase::new();
     let narrow = NarrowPhase::new();
-    let dt = 1.0 / 60.0;
-
     let mut max_angular_speed_after_landing: f32 = 0.0;
     let mut min_height_after_landing = f32::MAX;
     let mut max_height_after_landing = f32::MIN;

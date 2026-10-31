@@ -11,7 +11,9 @@ use crate::flavor::{GaFlavor, ScalarLike, VectorLike};
 /// every axis, not a separate type.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Aabb<F: GaFlavor> {
+    /// Minimum corner, inclusive on each axis.
     pub min: F::Vector,
+    /// Maximum corner, inclusive on each axis.
     pub max: F::Vector,
 }
 
@@ -25,6 +27,7 @@ impl<F: GaFlavor> Default for Aabb<F> {
 }
 
 impl<F: GaFlavor> Aabb<F> {
+    /// Constructs the smallest axis-aligned box containing a sphere.
     pub fn from_sphere(center: F::Vector, radius: F::Scalar) -> Self {
         let r = F::Vector::new(radius, radius, radius);
         Self {
@@ -38,6 +41,7 @@ impl<F: GaFlavor> Aabb<F> {
         Self::from_sphere(center, half_extent)
     }
 
+    /// Returns whether this box and `other` overlap on every axis.
     pub fn overlaps(&self, other: &Aabb<F>) -> bool {
         self.min.x() <= other.max.x()
             && self.max.x() >= other.min.x()

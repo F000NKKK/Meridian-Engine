@@ -11,10 +11,15 @@ use crate::collision::{ColliderShape, aabb_of};
 /// given any velocity change by [`ConstraintSolver`](crate::dynamics::ConstraintSolver).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct RigidBody<F: GaFlavor> {
+    /// Position and orientation of the body's center of mass.
     pub frame: F::Motor,
+    /// World-space linear velocity.
     pub velocity: F::Vector,
+    /// Angular velocity as a geometric-algebra bivector.
     pub angular_velocity: F::Bivector,
+    /// Mass in kilograms; zero or negative means static.
     pub mass: F::Scalar,
+    /// Collision geometry attached to the body's frame.
     pub shape: ColliderShape<F>,
 }
 
@@ -31,6 +36,7 @@ impl<F: GaFlavor> Default for RigidBody<F> {
 }
 
 impl<F: GaFlavor> RigidBody<F> {
+    /// Returns the reciprocal mass, or zero for a static body.
     pub fn inverse_mass(&self) -> F::Scalar {
         if self.mass > F::Scalar::ZERO {
             F::Scalar::ONE / self.mass
@@ -71,6 +77,7 @@ impl<F: GaFlavor> RigidBody<F> {
         }
     }
 
+    /// Returns reciprocal moment of inertia, or zero when it is immovable.
     pub fn inverse_inertia(&self) -> F::Scalar {
         let i = self.moment_of_inertia();
         if i > F::Scalar::ZERO {
@@ -80,6 +87,7 @@ impl<F: GaFlavor> RigidBody<F> {
         }
     }
 
+    /// Returns the body's world-space center of mass.
     pub fn position(&self) -> F::Vector {
         self.frame.transform_point(F::Vector::ZERO)
     }

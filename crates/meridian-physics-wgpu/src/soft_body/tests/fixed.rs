@@ -1,6 +1,8 @@
 //! Tests of the `Fixed` soft-body GPU kernel.
 
+#[cfg(feature = "hw-tests")]
 use meridian_compute_app::ComputeContext;
+#[cfg(feature = "hw-tests")]
 use meridian_compute_wgpu::gpu_context;
 use meridian_gac::volume::Plane;
 use meridian_gac::{FixedFlavor, FixedVec3};
@@ -11,6 +13,7 @@ use meridian_physics_domain::soft_body::fixed::{
 };
 
 use crate::soft_body::csr::{Adjacency, build_adjacency};
+#[cfg(feature = "hw-tests")]
 use crate::soft_body::fixed::FixedSoftBodyGpuKernel;
 
 pub(super) fn fv3(x: f64, y: f64, z: f64) -> FixedVec3 {

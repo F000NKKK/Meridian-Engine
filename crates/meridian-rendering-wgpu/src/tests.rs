@@ -1,4 +1,5 @@
 //! Tests of this module.
+#![cfg(feature = "hw-tests")]
 
 use meridian_platform_winit::BackendCapabilities;
 

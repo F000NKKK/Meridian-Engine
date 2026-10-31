@@ -29,10 +29,15 @@ use std::time::Instant;
 /// Log severity, most severe first.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum LogLevel {
+    /// A failure that prevents an operation from completing.
     Error = 0,
+    /// A recoverable problem or suspicious condition.
     Warn = 1,
+    /// A normal operational message.
     Info = 2,
+    /// Diagnostic detail useful while debugging.
     Debug = 3,
+    /// Fine-grained execution tracing.
     Trace = 4,
 }
 
@@ -161,6 +166,7 @@ pub fn recent_lines() -> Vec<String> {
     }
 }
 
+/// Logs an error message with the calling module as its target.
 #[macro_export]
 macro_rules! log_error {
     ($($arg:tt)*) => {
@@ -168,6 +174,7 @@ macro_rules! log_error {
     };
 }
 
+/// Logs a warning with the calling module as its target.
 #[macro_export]
 macro_rules! log_warn {
     ($($arg:tt)*) => {
@@ -175,6 +182,7 @@ macro_rules! log_warn {
     };
 }
 
+/// Logs an informational message with the calling module as its target.
 #[macro_export]
 macro_rules! log_info {
     ($($arg:tt)*) => {
@@ -182,6 +190,7 @@ macro_rules! log_info {
     };
 }
 
+/// Logs a debug message with the calling module as its target.
 #[macro_export]
 macro_rules! log_debug {
     ($($arg:tt)*) => {
@@ -189,6 +198,7 @@ macro_rules! log_debug {
     };
 }
 
+/// Logs a trace message with the calling module as its target.
 #[macro_export]
 macro_rules! log_trace {
     ($($arg:tt)*) => {

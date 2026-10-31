@@ -11,15 +11,18 @@ pub struct RenderPass<'pass> {
 }
 
 impl RenderPass<'_> {
+    /// Selects the pipeline used by subsequent draw calls.
     pub fn set_pipeline(&mut self, pipeline: &RenderPipeline) {
         self.raw.set_pipeline(&pipeline.raw);
     }
 
+    /// Binds a resource group at `group_index`.
     pub fn set_bind_group(&mut self, group_index: u32, bind_group: &meridian_gpu_wgpu::BindGroup) {
         self.raw
             .set_bind_group(group_index, bind_group.wgpu_bind_group(), &[]);
     }
 
+    /// Binds a vertex buffer at `slot`.
     pub fn set_vertex_buffer(&mut self, slot: u32, buffer: &meridian_gpu_wgpu::Buffer) {
         self.raw
             .set_vertex_buffer(slot, buffer.wgpu_buffer().slice(..));
@@ -51,10 +54,12 @@ impl RenderPass<'_> {
             .set_viewport(x as f32, y as f32, width as f32, height as f32, 0.0, 1.0);
     }
 
+    /// Draws one instance from a range of vertex indices.
     pub fn draw(&mut self, vertices: core::ops::Range<u32>) {
         self.raw.draw(vertices, 0..1);
     }
 
+    /// Draws one instance using the current index buffer.
     pub fn draw_indexed(&mut self, indices: core::ops::Range<u32>) {
         self.draw_indexed_instanced(indices, 0..1);
     }

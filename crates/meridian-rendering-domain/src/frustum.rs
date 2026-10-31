@@ -18,6 +18,7 @@ pub struct Frustum {
 }
 
 impl Frustum {
+    /// Extracts six clipping planes from a view-projection matrix.
     pub fn from_view_projection(m: [[f32; 4]; 4]) -> Self {
         // Row i of a column-major matrix m[col][row]: coefficients that,
         // dotted with (x, y, z, 1), produce clip-space's i-th component.

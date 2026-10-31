@@ -11,11 +11,14 @@ const STACK_CHANNELS: usize = 16;
 /// pair given to [`Mixer::mix`].
 #[derive(Debug, Clone)]
 pub struct Mixer {
+    /// Output speakers used for spatial mixing.
     pub layout: SpeakerLayout,
+    /// Distance attenuation applied to each source.
     pub attenuation: AttenuationModel,
 }
 
 impl Mixer {
+    /// Creates a mixer with default attenuation.
     pub fn new(layout: SpeakerLayout) -> Self {
         Self {
             layout,
@@ -23,6 +26,7 @@ impl Mixer {
         }
     }
 
+    /// Sets the distance attenuation model.
     pub fn with_attenuation(mut self, attenuation: AttenuationModel) -> Self {
         self.attenuation = attenuation;
         self

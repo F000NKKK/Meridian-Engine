@@ -8,8 +8,16 @@ use meridian_gac::{GaFlavor, ScalarLike};
 /// [`ColliderMeshHandle`](crate::collision::ColliderMeshHandle)) are additive later.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ColliderShape<F: GaFlavor> {
-    Sphere { radius: F::Scalar },
-    Cuboid { half_extents: F::Vector },
+    /// A sphere centered on the body's origin.
+    Sphere {
+        /// Radius in world units.
+        radius: F::Scalar,
+    },
+    /// A box centered on and oriented by the body's frame.
+    Cuboid {
+        /// Half the box's size along each local axis.
+        half_extents: F::Vector,
+    },
 }
 
 impl<F: GaFlavor> Default for ColliderShape<F> {

@@ -58,11 +58,15 @@ pub struct Adjacency<F: GaFlavor> {
     /// Each entry is [`encode_neighbor`]'s output — decode with
     /// [`decode_neighbor`], not a raw index.
     pub neighbor: Vec<u32>,
+    /// Rest length for each half-edge's spring.
     pub rest_length: Vec<F::Scalar>,
+    /// Hooke's-law stiffness for each half-edge's spring.
     pub stiffness: Vec<F::Scalar>,
+    /// Velocity damping for each half-edge's spring.
     pub damping: Vec<F::Scalar>,
 }
 
+/// Builds compressed sparse row adjacency for a soft body's springs.
 pub fn build_adjacency<F: GaFlavor>(body: &SoftBody<F>) -> Adjacency<F> {
     let particle_count = body.particle_count();
     let mut degree = vec![0u32; particle_count];

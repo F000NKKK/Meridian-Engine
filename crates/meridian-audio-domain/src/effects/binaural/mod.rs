@@ -145,13 +145,17 @@ impl BinauralSourceState {
 #[derive(Debug)]
 pub struct BinauralRenderer {
     sample_rate: u32,
+    /// Distance-based source attenuation.
     pub attenuation: AttenuationModel,
+    /// Air or other medium through which sound propagates.
     pub medium: AcousticMedium,
+    /// Listener geometry and binaural filtering parameters.
     pub config: BinauralConfig,
     sources: Vec<BinauralSourceState>,
 }
 
 impl BinauralRenderer {
+    /// Creates a renderer for audio sampled at `sample_rate` hertz.
     pub fn new(sample_rate: u32) -> Self {
         Self {
             sample_rate,
@@ -162,6 +166,7 @@ impl BinauralRenderer {
         }
     }
 
+    /// Sets the distance attenuation model.
     pub fn with_attenuation(mut self, attenuation: AttenuationModel) -> Self {
         self.attenuation = attenuation;
         self
@@ -175,6 +180,7 @@ impl BinauralRenderer {
         self
     }
 
+    /// Sets listener geometry and filtering parameters.
     pub fn with_config(mut self, config: BinauralConfig) -> Self {
         self.config = config;
         self.sources.clear();

@@ -108,6 +108,7 @@ where
     F::Rotor: Send + Sync,
     F::Motor: Send + Sync,
 {
+    /// Creates a batched solver over `bodies` and their contact manifolds.
     pub fn new(
         solver: ConstraintSolver<F>,
         bodies: Vec<RigidBody<F>>,

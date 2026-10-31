@@ -31,10 +31,12 @@ impl ComputeScheduler {
         }
     }
 
+    /// Returns the execution context and its parallel-dispatch policy.
     pub fn context(&self) -> &ComputeContext {
         &self.context
     }
 
+    /// Runs `kernel` over `size` work items.
     pub fn run<K: ComputeKernel>(&self, kernel: &K, size: DispatchSize) {
         kernel.dispatch(&self.context, size);
     }

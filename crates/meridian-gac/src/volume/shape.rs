@@ -11,6 +11,7 @@ use crate::flavor::GaFlavor;
 /// free just by implementing this one method — no double-dispatch, no
 /// shape x shape combinatorial explosion.
 pub trait Shape<F: GaFlavor> {
+    /// Returns the shape's farthest point along `direction`.
     fn support(&self, direction: F::Vector) -> F::Vector;
 }
 

@@ -7,7 +7,10 @@ use crate::VertexFormat;
 /// byte offset within one vertex.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct VertexAttributeDesc {
+    /// Shader input location for this attribute.
     pub location: u32,
+    /// Component count and scalar representation.
     pub format: VertexFormat,
+    /// Byte offset from the start of one vertex.
     pub offset: u64,
 }

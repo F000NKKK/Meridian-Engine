@@ -11,6 +11,7 @@ pub trait DslTag: Sized + 'static {
     /// exactly against the text of [`crate::Element::name`], case-sensitively.
     const TAG_NAME: &'static str;
 
+    /// Builds this value from the source element's attributes.
     fn from_attrs(attrs: &[Attribute]) -> Result<Self, TagParseError>;
 }
 

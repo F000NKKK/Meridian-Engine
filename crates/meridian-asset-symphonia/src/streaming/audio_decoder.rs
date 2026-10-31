@@ -24,6 +24,7 @@ pub struct StreamingAudioDecoder {
 }
 
 impl StreamingAudioDecoder {
+    /// Opens an audio stream, decoding at most `block_frames` per block.
     pub fn new(bytes: &[u8], block_frames: usize) -> Result<Self, DecodeError> {
         Self::from_shared(Arc::from(bytes), block_frames)
     }

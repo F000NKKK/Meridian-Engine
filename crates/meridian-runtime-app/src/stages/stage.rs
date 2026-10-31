@@ -8,6 +8,7 @@
 /// frames (e.g. a `BinauralRenderer`'s delay lines, or a `ComputeStage`'s
 /// `ComputeScheduler`).
 pub trait Stage: Send {
+    /// Runs this stage once.
     fn run(&mut self);
 
     /// Called by [`Runtime::resize_all`](crate::Runtime::resize_all) when

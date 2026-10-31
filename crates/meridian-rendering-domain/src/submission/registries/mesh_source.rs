@@ -14,11 +14,14 @@ use crate::{MeshMorph, VertexSkin};
 /// [`MeshRegistry::register`](crate::submission::MeshRegistry::register)).
 #[derive(Debug, Clone)]
 pub struct MeshSource {
+    /// Vertex positions in model space.
     pub positions: Vec<[f32; 3]>,
+    /// One surface normal per vertex.
     pub normals: Vec<[f32; 3]>,
     /// Texture coordinates: U right, V down in a top-to-bottom image.
     /// World direction is determined by mesh mapping; values may tile beyond [0, 1].
     pub uvs: Vec<[f32; 2]>,
+    /// Triangle indices into the vertex arrays.
     pub indices: Vec<u32>,
     /// The joints and weights that move each vertex, for a skinned mesh
     /// (ADR 047); its positions and normals are the bind pose.

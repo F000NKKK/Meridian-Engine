@@ -14,10 +14,21 @@ fn obj_decodes_a_triangle() {
 }
 
 #[test]
-fn obj_ignores_texture_and_normal_index_suffixes() {
-    let text = "v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1/1/1 2/2/2 3/3/3\n";
+fn obj_decodes_texture_coordinates_and_normals() {
+    let text = "v 0 0 0\nv 1 0 0\nv 0 1 0\nvt 0 0\nvt 1 0\nvt 0 1\nvn 0 0 1\nf 1/1/1 2/2/1 3/3/1\n";
     let mesh = ObjDecoder.decode(text.as_bytes()).unwrap();
     assert_eq!(mesh.indices, vec![0, 1, 2]);
+    assert_eq!(mesh.uvs, vec![[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]]);
+    assert_eq!(mesh.normals, vec![[0.0, 0.0, 1.0]; 3]);
+}
+
+#[test]
+fn obj_splits_a_position_when_its_uv_changes() {
+    let text = "v 0 0 0\nv 1 0 0\nv 0 1 0\nvt 0 0\nvt 1 0\nvt 0 1\nvt 1 1\nf 1/1 2/2 3/3\nf 1/4 3/3 2/2\n";
+    let mesh = ObjDecoder.decode(text.as_bytes()).unwrap();
+    assert_eq!(mesh.positions.len(), 4);
+    assert_eq!(mesh.indices, vec![0, 1, 2, 3, 2, 1]);
+    assert_eq!(mesh.uvs[3], [1.0, 1.0]);
 }
 
 #[test]

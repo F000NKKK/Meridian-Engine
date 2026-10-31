@@ -1,4 +1,5 @@
 //! Tests of this module.
+#![cfg(feature = "hw-tests")]
 
 use meridian_compute_app::ComputeContext;
 use meridian_compute_wgpu::gpu_context;

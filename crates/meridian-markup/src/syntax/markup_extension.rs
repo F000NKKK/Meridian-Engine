@@ -8,8 +8,11 @@ use super::qualified_name::{QualifiedName, is_identifier};
 /// first, as in XAML; argument text is trimmed.
 #[derive(Debug, Clone, PartialEq)]
 pub struct MarkupExtension {
+    /// Name of the markup extension.
     pub name: QualifiedName,
+    /// Positional arguments in source order.
     pub positional: Vec<MarkupValue>,
+    /// Named arguments and their values in source order.
     pub named: Vec<(QualifiedName, MarkupValue)>,
 }
 

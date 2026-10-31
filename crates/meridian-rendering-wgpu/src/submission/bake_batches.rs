@@ -198,7 +198,7 @@ fn draw_kind(
     device: &Device,
     renderer: &SceneRenderer,
     assets: &SceneAssets<'_>,
-    lead: &Resolved<'_>,
+    lead: &Resolved,
     groups: &mut BindGroupCache,
 ) -> DrawKind {
     if !lead.maps.any() {

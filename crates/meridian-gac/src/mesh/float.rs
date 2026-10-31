@@ -2,6 +2,7 @@
 
 use crate::flavor::float::FloatFlavor;
 
+/// An indexed polygon mesh with floating-point vertex coordinates.
 pub type Mesh = super::Mesh<FloatFlavor>;
 
 /// See [`super::icosphere`].

@@ -10,9 +10,13 @@ const MAX_PITCH: f32 = 1.5;
 /// `pitch` lifts it above the horizon (radians, +Y up).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct EditorCamera {
+    /// World-space point around which the camera orbits.
     pub target: [f32; 3],
+    /// Horizontal orbit angle in radians.
     pub yaw: f32,
+    /// Vertical orbit angle in radians.
     pub pitch: f32,
+    /// Distance from the eye to `target`.
     pub distance: f32,
     /// Vertical field of view, radians.
     pub fov_y: f32,

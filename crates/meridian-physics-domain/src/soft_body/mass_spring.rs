@@ -13,13 +13,18 @@ use super::spring::Spring;
 /// [`crate::dynamics::RigidBody::inverse_mass`] uses.
 #[derive(Debug, Clone)]
 pub struct SoftBody<F: GaFlavor> {
+    /// Current world-space particle positions.
     pub positions: Vec<F::Vector>,
+    /// Current particle velocities.
     pub velocities: Vec<F::Vector>,
+    /// Inverse mass per particle; zero pins a particle.
     pub inverse_masses: Vec<F::Scalar>,
+    /// Springs connecting particles by index.
     pub springs: Vec<Spring<F>>,
 }
 
 impl<F: GaFlavor> SoftBody<F> {
+    /// Returns the number of particles in the body.
     #[must_use]
     pub fn particle_count(&self) -> usize {
         self.positions.len()

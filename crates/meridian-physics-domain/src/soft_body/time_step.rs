@@ -15,7 +15,9 @@ fn axis_x<F: GaFlavor>() -> F::Vector {
 /// for why this doesn't reuse the rigid-body engine's collision types.
 #[derive(Debug, Clone, Copy)]
 pub struct SoftBodyIntegrator<F: GaFlavor> {
+    /// Constant acceleration applied to every unpinned particle.
     pub gravity: F::Vector,
+    /// Ground half-space used for particle collisions.
     pub ground: Plane<F>,
     /// `0` = fully inelastic (a particle stops dead at the ground), `1`
     /// = fully elastic (no speed lost bouncing off the ground) — same
@@ -24,6 +26,7 @@ pub struct SoftBodyIntegrator<F: GaFlavor> {
 }
 
 impl<F: GaFlavor> SoftBodyIntegrator<F> {
+    /// Creates an integrator with gravity, a ground plane and restitution.
     pub fn new(gravity: F::Vector, ground: Plane<F>, restitution: F::Scalar) -> Self {
         Self {
             gravity,
@@ -32,6 +35,7 @@ impl<F: GaFlavor> SoftBodyIntegrator<F> {
         }
     }
 
+    /// Advances all particles by `dt` seconds.
     pub fn step(&self, body: &mut SoftBody<F>, dt: F::Scalar) {
         let forces = spring_forces(body);
         for (i, &force) in forces.iter().enumerate() {

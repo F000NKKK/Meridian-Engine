@@ -8,9 +8,13 @@ use crate::flavor::{GaFlavor, ScalarLike, VectorLike};
 /// the axis and the cone's slanted surface.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Cone<F: GaFlavor> {
+    /// Tip of the cone.
     pub apex: F::Vector,
+    /// Unit direction from the apex toward the base.
     pub axis: F::Vector,
+    /// Angle in radians between the axis and slanted surface.
     pub half_angle: F::Scalar,
+    /// Distance from the apex to the base along `axis`.
     pub height: F::Scalar,
 }
 

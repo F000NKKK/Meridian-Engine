@@ -4,5 +4,6 @@
 /// `rendering-wgpu` shader module is that crate's job, not this one's.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct ShaderSource {
+    /// UTF-8 shader program text.
     pub source: String,
 }

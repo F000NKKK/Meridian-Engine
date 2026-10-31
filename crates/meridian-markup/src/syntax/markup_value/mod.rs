@@ -16,7 +16,9 @@ use super::markup_extension::MarkupExtension;
 /// One attribute value or extension argument.
 #[derive(Debug, Clone, PartialEq)]
 pub enum MarkupValue {
+    /// Literal text without markup-extension semantics.
     Text(String),
+    /// A parsed extension inside braces.
     Extension(MarkupExtension),
 }
 
@@ -25,10 +27,13 @@ pub enum MarkupValue {
 /// was given.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MarkupValueError {
+    /// The markup-extension rule that was violated.
     pub kind: MarkupValueErrorKind,
+    /// Zero-based byte offset of the problem within the value.
     pub offset: usize,
 }
 
+/// Why a markup-extension value is malformed.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MarkupValueErrorKind {
     /// No closing `}`, or a `(`/`[`/`{`/`'` left open inside it.

@@ -19,7 +19,9 @@ use crate::flavor::GaFlavor;
 /// over scalar flavor the way everything else in this module is.
 #[derive(Debug, Clone)]
 pub struct Mesh<F: GaFlavor> {
+    /// Vertex positions in model space.
     pub vertices: Vec<F::Vector>,
+    /// Polygon faces indexing into `vertices`.
     pub faces: Vec<Face>,
 }
 

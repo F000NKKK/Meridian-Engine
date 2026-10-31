@@ -35,6 +35,7 @@ impl Default for World {
 }
 
 impl World {
+    /// Creates an empty entity world.
     #[must_use]
     pub fn new() -> Self {
         Self::default()
@@ -110,6 +111,7 @@ impl World {
         idx
     }
 
+    /// Allocates a live entity with no components.
     pub fn spawn(&mut self) -> Entity {
         let entity: Entity = self.entities.insert(()).into();
         let archetype = self.archetype_for(Vec::new(), None, None);
@@ -125,6 +127,7 @@ impl World {
         self.locations.keys().copied()
     }
 
+    /// Returns whether `entity` is currently alive in this world.
     #[must_use]
     pub fn is_alive(&self, entity: Entity) -> bool {
         self.locations.contains_key(&entity)
@@ -147,6 +150,7 @@ impl World {
         }
     }
 
+    /// Removes an entity and all its components; returns whether it was alive.
     pub fn despawn(&mut self, entity: Entity) -> bool {
         let Some(loc) = self.locations.remove(&entity) else {
             return false;
@@ -301,6 +305,7 @@ impl World {
         Some(removed)
     }
 
+    /// Returns entity's shared `T` component when present.
     #[must_use]
     pub fn get<T: Component>(&self, entity: Entity) -> Option<&T> {
         let loc = self.locations.get(&entity)?;
@@ -310,6 +315,7 @@ impl World {
         col.as_any().downcast_ref::<Column<T>>()?.0.get(loc.row)
     }
 
+    /// Returns entity's mutable `T` component and marks it changed.
     pub fn get_mut<T: Component>(&mut self, entity: Entity) -> Option<&mut T> {
         let loc = *self.locations.get(&entity)?;
         let now = self.tick;
@@ -334,6 +340,7 @@ impl World {
         Some(&self.archetypes[loc.archetype].type_ids)
     }
 
+    /// Returns whether `entity` has a component of type `T`.
     #[must_use]
     pub fn contains<T: Component>(&self, entity: Entity) -> bool {
         self.get::<T>(entity).is_some()

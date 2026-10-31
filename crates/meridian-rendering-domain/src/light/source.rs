@@ -8,6 +8,7 @@ use super::LightKind;
 /// entity's own transform, [`extract_lights`](crate::extract_lights) turns it into a [`Light`](crate::Light).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct LightSource {
+    /// Directional, point, or spot light form.
     pub kind: LightKind,
     /// Linear RGB.
     pub color: [f32; 3],

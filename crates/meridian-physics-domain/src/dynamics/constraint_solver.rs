@@ -74,11 +74,13 @@ impl<F: GaFlavor> ConstraintSolver<F> {
         }
     }
 
+    /// Sets the Coulomb friction coefficient.
     pub fn with_friction(mut self, friction: F::Scalar) -> Self {
         self.friction = friction;
         self
     }
 
+    /// Sets the impact speed below which restitution is suppressed.
     pub fn with_restitution_velocity_threshold(mut self, threshold: F::Scalar) -> Self {
         self.restitution_velocity_threshold = threshold;
         self

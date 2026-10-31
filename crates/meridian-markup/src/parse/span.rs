@@ -9,8 +9,11 @@ use std::fmt;
 /// for non-ASCII text.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Span {
+    /// Zero-based byte offset in the source document.
     pub offset: usize,
+    /// One-based source line.
     pub line: u32,
+    /// One-based character column.
     pub column: u32,
 }
 

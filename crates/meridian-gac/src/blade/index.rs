@@ -8,19 +8,35 @@
 /// all — so they live once here, shared by both
 /// [`crate::Multivector`] and [`crate::FixedMultivector`], rather than
 /// being copied into each.
+/// Scalar blade index.
 pub const S: usize = 0b0000;
+/// Basis blade `e0`.
 pub const E0: usize = 0b0001;
+/// Basis blade `e1`.
 pub const E1: usize = 0b0010;
+/// Basis blade `e2`.
 pub const E2: usize = 0b0100;
+/// Basis blade `e3`.
 pub const E3: usize = 0b1000;
+/// Basis blade `e0 ∧ e1`.
 pub const E01: usize = 0b0011;
+/// Basis blade `e0 ∧ e2`.
 pub const E02: usize = 0b0101;
+/// Basis blade `e0 ∧ e3`.
 pub const E03: usize = 0b1001;
+/// Basis blade `e1 ∧ e2`.
 pub const E12: usize = 0b0110;
+/// Basis blade `e1 ∧ e3`.
 pub const E13: usize = 0b1010;
+/// Basis blade `e2 ∧ e3`.
 pub const E23: usize = 0b1100;
+/// Basis blade `e0 ∧ e1 ∧ e2`.
 pub const E012: usize = 0b0111;
+/// Basis blade `e0 ∧ e1 ∧ e3`.
 pub const E013: usize = 0b1011;
+/// Basis blade `e0 ∧ e2 ∧ e3`.
 pub const E023: usize = 0b1101;
+/// Basis blade `e1 ∧ e2 ∧ e3`.
 pub const E123: usize = 0b1110;
+/// Four-blade pseudoscalar index.
 pub const E0123: usize = 0b1111;

@@ -40,8 +40,11 @@ pub struct Fixed(i32);
 impl Fixed {
     const FRAC_BITS: u32 = 16;
 
+    /// The fixed-point representation of zero.
     pub const ZERO: Fixed = Fixed(0);
+    /// The fixed-point representation of one.
     pub const ONE: Fixed = Fixed(1 << Self::FRAC_BITS);
+    /// The largest representable Q16.16 value.
     pub const MAX: Fixed = Fixed(i32::MAX);
 
     /// Constructs a `Fixed` directly from its raw Q16.16 bit pattern.
@@ -70,22 +73,27 @@ impl Fixed {
         self.0 as f64 / (1i64 << Self::FRAC_BITS) as f64
     }
 
+    /// Returns pi in Q16.16 form.
     pub fn pi() -> Fixed {
         Fixed::from_num(core::f64::consts::PI)
     }
 
+    /// Returns pi divided by two in Q16.16 form.
     pub fn half_pi() -> Fixed {
         Fixed::from_num(core::f64::consts::FRAC_PI_2)
     }
 
+    /// Returns two pi in Q16.16 form.
     pub fn two_pi() -> Fixed {
         Fixed::from_num(core::f64::consts::TAU)
     }
 
+    /// Returns the absolute value.
     pub fn abs(self) -> Self {
         Fixed(self.0.abs())
     }
 
+    /// Returns minus one, zero, or one according to this value's sign.
     pub fn signum(self) -> Self {
         match self.0.cmp(&0) {
             core::cmp::Ordering::Greater => Fixed::ONE,
@@ -94,14 +102,17 @@ impl Fixed {
         }
     }
 
+    /// Returns the smaller of this value and `other`.
     pub fn min(self, other: Self) -> Self {
         if self.0 < other.0 { self } else { other }
     }
 
+    /// Returns the larger of this value and `other`.
     pub fn max(self, other: Self) -> Self {
         if self.0 > other.0 { self } else { other }
     }
 
+    /// Restricts this value to the inclusive range `lo..=hi`.
     pub fn clamp(self, lo: Self, hi: Self) -> Self {
         self.max(lo).min(hi)
     }
@@ -145,10 +156,12 @@ impl Fixed {
         }
     }
 
+    /// Returns the sine of this angle in radians.
     pub fn sin(self) -> Fixed {
         self.sin_cos().0
     }
 
+    /// Returns the cosine of this angle in radians.
     pub fn cos(self) -> Fixed {
         self.sin_cos().1
     }

@@ -15,8 +15,11 @@ use crate::Span;
 /// its owner is the enclosing element and that it has no attributes.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Element {
+    /// Parsed element name.
     pub name: QualifiedName,
+    /// Attributes in source order.
     pub attrs: Vec<Attribute>,
+    /// Child elements in source order.
     pub children: Vec<Element>,
     /// Where the element's `<` is.
     pub span: Span,

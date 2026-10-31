@@ -11,16 +11,34 @@ pub enum MeshRegistryError {
         vertex_count: usize,
     },
     /// `indices.len()` isn't a multiple of 3 — not a triangle list.
-    NotATriangleList { index_count: usize },
+    NotATriangleList {
+        /// Number of supplied indices.
+        index_count: usize,
+    },
     /// `uvs.len()` doesn't match `positions.len()` — every vertex needs
     /// exactly one UV, even on meshes only ever drawn unlit/untextured
     /// (the registry doesn't know a mesh's eventual material up front).
-    UvCountMismatch { positions: usize, uvs: usize },
+    UvCountMismatch {
+        /// Number of vertex positions.
+        positions: usize,
+        /// Number of texture coordinate pairs.
+        uvs: usize,
+    },
     /// `normals.len()` doesn't match `positions.len()`.
-    NormalCountMismatch { positions: usize, normals: usize },
+    NormalCountMismatch {
+        /// Number of vertex positions.
+        positions: usize,
+        /// Number of vertex normals.
+        normals: usize,
+    },
     /// The skin does not give every vertex exactly one set of joints and
     /// weights.
-    SkinCountMismatch { positions: usize, skinned: usize },
+    SkinCountMismatch {
+        /// Number of vertex positions.
+        positions: usize,
+        /// Number of supplied skin entries.
+        skinned: usize,
+    },
     /// A morph target does not give every vertex exactly one position
     /// offset (and, when it has normal offsets, one of those too).
     MorphCountMismatch {

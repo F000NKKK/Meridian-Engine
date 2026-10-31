@@ -11,6 +11,7 @@ pub struct SurfaceFrame {
 }
 
 impl SurfaceFrame {
+    /// Returns the texture view used as this frame's render target.
     pub fn view(&self) -> &wgpu::TextureView {
         &self.view
     }

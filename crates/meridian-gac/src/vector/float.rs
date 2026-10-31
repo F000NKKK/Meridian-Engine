@@ -14,41 +14,51 @@ use crate::volume::Shape;
 /// are the machinery underneath, not the day-to-day API.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Vec3 {
+    /// X coordinate.
     pub x: Scalar,
+    /// Y coordinate.
     pub y: Scalar,
+    /// Z coordinate.
     pub z: Scalar,
 }
 
 impl Vec3 {
+    /// The zero vector.
     pub const ZERO: Vec3 = Vec3 {
         x: 0.0,
         y: 0.0,
         z: 0.0,
     };
+    /// The unit X axis.
     pub const X: Vec3 = Vec3 {
         x: 1.0,
         y: 0.0,
         z: 0.0,
     };
+    /// The unit Y axis.
     pub const Y: Vec3 = Vec3 {
         x: 0.0,
         y: 1.0,
         z: 0.0,
     };
+    /// The unit Z axis.
     pub const Z: Vec3 = Vec3 {
         x: 0.0,
         y: 0.0,
         z: 1.0,
     };
 
+    /// Constructs a vector from its coordinates.
     pub const fn new(x: Scalar, y: Scalar, z: Scalar) -> Self {
         Self { x, y, z }
     }
 
+    /// Computes the dot product with `rhs`.
     pub fn dot(self, rhs: Vec3) -> Scalar {
         self.x * rhs.x + self.y * rhs.y + self.z * rhs.z
     }
 
+    /// Computes the cross product with `rhs`.
     pub fn cross(self, rhs: Vec3) -> Vec3 {
         Vec3::new(
             self.y * rhs.z - self.z * rhs.y,
@@ -57,10 +67,12 @@ impl Vec3 {
         )
     }
 
+    /// Returns the squared Euclidean length.
     pub fn length_squared(self) -> Scalar {
         self.dot(self)
     }
 
+    /// Returns the Euclidean length.
     pub fn length(self) -> Scalar {
         self.length_squared().sqrt()
     }

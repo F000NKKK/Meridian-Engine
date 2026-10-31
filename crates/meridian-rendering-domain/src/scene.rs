@@ -20,13 +20,16 @@ use crate::{Frustum, JointPalette, MeshHandle, MorphWeights, TextureHandle};
 /// Typed identity for a material — see the module doc's handle note.
 #[derive(Debug)]
 pub struct MaterialMarker;
+/// Generational resource identifier for a material.
 pub type MaterialHandle = ResourceId<MaterialMarker>;
 
 /// How a [`Material`] composites with what's already drawn.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum BlendMode {
+    /// Replaces the destination without transparency.
     #[default]
     Opaque,
+    /// Blends source and destination using source alpha.
     AlphaBlend,
 }
 
@@ -69,6 +72,7 @@ pub struct Material {
     /// Draws after everything else, ignoring depth — the other half of
     /// world-space UI (a cockpit readout that must never be occluded).
     pub always_on_top: bool,
+    /// How this surface composites with previously drawn pixels.
     pub blend: BlendMode,
     /// Light the surface *emits*, added on top of whatever `Light`/
     /// ambient shading it receives — not affected by scene lighting
@@ -115,7 +119,9 @@ impl Default for Material {
 /// bridge; this type never touches them.
 #[derive(Debug, Clone)]
 pub struct Mesh {
+    /// Resource identity of the mesh geometry.
     pub handle: MeshHandle,
+    /// Number of vertices available for drawing.
     pub vertex_count: u32,
     /// Zero for a non-indexed mesh drawn directly from `vertex_count`.
     pub index_count: u32,
@@ -130,15 +136,22 @@ pub struct Mesh {
 pub enum Light {
     /// Uniform light from a fixed direction, no falloff (the sun).
     Directional {
+        /// Pose whose local X axis points along the light.
         direction: Motor3,
+        /// Linear RGB light color.
         color: [f32; 3],
+        /// Multiplier applied to `color`.
         intensity: f32,
     },
     /// Falls off with distance from `position`, out to `range`.
     Point {
+        /// Pose placing the light in world space.
         position: Motor3,
+        /// Linear RGB light color.
         color: [f32; 3],
+        /// Multiplier applied to `color`.
         intensity: f32,
+        /// Maximum lit distance in world units.
         range: f32,
     },
     /// A point light that shines only into a cone: along `direction` (the
@@ -168,8 +181,11 @@ pub enum Light {
 /// One 3D-scene instance: a mesh drawn with a material at a world frame.
 #[derive(Debug, Clone)]
 pub struct Renderable3d {
+    /// Mesh geometry to draw.
     pub mesh: MeshHandle,
+    /// Surface material used for drawing.
     pub material: MaterialHandle,
+    /// World-space pose of this instance.
     pub frame: Motor3,
     /// The scale along the renderable's own axes, applied before `frame`.
     pub scale: meridian_gac::Scale3,
@@ -222,8 +238,11 @@ pub fn scaled_world_bounds(bounds: &Aabb, scale: meridian_gac::Scale3, frame: &M
 /// input component.
 #[derive(Debug, Clone, Copy)]
 pub struct MeshRenderer {
+    /// Mesh geometry to draw.
     pub mesh: MeshHandle,
+    /// Surface material used for drawing.
     pub material: MaterialHandle,
+    /// Whether to rotate the mesh toward the active camera.
     pub billboard: bool,
 }
 
@@ -235,6 +254,7 @@ impl Component for MeshRenderer {}
 /// the module doc's "one spatial model" note.
 #[derive(Debug, Clone, Copy)]
 pub struct Sprite {
+    /// Texture sampled by the quad.
     pub texture: TextureHandle,
     /// Normalized texture-space sub-rectangle (`x, y, width, height`, each
     /// in `0..=1`, origin top-left); `None` draws the whole texture.
@@ -264,12 +284,14 @@ pub struct Camera2d {
 }
 
 impl Camera2d {
+    /// Creates a centered world-space camera with Y pointing up.
     pub fn from_world_extent(width: f32, height: f32) -> Self {
         Self {
             extents: [-width / 2.0, width / 2.0, -height / 2.0, height / 2.0],
         }
     }
 
+    /// Creates a top-left screen-space camera with Y pointing down.
     pub fn from_surface_size(width: f32, height: f32) -> Self {
         Self {
             extents: [0.0, width, height, 0.0],
@@ -289,8 +311,11 @@ impl Camera2d {
 /// own doc comment for the fixed-volume shadow map this feeds.
 #[derive(Debug, Clone)]
 pub struct Scene3d {
+    /// Camera used to view the scene.
     pub camera: crate::Camera,
+    /// Mesh instances drawn in this scene.
     pub renderables: Vec<Renderable3d>,
+    /// Lights illuminating the mesh instances.
     pub lights: Vec<Light>,
     /// Ambient color a downward-facing surface (`normal.y = -1`)
     /// receives — the color light bouncing off the ground would be.
@@ -321,7 +346,9 @@ impl Default for Scene3d {
 /// A layer-sorted plane: an orthographic camera and its [`Sprite`]s.
 #[derive(Debug, Clone, Default)]
 pub struct Scene2d {
+    /// Orthographic camera used to view the plane.
     pub camera: Camera2d,
+    /// Textured quads sorted by their layer keys.
     pub sprites: Vec<Sprite>,
 }
 
@@ -330,7 +357,9 @@ pub struct Scene2d {
 /// see the module doc's UI-overlay composition).
 #[derive(Debug, Clone)]
 pub enum View {
+    /// A three-dimensional world view.
     Three(Scene3d),
+    /// A two-dimensional plane or UI overlay.
     Two(Scene2d),
 }
 
@@ -339,10 +368,12 @@ pub enum View {
 /// data-oriented stance) — never a retained scene graph.
 #[derive(Debug, Clone, Default)]
 pub struct FrameScene {
+    /// Views in submission order.
     pub views: Vec<View>,
 }
 
 impl FrameScene {
+    /// Creates a frame from views in submission order.
     pub fn new(views: Vec<View>) -> Self {
         Self { views }
     }

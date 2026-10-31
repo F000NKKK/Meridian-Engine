@@ -11,10 +11,13 @@ use std::fmt;
 /// storage uses for the same reason), and its children, recursively
 /// built the same way.
 pub struct BuiltNode {
+    /// Source tag name used to select the builder.
     pub tag: String,
     /// The element's `x:Name`, if it has one.
     pub name: Option<String>,
+    /// Type-erased value produced by the registered tag builder.
     pub value: Box<dyn Any>,
+    /// Child nodes built from child elements.
     pub children: Vec<BuiltNode>,
 }
 

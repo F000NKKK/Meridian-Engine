@@ -9,7 +9,9 @@ use crate::flavor::{GaFlavor, ScalarLike, VectorLike};
 /// later.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Sphere<F: GaFlavor> {
+    /// Center of the sphere.
     pub center: F::Vector,
+    /// Radius in world units.
     pub radius: F::Scalar,
 }
 

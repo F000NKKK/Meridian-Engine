@@ -42,8 +42,11 @@ where
     F::Rotor: Send + Sync,
     F::Motor: Send + Sync,
 {
+    /// Integration rule and gravitational acceleration.
     pub integrator: Integrator<F>,
+    /// Bodies to integrate independently.
     pub bodies: Vec<RigidBody<F>>,
+    /// Timestep in seconds.
     pub dt: F::Scalar,
     results: Mutex<Vec<RigidBody<F>>>,
 }
@@ -56,6 +59,7 @@ where
     F::Rotor: Send + Sync,
     F::Motor: Send + Sync,
 {
+    /// Creates a batched integration kernel for one timestep.
     pub fn new(integrator: Integrator<F>, bodies: Vec<RigidBody<F>>, dt: F::Scalar) -> Self {
         let results = Mutex::new(bodies.clone());
         Self {

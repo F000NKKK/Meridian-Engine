@@ -1,5 +1,6 @@
 //! Tests of this crate.
 
+#[cfg(feature = "hw-tests")]
 use std::ops::Range;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};

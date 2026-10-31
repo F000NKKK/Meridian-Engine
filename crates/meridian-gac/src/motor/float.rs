@@ -40,14 +40,17 @@ impl Default for Motor3 {
 }
 
 impl Motor3 {
+    /// Returns the identity rigid motion.
     pub fn identity() -> Self {
         Motor3(Multivector::scalar(1.0))
     }
 
+    /// Constructs a pure rotation around `axis` by `angle` radians.
     pub fn rotation(axis: Vec3, angle: Scalar) -> Self {
         Motor3(Rotor::from_axis_angle(axis, angle).0)
     }
 
+    /// Constructs a pure translation.
     pub fn translation(t: Vec3) -> Self {
         let mut m = [0.0; 16];
         m[blade::S] = 1.0;

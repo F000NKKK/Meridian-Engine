@@ -55,6 +55,7 @@ impl QualifiedName {
         })
     }
 
+    /// Returns the namespace directive prefix, if one was present.
     pub fn prefix(&self) -> Option<Prefix> {
         self.prefix
     }
@@ -65,6 +66,7 @@ impl QualifiedName {
         self.owner.as_deref()
     }
 
+    /// Returns the local name without its prefix or owner.
     pub fn local(&self) -> &str {
         &self.local
     }

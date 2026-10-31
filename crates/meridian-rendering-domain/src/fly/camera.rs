@@ -21,6 +21,7 @@ use crate::Camera;
 /// around and look at their scenes from any angle.
 #[derive(Debug)]
 pub struct FlyCamera {
+    /// Camera position in world space.
     pub position: Vec3,
     /// Radians, measured from `+X` toward `+Z` (matches `Vec3::X` being
     /// `gac`'s local-forward convention — see [`look_at_rotor`](crate::look_at_rotor)).
@@ -28,11 +29,14 @@ pub struct FlyCamera {
     /// Radians, clamped just short of &plusmn;90&deg; to avoid a gimbal
     /// flip at the poles.
     pub pitch: f32,
+    /// Base movement speed in world units per second.
     pub move_speed: f32,
+    /// Radians of rotation per pixel of mouse motion.
     pub look_sensitivity: f32,
 }
 
 impl FlyCamera {
+    /// Creates a camera at `position` with default orientation and controls.
     #[must_use]
     pub fn new(position: Vec3) -> Self {
         // Facing roughly toward -Z (a scene's contents in these examples
@@ -122,6 +126,7 @@ impl FlyCamera {
         yaw_rotor.compose(pitch_rotor)
     }
 
+    /// Builds a render camera with the current pose and aspect ratio.
     #[must_use]
     pub fn camera(&self, aspect_ratio: f32) -> Camera {
         Camera {

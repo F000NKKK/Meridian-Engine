@@ -15,9 +15,12 @@
 /// docs/roadmap.md), it fills in [`GpuCapabilities`]'s fields; no
 /// restructuring of this trait or [`CpuCapabilities`] is needed.
 pub trait BackendCapabilities {
+    /// Reports the available CPU execution resources.
     fn cpu(&self) -> CpuCapabilities;
+    /// Reports GPU details when a GPU backend is available.
     fn gpu(&self) -> Option<GpuCapabilities>;
 
+    /// Returns whether a usable GPU backend was detected.
     fn gpu_available(&self) -> bool {
         self.gpu().is_some()
     }
@@ -29,10 +32,12 @@ pub trait BackendCapabilities {
 /// domain-specific fields (SIMD width, audio latency, ...) alongside it.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct CpuCapabilities {
+    /// Number of logical CPU threads available to the process.
     pub threads: usize,
 }
 
 impl CpuCapabilities {
+    /// Detects the current process's CPU capabilities.
     pub fn detect() -> Self {
         Self {
             threads: detect_cpu_threads(),
@@ -50,6 +55,7 @@ impl CpuCapabilities {
 /// [`BackendCapabilities`].
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct GpuCapabilities {
+    /// Human-readable graphics adapter name.
     pub device_name: String,
 }
 

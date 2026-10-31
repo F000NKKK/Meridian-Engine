@@ -7,7 +7,9 @@ use crate::{VertexAttributeDesc, VertexStep};
 /// vertex, `attributes` is where each field lives within it.
 #[derive(Debug, Clone)]
 pub struct VertexLayout {
+    /// Byte distance between consecutive vertices or instances.
     pub stride: u64,
+    /// Attributes and their locations within each element.
     pub attributes: Vec<VertexAttributeDesc>,
     /// Whether the buffer advances per vertex or per instance.
     pub step: VertexStep,

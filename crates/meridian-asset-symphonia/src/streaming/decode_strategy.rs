@@ -5,6 +5,7 @@ use super::DecodeMode;
 /// Tunable decode strategy for [`open_audio`](super::open_audio).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DecodeStrategy {
+    /// Whether to decode eagerly, stream, or choose by estimated size.
     pub mode: DecodeMode,
     /// `Auto` streams once the estimated decoded size (PCM `i16`)
     /// exceeds this. Default 16 MiB ≈ 1.5 min of 48 kHz stereo.

@@ -9,56 +9,107 @@ use std::collections::HashSet;
 /// extending it is additive (new variants), not breaking.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum KeyCode {
+    /// The A key.
     A,
+    /// The B key.
     B,
+    /// The C key.
     C,
+    /// The D key.
     D,
+    /// The E key.
     E,
+    /// The F key.
     F,
+    /// The G key.
     G,
+    /// The H key.
     H,
+    /// The I key.
     I,
+    /// The J key.
     J,
+    /// The K key.
     K,
+    /// The L key.
     L,
+    /// The M key.
     M,
+    /// The N key.
     N,
+    /// The O key.
     O,
+    /// The P key.
     P,
+    /// The Q key.
     Q,
+    /// The R key.
     R,
+    /// The S key.
     S,
+    /// The T key.
     T,
+    /// The U key.
     U,
+    /// The V key.
     V,
+    /// The W key.
     W,
+    /// The X key.
     X,
+    /// The Y key.
     Y,
+    /// The Z key.
     Z,
+    /// The top-row 0 key.
     Digit0,
+    /// The top-row 1 key.
     Digit1,
+    /// The top-row 2 key.
     Digit2,
+    /// The top-row 3 key.
     Digit3,
+    /// The top-row 4 key.
     Digit4,
+    /// The top-row 5 key.
     Digit5,
+    /// The top-row 6 key.
     Digit6,
+    /// The top-row 7 key.
     Digit7,
+    /// The top-row 8 key.
     Digit8,
+    /// The top-row 9 key.
     Digit9,
+    /// The space bar.
     Space,
+    /// The Enter key.
     Enter,
+    /// The Escape key.
     Escape,
+    /// The Tab key.
     Tab,
+    /// The Backspace key.
     Backspace,
+    /// The up arrow key.
     ArrowUp,
+    /// The down arrow key.
     ArrowDown,
+    /// The left arrow key.
     ArrowLeft,
+    /// The right arrow key.
     ArrowRight,
+    /// The left Shift key.
     ShiftLeft,
+    /// The right Shift key.
     ShiftRight,
+    /// The left Control key.
     ControlLeft,
+    /// The right Control key.
     ControlRight,
+    /// The Alt key.
     Alt,
+    /// The F3 diagnostics key.
     F3,
 }
 
@@ -69,11 +120,17 @@ pub enum KeyCode {
 /// naming past the first five.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MouseButton {
+    /// The primary mouse button.
     Left,
+    /// The secondary mouse button.
     Right,
+    /// The middle mouse button or wheel press.
     Middle,
+    /// The browser-back side button.
     Back,
+    /// The browser-forward side button.
     Forward,
+    /// An additional platform-specific button index.
     Other(u16),
 }
 
@@ -96,6 +153,7 @@ pub struct InputState {
 }
 
 impl InputState {
+    /// Creates input state with no held buttons or pending transitions.
     pub fn new() -> Self {
         Self::default()
     }
@@ -109,6 +167,7 @@ impl InputState {
         }
     }
 
+    /// Records a key release and its one-frame transition.
     pub fn release_key(&mut self, key: KeyCode) {
         if self.keys_down.remove(&key) {
             self.keys_released_this_frame.insert(key);
@@ -130,16 +189,19 @@ impl InputState {
         self.keys_released_this_frame.contains(&key)
     }
 
+    /// Records a mouse button as held and tracks its initial press.
     pub fn press_mouse_button(&mut self, button: MouseButton) {
         if self.mouse_buttons_down.insert(button) {
             self.mouse_buttons_pressed_this_frame.insert(button);
         }
     }
 
+    /// Records that a mouse button is no longer held.
     pub fn release_mouse_button(&mut self, button: MouseButton) {
         self.mouse_buttons_down.remove(&button);
     }
 
+    /// Returns whether a mouse button is currently held.
     pub fn is_mouse_button_down(&self, button: MouseButton) -> bool {
         self.mouse_buttons_down.contains(&button)
     }
@@ -167,6 +229,7 @@ impl InputState {
         self.mouse_position = (x, y);
     }
 
+    /// Returns the latest absolute cursor position.
     pub fn mouse_position(&self) -> (f32, f32) {
         self.mouse_position
     }

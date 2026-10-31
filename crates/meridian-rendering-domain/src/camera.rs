@@ -56,7 +56,9 @@ pub fn look_at_upright(eye: Vec3, target: Vec3) -> Rotor {
 /// [`Projection::perspective`] or [`Projection::orthographic`].
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Camera {
+    /// Camera pose in world space, with local forward `+X`.
     pub frame: Motor3,
+    /// Mapping from view space to clip space.
     pub projection: Projection,
 }
 

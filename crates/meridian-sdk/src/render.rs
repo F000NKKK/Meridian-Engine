@@ -98,6 +98,7 @@ impl<F> RenderStage<F>
 where
     F: FnMut() -> Scene3d + Send + 'static,
 {
+    /// Creates a stage that renders `build_scene` into `window` each run.
     pub fn new(
         base: GraphicsSession,
         window: Window,

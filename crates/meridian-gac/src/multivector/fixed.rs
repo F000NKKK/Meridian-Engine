@@ -7,18 +7,22 @@ use meridian_numeric::Fixed;
 use super::basis_product::basis_product;
 use crate::blade;
 
+/// A general fixed-point multivector with sixteen blade coefficients.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct FixedMultivector(pub [Fixed; 16]);
 
 impl FixedMultivector {
+    /// The zero multivector.
     pub const ZERO: FixedMultivector = FixedMultivector([Fixed::ZERO; 16]);
 
+    /// Constructs a multivector containing only a scalar term.
     pub fn scalar(s: Fixed) -> Self {
         let mut m = [Fixed::ZERO; 16];
         m[blade::S] = s;
         FixedMultivector(m)
     }
 
+    /// Negates blades of grade two and three to reverse their order.
     pub fn reverse(self) -> Self {
         let mut out = self.0;
         for (i, v) in out.iter_mut().enumerate() {

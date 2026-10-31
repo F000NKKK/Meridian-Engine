@@ -48,7 +48,9 @@ where
     F::Motor: Send + Sync,
 {
     narrow_phase: NarrowPhase<F>,
+    /// Bodies indexed by each candidate pair.
     pub bodies: Vec<RigidBody<F>>,
+    /// Candidate body-index pairs to test.
     pub pairs: Vec<(usize, usize)>,
     results: Mutex<Vec<Option<Contact<F>>>>,
 }
@@ -62,6 +64,7 @@ where
     F::Rotor: Send + Sync,
     F::Motor: Send + Sync,
 {
+    /// Creates a parallel single-contact test for each candidate pair.
     pub fn new(bodies: Vec<RigidBody<F>>, pairs: Vec<(usize, usize)>) -> Self {
         let results = Mutex::new(vec![None; pairs.len()]);
         Self {
@@ -149,7 +152,9 @@ where
     F::Motor: Send + Sync,
 {
     narrow_phase: NarrowPhase<F>,
+    /// Bodies indexed by each candidate pair.
     pub bodies: Vec<RigidBody<F>>,
+    /// Candidate pairs expanded into contact manifolds.
     pub pairs: Vec<(usize, usize)>,
     results: Mutex<Vec<[Option<Contact<F>>; MAX_CONTACTS_PER_PAIR]>>,
 }
@@ -163,6 +168,7 @@ where
     F::Rotor: Send + Sync,
     F::Motor: Send + Sync,
 {
+    /// Creates a parallel manifold generator for candidate pairs.
     pub fn new(bodies: Vec<RigidBody<F>>, pairs: Vec<(usize, usize)>) -> Self {
         let results = Mutex::new(vec![[None; MAX_CONTACTS_PER_PAIR]; pairs.len()]);
         Self {
