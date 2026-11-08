@@ -32,6 +32,21 @@ impl Surface {
         self.config.format
     }
 
+    /// Enables vertical synchronization explicitly for a window surface.
+    ///
+    /// FIFO presents frames on the display's refresh cycle and is supported
+    /// by every wgpu surface. This avoids tearing and lets swapchain
+    /// acquisition provide frame pacing instead of a competing sleep timer.
+    /// Offscreen surfaces retain their existing configuration.
+    pub fn enable_vsync(&mut self, device: &Device) {
+        if let SurfaceTarget::Window(surface) = &mut self.target {
+            if self.config.present_mode != wgpu::PresentMode::Fifo {
+                self.config.present_mode = wgpu::PresentMode::Fifo;
+                surface.configure(device.0.wgpu_device(), &self.config);
+            }
+        }
+    }
+
     /// Reconfigures the surface for a new size. A no-op if either
     /// dimension is `0` (a minimized window reports this on some
     /// platforms) — configuring a zero-sized surface is a `wgpu` panic,
