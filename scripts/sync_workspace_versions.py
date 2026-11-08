@@ -72,7 +72,7 @@ def synchronize(root: Path, write: bool) -> int:
         if count != 1:
             raise ValueError(f"{name}: expected one dependency entry, found {count}")
     manifest_path.write_text(
-        head + sep + section + (next_section + tail if next_section else ""),
+        head + sep + section + ("\n[" + tail if next_section else ""),
         encoding="utf-8",
     )
     return 0
