@@ -69,8 +69,8 @@ impl MarkupExtension {
                 at,
             ));
         }
-        let value = MarkupValue::parse(trimmed).map_err(|error| error.shifted(at))?;
-        self.named.push((QualifiedName::plain(key), value));
+        let parsed_value = MarkupValue::parse(trimmed).map_err(|error| error.shifted(at))?;
+        self.named.push((QualifiedName::plain(key), parsed_value));
         Ok(())
     }
 

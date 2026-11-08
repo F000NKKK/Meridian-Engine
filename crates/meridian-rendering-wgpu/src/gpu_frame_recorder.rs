@@ -96,7 +96,7 @@ impl GpuFrameRecorder {
         &self,
         commands: &mut CommandBuffer<'_>,
         request: &FrameRequest<'_>,
-        prepared: PreparedFrame<'_>,
+        prepared: &PreparedFrame<'_>,
         frame: &SurfaceFrame,
     ) {
         {
@@ -114,12 +114,12 @@ impl GpuFrameRecorder {
             );
             submit_scene3d(&self.renderer, &mut pass, prepared.main);
         }
-        for (viewport, prepared) in request.viewports.iter().zip(prepared.viewports) {
+        for (viewport, secondary) in request.viewports.iter().zip(prepared.viewports) {
             let [x, y, width, height] = viewport.rect;
             let mut pass = commands.begin_viewport_pass(self.scene.view(), &self.depth);
             pass.set_viewport(x, y, width, height);
             pass.set_scissor_rect(x, y, width, height);
-            submit_scene3d(&self.renderer, &mut pass, prepared);
+            submit_scene3d(&self.renderer, &mut pass, secondary);
         }
         self.bloom.apply(
             &self.device,
@@ -247,7 +247,7 @@ impl FrameRecorder for GpuFrameRecorder {
         self.draw_scene(
             &mut commands,
             request,
-            PreparedFrame {
+            &PreparedFrame {
                 main: &prepared,
                 viewports: &viewports,
             },

@@ -117,7 +117,7 @@ a.try_slerp(b: Rotor, fraction: f32) -> Result<Rotor, RotationError>
 ```
 
 These additions are not yet a published SDK version. Fixed-point rotors retain their
-existing API; these checked float operations must not be assumed available on FixedRotor.
+existing API; these checked float operations must not be assumed available on `FixedRotor`.
 
 ## Independent spatial components
 
@@ -134,8 +134,8 @@ assert!(world.get::<Transform>(entity).is_some());
 # Ok::<(), meridian_sdk::RotationError>(())
 ```
 
-Alternatively attach Motor3 as the complete local pose. Do not attach Motor3
-alongside Position/Rotors to the same entity. SpatialStage resolves those sources
-before TransformStage; diagnostics are available through a shared `issues()` handle.
+Alternatively attach `Motor3` as the complete local pose. Do not attach `Motor3`
+alongside `Position`/`Rotor` to the same entity. `SpatialStage` resolves those sources
+before `TransformStage`; diagnostics are available through a shared `issues()` handle.
 Other components remain attached independently. Physics-body synchronization is
 not supplied by this authoring stage; do not let it overwrite a dynamic body's pose.

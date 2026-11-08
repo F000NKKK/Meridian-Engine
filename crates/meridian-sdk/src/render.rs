@@ -69,7 +69,7 @@ pub fn compose_frame_with_viewports(
     scene: &Scene3d,
     overlays: &[Overlay2d],
     viewports: &[Viewport3d],
-    presentation: WindowPresentation<'_>,
+    presentation: &WindowPresentation<'_>,
 ) {
     let window = presentation.window;
     let clear_color = presentation.clear_color;

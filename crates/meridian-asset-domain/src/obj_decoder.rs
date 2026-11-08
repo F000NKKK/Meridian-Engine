@@ -128,15 +128,14 @@ fn parse_index(text: &str, len: usize) -> Result<usize, DecodeError> {
     let index = text
         .parse::<i64>()
         .map_err(|_| DecodeError::Malformed("non-numeric face index"))?;
-    let resolved = if index < 0 {
-        len as i64 + index
-    } else {
-        index - 1
-    };
-    if resolved < 0 || resolved >= len as i64 {
+    let len = i64::try_from(len)
+        .map_err(|_| DecodeError::Malformed("face list exceeds supported index range"))?;
+    let resolved = if index < 0 { len + index } else { index - 1 };
+    if resolved < 0 || resolved >= len {
         return Err(DecodeError::Malformed("face index out of range"));
     }
-    Ok(resolved as usize)
+    usize::try_from(resolved)
+        .map_err(|_| DecodeError::Malformed("face index out of range"))
 }
 
 fn parse_vertex<'a>(fields: impl Iterator<Item = &'a str>) -> Result<[f32; 3], DecodeError> {

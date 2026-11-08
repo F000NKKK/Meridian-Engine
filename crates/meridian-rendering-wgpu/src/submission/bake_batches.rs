@@ -198,8 +198,8 @@ fn draw_kind(
     device: &Device,
     renderer: &SceneRenderer,
     assets: &SceneAssets<'_>,
-    lead: &Resolved,
-    groups: &mut BindGroupCache,
+    lead: &Resolved<'_>,
+    groups: &mut BindGroupCache<'_>,
 ) -> DrawKind {
     if !lead.maps.any() {
         return DrawKind::Colored;
