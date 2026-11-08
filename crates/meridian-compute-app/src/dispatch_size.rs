@@ -14,6 +14,7 @@ pub struct DispatchSize {
 impl DispatchSize {
     /// A 1D dispatch of `count` work items (`y = z = 1`) — what every
     /// current `ComputeKernel` (batch `Motor3` work) uses.
+    #[must_use]
     pub fn linear(count: u32) -> Self {
         Self {
             x: count,
@@ -23,7 +24,8 @@ impl DispatchSize {
     }
 
     /// Returns the total number of work items in all three dimensions.
-    pub fn total(&self) -> usize {
+    #[must_use]
+    pub fn total(self) -> usize {
         self.x as usize * self.y as usize * self.z as usize
     }
 }

@@ -32,6 +32,7 @@ impl ComputeScheduler {
     }
 
     /// Returns the execution context and its parallel-dispatch policy.
+    #[must_use]
     pub fn context(&self) -> &ComputeContext {
         &self.context
     }

@@ -72,7 +72,8 @@ impl<T> ResourcePool<T> {
             self.slots[index as usize] = Some(value);
             Handle { index, generation }
         } else {
-            let index = self.slots.len() as u32;
+            let index = u32::try_from(self.slots.len())
+                .expect("ResourcePool cannot address more than u32::MAX slots");
             self.slots.push(Some(value));
             self.generations.push(0);
             Handle {

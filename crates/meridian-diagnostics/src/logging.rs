@@ -22,6 +22,7 @@
 //! (`MERIDIAN_LOG=error|warn|info|debug|trace`, read once on first use).
 
 use std::collections::VecDeque;
+use std::io::Write;
 use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Instant;
@@ -121,6 +122,7 @@ pub fn set_max_level(level: LogLevel) {
 
 /// True if `level` would currently be emitted — lets callers skip
 /// building expensive log arguments.
+#[must_use]
 pub fn enabled(level: LogLevel) -> bool {
     (level as u8) <= max_level()
 }
@@ -135,12 +137,14 @@ pub fn log(level: LogLevel, target: &str, args: std::fmt::Arguments<'_>) {
     let sink = sink();
     let elapsed = sink.start.elapsed().as_secs_f64();
     let line = format!("[{elapsed:9.3}] {} {target}: {args}", level.label());
-    eprintln!("{line}");
+    // Stderr is an optional sink; an I/O failure must not prevent the ring
+    // and the user-provided sink from receiving this log entry.
+    drop(writeln!(std::io::stderr().lock(), "{line}"));
     {
         let mut ring = sink
             .ring
             .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         if ring.len() == RING_CAPACITY {
             ring.pop_front();
         }
@@ -158,7 +162,7 @@ pub fn recent_lines() -> Vec<String> {
         Some(sink) => sink
             .ring
             .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .iter()
             .cloned()
             .collect(),

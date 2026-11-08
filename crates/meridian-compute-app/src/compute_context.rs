@@ -108,6 +108,9 @@ impl ComputeContext {
     /// GPU backend (see [`ComputeContext::with_gpu`]) — a caller that
     /// wants a hybrid dispatch to *require* GPU should check
     /// [`ComputeContext::gpu`] itself first.
+    ///
+    /// # Panics
+    /// Panics if the CPU worker task panics or cannot be joined.
     pub async fn run_hybrid<K>(&self, kernel: Arc<K>, count: usize, split: BackendSplit)
     where
         K: HybridKernel + Send + Sync + 'static,
