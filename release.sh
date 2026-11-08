@@ -225,14 +225,9 @@ publish_with_retry() {
     done
 }
 
-# ── Функция замены версии-ссылки в файле ──────────────────────────────────────
-update_ref() {
-    local dep="$1" file="$2" old="$3" new="$4"
-    # Простая форма:  meridian-foo = "0.1"  /  "0.1.2"
-    sed -i -E "s|(${dep}[[:space:]]*=[[:space:]]*\")${old}([.\"])|\1${new}\2|g" "$file"
-    # Сложная форма:  meridian-foo = { version = "0.1", ... }
-    sed -i -E "s|(${dep}[[:space:]]*=[[:space:]]*\{[^}]*version[[:space:]]*=[[:space:]]*\")${old}([.\"])|\1${new}\2|g" "$file"
-}
+# Версии внутренних зависимостей сверяются по TOML, а не sed-заменой:
+# версия 0.12.1 должна обновляться до 0.13.0, а не пропускаться.
+# scripts/sync_workspace_versions.py выполняет синхронизацию всех 43 крейтов.
 
 # ── Круглая ли версия относительно запрошенного бампа? ────────────────────────
 # Круглая версия — та, где не проверив crates.io нельзя быть уверенным, что
@@ -300,30 +295,15 @@ resolve_crate_action() {
     if $DRY_RUN; then
         dryrun "$crate: $current → $new_version" >&2
     else
-        awk -v old="$current" -v new="$new_version" '
+        awk -v new="$new_version" '
             /^\[/{in_pkg=0}
             /^\[package\]/{in_pkg=1}
             in_pkg && /^version *=/ && !done {
-                sub(old, new); done=1
+                sub(/"[^"]+"/, "\"" new "\""); done=1
             }
             {print}
         ' "$toml" > "$toml.tmp" && mv "$toml.tmp" "$toml"
         ok "$crate: $current → $new_version" >&2
-    fi
-
-    # Единственное место со ссылкой на версию крейта — [workspace.dependencies]
-    # в корневом Cargo.toml (member-крейты используют `workspace = true` и
-    # ничего не хранят локально). Обновляем только при смене минора/мажора.
-    if [[ "$old_short" != "$new_short" ]]; then
-        local root_toml="$WS/Cargo.toml"
-        if grep -qE "${crate}[[:space:]]*=.*\"${old_short}\"" "$root_toml" 2>/dev/null; then
-            if $DRY_RUN; then
-                dryrun "  Cargo.toml [workspace.dependencies] : $crate $old_short → $new_short" >&2
-            else
-                update_ref "$crate" "$root_toml" "$old_short" "$new_short"
-                ok "  ссылка: Cargo.toml [workspace.dependencies]" >&2
-            fi
-        fi
     fi
 
     echo "$new_version publish"
@@ -431,13 +411,33 @@ for c in $PLAN; do
     SHOULD_PUBLISH[$c]="$action"
 done
 
+# ── Шаг 1.5: гарантируем согласованные зависимости и lockfile ──────────────
+# Прежний механизм пропускал "0.12.1", т.к. искал точное "0.12".
+# Cargo.lock обязан быть синхронизирован до commit/publish, иначе
+# следующий CI с --locked падает уже после публикации.
+echo ""
+info "Синхронизирую workspace.dependencies и Cargo.lock ..."
+if $DRY_RUN; then
+    dryrun "python3 scripts/sync_workspace_versions.py --write (пропущено)"
+    dryrun "cargo update --workspace (пропущено)"
+else
+    python3 "$WS/scripts/sync_workspace_versions.py" --write \
+        || die "Не удалось синхронизировать версии workspace"
+    cargo update --manifest-path "$WS/Cargo.toml" --workspace \
+        || die "Не удалось обновить Cargo.lock"
+    python3 "$WS/scripts/sync_workspace_versions.py" --check \
+        || die "Версии workspace остались несогласованными"
+    cargo metadata --manifest-path "$WS/Cargo.toml" --locked --format-version 1 --no-deps >/dev/null \
+        || die "Cargo.lock несовместим с манифестами"
+fi
+
 # ── Шаг 2: один общий check по воркспейсу ────────────────────────────────────
 echo ""
 info "cargo check --workspace ..."
 if $DRY_RUN; then
     dryrun "cargo check --workspace (пропущено)"
 else
-    cargo check --offline --workspace --manifest-path "$WS/Cargo.toml" 2>&1 | tail -3
+    cargo check --locked --offline --workspace --manifest-path "$WS/Cargo.toml" 2>&1 | tail -3
     ok "check пройден"
 fi
 
@@ -456,14 +456,14 @@ done
 echo ""
 if $DRY_RUN; then
     dryrun "git commit (пропущено)"
-elif [[ ${#BUMPED[@]} -eq 0 ]]; then
-    info "Версии не менялись — коммитить нечего."
-elif git -C "$WS" diff --quiet -- Cargo.toml 'crates/*/Cargo.toml'; then
+elif git -C "$WS" diff --quiet -- Cargo.toml Cargo.lock 'crates/*/Cargo.toml'; then
     warn "Версии изменились в памяти скрипта, но diff по Cargo.toml пуст — пропускаю коммит."
 else
     info "Коммичу бамп версий (${#BUMPED[@]})..."
-    git -C "$WS" add -- Cargo.toml crates/*/Cargo.toml
-    if [[ ${#BUMPED[@]} -eq 1 ]]; then
+    git -C "$WS" add -- Cargo.toml Cargo.lock crates/*/Cargo.toml
+    if [[ ${#BUMPED[@]} -eq 0 ]]; then
+        git -C "$WS" commit -q -m "chore(release): sync workspace versions and lockfile"
+    elif [[ ${#BUMPED[@]} -eq 1 ]]; then
         git -C "$WS" commit -q -m "chore(release): bump ${BUMPED[0]}"
     else
         {
