@@ -12,6 +12,7 @@
 #![forbid(unsafe_code)]
 
 mod frame_outcome;
+mod frame_presentation;
 mod frame_recorder;
 mod frame_request;
 mod mesh_registry_store;
@@ -22,6 +23,7 @@ pub mod testing;
 mod texture_store;
 
 pub use frame_outcome::FrameOutcome;
+pub use frame_presentation::FramePresentation;
 pub use frame_recorder::FrameRecorder;
 pub use frame_request::FrameRequest;
 pub use mesh_store::MeshStore;

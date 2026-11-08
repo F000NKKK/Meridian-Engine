@@ -3,7 +3,7 @@
 use meridian_rendering_domain::scene::Scene3d;
 use meridian_rendering_domain::{MaterialRegistry, MeshRegistry, Overlay2d, Viewport3d};
 
-use crate::{FrameOutcome, FrameRecorder, FrameRequest};
+use crate::{FrameOutcome, FramePresentation, FrameRecorder, FrameRequest};
 
 /// A [`FrameRecorder`] bundled with the mesh and material registries a
 /// [`Scene3d`]'s handles resolve against, and the one rule of presenting a
@@ -51,7 +51,15 @@ impl<R: FrameRecorder> RenderSession<R> {
         clear_color: [f64; 4],
         target_size: (u32, u32),
     ) -> FrameOutcome {
-        self.render_with_viewports(scene, overlays, &[], clear_color, target_size)
+        self.render_with_viewports(
+            scene,
+            overlays,
+            &[],
+            FramePresentation {
+                clear_color,
+                target_size,
+            },
+        )
     }
 
     /// Draws independent 3D views in their pixel rectangles before the 2D overlays.
@@ -60,8 +68,7 @@ impl<R: FrameRecorder> RenderSession<R> {
         scene: &Scene3d,
         overlays: &[Overlay2d],
         viewports: &[Viewport3d],
-        clear_color: [f64; 4],
-        target_size: (u32, u32),
+        presentation: FramePresentation,
     ) -> FrameOutcome {
         let request = FrameRequest {
             scene,
@@ -69,11 +76,12 @@ impl<R: FrameRecorder> RenderSession<R> {
             materials: &self.materials,
             overlays,
             viewports,
-            clear_color,
+            clear_color: presentation.clear_color,
         };
         let outcome = self.recorder.record_frame(&request);
         if outcome == FrameOutcome::TargetUnavailable {
-            self.recorder.resize(target_size.0, target_size.1);
+            self.recorder
+                .resize(presentation.target_size.0, presentation.target_size.1);
         }
         outcome
     }

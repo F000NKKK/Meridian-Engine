@@ -11,7 +11,7 @@
 //! `Runtime::tick` guarantees it never runs before that state is ready.
 
 use meridian_platform_winit::Window;
-use meridian_rendering_app::FrameOutcome;
+use meridian_rendering_app::{FrameOutcome, FramePresentation};
 use meridian_rendering_domain::{Overlay2d, Scene3d, Viewport3d};
 use meridian_runtime_app::Stage;
 
@@ -66,7 +66,15 @@ pub fn compose_frame_with_viewports(
     let size = (window.width(), window.height());
     let outcome = base
         .render
-        .render_with_viewports(scene, overlays, viewports, clear_color, size);
+        .render_with_viewports(
+            scene,
+            overlays,
+            viewports,
+            FramePresentation {
+                clear_color,
+                target_size: size,
+            },
+        );
     if outcome == FrameOutcome::Presented {
         window.request_redraw();
     }
