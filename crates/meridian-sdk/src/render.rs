@@ -55,6 +55,7 @@ pub fn compose_frame(
 }
 
 /// Window-specific presentation parameters for a frame with multiple viewports.
+#[derive(Debug)]
 pub struct WindowPresentation<'a> {
     /// Scene background in linear RGBA.
     pub clear_color: [f64; 4],
