@@ -23,8 +23,10 @@ permissions:
 env:
   CARGO_TERM_COLOR: always
   RUSTDOCFLAGS: -D rustdoc::all
-  # The Craftbook version this project follows; bumped by the project's own PR.
-  CRAFTBOOK_REF: main
+  # Pin Craftbook v1: .craftcheck-baseline and "python3 tools/craftcheck"
+  # use the legacy checker removed from Craftbook main in v2.
+  # Upgrade to v2 only together with a policy/baseline migration.
+  CRAFTBOOK_REF: be41c87a3681ef0607500cc75cb14331e61a992b
   # The clippy backlog counts warnings of this exact toolchain; bump both together.
 
 jobs:
