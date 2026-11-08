@@ -24,7 +24,8 @@ fn obj_decodes_texture_coordinates_and_normals() {
 
 #[test]
 fn obj_splits_a_position_when_its_uv_changes() {
-    let text = "v 0 0 0\nv 1 0 0\nv 0 1 0\nvt 0 0\nvt 1 0\nvt 0 1\nvt 1 1\nf 1/1 2/2 3/3\nf 1/4 3/3 2/2\n";
+    let text =
+        "v 0 0 0\nv 1 0 0\nv 0 1 0\nvt 0 0\nvt 1 0\nvt 0 1\nvt 1 1\nf 1/1 2/2 3/3\nf 1/4 3/3 2/2\n";
     let mesh = ObjDecoder.decode(text.as_bytes()).unwrap();
     assert_eq!(mesh.positions.len(), 4);
     assert_eq!(mesh.indices, vec![0, 1, 2, 3, 2, 1]);

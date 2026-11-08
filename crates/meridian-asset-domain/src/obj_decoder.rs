@@ -144,7 +144,10 @@ fn parse_vertex<'a>(fields: impl Iterator<Item = &'a str>) -> Result<[f32; 3], D
 }
 
 fn parse_uv<'a>(fields: impl Iterator<Item = &'a str>) -> Result<[f32; 2], DecodeError> {
-    parse_array(fields, "texture coordinate line without exactly 2 coordinates")
+    parse_array(
+        fields,
+        "texture coordinate line without exactly 2 coordinates",
+    )
 }
 
 fn parse_array<'a, const N: usize>(
@@ -158,7 +161,5 @@ fn parse_array<'a, const N: usize>(
                 .map_err(|_| DecodeError::Malformed("non-numeric vertex coordinate"))
         })
         .collect::<Result<_, _>>()?;
-    coords
-        .try_into()
-        .map_err(|_| DecodeError::Malformed(error))
+    coords.try_into().map_err(|_| DecodeError::Malformed(error))
 }
