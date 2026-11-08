@@ -56,8 +56,7 @@ fn rounded_ratio_count(count: usize, fraction: f32) -> usize {
     if shift >= 128 {
         return 0;
     }
-    let product = u128::try_from(count).expect("usize fits into u128")
-        * u128::from(significand);
+    let product = u128::try_from(count).expect("usize fits into u128") * u128::from(significand);
     let rounded = (product + (1_u128 << (shift - 1))) >> shift;
     usize::try_from(rounded).expect("ratio does not exceed original count")
 }
