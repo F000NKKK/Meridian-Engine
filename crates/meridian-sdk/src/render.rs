@@ -64,17 +64,15 @@ pub fn compose_frame_with_viewports(
     window: &Window,
 ) {
     let size = (window.width(), window.height());
-    let outcome = base
-        .render
-        .render_with_viewports(
-            scene,
-            overlays,
-            viewports,
-            FramePresentation {
-                clear_color,
-                target_size: size,
-            },
-        );
+    let outcome = base.render.render_with_viewports(
+        scene,
+        overlays,
+        viewports,
+        FramePresentation {
+            clear_color,
+            target_size: size,
+        },
+    );
     if outcome == FrameOutcome::Presented {
         window.request_redraw();
     }
