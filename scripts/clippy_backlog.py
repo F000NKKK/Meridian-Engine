@@ -28,6 +28,7 @@ COMMAND = [
 def current_counts():
     run = subprocess.run(COMMAND, cwd=ROOT, capture_output=True, text=True)
     counts = collections.Counter()
+    locations = collections.defaultdict(list)
     seen = set()
     errors = 0
     for line in run.stdout.splitlines():
@@ -49,11 +50,17 @@ def current_counts():
                span.get("line_start"), span.get("column_start"))
         if key not in seen:
             seen.add(key)
-            counts[diagnostic["code"]["code"]] += 1
+            lint = diagnostic["code"]["code"]
+            counts[lint] += 1
+            locations[lint].append((
+                span.get("file_name", "<unknown>"),
+                span.get("line_start", 0),
+                diagnostic.get("message", ""),
+            ))
     if run.returncode != 0 and errors == 0:
         sys.stderr.write(run.stderr)
         errors = 1
-    return counts, errors
+    return counts, errors, locations
 
 
 def read_baseline():
@@ -75,7 +82,7 @@ def write_baseline(counts):
 
 
 def main():
-    counts, errors = current_counts()
+    counts, errors, locations = current_counts()
     if errors:
         print(f"clippy failed with {errors} error(s)")
         return 1
@@ -88,6 +95,8 @@ def main():
              if count > baseline.get(lint, 0)]
     for lint, count, allowed in worse:
         print(f"{lint}: {count} warning(s), backlog allows {allowed}")
+        for filename, line, message in locations[lint][:25]:
+            print(f"  {filename}:{line}: {message}")
     if worse:
         return 1
     print(f"OK: {sum(counts.values())} warning(s), backlog {sum(baseline.values())}")
