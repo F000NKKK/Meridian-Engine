@@ -1,10 +1,11 @@
 //! Real collision and synchronization through independently attached components.
-use crate::{PhysicsProblem, resolve_spatial_components, step_ecs_physics};
 use meridian_ecs::{Position, Transform, World};
 use meridian_gac::{Motor3, Vec3};
 use meridian_physics_app::{
     Collider, ColliderShape, PhysicsBody, PhysicsSubsystem, SequentialStepper,
 };
+
+use crate::{PhysicsProblem, resolve_spatial_components, step_ecs_physics};
 
 fn falling_sphere() -> (World, meridian_ecs::Entity) {
     let mut world = World::new();

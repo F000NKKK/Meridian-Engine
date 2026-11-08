@@ -1,7 +1,8 @@
 //! Diagnostics at the ECS/physics boundary.
 
-use crate::PhysicsProblem;
 use meridian_ecs::Entity;
+
+use crate::PhysicsProblem;
 
 /// An entity rejected by the ECS physics bridge; it was not simulated.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

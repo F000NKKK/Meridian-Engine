@@ -1,6 +1,7 @@
 //! Orientation from a forward direction and an up hint.
 
-use super::{RotationError, checked::unit};
+use super::RotationError;
+use super::checked::unit;
 use crate::{Rotor, Vec3};
 
 impl Rotor {

@@ -63,6 +63,7 @@ pub use motor::float::*;
 pub use multivector::fixed::*;
 pub use multivector::float::*;
 pub use projection::float::*;
+pub use rotor::RotationError;
 pub use rotor::fixed::*;
 pub use rotor::float::*;
 pub use scale::{Scale3, ScaleError};
@@ -71,5 +72,3 @@ pub use vector::float::*;
 pub use volume::Shape;
 pub use volume::fixed::*;
 pub use volume::float::*;
-
-pub use rotor::RotationError;

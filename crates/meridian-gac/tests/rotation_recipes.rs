@@ -1,6 +1,7 @@
 //! Executable recipes for application-order composition and checked rotations.
-use meridian_gac::{Motor3, RotationError, Rotor, Vec3};
 use std::f32::consts::FRAC_PI_2;
+
+use meridian_gac::{Motor3, RotationError, Rotor, Vec3};
 
 fn close(actual: Vec3, expected: Vec3) {
     assert!(

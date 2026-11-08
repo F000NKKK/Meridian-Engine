@@ -57,8 +57,10 @@ pub use meridian_compute_wgpu::{CpuComputeDevice, GpuComputeDevice, cpu_context,
 // -- meridian-diagnostics / -fs: errors, the log kernel, the log file and the crash report --
 pub use meridian_diagnostics::{EngineError, log_error, log_info, log_warn, logging};
 pub use meridian_diagnostics_fs::{CrashReportConfig, FileLog, FileLogConfig, install_crash_hook};
+pub use meridian_ecs::Position;
 // -- meridian-gac: spatial math --
 pub use meridian_gac::{Aabb, Bivector3, Motor3, Projection, RotationError, Rotor, Scale3, Vec3};
+pub use meridian_physics_app::{Collider, PhysicsBody};
 // -- meridian-physics-app / -compute: the world state and its steppers --
 pub use meridian_physics_app::{PhysicsStepper, PhysicsSubsystem, SequentialStepper};
 // -- meridian-physics-domain: rigid bodies --
@@ -89,8 +91,9 @@ pub use meridian_rendering_wgpu::{
 };
 pub use meridian_runtime_app::{
     AnimationStage, AudioStage, ComputeStage, EventSystem, FrameDelta, Job, JobExecutor,
-    PhysicsStepStage, Runtime, Shared, SpatialIssue, SpatialProblem, SpatialStage, Stage, StageId,
-    TransformStage, add_world_stages, resolve_spatial_components,
+    PhysicsIssue, PhysicsProblem, PhysicsStepStage, Runtime, Shared, SpatialIssue, SpatialProblem,
+    SpatialStage, Stage, StageId, TransformStage, add_world_stages, resolve_spatial_components,
+    step_ecs_physics,
 };
 pub use meridian_runtime_threads::{BackgroundPool, TaskExecutor};
 /// The retained UI runtime (ADR 018), named by generated `.meui` glue.
@@ -99,8 +102,3 @@ pub use meridian_ui_scene2d as ui_scene2d;
 pub use render::{RenderStage, compose_frame, compose_frame_with_viewports, render_frame};
 pub use runtime::parallel_runtime;
 pub use scene::GraphicsSession;
-
-pub use meridian_ecs::Position;
-
-pub use meridian_physics_app::{Collider, PhysicsBody};
-pub use meridian_runtime_app::{PhysicsIssue, PhysicsProblem, step_ecs_physics};

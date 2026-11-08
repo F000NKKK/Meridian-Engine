@@ -1,9 +1,10 @@
 //! Independent spatial components resolve without changing other component data.
-use crate::{Shared, SpatialProblem, SpatialStage, Stage, resolve_spatial_components};
 use meridian_ecs::{
     Component, GlobalTransform, Parent, Position, Transform, World, propagate_transforms,
 };
 use meridian_gac::{Motor3, Rotor, Vec3};
+
+use crate::{Shared, SpatialProblem, SpatialStage, Stage, resolve_spatial_components};
 
 #[derive(Debug)]
 struct AttachedCollider;
