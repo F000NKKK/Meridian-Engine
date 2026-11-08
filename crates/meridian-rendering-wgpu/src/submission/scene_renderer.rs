@@ -263,21 +263,34 @@ impl SceneRenderer {
         let mut bound: Option<&PreparedBatch> = None;
         for batch in &prepared.batches {
             if bound.is_none_or(|previous| !previous.binds_like(batch)) {
-                let main = self.pipelines.get(batch.pipeline_key());
-                pass.set_pipeline(&main.pipeline);
-                match &batch.kind {
-                    DrawKind::Textured { bind_group } => pass.set_bind_group(0, bind_group),
-                    DrawKind::Colored => {
-                        let Some(bind_group) = prepared.view.colored(batch.pipeline_key()) else {
-                            continue;
-                        };
-                        pass.set_bind_group(0, bind_group);
-                    }
+                if !self.bind_main_material(pass, prepared, batch) {
+                    continue;
                 }
                 bound = Some(batch);
             }
             self.draw_batch(pass, batch, instances);
         }
+    }
+
+    fn bind_main_material(
+        &self,
+        pass: &mut DriverRenderPass<'_>,
+        prepared: &PreparedScene,
+        batch: &PreparedBatch,
+    ) -> bool {
+        let main = self.pipelines.get(batch.pipeline_key());
+        pass.set_pipeline(&main.pipeline);
+        let bind_group = match &batch.kind {
+            DrawKind::Textured { bind_group } => bind_group,
+            DrawKind::Colored => {
+                let Some(bind_group) = prepared.view.colored(batch.pipeline_key()) else {
+                    return false;
+                };
+                bind_group
+            }
+        };
+        pass.set_bind_group(0, bind_group);
+        true
     }
 
     /// Binds `batch`'s mesh and the instance buffer, then draws its

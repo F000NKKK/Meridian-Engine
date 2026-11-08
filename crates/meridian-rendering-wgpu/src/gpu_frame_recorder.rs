@@ -14,6 +14,12 @@ use crate::{
 /// The format of the scene target the 3D passes draw into (ADR 034).
 const SCENE_FORMAT: ColorFormat = ColorFormat::HdrRgba16F;
 
+/// The already prepared main scene and the secondary viewports for one frame.
+struct PreparedFrame<'a> {
+    main: &'a PreparedScene,
+    viewports: &'a [PreparedScene],
+}
+
 /// Everything one windowed view draws with: the device, the swapchain, the HDR
 /// scene target and its depth target, the scene renderer, the bloom and tone
 /// mapping passes and the GPU textures.
@@ -90,8 +96,7 @@ impl GpuFrameRecorder {
         &self,
         commands: &mut CommandBuffer<'_>,
         request: &FrameRequest<'_>,
-        prepared: &PreparedScene,
-        viewports: &[PreparedScene],
+        prepared: PreparedFrame<'_>,
         frame: &SurfaceFrame,
     ) {
         {
@@ -107,9 +112,9 @@ impl GpuFrameRecorder {
                 request.scene,
                 &self.renderer.environment,
             );
-            submit_scene3d(&self.renderer, &mut pass, prepared);
+            submit_scene3d(&self.renderer, &mut pass, prepared.main);
         }
-        for (viewport, prepared) in request.viewports.iter().zip(viewports) {
+        for (viewport, prepared) in request.viewports.iter().zip(prepared.viewports) {
             let [x, y, width, height] = viewport.rect;
             let mut pass = commands.begin_viewport_pass(self.scene.view(), &self.depth);
             pass.set_viewport(x, y, width, height);
@@ -121,13 +126,36 @@ impl GpuFrameRecorder {
             commands,
             &BloomInput {
                 renderer: &self.renderer,
-                prepared,
+                prepared: prepared.main,
                 textures: self.textures.registry(),
                 target: &self.scene,
             },
         );
         self.tonemap
             .apply(&self.device, commands, &self.scene, frame);
+    }
+
+    fn prepare_secondary_views(
+        &mut self,
+        commands: &mut CommandBuffer<'_>,
+        request: &FrameRequest<'_>,
+    ) -> Vec<PreparedScene> {
+        request
+            .viewports
+            .iter()
+            .map(|viewport| {
+                self.renderer.prepare_viewport(
+                    &self.device,
+                    commands,
+                    &viewport.scene,
+                    &SceneAssets {
+                        meshes: request.meshes,
+                        materials: request.materials,
+                        textures: self.textures.registry(),
+                    },
+                )
+            })
+            .collect()
     }
 
     /// The last frame as RGBA8, when this recorder draws into an offscreen
@@ -191,22 +219,7 @@ impl FrameRecorder for GpuFrameRecorder {
                 textures: self.textures.registry(),
             },
         );
-        let viewports: Vec<_> = request
-            .viewports
-            .iter()
-            .map(|viewport| {
-                self.renderer.prepare_viewport(
-                    &self.device,
-                    &mut commands,
-                    &viewport.scene,
-                    &SceneAssets {
-                        meshes: request.meshes,
-                        materials: request.materials,
-                        textures: self.textures.registry(),
-                    },
-                )
-            })
-            .collect();
+        let viewports = self.prepare_secondary_views(&mut commands, request);
 
         let overlays = self.overlays.prepare(
             &self.device,
@@ -223,7 +236,15 @@ impl FrameRecorder for GpuFrameRecorder {
             }
         };
 
-        self.draw_scene(&mut commands, request, &prepared, &viewports, &frame);
+        self.draw_scene(
+            &mut commands,
+            request,
+            PreparedFrame {
+                main: &prepared,
+                viewports: &viewports,
+            },
+            &frame,
+        );
         self.overlays.draw(&mut commands, &frame, &overlays);
         commands.submit();
         if let Some(profiler) = &self.profiler {
