@@ -43,12 +43,13 @@ fn bindings_become_ui_glue() {
         </StackPanel>"#,
     );
     let ui = "::meridian_sdk::ui_core";
+    assert!(code.contains("pub(crate) struct Names {"), "{code}");
     assert!(
-        code.contains(&format!("pub title: {ui}::NodeId,")),
+        code.contains(&format!("pub(crate) title: {ui}::NodeId,")),
         "{code}"
     );
     assert!(
-        code.contains(&format!("pub query_box: {ui}::NodeId,")),
+        code.contains(&format!("pub(crate) query_box: {ui}::NodeId,")),
         "{code}"
     );
     assert!(
@@ -105,7 +106,7 @@ fn ui_documents_build_their_tree() {
     let ui = "::meridian_sdk::ui_core";
     assert!(
         code.contains(&format!(
-            "pub fn build_ui(tree: &mut {ui}::UiTree) -> Result<({ui}::NodeId, Names), {ui}::UiError> {{"
+            "pub(crate) fn build_ui(tree: &mut {ui}::UiTree) -> Result<({ui}::NodeId, Names), {ui}::UiError> {{"
         )),
         "{code}"
     );
