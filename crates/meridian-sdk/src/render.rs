@@ -54,15 +54,24 @@ pub fn compose_frame(
     }
 }
 
+/// Window-specific presentation parameters for a frame with multiple viewports.
+pub struct WindowPresentation<'a> {
+    /// Scene background in linear RGBA.
+    pub clear_color: [f64; 4],
+    /// Surface and redraw target.
+    pub window: &'a Window,
+}
+
 /// [`compose_frame`] with independent 3D scenes clipped to UI rectangles.
 pub fn compose_frame_with_viewports(
     base: &mut GraphicsSession,
     scene: &Scene3d,
     overlays: &[Overlay2d],
     viewports: &[Viewport3d],
-    clear_color: [f64; 4],
-    window: &Window,
+    presentation: WindowPresentation<'_>,
 ) {
+    let window = presentation.window;
+    let clear_color = presentation.clear_color;
     let size = (window.width(), window.height());
     let outcome = base.render.render_with_viewports(
         scene,
