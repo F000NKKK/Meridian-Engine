@@ -136,7 +136,9 @@ impl GpuFrameRecorder {
     }
 
     fn prepare_secondary_views(
-        &mut self,
+        renderer: &mut SceneRenderer,
+        device: &Device,
+        textures: &GpuTextureStore,
         commands: &mut CommandBuffer<'_>,
         request: &FrameRequest<'_>,
     ) -> Vec<PreparedScene> {
@@ -144,14 +146,14 @@ impl GpuFrameRecorder {
             .viewports
             .iter()
             .map(|viewport| {
-                self.renderer.prepare_viewport(
-                    &self.device,
+                renderer.prepare_viewport(
+                    device,
                     commands,
                     &viewport.scene,
                     &SceneAssets {
                         meshes: request.meshes,
                         materials: request.materials,
-                        textures: self.textures.registry(),
+                        textures: textures.registry(),
                     },
                 )
             })
@@ -219,7 +221,13 @@ impl FrameRecorder for GpuFrameRecorder {
                 textures: self.textures.registry(),
             },
         );
-        let viewports = self.prepare_secondary_views(&mut commands, request);
+        let viewports = Self::prepare_secondary_views(
+            &mut self.renderer,
+            &self.device,
+            &self.textures,
+            &mut commands,
+            request,
+        );
 
         let overlays = self.overlays.prepare(
             &self.device,
