@@ -134,8 +134,7 @@ fn parse_index(text: &str, len: usize) -> Result<usize, DecodeError> {
     if resolved < 0 || resolved >= len {
         return Err(DecodeError::Malformed("face index out of range"));
     }
-    usize::try_from(resolved)
-        .map_err(|_| DecodeError::Malformed("face index out of range"))
+    usize::try_from(resolved).map_err(|_| DecodeError::Malformed("face index out of range"))
 }
 
 fn parse_vertex<'a>(fields: impl Iterator<Item = &'a str>) -> Result<[f32; 3], DecodeError> {
