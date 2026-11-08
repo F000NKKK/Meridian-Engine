@@ -1208,7 +1208,7 @@ dependencies = [
 
 [[package]]
 name = "meridian-asset-app"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "meridian-asset-domain",
  "thiserror 2.0.21",
@@ -1216,7 +1216,7 @@ dependencies = [
 
 [[package]]
 name = "meridian-asset-domain"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "meridian-diagnostics",
  "substrate-data",
@@ -1245,7 +1245,7 @@ dependencies = [
 
 [[package]]
 name = "meridian-asset-http"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "meridian-asset-app",
  "percent-encoding",
@@ -1256,7 +1256,7 @@ dependencies = [
 
 [[package]]
 name = "meridian-asset-jpeg"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "meridian-asset-domain",
  "zune-jpeg",
@@ -1264,7 +1264,7 @@ dependencies = [
 
 [[package]]
 name = "meridian-asset-png"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "meridian-asset-domain",
  "png",
@@ -1272,7 +1272,7 @@ dependencies = [
 
 [[package]]
 name = "meridian-asset-symphonia"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "meridian-asset-domain",
  "symphonia",
@@ -1309,7 +1309,7 @@ dependencies = [
 
 [[package]]
 name = "meridian-compute-app"
-version = "0.20.0"
+version = "0.21.0"
 dependencies = [
  "tokio",
 ]
@@ -1338,11 +1338,11 @@ dependencies = [
 
 [[package]]
 name = "meridian-diagnostics"
-version = "0.7.0"
+version = "0.8.0"
 
 [[package]]
 name = "meridian-diagnostics-fs"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "meridian-diagnostics",
  "tokio",
@@ -1435,14 +1435,14 @@ dependencies = [
 
 [[package]]
 name = "meridian-markup"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "meridian-diagnostics",
 ]
 
 [[package]]
 name = "meridian-markup-macros"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "proc-macro-crate",
  "proc-macro2",
@@ -1452,7 +1452,7 @@ dependencies = [
 
 [[package]]
 name = "meridian-memory"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "criterion",
 ]
