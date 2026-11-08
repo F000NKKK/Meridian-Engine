@@ -34,7 +34,8 @@
 #   ./release.sh --publish-all --patch            # patch-бамп + публикация всех крейтов
 #
 # Перед бампом/публикацией (если не --skip-checks) прогоняется preflight:
-# cargo fmt --check, cargo clippy -D warnings, cargo test, cargo doc,
+# cargo fmt --check, scripts/clippy_backlog.py (Clippy с контролем .clippy-backlog),
+# cargo test, cargo doc,
 # scripts/check_dependency_rules.py (блокирует релиз при нарушении
 # docs/dependency-rules.md — не warning, а die) и, если установлен
 # cargo-semver-checks, semver-сверка каждого крейта из плана против его
@@ -167,9 +168,9 @@ run_preflight() {
     (cd "$WS" && cargo fmt --check) \
         || die "cargo fmt --check провалился — прогони 'cargo fmt' и закоммить"
 
-    info "Preflight: cargo clippy --workspace --all-targets ..."
-    cargo clippy --manifest-path "$WS/Cargo.toml" --workspace --all-targets --quiet -- -D warnings \
-        || die "cargo clippy нашёл проблемы"
+    info "Preflight: Clippy через scripts/clippy_backlog.py (с учётом .clippy-backlog) ..."
+    python3 "$WS/scripts/clippy_backlog.py" \
+        || die "Clippy завершился с ошибкой или превышен .clippy-backlog"
 
     info "Preflight: cargo test --workspace ..."
     cargo test --manifest-path "$WS/Cargo.toml" --workspace --quiet \
