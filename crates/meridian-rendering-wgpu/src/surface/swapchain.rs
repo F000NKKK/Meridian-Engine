@@ -39,11 +39,11 @@ impl Surface {
     /// acquisition provide frame pacing instead of a competing sleep timer.
     /// Offscreen surfaces retain their existing configuration.
     pub fn enable_vsync(&mut self, device: &Device) {
-        if let SurfaceTarget::Window(surface) = &mut self.target {
-            if self.config.present_mode != wgpu::PresentMode::Fifo {
-                self.config.present_mode = wgpu::PresentMode::Fifo;
-                surface.configure(device.0.wgpu_device(), &self.config);
-            }
+        if let SurfaceTarget::Window(surface) = &mut self.target
+            && self.config.present_mode != wgpu::PresentMode::Fifo
+        {
+            self.config.present_mode = wgpu::PresentMode::Fifo;
+            surface.configure(device.0.wgpu_device(), &self.config);
         }
     }
 
