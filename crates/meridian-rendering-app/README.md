@@ -40,3 +40,12 @@ assert!(meshes.get(handle).is_some());
 ## License
 
 MPL-2.0, see the repository [LICENSE](../../LICENSE).
+
+## Dynamic textures
+
+`TextureStore::update` optionally replaces pixels in an existing RGBA8
+allocation. Supported implementations preserve the texture handle, dimensions
+and colour space. Stale handles, layout mismatches and unsupported stores
+return false without modifying storage; clients can explicitly allocate a
+replacement in that case. `GpuTextureStore` and the in-memory testing store
+support updates. This lets dynamic atlases and overlays reuse GPU resources.

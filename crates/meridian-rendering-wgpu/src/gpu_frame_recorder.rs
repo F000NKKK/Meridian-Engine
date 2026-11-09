@@ -293,6 +293,10 @@ impl TextureStore for GpuFrameRecorder {
         self.textures.upload_solid(rgba)
     }
 
+    fn update(&mut self, handle: TextureHandle, image: &ImageAsset) -> bool {
+        self.textures.update(handle, image)
+    }
+
     fn contains(&self, handle: TextureHandle) -> bool {
         self.textures.contains(handle)
     }

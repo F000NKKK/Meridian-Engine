@@ -25,6 +25,13 @@ pub trait TextureStore {
     /// rectangles point at, carrying their colour in a tint.
     fn upload_solid(&mut self, rgba: [u8; 4]) -> TextureHandle;
 
+    /// Replaces RGBA8 pixels of a live texture without changing its handle,
+    /// dimensions or colour space. Returns false without changing storage
+    /// for unsupported stores, stale handles or mismatched image layouts.
+    fn update(&mut self, _handle: TextureHandle, _image: &ImageAsset) -> bool {
+        false
+    }
+
     /// Whether `handle` names a live texture of this store.
     fn contains(&self, handle: TextureHandle) -> bool;
 

@@ -55,6 +55,35 @@ impl TextureRegistry {
         TextureHandle::new(self.textures.insert(texture))
     }
 
+    /// Updates a live allocation in place, preserving texture identity and
+    /// format. Invalid dimensions or RGBA8 byte counts leave it untouched.
+    pub fn update(
+        &self,
+        device: &Device,
+        handle: TextureHandle,
+        image: &meridian_asset_domain::ImageAsset,
+    ) -> bool {
+        let Some(texture) = self.get(handle) else {
+            return false;
+        };
+        let expected = usize::try_from(image.width)
+            .ok()
+            .and_then(|width| {
+                usize::try_from(image.height)
+                    .ok()
+                    .and_then(|height| width.checked_mul(height))
+            })
+            .and_then(|pixels| pixels.checked_mul(4));
+        if texture.width != image.width
+            || texture.height != image.height
+            || expected != Some(image.pixels.len())
+        {
+            return false;
+        }
+        device.write_texture(texture, &image.pixels);
+        true
+    }
+
     /// Removes and returns the texture for `handle`, if still live.
     pub fn unregister(&mut self, handle: TextureHandle) -> Option<Texture> {
         self.textures.remove(handle.handle)

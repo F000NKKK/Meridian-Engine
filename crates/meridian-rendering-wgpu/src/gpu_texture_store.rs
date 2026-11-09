@@ -44,6 +44,10 @@ impl TextureStore for GpuTextureStore {
         self.registry.upload_solid(&self.device, rgba)
     }
 
+    fn update(&mut self, handle: TextureHandle, image: &ImageAsset) -> bool {
+        self.registry.update(&self.device, handle, image)
+    }
+
     fn contains(&self, handle: TextureHandle) -> bool {
         self.registry.get(handle).is_some()
     }
@@ -66,5 +70,42 @@ mod tests {
             return;
         };
         run_texture_store_contract(|| GpuTextureStore::new(device.clone()));
+    }
+    #[tokio::test]
+    async fn updates_keep_live_handles_and_reject_stale_or_resized_images() {
+        let device = Device::new()
+            .await
+            .expect("GPU texture update test requires an adapter");
+        let mut store = GpuTextureStore::new(device);
+        let image = ImageAsset {
+            width: 2,
+            height: 2,
+            pixels: vec![255; 16],
+        };
+        let handle = store.upload(&image);
+        assert!(store.update(handle, &image));
+        assert!(store.contains(handle));
+        assert!(!store.update(
+            handle,
+            &ImageAsset {
+                width: 1,
+                height: 4,
+                pixels: vec![0; 16]
+            }
+        ));
+        assert!(!store.update(
+            handle,
+            &ImageAsset {
+                width: 2,
+                height: 2,
+                pixels: vec![0; 15]
+            }
+        ));
+        assert!(store.release(handle));
+        assert!(!store.update(handle, &image));
+        let new_handle = store.upload(&image);
+        assert_ne!(handle, new_handle);
+        assert!(!store.update(handle, &image));
+        assert!(store.update(new_handle, &image));
     }
 }

@@ -39,6 +39,19 @@ impl TextureStore for FakeTextureStore {
         TextureHandle::new(self.sizes.insert([1, 1]))
     }
 
+    fn update(&mut self, handle: TextureHandle, image: &ImageAsset) -> bool {
+        self.size(handle) == Some([image.width, image.height])
+            && usize::try_from(image.width)
+                .ok()
+                .and_then(|width| {
+                    usize::try_from(image.height)
+                        .ok()
+                        .and_then(|height| width.checked_mul(height))
+                })
+                .and_then(|pixels| pixels.checked_mul(4))
+                == Some(image.pixels.len())
+    }
+
     fn contains(&self, handle: TextureHandle) -> bool {
         self.sizes.get(handle.handle).is_some()
     }
@@ -71,5 +84,40 @@ mod tests {
         assert_eq!(store.size(solid), Some([1, 1]));
         assert!(store.release(solid));
         assert_eq!(store.size(solid), None);
+    }
+    #[test]
+    fn updates_preserve_identity_and_reject_invalid_layouts() {
+        let mut store = FakeTextureStore::new();
+        let image = ImageAsset {
+            width: 2,
+            height: 2,
+            pixels: vec![255; 16],
+        };
+        let handle = store.upload(&image);
+        assert!(store.update(handle, &image));
+        assert_eq!(store.size(handle), Some([2, 2]));
+        assert!(!store.update(
+            handle,
+            &ImageAsset {
+                width: 1,
+                height: 4,
+                pixels: vec![0; 16]
+            }
+        ));
+        assert!(!store.update(
+            handle,
+            &ImageAsset {
+                width: 2,
+                height: 2,
+                pixels: vec![0; 15]
+            }
+        ));
+        assert_eq!(store.size(handle), Some([2, 2]));
+        assert!(store.release(handle));
+        assert!(!store.update(handle, &image));
+        let replacement = store.upload(&image);
+        assert_ne!(replacement, handle);
+        assert!(!store.update(handle, &image));
+        assert!(store.update(replacement, &image));
     }
 }
