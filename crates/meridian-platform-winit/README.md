@@ -17,6 +17,15 @@ let time = clock.tick();
 assert!(time.delta_seconds >= 0.0);
 ```
 
+## Window shutdown
+
+`AppHandler::on_close_requested` accepts or rejects an OS close request.
+After acceptance, `ready_to_close` may keep the event loop alive until the
+application's rendering and background workers have finished. No further
+redraw callbacks run during this shutdown interval. The default readiness
+returns true and preserves immediate-close behavior for simple clients.
+Both the main Enter key and numeric-keypad Enter map to `KeyCode::Enter`.
+
 ## Depends on / used by
 
 - Depends on: [`meridian-diagnostics`](../meridian-diagnostics)

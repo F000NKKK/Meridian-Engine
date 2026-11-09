@@ -16,9 +16,17 @@ pub(crate) struct EventRunner<'a, A: AppHandler> {
     pub(crate) window: Option<Window>,
     pub(crate) input: InputState,
     pub(crate) error: Option<WindowError>,
+    pub(crate) closing: bool,
 }
 
 impl<A: AppHandler> EventRunner<'_, A> {
+    fn request_close(&mut self) -> bool {
+        if !self.closing {
+            self.closing = self.app.on_close_requested();
+        }
+        self.closing && self.app.ready_to_close()
+    }
+
     fn handle_key(&mut self, event: &winit::event::KeyEvent) {
         if event.state == ElementState::Pressed
             && let Some(text) = &event.text
@@ -95,7 +103,11 @@ impl<A: AppHandler> winit::application::ApplicationHandler for EventRunner<'_, A
             return;
         };
         match event {
-            WindowEvent::CloseRequested if self.app.on_close_requested() => event_loop.exit(),
+            WindowEvent::CloseRequested => {
+                if self.request_close() {
+                    event_loop.exit();
+                }
+            }
             WindowEvent::Resized(size) => self.app.on_resized(size.width, size.height),
             WindowEvent::KeyboardInput { event, .. } => self.handle_key(&event),
             WindowEvent::Ime(event) => self.handle_ime(&event),
@@ -106,8 +118,20 @@ impl<A: AppHandler> winit::application::ApplicationHandler for EventRunner<'_, A
                 self.input
                     .set_mouse_position(position.x as f32, position.y as f32);
             }
-            WindowEvent::RedrawRequested => self.redraw(&window),
+            WindowEvent::RedrawRequested if !self.closing => self.redraw(&window),
             _ => {}
+        }
+    }
+
+    fn about_to_wait(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
+        if self.closing {
+            if self.app.ready_to_close() {
+                event_loop.exit();
+            } else {
+                event_loop.set_control_flow(winit::event_loop::ControlFlow::WaitUntil(
+                    std::time::Instant::now() + std::time::Duration::from_millis(10),
+                ));
+            }
         }
     }
 
@@ -149,8 +173,76 @@ mod tests {
             window: None,
             input: InputState::new(),
             error: None,
+            closing: false,
         };
         runner.handle_ime(&winit::event::Ime::Commit("Привет 🌍".into()));
         assert_eq!(runner.input.text(), "Привет 🌍");
+    }
+}
+
+#[cfg(test)]
+mod shutdown_tests {
+    use super::*;
+    struct ClosingApp {
+        accept: bool,
+        ready: bool,
+        requests: usize,
+    }
+    impl AppHandler for ClosingApp {
+        fn on_redraw(&mut self, _: &Window, _: &InputState) {}
+        fn on_close_requested(&mut self) -> bool {
+            self.requests += 1;
+            self.accept
+        }
+        fn ready_to_close(&self) -> bool {
+            self.ready
+        }
+    }
+    #[test]
+    fn accepted_close_waits_for_workers_and_is_idempotent() {
+        let mut app = ClosingApp {
+            accept: true,
+            ready: false,
+            requests: 0,
+        };
+        let mut runner = EventRunner {
+            title: String::new(),
+            width: 1,
+            height: 1,
+            app: &mut app,
+            window: None,
+            input: InputState::new(),
+            error: None,
+            closing: false,
+        };
+        assert!(!runner.request_close());
+        assert!(runner.closing);
+        assert!(!runner.request_close());
+        assert_eq!(runner.app.requests, 1);
+        runner.app.ready = true;
+        assert!(runner.request_close());
+        assert_eq!(runner.app.requests, 1);
+    }
+    #[test]
+    fn refused_close_keeps_processing_the_application() {
+        let mut app = ClosingApp {
+            accept: false,
+            ready: true,
+            requests: 0,
+        };
+        let mut runner = EventRunner {
+            title: String::new(),
+            width: 1,
+            height: 1,
+            app: &mut app,
+            window: None,
+            input: InputState::new(),
+            error: None,
+            closing: false,
+        };
+        assert!(!runner.request_close());
+        assert!(!runner.closing);
+        runner.app.accept = true;
+        assert!(runner.request_close());
     }
 }

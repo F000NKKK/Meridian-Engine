@@ -124,6 +124,14 @@ pub trait AppHandler {
     fn on_close_requested(&mut self) -> bool {
         true
     }
+
+    /// Whether accepted shutdown has finished. Returning false keeps the OS
+    /// event loop and window alive while render/worker threads stop. The
+    /// runner polls this without calling `on_redraw` again, then exits.
+    #[must_use]
+    fn ready_to_close(&self) -> bool {
+        true
+    }
 }
 
 /// Why [`run_windowed_app`] failed.
@@ -175,6 +183,7 @@ pub fn run_windowed_app<A: AppHandler>(
         window: None,
         input: InputState::new(),
         error: None,
+        closing: false,
     };
     event_loop
         .run_app(&mut runner)

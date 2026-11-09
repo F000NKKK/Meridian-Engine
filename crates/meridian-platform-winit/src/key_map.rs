@@ -5,7 +5,7 @@ use winit::keyboard::KeyCode as Wk;
 use crate::input::{KeyCode, MouseButton};
 
 /// Every `winit` key this crate names.
-const KEY_TABLE: [(Wk, KeyCode); 51] = [
+const KEY_TABLE: [(Wk, KeyCode); 52] = [
     (Wk::KeyA, KeyCode::A),
     (Wk::KeyB, KeyCode::B),
     (Wk::KeyC, KeyCode::C),
@@ -44,6 +44,7 @@ const KEY_TABLE: [(Wk, KeyCode); 51] = [
     (Wk::Digit9, KeyCode::Digit9),
     (Wk::Space, KeyCode::Space),
     (Wk::Enter, KeyCode::Enter),
+    (Wk::NumpadEnter, KeyCode::Enter),
     (Wk::Escape, KeyCode::Escape),
     (Wk::Tab, KeyCode::Tab),
     (Wk::Backspace, KeyCode::Backspace),
@@ -84,5 +85,15 @@ pub(crate) fn mouse_button_from_winit(button: winit::event::MouseButton) -> Mous
         winit::event::MouseButton::Back => MouseButton::Back,
         winit::event::MouseButton::Forward => MouseButton::Forward,
         winit::event::MouseButton::Other(n) => MouseButton::Other(n),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn main_and_numpad_enter_have_identical_actions() {
+        assert_eq!(keycode_from_winit(Wk::Enter), Some(KeyCode::Enter));
+        assert_eq!(keycode_from_winit(Wk::NumpadEnter), Some(KeyCode::Enter));
     }
 }
